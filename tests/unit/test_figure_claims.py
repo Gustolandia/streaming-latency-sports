@@ -97,6 +97,7 @@ def test_deletion_annotates_the_ledgers_fold():
 
 def test_deletion_caption_reaches_the_fold_through_the_ledger():
     # 5 Oct 2026: the figure is the journal supplement's (S4.1); found by the file it draws.
+    # 6 Oct 2026: the paper's again, Section V-C's, and found the same way.
     assert "ombRetentionFold" in caption_of_figure("deletion_phases")
 
 
@@ -230,7 +231,9 @@ def test_ttrue_falls_monotonically_as_the_caption_claims():
 
 def test_ttrue_span_is_the_one_the_text_states():
     xs = [p[0] for p in mrf.ttrue_points()]
-    assert round(xs[-1] / xs[0]) == 77
+    # 7 Oct 2026: 77 as first computed; 74 without the late messages, whose long waits had
+    # lifted the padded cells' median S.
+    assert round(xs[-1] / xs[0]) == 74
 
 
 # --- every figure ---------------------------------------------------------------------------

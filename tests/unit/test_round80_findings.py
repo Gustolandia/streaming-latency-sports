@@ -24,6 +24,14 @@ import sys
 import pytest
 
 REPO = Path(__file__).parent.parent.parent
+
+
+def _bibliographies():
+    """Both reference files, joined: the one the paper and the supplement cite, and the
+    postmortem's own, which moved to a file of its own on 7 Oct 2026. An entry is checked
+    wherever it lives."""
+    return "\n".join((REPO / name).read_text(encoding="utf-8")
+                     for name in ("manuscript_references.bib", "postmortem_references.bib"))
 BS = chr(92)
 sys.path.insert(0, str(REPO / "scripts"))
 sys.path.insert(0, str(REPO / "tests" / "unit"))
@@ -41,7 +49,7 @@ def supplement():
 
 @pytest.fixture(scope="module")
 def bib():
-    return (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
+    return _bibliographies()
 
 
 @pytest.fixture(scope="module")

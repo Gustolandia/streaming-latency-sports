@@ -9,14 +9,14 @@ of zero; then plot it again as the software leaves it once that population is di
 two graphs do not look alike. He asked, in the same message, for the impact of the *various*
 strategies for handling such samples. This figure is that, in three panels.
 
-Every number here is emitted by `span_histogram.py` from the archived corpus (5,913 runs,
-738,730 joined events) and read from the committed CSV and JSON, so the figure builds without
-the 800 MB archive.
+Every number here is emitted by `span_histogram.py` from the archived corpus (since 7 Oct 2026
+5,863 runs and 708,505 joined events, the late messages of stale_backlog.py left out) and read
+from the committed CSV and JSON, so the figure builds without the 800 MB archive.
 
 What the three panels say, in order:
 
   (a) At nanosecond resolution the acknowledgment-referenced span really does go below zero,
-      62,264 times in 738,730. The publish-timed span, on the same events and the same clock,
+      62,264 times in 708,505. The publish-timed span, on the same events and the same clock,
       never does. That contrast is the control: the negatives are a property of which stamp is
       used as the origin, not of the delivery being timed.
 
@@ -24,7 +24,7 @@ What the three panels say, in order:
       sub-millisecond interval lands on 0 or on 1 depending only on where the tick boundaries
       fall -- the bimodal 0/1 split is that arithmetic, visible raw. The benchmark then admits a
       sample only when the difference is strictly positive, which deletes everything at or below
-      zero: 338,242 of 738,730, or 45.8 per cent, none of it counted in what is reported.
+      zero: 338,242 of 708,505, or 47.7 per cent, none of it counted in what is reported.
 
   (c) Five dispositions, all found in shipping software and all audited in the manuscript,
       applied to the same measured population. Two of them (discard, NaN) shrink the sample the
@@ -44,6 +44,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import figure_legibility
 import figure_style
 
 import matplotlib
@@ -103,6 +104,31 @@ def read_hist(path=None):
     return series, extra
 
 
+def outside_window(series, extra, name="ack", lo_us=VIEW_LO_US, hi_us=VIEW_HI_US):
+    """What the drawn window leaves out of one span: (below, above), overflows included.
+
+    6 Oct 2026: the paper's Fig. 2 counted only the overflow past the histogram's own range,
+    +100 ms, under the words "above the window", and the window ends at 5 ms. The values
+    between 5 and 100 ms, and every value below -5 ms, were neither drawn nor counted. The
+    bins are aligned to the window's edges, so a bin is wholly inside or wholly outside.
+    """
+    below = extra[name]["under"] + sum(c for lo, _hi, c in series[name] if lo < lo_us)
+    above = extra[name]["over"] + sum(c for lo, _hi, c in series[name] if lo >= hi_us)
+    return below, above
+
+
+def below_zero(series, extra, name="ack"):
+    """(values below zero, all values) of one span, from the histogram the figure draws.
+
+    7 Oct 2026: panel (a) printed "62,264 below zero (8.43% of 738,730)" as typed text, and
+    leaving out the late messages moved the total under it. The bins are aligned to zero, so a
+    bin is wholly below it or wholly at or above it.
+    """
+    counts = [c for _lo, _hi, c in series[name]]
+    below = extra[name]["under"] + sum(c for lo, _hi, c in series[name] if lo < 0)
+    return below, extra[name]["under"] + sum(counts) + extra[name]["over"]
+
+
 def read_stats(path=None):
     path = STATS_JSON if path is None else path
     with open(path, encoding="utf-8") as fh:
@@ -150,7 +176,9 @@ def plot_measured(ax, series, extra):
     ax.set_title("(a) As measured, one clock, nanosecond timestamps  (+%s above window)"
                  % "{:,}".format(above), fontsize=8, loc="left")
 
-    ax.text(0.03, 0.95, "62,264 below zero\n(8.43% of 738,730)",
+    negative, total = below_zero(series, extra)
+    ax.text(0.03, 0.95, "{:,} below zero\n({:.2f}% of {:,})".format(
+                negative, 100.0 * negative / total, total),
             transform=ax.transAxes, fontsize=7, color=CUT, va="top", ha="left")
     ax.text(0.97, 0.95, "publish-timed span\non the same events:\nnever below zero",
             transform=ax.transAxes, fontsize=7, color=REDIS, va="top", ha="right")
@@ -292,17 +320,24 @@ def build_s_distribution(out_dir=OUT_DIR):
     plot_measured(ax, series, extra)
     ax.set_ylim(1, 3e6)
     # plot_measured titles the panel on the left; at column width that title runs off the
-    # figure, so only the window caveat stays, on the right.
+    # figure, so only the window caveat stays, on the right, counting both sides of it.
     ax.set_title("", loc="left")
-    ax.set_title("+%s above the window" % "{:,}".format(extra["ack"]["over"]),
-                 fontsize=7, loc="right")
+    below, above = outside_window(series, extra)
+    # 6 Oct 2026: 8 pt, IEEE's floor, where it was 7; the figure now passes the legibility gate
+    # the paper's other figures pass, below, before it is written.
+    ax.set_title("%s below, %s above the window" % ("{:,}".format(below), "{:,}".format(above)),
+                 fontsize=8, loc="right")
     ax.set_xlabel("$S = t_{\\mathrm{recv}} - t_{\\mathrm{ack}}$ (µs)")
     for text in ax.texts:
         if text.get_text().startswith("publish-timed span"):
             text.set_text("$D$, same messages:\nnever below zero")
+        # 6 Oct 2026: both notes at 8 pt here, the paper's floor; the postmortem's three-panel
+        # figure keeps plot_measured's 7 pt at its own width.
+        text.set_fontsize(8)
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     # The stem is written out whole, as for two_ways, so the compliance gate can find it.
     stem = "s_distribution"
+    figure_legibility.check(fig, stem)
     made = []
     for ext in ("pdf", "png"):
         path = os.path.join(out_dir, "%s.%s" % (stem, ext))

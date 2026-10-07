@@ -154,6 +154,17 @@ def span_macros(path=SPAN_CSV):
     # reads is a place for a stale number to survive a revision, and the split already has
     # more counters than the text needs.
     rows = recount_spans.read_csv(path)
+    # 6 Oct 2026. The pooled share weights each run by its messages, and the runs span every
+    # load we ran, so it is a mixture rather than a property of one system. Its spread over
+    # runs is emitted beside it, so the sentence that quotes the pooled share can say what it
+    # pools: the median run, the largest, and how many runs have no value of S below zero.
+    import statistics
+    per_run = sorted(int(r["neg_ack"]) / int(r["n_events"])
+                     for r in rows if int(r["n_events"]) > 0)
+    if per_run:
+        out += [("spanRunRateMedianPct", "%.1f" % (100.0 * statistics.median(per_run))),
+                ("spanRunRateMaxPct", "%.0f" % (100.0 * per_run[-1])),
+                ("spanRunsNoNegative", latex_thousands(sum(1 for x in per_run if x == 0)))]
     split = recount_spans.by_backend(rows)
     floors = []
     for backend, agg in split.items():
@@ -207,6 +218,11 @@ def traced_ratio_macros():
 
     The real-time arms floor at zero inversions, so they have no finite ratio and are
     skipped rather than reported as infinite.
+
+    6 Oct 2026: these are the ratios as first computed, against Kafka's rate alone; the
+    supplement keeps them, with the configuration the tracer check withheld on that basis. The
+    paper quotes the ratios against both brokers' runs, which the trace counts
+    (`traced_pooled_macros`).
     """
     import csv
     import glob
@@ -231,6 +247,13 @@ def traced_ratio_macros():
         ("tracedRatioHi", "%.2f" % ratios[-1]),
         ("tracedRatioArms", str(len(ratios))),
     ]
+
+
+def _and_join(items):
+    """"a", "a and b", "a, b and c": a list as a sentence names it."""
+    if len(items) < 2:
+        return "".join(items)
+    return ", ".join(items[:-1]) + " and " + items[-1]
 
 
 def stat_macros():
@@ -292,8 +315,10 @@ def stat_macros():
         ]
     # The geometry half of Table III was typed by hand while the priority half above came
     # from this function. Both halves make the same kind of claim from the same kind of
-    # artefact, so both belong here: four rates, four intervals, two factors and two z's that
-    # a re-run can move. Found while adding the figure that plots these same cells.
+    # artefact, so both belong here: two factors, their intervals and two z's that a re-run
+    # can move. Found while adding the figure that plots these same cells. The four rates and
+    # their intervals left on 7 Oct 2026, when the placement table became generated
+    # (render_geometry_table) and nothing read them any more.
     for phase, name in (("ea6", "GeomOrig"), ("ea6b", "GeomRepl")):
         try:
             cells = stat_intervals.geometry_cells(phase)
@@ -302,14 +327,8 @@ def stat_macros():
         if len(cells) != 2:
             continue
         (_, kc, nc), (_, ks, ns) = cells
-        clo, chi = stat_intervals.wilson(kc, nc)
-        slo, shi = stat_intervals.wilson(ks, ns)
         z, ratio = stat_intervals.ratio_z(ks, ns, kc, nc)
         out += [
-            ("%sConc" % name, "%.4f" % (kc / nc)),
-            ("%sConcCI" % name, "%.4f$--$%.4f" % (clo, chi)),
-            ("%sSpread" % name, "%.4f" % (ks / ns)),
-            ("%sSpreadCI" % name, "%.4f$--$%.4f" % (slo, shi)),
             ("%sFactor" % name, "%.2f" % ratio),
             ("%sFactorCI" % name, "%.2f$--$%.2f" % stat_intervals.ratio_ci(ks, ns, kc, nc)),
             ("%sZ" % name, "%.1f" % abs(z)),
@@ -385,6 +404,24 @@ def stat_macros():
             ("tailRsqPoints", str(npts)),
             ("tailRsqDof", str(max(npts - 2, 0))),
             ("tailRsqAdj", "%.3f" % _adjusted_r2(r2, npts, 1)),
+        ]
+    except (OSError, KeyError, ValueError):
+        pass
+    # 7 Oct 2026: the repeat's fit and the trace's check of both, typed in the postmortem as
+    # 0.344, 0.216, 0.301, 1.66 and 1.52 until leaving out the late messages moved all five.
+    try:
+        slope, intercept, _r2, _lo, _hi = stat_intervals.payload_fit("ea10b")
+        checks = {}
+        for name, parts in (("", ("model", "tail_index.csv")),
+                            ("Repl", ("model", "ea10b", "tail_index.csv"))):
+            checks[name] = {r["quantity"]: r["value"] for r in stat_intervals._rows(*parts)}
+        out += [
+            ("tailExponentRepl", "%.3f" % (-slope)),
+            ("tailPrefactorRepl", "%.3f" % math.exp(intercept)),
+            ("tailPredictedPTail", "%.3f" % float(checks[""]["predicted_p_tail"])),
+            ("tailTracedPTail", "%.3f" % float(checks[""]["traced_p_tail"])),
+            ("tailCrossRatio", "%.2f" % float(checks[""]["cross_check_ratio"])),
+            ("tailCrossRatioRepl", "%.2f" % float(checks["Repl"]["cross_check_ratio"])),
         ]
     except (OSError, KeyError, ValueError):
         pass
@@ -936,16 +973,16 @@ def render_registry_table():
     lines = [
         "% Generated by scripts/emit_paper_numbers.py from",
         "% docs/results/external/harness_registry.csv. Do not edit by hand.",
-        "\\begin{tabular}{@{}llllc@{}}",
+        "\\begin{tabular}{@{}lllllc@{}}",
         "\\toprule",
-        "Tool & Span measured & Clock & What happens to the value & Counts \\\\",
+        "Tool & Language, vendor & Span measured & Clock & What happens to the value & Counts \\\\",
         "\\midrule",
     ]
     source_keys = []
     for (harness, path), v in sorted(folded.items()):
         disposal, counts = _registry_cells(v)
-        lines.append("%s & %s & %s & %s & %s \\\\" % (
-            _tt(harness), path, v["clock"], disposal, counts))
+        lines.append("%s & %s, %s & %s & %s & %s & %s \\\\" % (
+            _tt(harness), v["language"], v["vendor"], path, v["clock"], disposal, counts))
         source_keys.append(REGISTRY_CITES[harness])
     lines += ["\\bottomrule", "\\end{tabular}"]
     _ = source_keys  # the caption's source list is emitted by registry_sources_macro()
@@ -1224,6 +1261,23 @@ def stall_robustness_macros():
     ]
 
 
+def rest_of_slice_g(x, s, h):
+    """Equation S3: the chance a wait for the rest of a slice, then up to a tick, outlasts x.
+
+    The wait is R + U with R uniform on [0, s] and U uniform on [0, h], for h <= s, as
+    supplement S6.3 derives it from the registered campaign's recordings.
+    """
+    if x <= 0:
+        return 1.0
+    if x <= h:
+        return 1.0 - x * x / (2.0 * s * h)
+    if x <= s:
+        return 1.0 - (x - h / 2.0) / s
+    if x < s + h:
+        return (s + h - x) ** 2 / (2.0 * s * h)
+    return 0.0
+
+
 def traced_macros():
     """The traced stall tail, estimated with intervals rather than eyeballed.
 
@@ -1268,6 +1322,24 @@ def traced_macros():
         # recomputation ever makes this mode the largest.
         by_share = sorted(r.get("modes", []), key=lambda m: m[2], reverse=True)
         rank = next(i for i, m in enumerate(by_share, 1) if m[0] == lo)
+        # 6 Oct 2026. Buckets that double in width favor the upper ones, so a mode in the
+        # bucket holding the slice is partly the buckets' doing: waits spread evenly up to the
+        # slice and then up to a tick (Equation S3) already make that bucket the larger of the
+        # pair. The model's own ratio is emitted beside the measured one, so the supplement can
+        # say how much of the mode the buckets explain.
+        try:
+            import kernel_constants
+            k = kernel_constants.constants()
+            s_ms, h_ms = float(k["base_slice_ms"]), float(k["tick_ms"])
+            # The buckets' true edges, in microseconds from bpftrace: 2048 is 2.048 ms. The
+            # printed "2--4 ms" rounds them; the model is evaluated on what was counted.
+            lo_ms = lo / 1000.0
+            upper = rest_of_slice_g(lo_ms, s_ms, h_ms) - rest_of_slice_g(2 * lo_ms, s_ms, h_ms)
+            lower = rest_of_slice_g(lo_ms / 2, s_ms, h_ms) - rest_of_slice_g(lo_ms, s_ms, h_ms)
+            if lower > 0:
+                out.append(("tracedModelRatio", "%.1f" % (upper / lower)))
+        except (ImportError, OSError, KeyError, ValueError):
+            pass
         out += [
             ("tracedModeLo", "%.0f" % (lo / 1024.0)),
             ("tracedModeHi", "%.0f" % (2 * lo / 1024.0)),
@@ -1633,7 +1705,10 @@ def kernel_macros():
         ("tickMs", "%.0f" % c["tick_ms"]),
         ("testbedCpus", str(c["cpus"])),
         ("sliceFactor", str(c["sysctl_factor"])),
-        ("baseSliceMs", "%.0f" % c["base_slice_ms"]),
+        # 6 Oct 2026: the constant is 0.70 ms on the campaign's kernel (kernel_constants), so the
+        # slice is 2.8 ms and its digits are kept; the constant itself is emitted for eq:slice.
+        ("sliceConstantMs", "%.2f" % c["normalised_slice_ms"]),
+        ("baseSliceMs", ("%.2f" % c["base_slice_ms"]).rstrip("0").rstrip(".")),
         ("baseSliceNs", latex_thousands(c["base_slice_ns"])),
         ("cpuEstimateSpread", "%.2f" % c["cpu_spread"]),
     ]
@@ -1937,9 +2012,10 @@ def manipulation_macros():
     and the worst gap it actually saw are emitted together, because the second is what makes
     the first meaningful.
 
-    `eventsPerCell` is emitted only when every cell agrees. The caption says "per cell"; if
-    the campaigns ever disagree, the honest failure is a missing macro and a build that
-    stops, not a number that quietly becomes an average.
+    `mechEventsPerCell` was emitted only when every cell agreed, so that a caption saying "per
+    cell" could not quietly print an average. On 7 Oct 2026 leaving out the late messages
+    (stale_backlog.py) parted the cells, the macro stopped being emitted, as designed, and
+    `cell_events_macros` now gives each table the range of its own cells.
     """
     try:
         import priority_pairs
@@ -1948,21 +2024,6 @@ def manipulation_macros():
     except ImportError:  # pragma: no cover - all three ship beside this file
         return []
     out = []
-
-    # The eight cells Table II shows: two priority pairs from E-A5, and the two k=6
-    # geometry pairs. Not every pair in the corpus -- the caption is about this table.
-    try:
-        counts = set()
-        for level, _kb, n_b, _kr, n_r in stat_intervals.priority_cells():
-            if level in ("l75", "l88"):
-                counts.update((n_b, n_r))
-        for phase in ("ea6", "ea6b"):
-            for _cond, _k, n in stat_intervals.geometry_cells(phase):
-                counts.add(n)
-        if len(counts) == 1:
-            out.append(("mechEventsPerCell", latex_thousands(counts.pop())))
-    except (OSError, KeyError, ValueError):
-        pass
 
     # Until 5 Oct 2026 the two pairs Table II printed had their arms' achieved utilisation and
     # the larger gap between them (mechRhoMatch) emitted here. Table II left with the rebuild;
@@ -2029,6 +2090,278 @@ def deletion_macros(stats=os.path.join("docs", "results", "span_histogram_stats.
     except OSError:
         pass
     return out
+
+
+MECH_INTERVALS_CSV = os.path.join("docs", "results", "model", "manipulation_intervals.csv")
+DEFAULT_MECHANISM_TABLE = os.path.join("docs", "generated", "mechanism_table.tex")
+
+
+def _mech_rows(path=MECH_INTERVALS_CSV):
+    import csv as _csv
+    with open(path, newline="", encoding="utf-8") as fh:
+        return list(_csv.DictReader(fh))
+
+
+def _mech_pick(rows, result, campaign, backend, level=None):
+    found = [r for r in rows if r["result"] == result and r["campaign"] == campaign
+             and r["backend"] == backend and (level is None or r["level"] == level)]
+    if len(found) != 1:
+        raise ValueError("%s %s %s %s: %d rows in the intervals file"
+                         % (result, campaign, backend, level, len(found)))
+    return found[0]
+
+
+def _mech_factor(row, fmt="%.2f"):
+    return fmt % float(row["factor"])
+
+
+def _mech_ci(row, fmt="%.2f"):
+    """A factor's run-level interval, set in math by the caller; an unbounded end as infinity."""
+    hi = "\\infty" if row["factor_hi"] == "inf" else fmt % float(row["factor_hi"])
+    return "%s$--$%s" % (fmt % float(row["factor_lo"]), hi)
+
+
+def mechanism_interval_macros(path=MECH_INTERVALS_CSV):
+    """The manipulations on both brokers, with intervals that resample whole runs.
+
+    6 Oct 2026. Every manipulation campaign ran 25 Kafka and 25 Redis runs per configuration, and
+    every number the paper printed was the Kafka half, unstated: `analyze_collapse` reads Kafka by
+    default. scripts/manipulation_runs.py counts both brokers' runs and resamples them (the
+    committed manipulation_intervals.csv); the Redis halves differ, and placement reverses.
+    """
+    if not os.path.exists(path):
+        return []
+    rows = _mech_rows(path)
+    out = []
+    redis = [r for r in rows if r["result"] == "priority" and r["backend"] == "redis"]
+    factors = [float(r["factor"]) for r in redis]
+    # The real-time rates as rates, the form rtResidualMin and rtResidualMax give Kafka's.
+    residual = [float(r["bottom_rate"]) for r in redis]
+    out += [("rtRedisFactorLow", "%.1f" % min(factors)),
+            ("rtRedisFactorHigh", "%.1f" % max(factors)),
+            ("rtRedisResidualMin", "%.4f" % min(residual)),
+            ("rtRedisResidualMax", "%.4f" % max(residual))]
+    every = []
+    for name, campaign in (("Orig", "E-A6"), ("Repl", "E-A6b")):
+        for broker in ("kafka", "redis"):
+            row = _mech_pick(rows, "placement", campaign, broker)
+            key = "place%s%s" % (broker.capitalize(), name)
+            every += [(key, _mech_factor(row)), (key + "CI", _mech_ci(row))]
+    for name, campaign in (("Orig", "E-A10"), ("Repl", "E-A10b")):
+        for broker in ("kafka", "redis"):
+            row = _mech_pick(rows, "path", campaign, broker)
+            key = "path%s%s" % (broker.capitalize(), name)
+            every += [(key, "%.1f" % float(row["factor"])), (key + "CI", _mech_ci(row, "%.1f"))]
+    # Only what a document quotes: Kafka's factors are printed through the older macros
+    # (GeomOrigFactor, payloadRateFall) and the table, so their twins here would be unread.
+    return out + [(k, v) for k, v in every if k in MECH_QUOTED]
+
+
+#: The interval macros the documents read.
+MECH_QUOTED = ("placeKafkaOrigCI", "placeKafkaReplCI", "placeRedisOrig", "placeRedisOrigCI", "placeRedisRepl",
+               "placeRedisReplCI", "pathRedisOrig", "pathRedisOrigCI", "pathRedisRepl")
+
+
+#: The runq_tail files and the traced campaign each belongs to.
+TRACED_FILES = ((os.path.join("docs", "results", "model", "runq_tail.csv"), "E-A9"),
+                (os.path.join("docs", "results", "model", "ea9b_l75", "runq_tail.csv"), "E-A9b"),
+                (os.path.join("docs", "results", "model", "ea9b_l88", "runq_tail.csv"), "E-A9b"))
+
+
+def traced_pooled_macros(path=MECH_INTERVALS_CSV, files=TRACED_FILES):
+    """The kernel-trace check on the runs the trace covered, both brokers together.
+
+    6 Oct 2026. The trace counts every python3 thread in a configuration, both brokers'
+    producers and consumers, but the ratios were taken against Kafka's rate alone, the default
+    of `analyze_collapse`. Here each traced share is set against the pooled rate of the same
+    configuration's runs, and the tracer check fixed in advance is applied to the pooled rate
+    too: a configuration is compared only where that rate lies within `TRACE_TOLERANCE` of its
+    untraced twin at the same load.
+    """
+    import csv as _csv
+    from analyze_runq_tail import TRACE_TOLERANCE
+    if not os.path.exists(path) or not all(os.path.exists(f) for f, _ in files):
+        return []
+    rows = _mech_rows(path)
+    twins = {r["level"]: float(r["top_rate"]) for r in rows
+             if r["result"] == "trace" and r["campaign"] == "E-A9-untraced"
+             and r["backend"] == "both"}
+    ratios, drifts, rt_ratios = [], [], []
+    for name, campaign in files:
+        with open(name, newline="", encoding="utf-8") as fh:
+            for traced in _csv.DictReader(fh):
+                level = traced["tag"].rpartition("_")[0]
+                row = _mech_pick(rows, "trace", campaign, "both", level)
+                if traced["arm"] != "base":
+                    # At real-time priority Kafka's half reads zero under the tracer, so the
+                    # pooled rate there is Redis's halved; the ratio is reported, not admitted.
+                    rt_ratios.append(float(traced["p_tail"]) / float(row["bottom_rate"]))
+                    continue
+                pooled = float(row["top_rate"])
+                twin = twins.get(level)
+                if twin:
+                    drifts.append(abs(pooled - twin) / twin)
+                    if drifts[-1] > TRACE_TOLERANCE:
+                        continue
+                ratios.append(float(traced["p_tail"]) / pooled)
+    ratios.sort()
+    redis_rt = [100.0 * float(r["bottom_rate"]) for r in rows
+                if r["result"] == "trace" and r["backend"] == "redis"
+                and r["campaign"] != "E-A9-untraced"]
+    return [("tracedPooledRatios", _and_join(["%.2f" % r for r in ratios])),
+            ("tracedPooledWord", _spell(len(ratios))),
+            ("tracedPooledDriftMaxPct", "%.0f" % (100.0 * max(drifts))),
+            ("tracedPooledRtRatioLo", "%.1f" % min(rt_ratios)),
+            ("tracedPooledRtRatioHi", "%.1f" % max(rt_ratios)),
+            ("tracedRedisRtLoPct", "%.1f" % min(redis_rt)),
+            ("tracedRedisRtHiPct", "%.1f" % max(redis_rt))]
+
+
+def render_mechanism_table(path=MECH_INTERVALS_CSV):
+    """The paper's mechanism table: each manipulation on each broker, with its interval."""
+    rows = _mech_rows(path)
+
+    def prio(broker):
+        # A range reaching ten is printed in whole numbers at both ends, as the text prints
+        # it through rtFactorLow and rtFactorHigh, so the table and the sentence agree.
+        fs = [float(r["factor"]) for r in rows
+              if r["result"] == "priority" and r["backend"] == broker]
+        return "$%.0f$--$%.0f$" % (min(fs), max(fs)) if max(fs) >= 10 else \
+            "$%.1f$--$%.1f$" % (min(fs), max(fs))
+
+    def cell(result, campaign, broker, fmt="%.2f"):
+        row = _mech_pick(rows, result, campaign, broker)
+        return "$%s$ [$%s$]" % (fmt % float(row["factor"]), _mech_ci(row, fmt))
+
+    # Three columns, the ratio named under each manipulation, and every interval on one line:
+    # at column width a fourth column broke the intervals across lines.
+    lines = ["\\begin{tabular}{@{}p{0.43\\columnwidth}ll@{}}",
+             "\\toprule",
+             "Manipulation, and the ratio & \\kafka{} & \\redis{} \\\\",
+             "\\midrule",
+             "Real-time priority, \\rtPairsWord{} pairs & %s & %s \\\\"
+             % (prio("kafka"), prio("redis")),
+             "\\quad normal / real-time & & \\\\",
+             "Placement at $k=6$ & %s & %s \\\\"
+             % (cell("placement", "E-A6", "kafka"), cell("placement", "E-A6", "redis")),
+             "\\quad spread / concentrated; repeat & %s & %s \\\\"
+             % (cell("placement", "E-A6b", "kafka"), cell("placement", "E-A6b", "redis")),
+             "Padding the payload & %s & %s \\\\"
+             % (cell("path", "E-A10", "kafka", "%.1f"), cell("path", "E-A10", "redis", "%.1f")),
+             "\\quad highest / lowest rate; repeat & %s & %s \\\\"
+             % (cell("path", "E-A10b", "kafka", "%.1f"), cell("path", "E-A10b", "redis", "%.1f")),
+             "Load, idle to $88\\%%$ & %s & %s \\\\"
+             % (cell("ladder", "E-A3", "kafka", "%.0f"), cell("ladder", "E-A3", "redis", "%.0f")),
+             "\\quad loaded / idle & & \\\\",
+             "\\bottomrule",
+             "\\end{tabular}"]
+    return "% Generated by scripts/emit_paper_numbers.py from manipulation_intervals.csv.\n" \
+        + "\n".join(lines) + "\n"
+
+
+DEFAULT_GROUPS_TABLE = os.path.join("docs", "generated", "groups_table.tex")
+#: The groups the table prints, one row each.
+GROUPS_CSV = os.path.join("docs", "results", "span_symmetry.csv")
+
+
+def _group_label(condition):
+    """kafka_n12_feed1#pass -> "K 12 1 p": broker, senders, feeds, the sign check's verdict."""
+    m = re.match(r"(\w+?)_n(\d+)_feed(\d+)(?:#(pass|fail))?$", condition)
+    if not m:
+        return condition.replace("_", "\\_")
+    return "%s %s %s %s" % (m.group(1)[:1].upper(), m.group(2), m.group(3),
+                           (m.group(4) or "-")[:1])
+
+
+def render_groups_table(path=GROUPS_CSV):
+    """The groups of runs behind Section VI's numbers, one row each (6 Oct 2026).
+
+    The understatement, the recovery's errors and the exposure band are computed over these
+    rows, and the supplement printed none of them, so a reader could not check Section VI from
+    what is submitted. Two halves side by side, because seventy rows do not fit one column.
+    """
+    import csv as _csv
+    with open(path, encoding="utf-8") as fh:
+        rows = list(_csv.DictReader(fh))
+    cells = []
+    for r in rows:
+        d, a, s = (float(r[k]) for k in ("median_D_us", "median_A_us", "median_S_us"))
+        rec = 100.0 * abs(float(r["recovered_medD_us"]) - d) / d if d else 0.0
+        cells.append("%s & $%.2f$ & $%.2f$ & $%.2f$ & $%.0f$ & $%.0f$" % (
+            _group_label(r["condition"]), d / 1000.0, a / 1000.0, s / 1000.0,
+            100.0 * a / d if d else 0.0, rec))
+    half = (len(cells) + 1) // 2
+    left, right = cells[:half], cells[half:]
+    right += [" & & & & & "] * (len(left) - len(right))
+    head = "Group & $D$ & $A$ & $S$ & $A/D$ & Repair"
+    lines = ["% Generated by scripts/emit_paper_numbers.py from span_symmetry.csv.",
+             "\\begin{tabular}{@{}lrrrrr@{\\hspace{14pt}}lrrrrr@{}}",
+             "\\toprule", "%s & %s \\\\" % (head, head), "\\midrule"]
+    lines += ["%s & %s \\\\" % pair for pair in zip(left, right)]
+    lines += ["\\bottomrule", "\\end{tabular}"]
+    return "\n".join(lines) + "\n"
+
+
+RATE_BY_DELIVERY_CSV = os.path.join("docs", "results", "model", "rate_by_delivery.csv")
+#: The binning the paper quotes; the supplement gives the range over the others.
+RATE_BY_DELIVERY_PRIMARY = 8
+
+
+def rate_by_delivery_macros(path=RATE_BY_DELIVERY_CSV):
+    """eq:occupancy read message by message, with the measured end-to-end latency in its place.
+
+    6 Oct 2026. The law at eq:occupancy conditions on the margin. A reader who conditions on the measured D
+    instead finds the rate rising with D inside a condition, because a long delivery comes with
+    a long publish latency, which the 2 September exploration saw and no committed script
+    reproduced. scripts/rate_by_delivery.py now counts it from a committed per-bin table; this
+    emits the binning the paper quotes, both sides of the sign check, and the range over the
+    other binnings.
+    """
+    import csv as _csv
+    if not os.path.exists(path):
+        return []
+    import rate_by_delivery
+    tally = {}
+    with open(path, newline="", encoding="utf-8") as fh:
+        for row in _csv.DictReader(fh):
+            count = tally.setdefault((row["group"], int(row["bins_per_decade"])), [0, 0])
+            if row["testable"] == "1":
+                count[1] += 1
+                count[0] += row["significant_rise"] == "1"
+    main = RATE_BY_DELIVERY_PRIMARY
+    pooled = [tally[("pooled", b)] for b in rate_by_delivery.BINNINGS]
+    return [
+        ("rbdBinsPerDecade", str(main)),
+        ("rbdMinCount", str(rate_by_delivery.MIN_COUNT)),
+        ("rbdUp", str(tally[("pooled", main)][0])),
+        ("rbdTestable", str(tally[("pooled", main)][1])),
+        ("rbdPassUp", str(tally[("pass", main)][0])),
+        ("rbdPassTestable", str(tally[("pass", main)][1])),
+        ("rbdFailUp", str(tally[("fail", main)][0])),
+        ("rbdFailTestable", str(tally[("fail", main)][1])),
+        ("rbdUpLo", str(min(r for r, _ in pooled))),
+        ("rbdUpHi", str(max(r for r, _ in pooled))),
+    ]
+
+
+def s_window_macros():
+    """Fig. 2's window, and what lies outside it, from the histogram the figure draws.
+
+    6 Oct 2026: the figure's title counted only the overflow past +100 ms, under the words
+    "above the window", while the window ends at +5 ms. Both counts outside the window come from
+    the helper the figure itself calls, with the bin width, so caption and figure agree.
+    """
+    try:
+        import make_deletion_histogram as mdh
+        series, extra = mdh.read_hist()
+    except (ImportError, OSError):
+        return []
+    below, above = mdh.outside_window(series, extra)
+    first = series["ack"][0]
+    return [("sWindowBinUs", "%d" % (first[1] - first[0])),
+            ("sWindowMs", "%d" % (mdh.VIEW_HI_US // 1000)),
+            ("sWindowBelow", latex_thousands(below)),
+            ("sWindowAbove", latex_thousands(above))]
 
 
 def artifact_macros(path=".zenodo.json", data_path=".zenodo-data.json"):
@@ -2648,11 +2981,17 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
         # Thirds need two things: the non-zero conditions halve at the edge, and the exact ones
         # are as many as either half. If either stops holding the macro is not emitted and the
         # supplement fails to build on the sentence that would otherwise be wrong.
+        # 7 Oct 2026: with the late messages left out, the edges that give thirds stop just short
+        # of the quartile, which divides the accepted conditions one off thirds. The macros now
+        # carry that range, and only while the quartile lies above it, the case S16.9 states.
+        # "Just short" means no accepted condition lies between the range's top and the quartile.
         split = stat_intervals.equal_split_edges(a)
         exact_a = len(a) - len(nonzero["Pass"])
-        if (split is not None and abs(split[1] - band) < 1e-9
+        if (split is not None and split[1] < band
+                and not any(split[1] < v < band for v in a)
                 and 2 * exact_a == len(nonzero["Pass"])):
             out.append(("recoveryThirdsEdgeLo", "%.1f" % split[0]))
+            out.append(("recoveryThirdsEdgeHi", "%.1f" % split[1]))
 
         def _one_decimal(x):
             # round() before formatting, so a shift of -1e-12 prints "0.0" and not "-0.0".
@@ -2682,6 +3021,10 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
         if len(crossings) >= 2:
             out.append(("recoveryEcdfCrossLo", _one_decimal(crossings[0])))
             out.append(("recoveryEcdfCrossHi", _one_decimal(crossings[-1])))
+        elif len(crossings) == 1:
+            # One crossing since the late messages were left out (7 Oct 2026); the caption
+            # that says the curves "change back" is then false, and does not build.
+            out.append(("recoveryEcdfCross", _one_decimal(crossings[0])))
     # The D-A correlation, and the unit it is computed over. `rho_DA` is one number per
     # CONDITION, fitted across that condition's own events -- 5,433 of them in the first row
     # -- and the macro below is the median of those across conditions.
@@ -2744,7 +3087,17 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
         # could not be reached, which the branch-coverage gate said before the reasoning did.
         if len(frac) >= 4 and min(frac) > 0:
             q1, _, q3 = _st.quantiles(frac, n=4)
+            # 6 Oct 2026: a row is one condition's runs that the sign check passed, or those it
+            # rejected ("#pass", "#fail"), so 70 rows are not 70 conditions. The conditions
+            # behind them are counted too, for the sentence that says what a row is.
+            bases = {r["condition"].split("#")[0] for r in rows if float(r["median_D_us"])}
+            # A file written before the groups carried their message counts has no column to
+            # sum, and a count of zero would be a number the page could not stand behind.
+            if "n_events" in rows[0]:
+                out.append(("spanRatioEvents",
+                            latex_thousands(sum(int(r["n_events"]) for r in rows))))
             out += [("spanRatioConditions", str(len(frac))),
+                    ("spanRatioBaseConditions", str(len(bases))),
                     ("understateIQRLo", "%.1f" % (1.0 / q3)),
                     ("understateIQRHi", "%.1f" % (1.0 / q1)),
                     ("understateWorst", "%.0f" % (1.0 / min(frac)))]
@@ -3063,6 +3416,23 @@ def _printed_ms(value):
         return None
 
 
+def _whole_ms_as_printed(value_ms):
+    """Whether a printed median is a whole millisecond, as the benchmark's histogram prints it.
+
+    6 Oct 2026. The benchmark records end-to-end latency in microseconds in an HdrHistogram with
+    five significant digits, and prints the top of the bucket a percentile falls in. Up to
+    262,144 us a bucket is one microsecond wide; above that its width doubles at each power of
+    two, so a whole millisecond prints as 507.001 or 750.003. The audit had counted such values
+    as finer than a millisecond, and five reports from unchanged copies with them.
+    """
+    top = int(round(value_ms * 1000))
+    width, edge = 1, 262144
+    while top >= edge:
+        width, edge = 2 * width, 2 * edge
+    lowest = top - width + 1
+    return -(-lowest // 1000) * 1000 <= top
+
+
 def reach_macros(path=REACH_CSV):
     """The registered audit of published OMB results (freezes/29), counted from its coding.
 
@@ -3088,9 +3458,12 @@ def reach_macros(path=REACH_CSV):
     printed = [r for r in rows if (r["e2e_p50_ms"] or "").strip()]
     primary = [r for r in rows if _printed_ms(r["e2e_p50_ms"]) == 1.0]
     strong = [r for r in primary if _printed_ms(r["e2e_p99_ms"]) == 1.0]
-    finer = {r["report_url"] for r in rows
-             if _printed_ms(r["e2e_p50_ms"]) is not None
-             and _printed_ms(r["e2e_p50_ms"]) != round(_printed_ms(r["e2e_p50_ms"]))}
+    medians = [(r["report_url"], _printed_ms(r["e2e_p50_ms"])) for r in rows]
+    medians = [(url, p) for url, p in medians if p is not None]
+    # A copy that times the span more finely prints a median that is not a whole millisecond
+    # even as the histogram prints it; only some of those print one below a millisecond.
+    finer = {url for url, p in medians if not _whole_ms_as_printed(p)}
+    sub_ms = {url for url, p in medians if 0 < p < 1}
     return [
         ("reachReports", "%d" % len(reports)),
         ("reachConfigs", latex_thousands(len(rows))),
@@ -3101,6 +3474,7 @@ def reach_macros(path=REACH_CSV):
         ("reachPrimaryReportsWord", _spell(len({r["report_url"] for r in primary}))),
         ("reachStrongConfigs", "%d" % len(strong)),
         ("reachFinerReports", "%d" % len(finer)),
+        ("reachSubMsReportsWord", _spell(len(sub_ms))),
     ]
 
 
@@ -3291,6 +3665,89 @@ def cliff_macros(root=CLIFF_DIR):
     ]
 
 
+LAW_JUDGED_DIR = os.path.join("docs", "results", "law", "judged-27-sep", "all")
+
+
+def law_reading_macros(judged=LAW_JUDGED_DIR, after=CLIFF_DIR):
+    """The registered campaign's trace-based predictions, and Python against Java.
+
+    6 Oct 2026. Section IV's kernel-trace check says a trace predicts the rate with nothing
+    fitted, and the registered campaign tested that claim three ways (P6, A9-2, A9-2b), none
+    confirmed; Section VIII named none of them, and the supplement typed their numbers by hand.
+    They are read here from the frozen judges' own output, so the paper, Table S16 and the
+    reading after the verdicts quote one value each:
+
+    * P6, the share of every python3 thread's recorded waits longer than the margin, over the
+      rate: the median ratio of each pair-and-broker part;
+    * A9-2, the time-weighted waits, the same way;
+    * A9-2b, the share of acknowledgments whose own wait outlasted the margin: its median ratio
+      per part, and how many of the parts its rule confirmed;
+    * A9-1, the share of negative readings mostly spent waiting for a CPU, per part and load;
+    * the recording's own effect, each part's recorded over unrecorded rate (read after the
+      verdicts), overall and by broker;
+    * P8, Python's rate over Java's on the x86 and Arm pairs.
+
+    All files or nothing: a range from part of its inputs would be a different range.
+    """
+    import json as _json
+    paths = {name: os.path.join(judged, name + ".json")
+             for name in ("p6_a6", "a9", "p8_a8_x86", "p8_a8_arm")}
+    paths["summary"] = os.path.join(after, "a9_summary.json")
+    paths["pauses"] = os.path.join(after, "pause_summary.json")
+    paths["shape"] = os.path.join(after, "ack_wait_shape.json")
+    if not all(os.path.exists(p) for p in paths.values()):
+        return []
+    data = {}
+    for name, path in paths.items():
+        with open(path, encoding="utf-8") as fh:
+            data[name] = _json.load(fh)
+    p6 = [part["median_ratio"] for part in data["p6_a6"]["by_part"].values()]
+    a9 = data["a9"]["by_part"]
+    weighted = [part["median_ratio"] for part in a9.values()]
+    own = [part["a9_2b"]["median_ratio"] for part in a9.values()]
+    own_in = sum(1 for part in a9.values() if part["a9_2b"]["confirmed"])
+    loads = [load["a9_1"] for part in a9.values() for load in part["loads"].values()]
+    waiting = [100.0 * load["mostly_waiting"] / load["negative_readings"] for load in loads]
+    raised = {name: part["recorded_over_unrecorded"]
+              for name, part in data["summary"]["a9"].items()}
+    by_broker = {b: [v for name, v in raised.items() if name.endswith(", " + b)]
+                 for b in ("kafka", "redis")}
+    # Steal time, as /proc/stat recorded it in each run the pause census read. The finding is
+    # a phrase, so a run that ever records some steal changes the sentence, not just a digit.
+    steal = data["pauses"]["steal"]
+    most = steal["most_s"]
+    found = "none" if not most else "at most %.1f~s in any run" % most
+    # The residual-wait figure's corpus: every part's acknowledgments and runs, summed.
+    shape = data["shape"]["parts"].values()
+    return [
+        ("recWaitAcks", latex_thousands(sum(part["acks"] for part in shape))),
+        ("recWaitRuns", str(sum(part["runs"] for part in shape))),
+        ("recWaitPartsWord", _spell(len(shape))),
+        ("stealRunsRead", latex_thousands(steal["runs_read"])),
+        ("stealFinding", found),
+        ("pSixRatioLo", "%.2f" % min(p6)),
+        ("pSixRatioHi", "%.2f" % max(p6)),
+        ("recTimeWeightedRatioLo", "%.3f" % min(weighted)),
+        ("recTimeWeightedRatioHi", "%.3f" % max(weighted)),
+        ("recOwnWaitRatioLo", "%.2f" % min(own)),
+        ("recOwnWaitRatioHi", "%.2f" % max(own)),
+        ("recOwnWaitPartsInWord", _spell(own_in)),
+        ("recOwnWaitPartsWord", _spell(len(own))),
+        ("recMostlyWaitingLo", "%.1f" % min(waiting)),
+        ("recMostlyWaitingHi", "%.1f" % max(waiting)),
+        ("recMostlyWaitingHoldsWord", _spell(sum(1 for load in loads if load["holds"]))),
+        ("recMostlyWaitingPartsWord", _spell(len(loads))),
+        ("recRaisedLo", "%.2f" % min(raised.values())),
+        ("recRaisedHi", "%.2f" % max(raised.values())),
+        ("recRaisedKafkaLo", "%.2f" % min(by_broker["kafka"])),
+        ("recRaisedKafkaHi", "%.2f" % max(by_broker["kafka"])),
+        ("recRaisedRedisLo", "%.2f" % min(by_broker["redis"])),
+        ("recRaisedRedisHi", "%.2f" % max(by_broker["redis"])),
+        ("pyOverJavaX", "%.2f" % data["p8_a8_x86"]["by_summary"]["free"]["value"]),
+        ("pyOverJavaArm", "%.2f" % data["p8_a8_arm"]["by_summary"]["free"]["value"]),
+    ]
+
+
 RECV_WAIT_DIR = os.path.join("docs", "results", "recv_wait")
 DEFAULT_RECV_WAIT_TABLE = os.path.join("docs", "generated", "recv_wait_table.tex")
 
@@ -3413,7 +3870,10 @@ def render_recv_wait_table(root=RECV_WAIT_DIR):
 #: twin is the same count, spelled by _spell, so the word cannot drift from the number.
 #: 5 Oct 2026: tostLevels and rtResidualPairs left the list; the sentences that spelled them
 #: left with the rebuild, and their numerals are still emitted and read.
-SPELLED_TWINS = ("tracedModes", "tracedRatioArms", "rtPairs", "testbedCpus",
+# 6 Oct 2026: tracedRatioArms left the list. Supplement S3.5 now counts the configurations it
+# compares with tracedPooledWord, which the pooled check emits, and the digit stays for the
+# postmortem.
+SPELLED_TWINS = ("tracedModes", "rtPairs", "testbedCpus",
                  "recvWaitAgreeParts", "recvPausedRuns", "recvStallRuns")
 
 
@@ -3425,6 +3885,368 @@ def spelled_twins(pairs):
 def all_pairs(m):
     out = _all_pairs(m)
     return out + spelled_twins(out)
+
+
+WORKLOAD_CSV = os.path.join("docs", "results", "workload_by_run.csv")
+PAD_SWEEPS = (os.path.join("docs", "results", "model", "ttrue_sweep.csv"),
+              os.path.join("docs", "results", "model", "ea10b", "ttrue_sweep.csv"))
+
+
+def workload_macros(path=WORKLOAD_CSV, pads=PAD_SWEEPS):
+    """Section II's workload: the size of each message and each producer's publish rate.
+
+    7 Oct 2026. Section II named what a condition fixes and gave no number for the rate or the
+    size. scripts/workload_stats.py counts both, run by run, over Table I's corpus. The size is
+    the record before padding; the rate quoted is the 5th to 95th percentile over runs, nine
+    runs in ten, because the extremes are single runs. How far the one manipulation padded the
+    record is read from its own sweeps.
+    """
+    import csv as _csv
+    import statistics as _st
+    if not os.path.exists(path):
+        return []
+    with open(path, newline="", encoding="utf-8") as fh:
+        rows = list(_csv.DictReader(fh))
+    rates = sorted(float(r["publish_rate_hz"]) for r in rows)
+    q = _st.quantiles(rates, n=20)
+    out = [("workloadRateLo", "%.2f" % q[0]),
+           ("workloadRateHi", "%.2f" % q[-1]),
+           ("workloadBytesLo", str(min(int(r["bytes_min"]) for r in rows))),
+           ("workloadBytesHi", str(max(int(r["bytes_max"]) for r in rows))),
+           ("workloadFeedsMax", str(max(int(r["feeds"]) for r in rows if r["feeds"])))]
+    padded = []
+    for sweep in pads:
+        if os.path.exists(sweep):
+            with open(sweep, newline="", encoding="utf-8") as fh:
+                padded += [int(r["pad_bytes"]) for r in _csv.DictReader(fh)]
+    if padded:
+        out.append(("workloadPadMaxKB", str(max(padded) // 1024)))
+    return out
+
+
+BACKLOG_CSV = os.path.join("docs", "results", "backlog_by_run.csv")
+BACKLOG_AZURE_CSV = os.path.join("docs", "results", "backlog_azure_by_run.csv")
+
+
+def backlog_macros(path=BACKLOG_CSV, azure=BACKLOG_AZURE_CSV):
+    """The cloud testbed's two consumer faults, for the supplement's account of them.
+
+    7 Oct 2026. scripts/backlog_census.py counts both over Table I's corpus as first counted:
+    the messages published that no consumer read, because it stopped during a pause, and the
+    messages stale_backlog.late leaves out, because the consumer received them late while it
+    read earlier campaigns' messages. Also the corpus rate before they were left out, and what
+    a wider rule, which catches start-up waits under a second, would leave out and give.
+    """
+    import csv as _csv
+    import statistics as _st
+    if not os.path.exists(path):
+        return []
+    with open(path, newline="", encoding="utf-8") as fh:
+        rows = list(_csv.DictReader(fh))
+
+    def pct(backend):
+        mine = [r for r in rows if r["backend"] == backend]
+        return "%.1f" % (100.0 * sum(int(r["late"]) for r in mine)
+                         / sum(int(r["joined"]) for r in mine))
+
+    def total(key, sel=rows):
+        return sum(int(r[key]) for r in sel)
+
+    unread = [int(r["published"]) - int(r["consumed"]) for r in rows]
+    foreign = [int(r["foreign_read"]) for r in rows if r["foreign_read"] != ""]
+    joined, negatives, late, wide = (total(k) for k in ("joined", "negatives", "late",
+                                                        "late_wide"))
+    out = []
+    # The registered campaign's census, where its runs are on this machine to count. It
+    # deleted its streams and topics before each run; the count says how far that held.
+    if os.path.exists(azure):
+        with open(azure, newline="", encoding="utf-8") as fh:
+            az = list(_csv.DictReader(fh))
+        out = [("backlogAzureLatePct", "%.2f" % (100.0 * total("late", az)
+                                                 / total("joined", az))),
+               ("backlogAzureRuns", latex_thousands(len(az))),
+               ("backlogAzureStartRuns", latex_thousands(
+                   sum(1 for r in az if r["first_waited"] == "1")))]
+    # The margin's argument: a run's fastest delivery, from which the rule measures, takes
+    # milliseconds, and more than the margin only where the consumer never caught up.
+    fastest = sorted(float(r["fastest_ms"]) for r in rows)
+    # Rounded up, because the text reads it as a bound: under so many ms in 99% of runs.
+    out += [("backlogFastestMedianMs", "%.1f" % _st.median(fastest)),
+            ("backlogFastestHiMs", "%d" % math.ceil(fastest[int(round(0.99 * (len(fastest)
+                                                                          - 1)))])),
+            ("backlogJoined", latex_thousands(joined)),
+            ("backlogRateBeforePct", "%.2f" % (100.0 * negatives / joined)),
+            ("backlogWideExtra", latex_thousands(wide - late)),
+            ("backlogWideRatePct", "%.2f" % (100.0 * (negatives - total("neg_wide"))
+                                             / (joined - wide))),
+            ("idleRuns", latex_thousands(sum(1 for x in unread if x))),
+            ("idleMessages", latex_thousands(sum(unread))),
+            ("idlePublished", latex_thousands(sum(int(r["published"]) for r in rows))),
+            ("backlogLate", latex_thousands(sum(int(r["late"]) for r in rows))),
+            ("backlogRuns", latex_thousands(sum(1 for r in rows if int(r["late"])))),
+            ("backlogNever", str(sum(1 for r in rows if int(r["late"]) == int(r["joined"])))),
+            ("backlogKafkaLatePct", pct("kafka")),
+            ("backlogRedisLatePct", pct("redis")),
+            ("backlogForeignMedian", latex_thousands(int(_st.median(foreign))))]
+    return out
+
+
+MANIP_RUNS_CSV = os.path.join("docs", "results", "model", "manipulation_run_counts.csv")
+#: The traced campaigns and their untraced twin, which Table II leaves to Supplement S3.5.
+TRACE_CAMPAIGNS = ("E-A9", "E-A9b", "E-A9-untraced")
+UNTRACED_CSV = os.path.join("docs", "results", "model", "ea9_notrace", "untraced_control.csv")
+GEOMETRY_PHASES = ("ea6", "ea6b")
+PAYLOAD_SWEEPS = (os.path.join("docs", "results", "model", "ttrue_sweep.csv"),
+                  os.path.join("docs", "results", "model", "ea10b", "ttrue_sweep.csv"))
+
+
+def _configuration_events(path=MANIP_RUNS_CSV):
+    """Each manipulation configuration's matched messages: {(campaign, cell, backend): n}."""
+    import csv as _csv
+    out = {}
+    with open(path, newline="", encoding="utf-8") as fh:
+        for r in _csv.DictReader(fh):
+            key = (r["campaign"], r["cell"], r["backend"])
+            out[key] = out.get(key, 0) + int(r["run_events"])
+    return out
+
+
+def _events_span(prefix, counts):
+    """`prefix`Lo and `prefix`Hi: the fewest and the most messages a cell of a table holds."""
+    return [(prefix + "Lo", latex_thousands(min(counts))),
+            (prefix + "Hi", latex_thousands(max(counts)))]
+
+
+def _geometry_rows(phase):
+    """{condition: row} of one placement campaign's cells, as analyze_knee wrote them."""
+    import csv as _csv
+    with open(os.path.join("docs", "results", "model", phase, "knee_resolution.csv"),
+              newline="", encoding="utf-8") as fh:
+        return {r["condition"]: r for r in _csv.DictReader(fh)}
+
+
+def _two_proportion_z(conc, spread):
+    """The pooled two-proportion z between two cells, spread against concentrated."""
+    import math
+    ka, na = int(conc["n_inversions"]), int(conc["n_events"])
+    kb, nb = int(spread["n_inversions"]), int(spread["n_events"])
+    pooled = (ka + kb) / (na + nb)
+    return (kb / nb - ka / na) / math.sqrt(pooled * (1 - pooled) * (1 / na + 1 / nb))
+
+
+def _payload_rows(path):
+    import csv as _csv
+    with open(path, newline="", encoding="utf-8") as fh:
+        return list(_csv.DictReader(fh))
+
+
+def cell_events_macros():
+    """How many messages each cell of the manipulation tables holds (7 Oct 2026).
+
+    Until the messages that waited behind a stale backlog were left out (stale_backlog.py),
+    every Kafka cell held 2,985 and one macro, mechEventsPerCell, stated it for every table.
+    Leaving them out takes a different number from each cell, so each table now states the
+    range of its own cells, read from the file its body comes from: Table II and the
+    supplement's provenance row from the run-level counts of both brokers, the priority,
+    placement and padding tables from their campaign files, and the tracer table from the
+    run-level counts of the traced campaigns. A table whose cells all agree still prints one
+    number, because Lo and Hi are then equal.
+    """
+    out = []
+    try:
+        conf = _configuration_events()
+        out += _events_span("mechEvents",
+                            [n for (c, _cell, _b), n in conf.items() if c not in TRACE_CAMPAIGNS])
+        out += _events_span("tracerEvents",
+                            [n for (c, _cell, _b), n in conf.items() if c in TRACE_CAMPAIGNS])
+    except (OSError, KeyError, ValueError):
+        pass
+    try:
+        import priority_pairs
+        out += _events_span("prioEvents", [n for p in priority_pairs.usable()
+                                           for n in (p["n_base"], p["n_rt"])])
+    except (OSError, KeyError, ValueError):
+        pass
+    try:
+        out += _events_span("geomEvents", [int(r["n_events"]) for phase in GEOMETRY_PHASES
+                                           for c, r in _geometry_rows(phase).items()
+                                           if c[:2] in ("k5", "k6", "k7")])
+    except (OSError, KeyError, ValueError):
+        pass
+    try:
+        out += _events_span("payloadEvents", [int(r["n_events"]) for path in PAYLOAD_SWEEPS
+                                              for r in _payload_rows(path)])
+    except (OSError, KeyError, ValueError):
+        pass
+    return out
+
+
+def geometry_seven_macros(phase="ea6b"):
+    """The replication's k = 7 cell, which the supplement's text quotes beside its table.
+
+    Typed in the text as "1.19x, z = 3.46" until 7 Oct 2026; read from the generated table's
+    own campaign file since, so the sentence and the table cannot part.
+    """
+    try:
+        rows = _geometry_rows(phase)
+        conc, spread = rows["k7_conc"], rows["k7_spread"]
+        return [("geomSevenReplFactor", "%.2f" % (float(spread["inversion_rate"])
+                                                  / float(conc["inversion_rate"]))),
+                ("geomSevenReplZ", "%.2f" % _two_proportion_z(conc, spread))]
+    except (OSError, KeyError, ValueError):
+        return []
+
+
+def tracer_macros(files=TRACED_FILES, untraced=UNTRACED_CSV):
+    """What the tracer did to Kafka's rate, against its untraced twin (7 Oct 2026).
+
+    The untraced twin's real-time configuration is the one with values below zero to lose:
+    `untracedRtNegatives` of `untracedRtEvents`, where every traced real-time configuration
+    reads none. At normal priority the tracer check compares each traced configuration at the
+    twin's load with the twin, and `tracedKafkaDriftMaxPct` is the largest drift on Kafka's
+    rate, the rate the ratios were first computed against.
+    """
+    import csv as _csv
+    try:
+        with open(untraced, newline="", encoding="utf-8") as fh:
+            twin = {r["condition"]: r for r in _csv.DictReader(fh)}
+        base, rt = twin["l88_base"], twin["l88_rt"]
+        drifts, rt_events, rt_twin = [], [], None
+        for name, campaign in files:
+            with open(name, newline="", encoding="utf-8") as fh:
+                for traced in _csv.DictReader(fh):
+                    if traced["arm"] == "base" and traced["tag"] == "l88_base":
+                        drifts.append(abs(float(traced["inversion"])
+                                          - float(base["inversion_rate"]))
+                                      / float(base["inversion_rate"]))
+                    elif traced["arm"] != "base":
+                        rt_events.append(int(traced["n_events"]))
+                        if campaign == "E-A9":
+                            rt_twin = int(traced["n_events"])
+        # The chance that a traced real-time configuration reads no value below zero at its
+        # untraced twin's rate: for the twin's own configuration, and for all of them at once.
+        keep = 1.0 - int(rt["n_inversions"]) / int(rt["n_events"])
+        one = keep ** rt_twin
+        mantissa, exponent = ("%.0e" % one).split("e")
+        return [("untracedRtNegatives", str(int(rt["n_inversions"]))),
+                ("untracedRtEvents", latex_thousands(int(rt["n_events"]))),
+                ("tracedKafkaDriftMaxPct", "%.0f" % (100.0 * max(drifts))),
+                ("tracerRtEventsLo", latex_thousands(min(rt_events))),
+                ("tracerRtEventsHi", latex_thousands(max(rt_events))),
+                # Self-mathed, as every value built for math mode is here, and set in text.
+                ("tracedZeroChanceOne", "$%s{\\times}10^{%d}$" % (mantissa, int(exponent))),
+                ("tracedZeroChanceAll", "$10^{%d}$" % round(math.log10(keep)
+                                                            * sum(rt_events)))]
+    except (OSError, KeyError, ValueError, TypeError):
+        return []
+
+
+DEFAULT_GEOMETRY_TABLE = os.path.join("docs", "generated", "geometry_table.tex")
+DEFAULT_PAYLOAD_TABLE = os.path.join("docs", "generated", "payload_table.tex")
+DEFAULT_TRACER_TABLE = os.path.join("docs", "generated", "tracer_table.tex")
+
+
+def render_geometry_table(phases=GEOMETRY_PHASES):
+    """The placement table: both campaigns' rates at k = 5, 6 and 7, with z and the factors.
+
+    Typed by hand until 7 Oct 2026, when leaving out the late messages moved E-A6b's cells and
+    every typed value beside them would have stayed where it was.
+    """
+    cells = [_geometry_rows(p) for p in phases]
+    lines = ["% Generated by scripts/emit_paper_numbers.py from",
+             "% docs/results/model/ea6{,b}/knee_resolution.csv. Do not edit by hand.",
+             "\\begin{tabular}{@{}rrrrrrrr@{}}",
+             "\\toprule",
+             "& \\multicolumn{3}{c}{E-A6 (original)} & \\multicolumn{3}{c}{E-A6b (replication)} "
+             "& \\\\",
+             "\\cmidrule(lr){2-4}\\cmidrule(lr){5-7}",
+             "$k/C$ & concentrated & spread & $z$ & concentrated & spread & $z$ & factors \\\\",
+             "\\midrule"]
+    for k in ("k5", "k6", "k7"):
+        parts, factors = [], []
+        for rows in cells:
+            conc, spread = rows[k + "_conc"], rows[k + "_spread"]
+            parts.append("$%.4f$ & $%.4f$ & $%.2f$" % (
+                float(conc["inversion_rate"]), float(spread["inversion_rate"]),
+                _two_proportion_z(conc, spread)))
+            factors.append("$%.2f\\times$" % (float(spread["inversion_rate"])
+                                              / float(conc["inversion_rate"])))
+        lines.append("$%s/8$ & %s & %s & %s \\\\" % (k[1], parts[0], parts[1],
+                                                     ", ".join(factors)))
+    lines += ["\\bottomrule", "\\end{tabular}", ""]
+    return "\n".join(lines)
+
+
+def render_payload_table(paths=PAYLOAD_SWEEPS):
+    """The padding table: each campaign's median S and rate at every pad, and the rho span."""
+    sweeps = [{int(r["pad_bytes"]): r for r in _payload_rows(p)} for p in paths]
+    lines = ["% Generated by scripts/emit_paper_numbers.py from",
+             "% docs/results/model/{,ea10b/}ttrue_sweep.csv. Do not edit by hand.",
+             "\\begin{tabular}{@{}rrrrrr@{}}",
+             "\\toprule",
+             "& \\multicolumn{2}{c}{E-A10} & \\multicolumn{2}{c}{E-A10b} & \\\\",
+             "\\cmidrule(lr){2-3}\\cmidrule(lr){4-5}",
+             "Padding (B) & Median $S$ (ms) & Rate & Median $S$ (ms) & Rate & $\\rho$ span \\\\",
+             "\\midrule"]
+    for pad in sorted(sweeps[0]):
+        rows = [s[pad] for s in sweeps]
+        rhos = [float(r["rho"]) for r in rows]
+        lines.append("$%s$ & %s & $%.3f$--$%.3f$ \\\\" % (
+            latex_thousands(pad),
+            " & ".join("$%.3f$ & $%.4f$" % (float(r["transport_ms"]), float(r["inversion"]))
+                       for r in rows),
+            min(rhos), max(rhos)))
+    lines += ["\\bottomrule", "\\end{tabular}", ""]
+    return "\n".join(lines)
+
+
+def render_tracer_table(path=MECH_INTERVALS_CSV, files=TRACED_FILES, untraced=UNTRACED_CSV):
+    """The tracer table: each traced configuration's share of long waits against its rate.
+
+    Both brokers pooled, as the trace counts both, and Kafka's alone, as first computed. At
+    real-time priority Kafka's half reads zero under the tracer, so the pooled ratio there is
+    marked and shown, not used. Typed by hand until 7 Oct 2026.
+    """
+    import csv as _csv
+    rows = _mech_rows(path)
+    lines = ["% Generated by scripts/emit_paper_numbers.py from manipulation_intervals.csv,",
+             "% the runq_tail.csv files and untraced_control.csv. Do not edit by hand.",
+             "\\begin{tabular}{@{}llrrrrrrrr@{}}",
+             "\\toprule",
+             " & & & & & & \\multicolumn{2}{c}{Both brokers} & \\multicolumn{2}{c}{\\kafka{} "
+             "alone} \\\\",
+             "Campaign & Priority & Load & $\\rho$ & Traced wakeups & "
+             "$\\Pr[\\text{wait}>0.5\\,\\text{ms}]$ & Rate & Ratio & Rate & Ratio \\\\"]
+    for name, campaign in files:
+        lines.append("\\midrule")
+        with open(name, newline="", encoding="utf-8") as fh:
+            for traced in _csv.DictReader(fh):
+                level = traced["tag"].rpartition("_")[0]
+                pooled = _mech_pick(rows, "trace", campaign, "both", level)
+                normal = traced["arm"] == "base"
+                rate = float(pooled["top_rate"] if normal else pooled["bottom_rate"])
+                p_tail, kafka = float(traced["p_tail"]), float(traced["inversion"])
+                ratio = "$%.2f$" % (p_tail / rate) if normal else \
+                    "$%.2f^{\\ddagger}$" % (p_tail / rate)
+                lines.append("%s & %s & $%s\\%%$ & $%.4f$ & $%s$ & $%.3f$ & $%.3f$ & %s & "
+                             "$%.3f$ & %s \\\\" % (
+                                 campaign, "normal" if normal else "real-time",
+                                 level.lstrip("l"), float(traced["rho"]),
+                                 latex_thousands(int(traced["traced_events"])), p_tail, rate,
+                                 ratio, kafka, "$%.2f$" % (p_tail / kafka) if kafka else "---"))
+    with open(untraced, newline="", encoding="utf-8") as fh:
+        twin = {r["condition"]: r for r in _csv.DictReader(fh)}
+    pooled = _mech_pick(rows, "trace", "E-A9-untraced", "both", "l88")
+    lines += ["\\midrule",
+              "\\multicolumn{10}{@{}l}{Untraced control: E-A9's first attempt, probe never "
+              "attached} \\\\"]
+    for cond, label, rate in (("l88_base", "normal", pooled["top_rate"]),
+                              ("l88_rt", "real-time", pooled["bottom_rate"])):
+        lines.append("---   & %s & $88\\%%$ & $%.4f$ & --- & --- & $%.3f$ & --- & $%.3f$ & --- \\\\"
+                     % (label, float(twin[cond]["rho"]), float(rate),
+                        float(twin[cond]["inversion_rate"])))
+    lines += ["\\bottomrule", "\\end{tabular}", ""]
+    return "\n".join(lines)
 
 
 def _all_pairs(m):
@@ -3444,7 +4266,10 @@ def _all_pairs(m):
             + spread_macros() + payload_flip_macros() + literature_census_macros()
             + arm_macros() + manipulation_macros()
             + deletion_macros() + literature_macros() + cliff_macros() + reach_macros()
-            + tools_block_macros() + recv_wait_macros())
+            + tools_block_macros() + recv_wait_macros() + law_reading_macros()
+            + s_window_macros() + rate_by_delivery_macros() + mechanism_interval_macros()
+            + traced_pooled_macros() + workload_macros() + backlog_macros()
+            + cell_events_macros() + tracer_macros() + geometry_seven_macros())
 
 
 def render(m):
@@ -3465,6 +4290,11 @@ def main(argv=None):
     ap.add_argument("--interval-table", default=DEFAULT_INTERVAL_TABLE)
     ap.add_argument("--tools-table", default=DEFAULT_TOOLS_TABLE)
     ap.add_argument("--recv-wait-table", default=DEFAULT_RECV_WAIT_TABLE)
+    ap.add_argument("--mechanism-table", default=DEFAULT_MECHANISM_TABLE)
+    ap.add_argument("--groups-table", default=DEFAULT_GROUPS_TABLE)
+    ap.add_argument("--geometry-table", default=DEFAULT_GEOMETRY_TABLE)
+    ap.add_argument("--payload-table", default=DEFAULT_PAYLOAD_TABLE)
+    ap.add_argument("--tracer-table", default=DEFAULT_TRACER_TABLE)
     ap.add_argument("--check", action="store_true",
                     help="fail if the committed file disagrees with the ledger; write nothing")
     args = ap.parse_args(argv)
@@ -3504,6 +4334,20 @@ def main(argv=None):
     recv = render_recv_wait_table()
     if recv:
         targets.append((args.recv_wait_table, recv))
+    if os.path.exists(MECH_INTERVALS_CSV):
+        targets.append((args.mechanism_table, render_mechanism_table()))
+    if os.path.exists(GROUPS_CSV):
+        targets.append((args.groups_table, render_groups_table()))
+    # 7 Oct 2026: typed by hand until the late messages were left out; generated since, so
+    # that the next recount moves them with everything else.
+    if all(os.path.exists(os.path.join("docs", "results", "model", p, "knee_resolution.csv"))
+           for p in GEOMETRY_PHASES):
+        targets.append((args.geometry_table, render_geometry_table()))
+    if all(os.path.exists(p) for p in PAYLOAD_SWEEPS):
+        targets.append((args.payload_table, render_payload_table()))
+    if os.path.exists(MECH_INTERVALS_CSV) and os.path.exists(UNTRACED_CSV) \
+            and all(os.path.exists(f) for f, _ in TRACED_FILES):
+        targets.append((args.tracer_table, render_tracer_table()))
 
     if args.check:
         stale = False

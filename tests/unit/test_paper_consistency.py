@@ -105,12 +105,24 @@ def _resolved(text):
     Resolving first keeps the pin's intent --- *the number must be on the page* --- and makes it
     indifferent to how the number got there. Longest names first, so `\rtFactorHigh` is not
     eaten by a prefix match on `\rtFactor`.
+
+    7 Oct 2026: the placement, padding and tracer tables became generated files the documents
+    `\input`, so each generated table is set in its place before the macros are resolved.
     """
+    text = _inlined(text)
     for name, value in sorted(_emitted_macros(), key=lambda p: -len(p[0])):
         # A function, not a string: several macro values are LaTeX and carry backslashes,
         # which re.sub reads as escapes in a replacement string ("bad escape \c").
         text = re.sub(r"\\" + name + r"\b", lambda _m, v=value: v, text)
     return text
+
+
+def _inlined(text):
+    """`text` with every generated table it inputs set in its place, as the build sets it."""
+    def body(m):
+        path = REPO / (m.group(1) + ".tex")
+        return path.read_text(encoding="utf-8") if path.exists() else m.group(0)
+    return re.sub(r"\\input\{(docs/generated/[^}.]+)\}", body, text)
 
 
 def _biography(tex):
@@ -2313,7 +2325,7 @@ class TestLoadGeometryAndTtrue:
     """
 
     def test_the_geometry_result_is_in_the_paper(self, tex):
-        section = tex  # v2/TPDS: the mechanism tables live in supplement S20
+        section = _resolved(tex)  # 7 Oct 2026: the table is generated and input
         rows = _rows("model", "ea6", "knee_resolution.csv")
         assert rows, "the E-A6 artefact must exist"
         by = {r["condition"]: float(r["inversion_rate"]) for r in rows}
@@ -2391,21 +2403,27 @@ class TestLoadGeometryAndTtrue:
 
         E-A9's own untraced twin exists: the first attempt, whose probe never attached, whose
         inversion rates are valid, run about two hours before the traced one. Against that the
-        difference is 14.8%, not the 4.6% an earlier version reported against E-A5b. Comparing a
-        measurement to whichever other measurement agrees with it is not a control.
+        difference was 14.8% as first computed, not the 4.6% an earlier version reported against
+        E-A5b. Comparing a measurement to whichever other measurement agrees with it is not a
+        control.
+
+        7 Oct 2026: the 14.8% was the late messages, which the traced runs held more of. Without
+        them the twin and the traced run agree, and the postmortem reports both readings.
         """
         traced = [r for r in _rows("model", "runq_tail.csv") if r["arm"] == "base"][0]
         control = [r for r in _rows("model", "ea9_notrace", "untraced_control.csv")
                    if r["condition"] == "l88_base"][0]
         t, c = float(traced["inversion"]), float(control["inversion_rate"])
         gap = abs(t - c) / c
-        assert 0.14 < gap < 0.16, f"traced/untraced gap recomputes to {gap:.1%}"
-        section = " ".join(tex.split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
-        assert f"{c:.4f}" in section, "the untraced control's rate must be quoted"
-        assert f"{gap * 100:.1f}" in section, f"the paper must state the {gap:.1%} gap"
-        # And it must not present that gap as a clean result.
-        assert "cannot say anything tighter" in section or "not resolvable" in section, \
-            "the limit of the control must be stated, not just the number"
+        assert gap < 0.02, f"traced/untraced gap recomputes to {gap:.1%}"
+        section = " ".join(_resolved(tex).split())
+        assert f"{c:.3f} untraced against {t:.3f} traced" in section.replace("$", ""), \
+            "the twin's rate and the traced one must be quoted together"
+        flat = " ".join(tex.split())
+        assert "As first computed it measured $0.2717$ against the traced run's $0.2315$" in flat \
+            and "$14.8\\%$" in flat, "the first reading must stay on the record"
+        assert "the one fair comparator" in section, \
+            "the text must say why the twin and no other campaign is the control"
 
     def test_the_tail_index_replicates_and_the_paper_says_so(self, tex):
         """alpha carried the paper's explanation for why mean-based counters fail, on one fit.
@@ -2419,13 +2437,14 @@ class TestLoadGeometryAndTtrue:
         assert a_o < 1 and a_r < 1, "the no-finite-mean claim needs alpha < 1 in both campaigns"
         assert abs(a_o - a_r) / a_o < 0.05, \
             f"alpha {a_o} vs {a_r} is no longer a replication; the text must be rewritten"
-        section = " ".join(tex.split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
+        section = " ".join(_resolved(tex).split())  # 7 Oct 2026: read through the ledger
         assert f"{a_r:.3f}" in section, "the replication's exponent must be quoted"
         # The prefactor moves more than the exponent, and the paper must not hide that.
         assert f"{float(rep['C']):.3f}" in section, "the replication's prefactor must be quoted"
 
     def test_the_ttrue_replication_is_in_the_table(self, tex):
         """Both campaigns' transports and rates belong in tab:ea10, not just the better one."""
+        tex = _resolved(tex)  # 7 Oct 2026: the table is generated and input
         table = tex[tex.index(r"\label{tab:ea10}"):]
         table = table[:table.index(r"\end{table}")]
         for phase in (("model", "ttrue_sweep.csv"), ("model", "ea10b", "ttrue_sweep.csv")):
@@ -2447,6 +2466,15 @@ class TestLoadGeometryAndTtrue:
         5 Oct 2026: the rebuilt main text states the ratios and the count of configurations,
         "ratios of 0.78, 1.06, 1.32 in three configurations", and leaves their reading to
         Supplement S3.5, where it points: within a third, on both sides of one.
+
+        6 Oct 2026: the trace counts every python3 thread in a configuration, the producers and
+        consumers of both brokers, and those ratios were taken against Kafka's rate alone. The
+        main text now quotes them against the rate of the same runs with both brokers pooled,
+        recomputed here from the run counts, in the normal-priority configurations, the only
+        ones that have a ratio. The supplement's rows carry both ratios.
+
+        7 Oct 2026: the table is generated, and the postmortem inputs the same one, so both
+        documents' rows carry both ratios.
         """
         # Literal paths, not a loop over tuples: verify_run_provenance discovers quoted
         # artefacts by matching literal arguments to _rows().
@@ -2455,62 +2483,76 @@ class TestLoadGeometryAndTtrue:
             ("E-A9b", "75"): _rows("model", "ea9b_l75", "runq_tail.csv"),
             ("E-A9b", "88"): _rows("model", "ea9b_l88", "runq_tail.csv"),
         }
+        counts = _rows("model", "manipulation_run_counts.csv")
+        supp, journal = _resolved(supp), _resolved(journal)
         table = supp[supp.index(r"\label{tab:ea9}"):]
         table = table[:table.index(r"\end{table}")]
-        ratios = []
+        journal_table = journal[journal.index(r"\label{stab:tracer}"):]
+        journal_table = journal_table[:journal_table.index(r"\end{table}")]
+        ratios, pooled = [], []
         for (campaign, load), rows in sources.items():
             base = [r for r in rows if r["arm"] == "base"][0]
             rt = [r for r in rows if r["arm"] == "rt"][0]
             ratio = float(base["p_tail"]) / float(base["inversion"])
             ratios.append(ratio)
             row = [ln for ln in table.splitlines() if ln.startswith(campaign + " ")
-                   and "normal" in ln and "& %s\\%%" % load in ln]
+                   and "normal" in ln and "& $%s\\%%$" % load in ln]
             assert len(row) == 1 and f"{ratio:.2f}" in row[0], \
                 f"{campaign} {load}%: ratio {ratio:.2f} missing from its row of tab:ea9"
-            # Every traced real-time arm reads exactly zero; that is the artefact claim.
+            # Every traced real-time arm reads exactly zero on Kafka; that is the tracer's.
             assert float(rt["inversion"]) == 0.0, f"{campaign} {load}%: rt arm is no longer zero"
-        assert all(1 / 3 <= r <= 3 for r in ratios), f"ratios {ratios} outside the stated band"
-        assert min(ratios) < 1 < max(ratios), \
+            mine = [r for r in counts if r["result"] == "trace" and r["campaign"] == campaign
+                    and r["cell"] == "l%s_base" % load]
+            assert {r["backend"] for r in mine} == {"kafka", "redis"}, "both brokers were traced"
+            rate = (sum(int(r["run_negatives"]) for r in mine)
+                    / sum(int(r["run_events"]) for r in mine))
+            pooled.append(float(base["p_tail"]) / rate)
+            row = [ln for ln in journal_table.splitlines() if ln.startswith(campaign + " ")
+                   and "normal" in ln and "& $%s\\%%$" % load in ln]
+            assert len(row) == 1 and f"{pooled[-1]:.2f}" in row[0] and f"{ratio:.2f}" in row[0], \
+                f"{campaign} {load}%: the supplement's row must carry both ratios"
+        assert min(pooled) < 1 < max(pooled), \
             "ratios no longer straddle 1; the 'no consistent sign' claim needs revisiting"
         prose = " ".join(_resolved(_section(main_tex, "sec:twostate")).split())
-        listed = ", ".join(f"{r:.2f}" for r in sorted(ratios))
-        spelled = {2: "two", 3: "three", 4: "four", 5: "five"}.get(len(ratios), "")
+        listed = sorted(f"{r:.2f}" for r in pooled)
+        listed = ", ".join(listed[:-1]) + " and " + listed[-1]
+        spelled = {2: "two", 3: "three", 4: "four", 5: "five"}.get(len(pooled), "")
         bare = prose.replace("{}", "")
-        assert (f"ratios of ${listed}$ in ${len(ratios)}$ configurations" in bare
-                or f"ratios of ${listed}$ in {spelled} configurations" in bare), \
-            "the ratios must be listed together, with the number of configurations"
+        assert f"ratios of {listed} in the {spelled} normal-priority configurations traced" \
+            in bare, "the ratios must be listed together, with the configurations they cover"
         assert "(Supplement~%s)" % _heading_before(journal, journal.index(r"\label{stab:tracer}")) \
             in prose, "the sentence must point to where the arms are read"
         reading = " ".join(_resolved(_section(journal, "s:tracer")).split())
-        assert "to within a third" in reading and f"is ${listed}$, with nothing fitted" in reading
+        reading = reading.replace("$", "").replace("{}", "")
+        assert f"is {listed}, with nothing fitted" in reading
         assert "The ratios lie above and below one" in reading, \
             "the scatter must be described as scatter where the ratios are read"
+        kafka = ", ".join(f"{r:.2f}" for r in sorted(ratios))
+        assert f"the ratios are {kafka}" in reading, "Kafka's own ratios must stay beside them"
 
-    def test_the_withheld_arm_is_shown_and_marked(self, tex):
-        """The replication's 88% arm fails the instrument check. It is reported anyway.
+    def test_the_arm_withheld_as_first_computed_is_reported_and_compared_now(self, tex):
+        """The replication's 88% arm failed the instrument check as first computed.
 
-        Withholding a comparison is not a reason to hide a measurement -- especially this one,
-        whose ratio is the closest agreement in the table. Reporting only the arms that passed
-        would leave a reader unable to see that our own rule excluded one.
+        Withholding a comparison is not a reason to hide a measurement, and the account of the
+        withholding stays on the record. 7 Oct 2026: the drift was the late messages; without
+        them the arm drifts a few per cent, inside the rule, and all three arms are compared,
+        so the table marks none as withheld.
         """
-        section = " ".join(tex.split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
-        # "withheld" alone appears in the caption too. Bind it to the sentence carrying the
-        # drift, which is the claim: our own rule excluded this arm.
-        # Anchor on the prose that states the drift. "withheld" alone also appears in the
-        # caption and the footnote, so looking for it anywhere passed a mutated caption.
-        assert "a drift of $28" in section, "the measured drift must be stated in prose"
+        section = " ".join(tex.split())
+        assert "a drift of $28" in section, "the first drift must stay in the prose"
         idx = section.index("a drift of $28")
-        window = section[max(0, idx - 600):idx + 400]
+        window = section[max(0, idx - 600):idx + 600]
         assert "25" in window, "the pre-fixed tolerance must sit with the drift it exceeded"
-        assert "withheld" in window, "the consequence must sit with the drift"
-        # And the table must mark it, since a reader scanning the numbers may never
-        # reach the prose. The footnote is a separate claim from the paragraph.
-        table = tex[tex.index(r"\label{tab:ea9}"):]
+        assert "withheld" in window and r"\tracedKafkaDriftMaxPct" in window, \
+            "the first verdict and the drift without the late messages must sit together"
+        assert "all three are compared" in window
+        import emit_paper_numbers as epn
+        drift = float(dict(epn.tracer_macros())["tracedKafkaDriftMaxPct"])
+        assert drift < 25, "the arm drifts past the rule again; the text must be rewritten"
+        table = _resolved(tex)
+        table = table[table.index(r"\label{tab:ea9}"):]
         table = table[:table.index(r"\end{table}")]
-        assert "withheld by the tracer check" in table, \
-            "the table must mark the withheld arm as withheld"
-        assert "shown, not used" in table, \
-            "the table must say the withheld arm is shown but not relied on"
+        assert "withheld" not in table, "no arm is withheld now"
 
     def test_the_real_time_zero_is_resolved_as_a_tracing_artefact(self, tex):
         """One zero was unexplained. Three, against an untraced twin that shows 15/2985, are not."""
@@ -2607,7 +2649,7 @@ class TestLoadGeometryAndTtrue:
         related work -- and Section 7.3 never reported it. An abstract may summarise the body;
         it may not be the only place a result appears.
         """
-        section = " ".join(tex.split())  # v2/TPDS: the mechanism tables live in supplement S20
+        section = " ".join(_resolved(tex).split())  # 7 Oct 2026: the table is generated
         rows = {r["arm"]: r for r in _rows("model", "runq_tail.csv")}
         base = rows["base"]
         assert _contains_number(section, float(base["p_tail"]), 3), \
@@ -2629,7 +2671,7 @@ class TestLoadGeometryAndTtrue:
         four application-level points does not license a statement about the moments of the
         stall distribution. Asserting it here would pin a claim the paper no longer makes.
         """
-        section = " ".join(supp.split())
+        section = " ".join(_resolved(supp).split())  # 7 Oct 2026: read through the ledger
         vals = {r["quantity"]: r["value"] for r in _rows("model", "tail_index.csv")}
         assert f"{float(vals['C']):.3f}" in section, "the fitted prefactor is missing"
         # Either the value or the macro that carries it. Round 24's ledger sweep replaced the
@@ -2715,59 +2757,40 @@ class TestLoadGeometryAndTtrue:
         residue = re.findall(r"(?m)^(?:ef|exttt|extbf|mph|ite|abel)\{[^}]*\}", tex)
         assert not residue, f"macros whose backslash was eaten: {residue[:5]}"
 
-    def test_the_uniform_denominator_claim_holds_across_every_campaign(self, journal, supp):
-        """Every rate artefact is over 2,985 events, and the documents state it table by table.
+    def test_each_table_states_the_range_of_its_own_cells(self, journal, supp):
+        """7 Oct 2026: leaving out the late messages took a different number from every cell.
 
-        Each mechanism table states it through \\mechEventsPerCell, which the emitter writes
-        only when every cell agrees, and the postmortem's geometry and traced-tail tables state
-        it per cell. The sweep reads every rate artefact, so a campaign added later with a
-        different run count fails here.
-
-        5 Oct 2026: the paper's Statistics section and its mechanism table (priority pairs and
-        geometry) left with the rebuild. The mechanism tables are the supplement's now, one per
-        manipulation, and each must state the denominator the main-text table stated for them.
+        No cell holds more than the 2,985 a configuration published; each mechanism table states
+        the range of its own cells through a macro read from the file its body comes from, and
+        the paper's Table II and the supplement's provenance row state the range over the
+        manipulations. The uniform count of before is withdrawn with the macro that carried it.
         """
         import csv as _csv
         import glob as _glob
-        offenders = []
+        counts = []
         for path in sorted(_glob.glob(str(RESULTS / "model" / "**" / "*.csv"), recursive=True)):
-            with open(path, newline="", encoding="utf-8") as fh:
-                rows = list(_csv.DictReader(fh))
-            if not rows:
+            if Path(path).name.startswith(("traced_tail_slope", "variance_law")):
                 continue
-            cols = [c for c in rows[0] if c in ("n_events", "n_base", "n_rt")]
-            for r in rows:
-                for c in cols:
-                    v = (r.get(c) or "").strip()
-                    if v and v != "2985":
-                        rel = Path(path).relative_to(RESULTS / "model").as_posix()
-                        offenders.append(f"{rel}:{c}={v}")
-        # traced_tail_slope counts kernel-traced wakeups and variance_law is not an inversion
-        # rate, so neither is a cell the per-cell statements cover. Nor is the pooled knee
-        # sweep, model/knee_resolution.csv -- by its path, since ea6/ and ea6b/ hold files of the
-        # same name that tab:ea6 does state at 2,985 a cell. It pools campaigns of 15 and 25
-        # runs, 1,791 to 2,985 events a cell, and the paper quotes it only through the fits of
-        # S1.5, never as a rate per cell; its counts were recorded on 27 September so that a
-        # reader can see this rather than take it on trust.
-        offenders = [o for o in offenders
-                     if not Path(o.split(":")[0]).name.startswith(("traced_tail_slope",
-                                                                   "variance_law"))
-                     and not o.startswith("knee_resolution.csv:")]
-        assert not offenders, f"the per-cell denominator is false for: {offenders}"
-        assert dict(_emitted_macros()).get("mechEventsPerCell") == "2{,}985", \
-            "the mechanism table's cells no longer share the denominator the artefacts show"
-        for label in ("stab:priority", "stab:geometry", "stab:payload", "stab:tracer"):
+            with open(path, newline="", encoding="utf-8") as fh:
+                for r in _csv.DictReader(fh):
+                    counts += [int(r[c]) for c in ("n_events", "n_base", "n_rt")
+                               if (r.get(c) or "").strip()]
+        assert counts and max(counts) <= 2985
+        assert "mechEventsPerCell" not in dict(_emitted_macros())
+        ranges = {"stab:priority": "prioEvents", "stab:geometry": "geomEvents",
+                  "stab:payload": "payloadEvents", "stab:tracer": "tracerEvents"}
+        for label, prefix in ranges.items():
             head = journal[:journal.index("\\label{%s}" % label)]
-            #: Either form of \caption, short title or none (test_round61_findings.py).
             opened = list(re.finditer(r"\\caption(?:\[[^\]]*\])?\{", head))[-1]
             caption = " ".join(head[opened.start():].split())
-            assert re.search(r"\$\\mechEventsPerCell\$ (?:matched )?events", caption), \
-                f"{label} must state the denominator its cells share"
-        for label in ("tab:ea6", "tab:ea9"):
+            assert "$\\%sLo$ to $\\%sHi$" % (prefix, prefix) in caption, \
+                f"{label} must state the range of its cells"
+        for label, prefix in (("tab:ea6", "geomEvents"), ("tab:ea10", "payloadEvents"),
+                              ("tab:ea9", "tracerEvents")):
             i = supp.index("\\label{%s}" % label)
-            assert "Every cell is 2\\,985" in " ".join(
-                supp[supp.rindex(r"\begin{table}", 0, i):i].split()), \
-                f"{label} must state the denominator its cells share"
+            caption = " ".join(supp[supp.rindex(r"\begin{table}", 0, i):i].split())
+            assert "$\\%sLo$ to $\\%sHi$" % (prefix, prefix) in caption, \
+                f"{label} must state the range of its cells"
 
     def test_the_mechanism_campaigns_appear_in_the_power_table(self, supp):
         """tab:power says what each claim rests on, and must reach the mechanism.
@@ -2788,10 +2811,11 @@ class TestLoadGeometryAndTtrue:
         proportions with no n behind it cannot be checked by anyone, including us -- so the
         counts are now recorded, and this test recomputes every z the paper prints.
         """
-        section = " ".join(tex.split())  # v2/TPDS: the mechanism tables live in supplement S20
+        section = " ".join(_resolved(tex).split())  # 7 Oct 2026: the table is generated
+        # E-A6b's three as recounted without the late messages; 8.89, 8.44 and 3.46 before.
         campaigns = {
             ("ea6",): (("k5", 4.09), ("k6", 10.27), ("k7", 1.22)),
-            ("ea6b",): (("k5", 8.89), ("k6", 8.44), ("k7", 3.46)),
+            ("ea6b",): (("k5", 8.83), ("k6", 8.34), ("k7", 3.20)),
         }
         for (phase,), expectations in campaigns.items():
             rows = {r["condition"]: r for r in _rows("model", phase, "knee_resolution.csv")}
@@ -2808,11 +2832,11 @@ class TestLoadGeometryAndTtrue:
         """An earlier draft read k=7 as convergence to a null. E-A6b does not support that.
 
         The original campaign could not separate the geometries at k=7 (z=1.22). The replication
-        separates them (z=3.46, intervals disjoint). One campaign finding no difference and
+        separates them (z=3.20 since 7 Oct 2026, 3.46 as first computed). One campaign finding no difference and
         another finding one is not a null; it is an unsettled cell, and the paper must say so
         rather than quote the campaign that agreed with us.
         """
-        section = " ".join(tex.split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
+        section = " ".join(_resolved(tex).split())  # 7 Oct 2026: read through the ledger
         orig = {r["condition"]: r for r in _rows("model", "ea6", "knee_resolution.csv")}
         rep = {r["condition"]: r for r in _rows("model", "ea6b", "knee_resolution.csv")}
         z_orig = _two_prop_z(orig["k7_conc"], orig["k7_spread"])
@@ -2824,7 +2848,8 @@ class TestLoadGeometryAndTtrue:
         # Bind the withdrawal to the sentence carrying the replication's own numbers. The
         # word "withdraw" also appears in the M/G/1 paragraph of this section, so looking for it
         # anywhere passed a manuscript in which the k=7 withdrawal had been deleted.
-        window = section[section.find("1.19\\times"):][:420]  # anchored to the ratio, not 1.197
+        factor = float(rep["k7_spread"]["inversion_rate"]) / float(rep["k7_conc"]["inversion_rate"])
+        window = section[section.find("%.2f\\times" % factor):][:420]  # anchored to the ratio
         assert window, "the replication's k=7 ratio must appear in the text"
         assert "withdraw" in window, (
             "the k=7 withdrawal must be stated where the replication's numbers are given")
@@ -2843,13 +2868,14 @@ class TestLoadGeometryAndTtrue:
         assert abs(r_o - r_r) < 0.15, f"k6 ratio {r_o:.2f} vs {r_r:.2f} -- no longer a replication"
         # In the table specifically. Both ratios also appear in the surrounding prose, so a
         # section-wide search passed a manuscript whose table said 2.77x.
+        tex = _resolved(tex)  # 7 Oct 2026: the table is generated and input
         table = tex[tex.index(r"\label{tab:ea6}"):]
         table = table[:table.index(r"\end{table}")]
         for v in (f"{r_o:.2f}", f"{r_r:.2f}"):
             assert v in table, f"ratio {v} missing from tab:ea6"
 
     def test_the_ttrue_sweep_is_in_the_paper(self, tex):
-        section = tex  # v2/TPDS: the mechanism tables live in supplement S20
+        section = _resolved(tex)  # 7 Oct 2026: the table is generated and input
         rows = _rows("model", "ttrue_sweep.csv")
         assert rows, "the E-A10 artefact must exist"
         for r in rows:
@@ -3104,14 +3130,20 @@ class TestRefereeRoundOne:
         # 5 Oct 2026: the mechanism table left the rebuilt main text. The manipulation it
         # exhibited, the matched priority pairs, is panel (b) of the remedies figure, so the
         # requirement that the mechanism be exhibited in the paper follows the pairs there.
-        assert "remedies.pdf" in main_tex, "the mechanism's exhibit must be in the paper"
-        i = main_tex.index(r"\label{fig:exposure}")
+        # 6 Oct 2026: the mechanism table is back, as Table II, with every manipulation on both
+        # brokers, and the remedies figure keeps only the repair. The pairs follow the table.
+        i = main_tex.index(r"\label{tab:mechanism}")
+        float_ = main_tex[main_tex.rindex(r"\begin{table}", 0, i):main_tex.index(r"\end{table}", i)]
+        assert r"\input{docs/generated/mechanism_table}" in float_, \
+            "the mechanism's exhibit must be in the paper"
         # Either form of the caption: \caption{...} or \caption[short]{...}.
-        start = max(main_tex.rfind(r"\caption{", 0, i), main_tex.rfind(r"\caption[", 0, i))
-        assert start != -1, "the remedies figure has no caption"
-        caption = " ".join(main_tex[start:i].split())
-        assert "each matched pair at normal priority" in caption \
-            and "real-time priority" in caption, "the exhibit must show the matched pairs"
+        start = max(float_.find(r"\caption{"), float_.find(r"\caption["))
+        caption = " ".join(float_[start:float_.index(r"\label{")].split())
+        assert "each with disjoint intervals on its two rates" in caption, \
+            "the caption must say what the priority range is a range of"
+        body = (REPO / "docs" / "generated" / "mechanism_table.tex").read_text(encoding="utf-8")
+        assert r"Real-time priority, \rtPairsWord{} pairs" in body \
+            and "normal / real-time" in body, "the exhibit must show the matched pairs"
         confirmation = " ".join(_section(main_tex, "sec:extcomp").split())
         draws = _heading_before(journal, journal.index("payload_flip.pdf"))[1:]
         assert re.search(r"Supplement~S%s\b" % re.escape(draws), confirmation), (
@@ -3532,7 +3564,10 @@ class TestCausalityFramingIsWithdrawn:
         assert flat.index("one clock") < flat.index("below zero"), \
             "the one clock must be set before the values below zero are reported"
         finding = " ".join(_section(main_tex, "sec:finding").split())
-        assert "were clock skew between nodes" in finding \
+        # 6 Oct 2026: the issue cited reports an average publish latency above the average
+        # end-to-end latency on one node, answered with skew between nodes; it never mentions a
+        # value below zero, so the sentence now says what was reported.
+        assert "were skewed between nodes" in finding \
             and "On one clock there is no skew to blame." in finding, \
             "the rival must be named, and closed, where the result is stated"
         assert "Nothing arrived early. On the same messages and the same clock" in finding, \
@@ -3595,8 +3630,9 @@ class TestCausalityFramingIsWithdrawn:
         counts through the ledger. The main text states the result in words, "neither D nor A
         falls below zero once", so the ledger must print the zeros those words claim.
         """
-        lbl = journal.index(r"\label{stab:spans}")
-        table = journal[journal.rindex(r"\begin{table}", 0, lbl):journal.index(r"\end{table}", lbl)]
+        # 6 Oct 2026: the table is the paper's Table I again (tab:spans), in Section III.
+        lbl = main_tex.index(r"\label{tab:spans}")
+        table = main_tex[main_tex.rindex(r"\begin{table}", 0, lbl):main_tex.index(r"\end{table}", lbl)]
         for macro in (r"\spanNegSend", r"\spanNegAckLag"):
             assert macro in table, "the send-referenced count must come from the recount artefact"
         macros = dict(_emitted_macros())
@@ -3873,7 +3909,10 @@ class TestRefereeRoundTwo:
             main_tex.split())
         flat = " ".join(_section(journal, "s:tracer").split()).replace(chr(92) + "_", "_")
         assert "sched_wakeup" in flat and "sched_switch" in flat
-        for macro in (r"\untracedRate", r"\tracedRate", r"\observerZ"):
+        # 7 Oct 2026: without the late messages the normal-priority rate does not move under
+        # the tracer, and the effect the paper discloses is the real-time configurations' zeros.
+        for macro in (r"\untracedRate", r"\tracedRate", r"\untracedRtNegatives",
+                      r"\untracedRtEvents"):
             assert macro in main_tex
 
     # 5 Oct 2026: R18's pin on the broker comparison's span is retired with the comparison,
@@ -3907,8 +3946,11 @@ class TestRefereeRoundTwo:
         # 5 Oct 2026: the rebuilt tail section gives the kernel's documented rule, and the
         # Limitations say what the constants are: derived, not read off the hosts.
         limits = " ".join(_section(main_tex, "sec:threats").split())
-        assert "The base slice on the cloud hosts is derived, not read off them." in limits, \
+        # 6 Oct 2026: the sentence names which hosts: the Oracle constants are derived, and
+        # the Azure hosts of the registered campaign read the base slice back.
+        assert "The base slice on the Oracle hosts is derived, not read off them;" in limits, \
             "the main text must still call the constants derived"
+        assert "the Azure hosts read it back" in limits
         # The working itself moved to Supplement S41 when the figures were redrawn at
         # printable size; the claim stayed here and the arithmetic went there.
         supp = (REPO / "postmortem.tex").read_text(encoding="utf-8")
@@ -4001,10 +4043,16 @@ class TestRefereeRoundTwo:
         assert "weyl1916gleichverteilung" in supp,             "dropping a citation from the main text must not lose it from the submission"
 
     def test_the_corrected_bibliography_entries_stay_corrected(self):
-        bib = (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
-        assert "Swami, Akul and Sonawane, Dnyaneshwar" in bib, "R10: verified author names"
+        # 7 Oct 2026: both reference files, the postmortem's own split from the shared one. R10's
+        # entry, swami2026prereg, left with the 47 that nothing cited, on the author's
+        # instruction; its corrected names are in the history, and the wrong ones stay out.
+        bib = "\n".join((REPO / name).read_text(encoding="utf-8")
+                        for name in ("manuscript_references.bib", "postmortem_references.bib"))
+        assert "swami2026prereg" not in bib, "R10's entry is back; check its author names"
         assert "Swami, Aditya" not in bib
-        assert "Wiederhold, Mike" in bib and "Wied, Michael" not in bib, "R11"
+        # R11's entry, ycsb_issue41, left the same way; the misspelling it corrected stays out.
+        assert "ycsb_issue41" not in bib, "R11's entry is back; check its author name"
+        assert "Wied, Michael" not in bib, "R11"
         assert "151--156" in bib and "151--162" not in bib, "R12: ICPE 2011 page range"
 
     def test_the_supplement_does_not_imply_a_journal_review_history(self, supp):
@@ -4103,9 +4151,11 @@ class TestInterpreterLockRival:
             "Section V-E lists the rivals; the interpreter lock is one and must be named"
 
     def test_the_bound_is_the_generated_ratio_not_a_typed_one(self, main_tex):
-        assert r"\tracedRatios" in main_tex, \
+        # 6 Oct 2026: the paper quotes the ratios against both brokers' pooled rate, which is
+        # what the trace counts; the ratios against Kafka's rate alone stay in Supplement S3.5.
+        assert r"\tracedPooledRatios" in main_tex, \
             "the ratios must come from the artefact, not be typed into the prose"
-        for typed in ("0.78", "1.06", "1.32"):
+        for typed in ("0.78", "1.06", "1.32", "0.95", "1.22", "1.39"):
             assert typed not in main_tex, \
                 "ratio %s is hand-typed; it is emitted as a macro" % typed
 
@@ -4579,8 +4629,10 @@ class TestTheAbstractPromisesWhatItDelivers:
             "the abstract lists its evidence after the word 'checks'. An identity, a "
             "manipulation and an audit are not checks; they are what characterizes the "
             "failure modes, and the sentence should attach them there")
+        # 6 Oct 2026: two of Table I's six checks are marked "Not measured", so the sentence says
+        # what most of them buy; it is still the last one.
         last = re.split(r"(?<=[.!?])\s+", flat.replace(r"\end{abstract}", "").strip())[-1]
-        assert last == "We give checks, and measure what each buys.", \
+        assert last == "We give checks, and measure what most of them buy.", \
             "nothing may follow the checks as if it were one of them"
 
     def test_the_checks_name_the_audience_they_are_for(self, main_tex):
@@ -4687,7 +4739,9 @@ class TestTheReportingRulesAreInternallyConsistent:
             "the check must hand over to the recovery; without it the reader meets 'recover "
             "it' after 'decline to publish it' and has to reconcile the two unaided")
         rule = self._rule(tex, r"The repair is Equation~\ref{eq:model}.", "sec:cost")
-        assert "conditions the sign check passes" in rule and "it rejects" in rule, (
+        # 6 Oct 2026: the check passes or rejects runs, not conditions; each condition's runs
+        # are grouped by its verdict (Supplement S2.1), so the sentence now says runs.
+        assert "runs the sign check passes" in rule and "it rejects" in rule, (
             "the recovery rule must say how it sits beside the check, on both sides of it")
         assert "end-to-end latency" in rule, (
             "the bridge is that recovery reports the end-to-end latency rather than the proxy, so the "
@@ -4852,7 +4906,7 @@ class TestTheExposureCurveIsGeneratedNotTyped:
         return main_tex[start:main_tex.index("\n\n", start)]
 
     def _caption(self, main_tex):
-        """The caption of the figure the paragraph draws its curve in, Fig. 3 (remedies)."""
+        """The caption of the figure the paragraph draws its curve in, Fig. 5 (remedies)."""
         i = main_tex.index(r"\label{fig:exposure}")
         # Either form of the caption: \caption{...} or \caption[short]{...}.
         start = max(main_tex.rfind(r"\caption{", 0, i), main_tex.rfind(r"\caption[", 0, i))
@@ -4865,7 +4919,8 @@ class TestTheExposureCurveIsGeneratedNotTyped:
 
     def test_every_exposure_number_is_a_macro(self, main_tex):
         para = self._paragraph(main_tex)
-        assert r"(Fig.~\ref{fig:exposure}a)" in para, "the paragraph must point to its curve"
+        # 6 Oct 2026: the figure keeps one panel, the repair, so the pointer drops its letter.
+        assert r"(Fig.~\ref{fig:exposure})" in para, "the paragraph must point to its curve"
         for name in self.EXPOSURE_MACROS:
             # Whole names: \exposureErrTen is a prefix of \exposureErrTenLo and ...Hi.
             assert re.search(r"\\%s(?![A-Za-z])" % name, para), (

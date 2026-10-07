@@ -844,7 +844,9 @@ def observer_effect(traced=os.path.join("model", "runq_tail.csv"),
     A BPF probe on every context switch is not free, and the campaign measured what it
     costs by running the same cell untraced. The manuscript never reported the comparison,
     which is an omission in a paper whose subject is instruments that change what they
-    measure.
+    measure. 7 Oct 2026: with the late messages of stale_backlog.py left out, the traced and
+    untraced rates at normal priority agree (z near zero); what the probe costs shows in the
+    real-time configurations, which read no value below zero under it.
     """
     tr = {r["tag"]: r for r in _rows(*traced.split(os.sep))}
     un = {r["condition"]: r for r in _rows(*untraced.split(os.sep))}

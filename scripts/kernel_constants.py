@@ -61,11 +61,21 @@ RESULTS = os.path.join("docs", "results")
 CONFIG_FILE = os.path.join(RESULTS, "env", "kernel_config_6.8.0-1057-oracle.txt")
 GEOMETRY = os.path.join(RESULTS, "model", "ea6", "knee_resolution.csv")
 
-# kernel/sched/fair.c, Linux v6.8:
+# kernel/sched/fair.c, upstream Linux v6.8:
 #     unsigned int sysctl_sched_base_slice = 750000ULL;
 #     unsigned int normalized_sysctl_sched_base_slice = 750000ULL;
 # and update_sysctl() sets sysctl = factor * normalized.
-NORMALISED_BASE_SLICE_NS = 750_000
+UPSTREAM_68_BASE_SLICE_NS = 750_000
+
+# 6 Oct 2026. The kernel the campaign ran was not upstream v6.8. Commit 2ae891b82695 ("sched:
+# Reduce the default slice to avoid tasks getting an extra tick", first in v6.15) cut both
+# constants to 700000ULL, the stable trees took it in v6.12.31 and v6.6.93, and Ubuntu carried it
+# into its 6.8 kernels: the linux-oracle-6.8 changelog lists it in 6.8.0-1043.44~22.04.1 (29 Jan
+# 2026, LP: #2133301), with no revert before the 6.8.0-1057 every cloud run recorded. The
+# registered campaign's Azure kernels, from the same backport, read back 1.4, 2.1 and 2.8 ms at
+# 2, 4 and 8 CPUs, which is 0.70 ms, not 0.75. The Ubuntu tree itself could not be read, so this
+# rests on the package changelog and the sister kernels' read-back; it is still a derivation.
+NORMALISED_BASE_SLICE_NS = 700_000
 
 # get_update_sysctl_factor(), same file: the CPU count entering the factor is clamped.
 SYSCTL_FACTOR_CPU_CAP = 8
@@ -184,6 +194,7 @@ def constants():
         "cpus_stated_mentions": sum(stated.values()),
         "cpus_agree": stated_total is None or stated_total == ncpus,
         "sysctl_factor": factor,
+        "normalised_slice_ms": NORMALISED_BASE_SLICE_NS / 1e6,
         "base_slice_ns": slice_ns,
         "base_slice_ms": slice_ns / 1e6,
     }

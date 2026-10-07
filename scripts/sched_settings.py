@@ -135,8 +135,11 @@ def rule_slice_ns(release, cpus, scaling):
     version = release_version(release)
     if version is None or cpus is None or scaling is None:
         return None
+    # The rule by version number is upstream's, so a kernel carrying a backported constant shows
+    # up against it. 6 Oct 2026: kernel_constants now derives the Oracle driver's slice from the
+    # backported 700000 its package carried; the rule keeps upstream 6.8's 750000.
     normalised = (SMALLER_SLICE_NS if version >= SMALLER_SLICE_FROM
-                  else kernel_constants.NORMALISED_BASE_SLICE_NS)
+                  else kernel_constants.UPSTREAM_68_BASE_SLICE_NS)
     return kernel_constants.base_slice_ns(cpus, scaling, normalised)
 
 

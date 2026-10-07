@@ -254,9 +254,21 @@ class TestEveryShippedFigure:
                               mrf.build_mechanism, mrf.build_ttrue, mrf.build_payload):
                     build(Path(tmp))
                 mpf.main(["--out", tmp])
+                # 6 Oct 2026: the paper's Figs. 2 and 3 are built outside both modules' _save,
+                # and each runs the check itself. Neither was built here, and both printed
+                # 7 pt type in the main text: Fig. 3 because it was drawn before the paper
+                # included it, when the check had no width to hold it to.
+                import make_deletion_histogram as mdh
+                import make_wait_shape_figure as mws
+                mdh.build_s_distribution(tmp)
+                mws.build_paper_panel(str(ROOT / "docs" / "results" / "law"
+                                          / "strange-results-28-sep" / "ack_waits.csv"), tmp)
+                for stem in ("s_distribution", "residual_wait"):
+                    assert stem in widths, "%s is no longer included; revisit this" % stem
+                    seen.append(stem)
         finally:
             mrf._save, mpf._save = original_result, original_paper
-        assert len(seen) >= 7, "expected every included figure to be measured, saw %s" % seen
+        assert len(seen) >= 9, "expected every included figure to be measured, saw %s" % seen
 
 
 class TestAnInclusionWithNoWidth:

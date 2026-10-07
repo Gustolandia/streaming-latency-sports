@@ -134,6 +134,62 @@ def plot_survival(ax, parts, s=a9_decompose.A9_SLICE_MS, h=a9_decompose.A9_TICK_
     ax.grid(True, alpha=0.3)
 
 
+#: The paper's column-width panel (6 Oct 2026): one mark a broker, not a machine, so that its
+#: legend holds four entries rather than eight at 3.5 in.
+PAPER_STEM = "residual_wait"
+BROKER_STYLE = {"kafka": ("Kafka, each part", "#1f77b4", "o"),
+                "redis": ("Redis, each part", "#d62728", "s")}
+
+
+def plot_survival_compact(ax, parts, s=a9_decompose.A9_SLICE_MS, h=a9_decompose.A9_TICK_MS):
+    """Panel (a) for the paper: the two shapes, and every part marked by its broker alone."""
+    xs = [0.05 * k for k in range(0, 101)]
+    for name, (colour, style) in sorted(SHAPE_STYLE.items()):
+        shape = a9_decompose.WAIT_SHAPES[name]
+        ax.plot(xs, [shape(x, s, h) / shape(1.0, s, h) for x in xs], color=colour,
+                linestyle=style, linewidth=1.6, label=name, zorder=1)
+    seen = set()
+    for (pair, backend, _load), points in sorted(parts.items()):
+        label, colour, marker = BROKER_STYLE.get(backend, (backend, "#7f7f7f", "^"))
+        at_one = dict(points)[1.0]
+        ax.plot([x + DODGE_MS.get(pair, 0.0) for x, _ in points],
+                [share / at_one for _, share in points], linestyle="none", marker=marker,
+                markersize=3, markerfacecolor="white", markeredgecolor=colour,
+                markeredgewidth=0.8, label=None if label in seen else label, zorder=2)
+        seen.add(label)
+    ax.axvline(s, color="#bbbbbb", linewidth=0.8, zorder=0)
+    ax.axvline(s + h, color="#bbbbbb", linewidth=0.8, zorder=0)
+    ax.set_xlim(0, 5.2)
+    # Room above the data for the legend in two columns, clear of the whole-slice curve, whose
+    # turn at the slice is what tells the two shapes apart.
+    ax.set_ylim(-0.06, 1.95)
+    ax.set_xlabel("Wait for a core, $x$ (ms)")
+    ax.set_ylabel("Share still waiting at $x$,\nrelative to 1 ms")
+    # 8 pt, IEEE's floor; it was drawn at 7 before the paper included it, when the legibility
+    # gate had no width to check it at.
+    ax.legend(loc="upper right", fontsize=8, framealpha=1.0, ncol=2, columnspacing=0.8,
+              handletextpad=0.4, handlelength=1.6)
+    ax.grid(True, alpha=0.3)
+
+
+def build_paper_panel(waits, out_dir):
+    """The residual-wait figure the paper prints in Section IV-C, at column width."""
+    figure_style.apply()
+    parts = load_waits(waits)
+    fig, ax = plt.subplots(figsize=(3.5, 2.4))
+    plot_survival_compact(ax, parts)
+    fig.tight_layout()
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    for ext in ("pdf", "png"):
+        figure_collisions.check(fig, PAPER_STEM)
+        figure_legibility.check(fig, PAPER_STEM)
+        fig.savefig(out / ("%s.%s" % (PAPER_STEM, ext)), dpi=200, bbox_inches="tight",
+                    pad_inches=0.02)
+    plt.close(fig)
+    return out / ("%s.pdf" % PAPER_STEM)
+
+
 def plot_causes(ax, bins, edges=a9_decompose.BAND_EDGES, s=a9_decompose.A9_SLICE_MS,
                 h=a9_decompose.A9_TICK_MS):
     """Panel (b): every thread's waits over a quarter of a millisecond, by what began them."""
@@ -183,6 +239,7 @@ def main(argv=None):
         fig.savefig(out / ("%s.%s" % (STEM, ext)), dpi=200, bbox_inches="tight")
     plt.close(fig)
     print("OK wrote %s/%s.pdf and .png" % (out, STEM))
+    print("OK wrote %s" % build_paper_panel(args.waits, args.out))
     return 0
 
 

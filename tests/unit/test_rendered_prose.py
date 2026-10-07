@@ -91,7 +91,10 @@ ABBREVIATIONS = frozenset((
 #: check_paper_omb_numbers.py tells an author to use if a discard total is ever typed.
 #: spanRhoConditions is the number of conditions behind correlation medians the postmortem
 #: prints, a denominator to print, not to delete.
-UNUSED_MACRO_CEILING = 71
+#: 67 since 7 Oct 2026, when the placement table became generated: its four rates and the four
+#: intervals uncertainty_audit.py paired with them were read by nothing and left the ledger,
+#: and with them the census's largest foreign read, which S1.5 does not print.
+UNUSED_MACRO_CEILING = 67
 
 
 def rendered(name):

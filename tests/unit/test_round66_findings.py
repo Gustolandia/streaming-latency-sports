@@ -32,6 +32,14 @@ JOURNAL = REPO / "supplement.tex"
 BIB = REPO / "manuscript_references.bib"
 
 
+def _bibliographies():
+    """Both reference files, joined: the one the paper and the supplement cite, and the
+    postmortem's own, which moved to a file of its own on 7 Oct 2026. An entry is checked
+    wherever it lives."""
+    return "\n".join((REPO / name).read_text(encoding="utf-8")
+                     for name in ("manuscript_references.bib", "postmortem_references.bib"))
+
+
 def _strip(text):
     return re.sub(r"(?m)%.*$", "", text)
 
@@ -121,7 +129,7 @@ class TestTheBibliographyDoesNotAnnotateItsOwnRevisions:
     """R5. A reference entry attributes a source; it is not a changelog."""
 
     def test_no_note_points_at_the_supplement(self):
-        text = BIB.read_text(encoding="utf-8")
+        text = _bibliographies()
         bad = []
         for m in re.finditer(r"@\w+\{([^,]+),(.*?)(?=\n@|\Z)", text, re.S):
             note = " ".join(m.group(2).split())
@@ -143,14 +151,14 @@ class TestTheGreyLiteratureIsReadFromItsSource:
     """R2. Both OpenMessaging issues, pinned by what their trackers actually say."""
 
     def test_both_issues_are_in_the_bibliography(self):
-        text = BIB.read_text(encoding="utf-8")
+        text = _bibliographies()
         for key, url in (("omb2022coordinated", "issues/247"),
                          ("omb2026histogram", "issues/452")):
             assert key in text, "%s is missing from the bibliography" % key
             assert url in text, "%s does not carry its issue URL" % url
 
     def test_the_entries_name_who_opened_them_and_when(self):
-        text = BIB.read_text(encoding="utf-8")
+        text = _bibliographies()
         for key, who, year in (("omb2022coordinated", "franz1981", "2022"),
                                ("omb2026histogram", "SamBarker", "2026")):
             i = text.index("{%s," % key)

@@ -13,7 +13,7 @@ headline in the paper is a macro whose value is recomputed at build time, and a 
 checking this one had to find the right CSV first. They are macros now.
 
 Two denominators appear in the paper and were never related to each other. The audit runs over
-2,266 runs; Table II recounts spans over 5,913. They are different populations -- the audit
+2,266 runs; Table II recounts spans over 5,863. They are different populations -- the audit
 covers the conditions a *reported result* rests on, the recount covers every run that produced
 matched events on the cloud testbed -- and the main text now says so where the second number
 appears.

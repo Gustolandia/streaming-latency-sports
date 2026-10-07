@@ -35,13 +35,14 @@ def _transport_span():
     figure scripts and this table; every copy was correct, which is why none of them ever
     failed. The fallback equals what the derivation returns for the committed campaign, so a
     reader without the artefact gets the published figure rather than a different one --- the
-    same bargain `_base_slice_ms` makes in `make_paper_figures`.
+    same bargain `_base_slice_ms` makes in `make_paper_figures`. 74 since 7 Oct 2026, when
+    the late messages of stale_backlog.py were left out (77 before).
     """
     try:
         import stat_intervals
         return "%.0f" % round(stat_intervals.payload_span()["transport_factor"])
     except (ImportError, OSError, KeyError, ValueError):
-        return "77"
+        return "74"
 
 
 def _priority_range():
@@ -63,7 +64,8 @@ def _geometry_result():
 
     `\\GeomOrigFactor`, `\\GeomReplFactor` and the shared rho. The factors are derived the
     same way `emit_paper_numbers` derives them --- `ratio_z` over the two cells --- so the
-    cell and the macro cannot disagree about what the ratio is.
+    cell and the macro cannot disagree about what the ratio is. The replication's factor is
+    2.02 since the late messages were left out (2.05 before, 7 Oct 2026).
     """
     try:
         import stat_intervals
@@ -74,7 +76,7 @@ def _geometry_result():
         return "%.2f×, %.2f×, at rho %g" % (out[0], out[1],
                                             stat_intervals.geometry_rho("ea6"))
     except (ImportError, OSError, KeyError, ValueError):
-        return "2.07×, 2.05×, at rho 0.7531"
+        return "2.07×, 2.02×, at rho 0.7531"
 
 
 def _priority_rho_match():
@@ -119,14 +121,15 @@ def _colocation_rho_match():
 def _tail_index():
     """The payload sweep's effective exponent, two decimals, as the map prints it.
 
-    `\\tailExponent` is emitted at three (0.339); the map has room for two and said 0.34.
-    Both are the same fit, and this reads it rather than remembering it.
+    `\\tailExponent` is emitted at three (0.328 since the late messages were left out on 7 Oct
+    2026, 0.339 before); the map has room for two. Both are the same fit, and this reads it
+    rather than remembering it.
     """
     try:
         import stat_intervals
         return "%.2f" % -stat_intervals.payload_fit()[0]
     except (ImportError, OSError, KeyError, ValueError):
-        return "0.34"
+        return "0.33"
 
 
 # (campaign, manipulated, held fixed, settles) -- the row content of the map.

@@ -194,6 +194,14 @@ or reviewed by, any journal; the corrections recorded below were found in the co
 work.
 
 \medskip
+\noindent\emph{On the late messages.} On 7~October 2026 we found that the cloud testbed's
+consumers first read earlier campaigns' messages, which nothing had cleared, so that each run's
+first messages waited behind them (the supplementary material's S1.5). Every number this document
+emits from the cloud runs now leaves those messages out, and the placement, padding and tracer
+tables of S26 are generated from the recount. A number typed into the retelling of a round is as
+that round computed it, with the late messages in; where a conclusion moved, the text says so.
+
+\medskip
 \noindent\emph{On the vocabulary.} This document uses the paper's terms, defined here once. A
 \emph{condition} is one point of the experimental design; a \emph{cell} is a condition
 together with a workload; a \emph{run} is one execution of a cell and a \emph{replicate} a
@@ -1142,7 +1150,7 @@ mechanism showing itself: one free core out of eight is nearly as useless as non
 \emph{A full replication (E-A6b) corrects us on one point}: it reproduces the load-bearing
 cell almost exactly ($\rho = 0.7531$ in all four configurations; $\GeomReplFactor\times$ against $\GeomOrigFactor\times$),
 reproduces $k=5$ in direction but not size, and at $k=7$ resolves a small difference
-($1.19\times$, $z=3.46$) where the original could not --- so we withdraw an earlier draft's
+($\geomSevenReplFactor\times$, $z=\geomSevenReplZ$) where the original could not --- so we withdraw an earlier draft's
 reading of that convergence as a null. Both campaigns agree on the shape: twofold at $k=6$,
 near-parity at $k=7$.
 
@@ -1199,8 +1207,8 @@ $\tailRsqPoints$ payload levels gives
 \label{eq:tailindex}
 \end{equation}
 with an interval on the exponent of ($95\%$, Student-$t$: $\tailExponentCI$) at $\tailRsqDof$
-degrees of freedom. E-A10b repeats the sweep on a different day and returns $0.344$ against $\tailExponent$;
-the prefactor drifts ($\tailPrefactor$ against $0.216$). Four points do not earn an equation in a
+degrees of freedom. E-A10b repeats the sweep on a different day and returns $\tailExponentRepl$ against $\tailExponent$,
+with a prefactor of $\tailPrefactorRepl$ against $\tailPrefactor$. Four points do not earn an equation in a
 main text, which is why this one is here, and Fig.~\ref{fig:ttrue} plots them.
 
 \begin{figure}[tb]
@@ -1247,8 +1255,8 @@ or not the points lie on a line. The agreement with $\tailExponent$ was a coinci
 window and estimator, and we should not have offered it as a confirmation.
 
 The prediction check against the trace is unaffected and stands: the two-state model predicts
-$\Pr[\text{stall} > 0.5\,\text{ms}] = 0.301$ against the traced $0.181$, over-predicting by
-$1.66\times$ ($1.52\times$ on the replication), the expected direction since not every
+$\Pr[\text{stall} > 0.5\,\text{ms}] = \tailPredictedPTail$ against the traced $\tailTracedPTail$, over-predicting by
+$\tailCrossRatio\times$ ($\tailCrossRatioRepl\times$ on the replication), the expected direction since not every
 stall lands on a timestamping instant. That comparison is between two probabilities, not
 between two fitted exponents, and it needs no power law to be meaningful.
 
@@ -1337,11 +1345,12 @@ $\Pr[\text{stall} > 0.5\,\text{ms}]$ against the measured transport of that cell
 
 The two quantities share no probe, no estimator and no data: one is a count of negative
 transports in application CSVs, the other a kernel histogram of scheduler transitions. Across
-three configurations at two load levels they agree to within a third --- ratios $0.78$, $1.06$, $1.32$
-(Section~S26), nothing fitted between them. The residual has no consistent sign
-($22\%$ low, $6\%$ high, $32\%$ high), so what one configuration had suggested as a directional effect
-was scatter; a traced scheduler quantity predicts an application-level failure rate to within a
-third, unfitted, and no bias is resolvable inside that.
+three configurations at two load levels they agree to within a fifth --- ratios
+\tracedPooledRatios{} against the rate of both brokers' runs, whose threads the trace counts
+(Section~S26), nothing fitted between them. The residual has no consistent sign, so what one
+configuration had suggested as a directional effect was scatter; a traced scheduler quantity
+predicts an application-level failure rate to within a fifth, unfitted, and no bias is
+resolvable inside that.
 
 
 The two-state reading accounts for the clustering (a preemption is an interval, so the
@@ -1371,7 +1380,7 @@ sit at $\rho = 0.7531$, identical to four decimals, and the negative-span rates 
 $\GeomOrigFactor\times$ ($z=\GeomOrigZ$; Section~S26). A function of $\rho$ returns one value
 for one input. A full replication reproduces the load-bearing cell ($\GeomReplFactor\times$),
 reproduces $k=5$ in direction but not size, and resolves a small $k=7$ difference
-($1.19\times$, $z=3.46$) the original could not --- so we withdraw an earlier draft's
+($\geomSevenReplFactor\times$, $z=\geomSevenReplZ$) the original could not --- so we withdraw an earlier draft's
 reading of that convergence as a null; both campaigns agree on the shape, twofold at $k=6$ collapsing toward parity at
 $k=7$, one free core in eight being nearly as useless as none.
 
@@ -1520,48 +1529,47 @@ credit one over the other. That is a design limit no further analysis of these d
 scheduling behavior is exactly the kind of intervention that can create what it observes, so the
 traced cell has an untraced twin. Our first attempt at this campaign ran with a probe that failed
 to attach: the histogram was empty, but the negative-span rates are valid, and we kept that run as the
-control. It measured $0.2717$ against the traced run's $0.2315$ --- the traced rate is $14.8\%$
-\emph{lower}, two hours apart, same design.
+control. As first computed it measured $0.2717$ against the traced run's $0.2315$ --- the traced
+rate $14.8\%$ \emph{lower}, two hours apart, same design. Both counts held messages the consumer
+received late, because it first read earlier campaigns' messages, and the traced runs held more
+of them (Supplement~S1.5). Without those messages the two agree: $\untracedRate$ untraced against
+$\tracedRate$ traced ($z = \observerZ$).
 
-We report that rather than a flattering comparison, because an earlier version of this section
+We report the first reading and not only the second, because an earlier version of this section
 compared the traced cell against a different campaign's $88\%$ configuration ($0.2214$) and called the
-$4.6\%$ gap a clean bill of health. The honest reading is weaker. The normal-priority $88\%$ configuration was
-measured five times before the replication and spans $0.221$ to $0.305$, a factor of $1.38$; the
-traced value sits inside that spread, and so does its untraced twin. The replication's traced
-run, at $0.196$, sits below it. So we can say that tracing
-did not move the rate by more than the drift already present between campaigns, and we cannot say
-anything tighter than that. A tracing effect smaller than about $15\%$ is not resolvable with
-this control.
+$4.6\%$ gap a clean bill of health, and the backlog then made the gap look like a cost of tracing.
+Neither comparison was fair. The normal-priority $88\%$ configuration was measured five times
+before the replication and spans a factor of about $1.4$ between campaigns, so no tracing effect
+smaller than that drift can be read off another campaign. The twin, two hours apart with the same
+design, is the one fair comparator, and against it the tracer leaves the normal-priority rate where
+it was.
 
-What that limits is the \emph{level}, which no claim here rests on. The comparison in Section~\mainModeA{} is between two quantities measured in the \emph{same} run --- a kernel
+That comparison bears on the \emph{level}, which no claim here rests on. The comparison in Section~\mainModeA{} is between two quantities measured in the \emph{same} run --- a kernel
 histogram and a count of negative transports over the same events --- so a common perturbation of
-that run moves both and leaves their agreement intact. The probe is not free, and its cost is
-measured: $\untracedRate$ untraced against $\tracedRate$ traced ($z = \observerZ$). The comparison
-therefore uses the traced configuration's own rate, and $\untracedRate$ is the machine's.
+that run would move both and leave their agreement intact. The comparison therefore uses the
+traced configuration's own rate.
 
-\emph{The gate fired on our own replication, and we report the configuration it withheld.} The check is a
+\emph{The gate fired on our own replication, as first computed, and the backlog was why.} The check is a
 rule fixed in advance: a traced configuration whose negative-span rate differs from its untraced comparator by
-more than $25\%$ is not compared. The replication's $88\%$ configuration measures $0.1956$ against the same
-untraced control's $0.2717$ --- a drift of $28\%$ --- so its verdict is withheld by the same
-mechanism that admitted the original. Its numbers are in Table~\ref{tab:ea9} because withholding
-a comparison is not a reason to hide a measurement, and because the ratio it would have
-contributed, $1.06$, is the closest agreement in the table. Reporting only the configurations that passed
-would leave a reader with three ratios and no idea that one of them is inadmissible under our own
-rule.
+more than $25\%$ is not compared. As first computed, the replication's $88\%$ configuration measured
+$0.1956$ against the same untraced control's $0.2717$ --- a drift of $28\%$ --- and its verdict was
+withheld. Its consumers had read the longest backlog of the three traced configurations. Without the
+late messages it drifts $\tracedKafkaDriftMaxPct\%$, and all three are compared
+(Table~\ref{tab:ea9}). The rule did what it was written to do with the data it was given; the data
+were what was wrong.
 
 \emph{The real-time configuration's zero is an artifact of the tracer, and the replication settles
 it.} Every traced real-time configuration we have run --- three of them, across two campaigns and two load
-levels --- recorded \emph{zero} negative spans in $2{,}985$ events. The untraced twin of one of those
-configurations recorded $15$. Under that rate the chance of a single traced configuration showing none is
-$3{\times}10^{-7}$, and of all three about $10^{-20}$.
+levels --- recorded \emph{zero} negative spans, in $\tracerRtEventsLo$ to $\tracerRtEventsHi$ events
+each. The untraced twin of one of those configurations recorded $\untracedRtNegatives$ in
+$\untracedRtEvents$. Under that rate the chance of a single traced configuration showing none is
+\tracedZeroChanceOne, and of all three about \tracedZeroChanceAll.
 
 We first reported this as unresolved: either the configuration genuinely differed or tracing perturbed it,
 and one measurement could not separate the two. Three can. Attaching BPF to
 \texttt{sched\_switch} suppresses the negative spans in the real-time configuration, and the effect is not
-subtle --- it removes all of them. The direction is consistent with the normal-priority configuration, where the
-two traced measurements are the lowest and the third lowest of the six we have at $88\%$, though
-there the drift
-between campaigns is wide enough that the same conclusion cannot be drawn.
+subtle --- it removes all of them. At normal priority, where values below zero are common, it
+leaves the rate alone.
 
 We attached a tracer to measure why a measurement was failing, and the tracer changed the thing it
 came to observe, in the configuration where the quantity was smallest: exactly where
@@ -2530,7 +2538,7 @@ margin, no reader would accept a margin of half the quantity compared, and so th
 claims no equivalence.
 The Hodges--Lehmann shift over all $\recoveryShiftPairs$ pairwise differences, rejected minus
 accepted, is $\recoveryShift$ points ($95\%$ percentile bootstrap: $\recoveryShiftCI$), an interval
-that contains zero; the worst condition is the same on both sides; and the upper
+that contains zero; the worst conditions lie within two points of each other; and the upper
 quartiles are within a point and a half of each other. What moves the medians apart is the
 last column: $\recoveryPassExact\%$ of the accepted conditions recover the end-to-end latency exactly,
 and a concentration at zero drags a median down without moving the population it came from.
@@ -2560,9 +2568,8 @@ no detectable shift between them.} (a)~Empirical distribution functions of the r
 error over the $\recoveryPassN$ conditions the check accepts and the $\recoveryFailN$ it
 rejects; the dotted line is the band edge the text counts against, the accepted population's
 upper quartile of $\recoveryBandPct\%$. The curves open
-with steps of $\recoveryPassExact\%$ and $\recoveryFailExact\%$ at zero, change order at
-$\recoveryEcdfCrossLo\%$, and change back at $\recoveryEcdfCrossHi\%$, where each population
-has a single condition left above. (b)~Every condition, one mark each.}
+with steps of $\recoveryPassExact\%$ and $\recoveryFailExact\%$ at zero and change order once,
+at $\recoveryEcdfCross\%$. (b)~Every condition, one mark each.}
 \label{fig:recovery}
 \end{figure}
 
@@ -2571,11 +2578,12 @@ leaving. Two distributions can sit at zero offset and still differ in shape, and
 Figure~\ref{fig:recovery} shows that these two do. Counted in three bands of the recovery
 error --- exact, below $\recoveryBandPct\%$, and $\recoveryBandPct\%$ or more --- the accepted
 conditions divide $\recoveryPassExactN$, $\recoveryPassBelowBandN$ and
-$\recoveryPassFromBandN$, a third in each; the rejected ones divide $\recoveryFailExactN$,
+$\recoveryPassFromBandN$, close to a third in each; the rejected ones divide $\recoveryFailExactN$,
 $\recoveryFailBelowBandN$ and $\recoveryFailFromBandN$, a smaller pile at zero with most of the
 rest below the band edge. The edge is not a free choice: it is the accepted population's
-upper quartile, the $\recoveryErrPassHi\%$ in the table's Q3 column. The thirds depend on it, and
-hold for an edge above $\recoveryThirdsEdgeLo\%$ up to that quartile and for no other.
+upper quartile, the $\recoveryErrPassHi\%$ in the table's Q3 column. The split depends on it: it
+would be exact thirds for an edge above $\recoveryThirdsEdgeLo\%$ and up to
+$\recoveryThirdsEdgeHi\%$, just short of that quartile, and for no other.
 The bands are counted rather than read off a picture as clusters on
 purpose: where a gap in the accepted population looks like a boundary depends on the eye
 drawing it, and splitting that population at its largest gap puts the boundary somewhere
@@ -2665,8 +2673,8 @@ $0.059$ of that scale over the twelve parts, and the whole-slice shape $0.316$ t
 Read against each run's own margin $T - g$, the share of its acknowledgments whose wait
 outlasted the margin predicts its negative-span rate with nothing fitted, and the registered
 check of that prediction met its rule on four of six pair and broker parts, with medians of
-prediction over measurement of $1.11$ to $1.30$. The recording itself raised the rate it
-recorded, $1.36$ to $1.49$ times for \kafka{} and $3.69$ to $4.33$ times for \redis{}, so these
+prediction over measurement of $\recOwnWaitRatioLo$ to $\recOwnWaitRatioHi$. The recording itself raised the rate it
+recorded, $\recRaisedKafkaLo$ to $\recRaisedKafkaHi$ times for \kafka{} and $\recRaisedRedisLo$ to $\recRaisedRedisHi$ times for \redis{}, so these
 figures describe the machines with the recording on; the prediction and the rate it is held
 against come from the same runs.
 
@@ -4060,23 +4068,13 @@ $88\%$ & 0.8809 & 0.8812 & 0.3049 & 0.0057 & $54\times$ \\
 \caption[Same utilization, different rate]{\textbf{Same utilization, different rate.} Both load geometries in one campaign.
 Concentrated load leaves $C-k$ cores free; spread load duty-cycles all of them and leaves none.
 At $k=6$ the two configurations sit at the same $\rho$ to four decimals ---
-in \textnormal{\textit{both}} campaigns --- and the rates differ twofold in both. Every cell is 2\,985 matched
-events over 25 runs; $z$ is a two-proportion test between the configurations of that row. The $k=7$ row is
+in \textnormal{\textit{both}} campaigns --- and the rates differ twofold in both. Every cell is
+$\geomEventsLo$ to $\geomEventsHi$ matched events over 25 runs; $z$ is a two-proportion test
+between the configurations of that row. The $k=7$ row is
 where the two campaigns disagree: the original cannot separate the geometries there, the
 replication can, and we withdraw the stronger reading (text).}
 \label{tab:ea6}
-\begin{tabular}{rrrrrrrr}
-\toprule
-& \multicolumn{3}{c}{E-A6 (original)} & \multicolumn{3}{c}{E-A6b (replication)} & \\
-\cmidrule(lr){2-4}\cmidrule(lr){5-7}
-$k/C$ & conc. & spread & $z$ & conc. & spread & $z$ & ratios \\
-\midrule
-$5/8$ & 0.0201 & 0.0379 & 4.09  & 0.0111 & 0.0509 & 8.89 & $1.88\times$, $4.61\times$ \\
-$6/8$ & 0.0824 & 0.1709 & 10.27 & 0.0600 & 0.1229 & 8.44 & $2.07\times$, $2.05\times$ \\
-$7/8$ & 0.2281 & 0.2415 & 1.22  & 0.1973 & 0.2342 & 3.46 & $1.06\times$, $1.19\times$ \\
-\bottomrule
-\end{tabular}
-
+\input{docs/generated/geometry_table}
 \vspace{2pt}
 \footnotesize Achieved $\rho$, $k=6$: $0.7531$ in all four configurations. $k=5$: $0.6284$/$0.6250$ and
 $0.6284$/$0.6259$. $k=7$: $0.8778$/$0.8809$ and $0.8778$/$0.8822$.
@@ -4087,57 +4085,30 @@ $0.6284$/$0.6259$. $k=7$: $0.8778$/$0.8809$ and $0.8778$/$0.8822$.
 \caption[Longer end-to-end latencies are more reliable measurements, twice]{\textbf{Longer end-to-end latencies are more reliable measurements, twice.} Payload padding lengthens
 the true transport without touching the scheduler. Utilization is held to a $0.012$ spread; the
 serialization cost pushes it slightly up, against the predicted direction. Both quantities move
-monotonically, in opposite directions, in both campaigns: transport spans $\payloadTransportFactor\times$ and
-$\payloadReplTransportFactor\times$, the rate falls $\payloadRateFallExact\times$ and $\payloadReplRateFall\times$. Each cell is 2\,985 events.}
+monotonically, in opposite directions, in both campaigns: the median of $S$ spans $\payloadTransportFactor\times$ and
+$\payloadReplTransportFactor\times$, the rate falls $\payloadRateFallExact\times$ and $\payloadReplRateFall\times$. Each cell is
+$\payloadEventsLo$ to $\payloadEventsHi$ events.}
 \label{tab:ea10}
-\begin{tabular}{rrrrrr}
-\toprule
-& \multicolumn{2}{c}{E-A10} & \multicolumn{2}{c}{E-A10b} & \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}
-Padding (B) & Transport (ms) & Negative span & Transport (ms) & Negative span & $\rho$ span \\
-\midrule
-0        & 0.701  & 0.2603 & 0.761  & 0.2338 & 0.881--0.882 \\
-4\,096   & 2.381  & 0.1906 & 2.474  & 0.1652 & 0.882--0.883 \\
-65\,536  & 14.638 & 0.0888 & 16.059 & 0.0784 & 0.885--0.885 \\
-262\,144 & 53.898 & 0.0637 & 58.482 & 0.0549 & 0.893--0.895 \\
-\bottomrule
-\end{tabular}
-\end{table}
+\input{docs/generated/payload_table}\end{table}
 
 
 \begin{table}[t]
 \caption[Kernel tracing predicts the negative-span rate, unfitted, in every configuration that has one]{\textbf{Kernel tracing predicts the negative-span rate, unfitted, in every configuration that
 has one.} $\Pr[\text{stall} > T_{\mathrm{true}}]$ from
 \texttt{sched\_wakeup}/\texttt{sched\_switch}, against the negative-span rate measured from
-application timestamps in the \textnormal{\textit{same}} cell; the two share no probe and no estimator.
-Every cell is 2\,985 events. The three normal-priority configurations agree with their traced tails to within
-about a third, with no consistent sign. Every real-time configuration reads exactly zero where the
-untraced control of the E-A9 pair reads $15/2985$; that is a tracing artifact, not a floor
-(text). The E-A9b $88\%$ configuration is \textnormal{\textit{withheld}} by the tracer check --- $28\%$ drift against
-a $25\%$ rule fixed in advance --- and is shown because a withheld comparison is still a
-measurement.}
+application timestamps in the \textnormal{\textit{same}} runs: both brokers pooled, as the trace
+counts both, and \kafka{}'s alone; the two share no probe and no estimator. Each broker
+contributes $\tracerEventsLo$ to $\tracerEventsHi$ events a configuration. The three
+normal-priority configurations agree with their traced tails to within a fifth on the pooled
+rate, with no consistent sign. Every real-time configuration reads exactly zero on \kafka{}
+where the untraced control of the E-A9 pair reads $\untracedRtNegatives$ in
+$\untracedRtEvents$; that is a tracing artifact, not a floor (text).}
 \label{tab:ea9}
-\begin{tabular}{llrrrrl}
-\toprule
-Campaign & Arm & Load & $\rho$ & Traced events & $\Pr[\text{stall}>0.5\,\text{ms}]$ / rate & Ratio \\
-\midrule
-E-A9  & normal  & 88\% & 0.8822 & $551{,}956$ & 0.181 / 0.231 & 0.78 \\
-E-A9  & real-time & 88\% & 0.8819 & $570{,}591$ & 0.018 / 0.000 & --- \\
-\midrule
-E-A9b & normal  & 75\% & 0.7543 & $709{,}819$ & 0.168 / 0.128 & 1.32 \\
-E-A9b & real-time & 75\% & 0.7531 & $641{,}308$ & 0.016 / 0.000 & --- \\
-E-A9b & normal  & 88\% & 0.8825 & $687{,}986$ & 0.207 / 0.196 & \emph{1.06}$^{\dagger}$ \\
-E-A9b & real-time & 88\% & 0.8822 & $649{,}788$ & 0.016 / 0.000 & --- \\
-\midrule
-\multicolumn{6}{l}{\emph{untraced control} (E-A9's own first attempt, probe never attached)}
-& \\
----   & normal  & 88\% & 0.8812 & --- & --- / 0.272 & --- \\
----   & real-time & 88\% & 0.8809 & --- & --- / 0.005 & --- \\
-\bottomrule
-\end{tabular}
+\setlength{\tabcolsep}{4pt}
+\input{docs/generated/tracer_table}
 
 \vspace{2pt}
-\footnotesize $^{\dagger}$ withheld by the tracer check; shown, not used.
+\footnotesize $^{\ddagger}$ \kafka{}'s half of the pooled rate reads zero under the tracer; shown, not used.
 \end{table}
 
 
@@ -5272,9 +5243,9 @@ $4.25$ times on Arm, where P8 allows $1.5$.
 
 \paragraph{Predicting the rate from recorded waits (P6, L9)} L6's recording counts every
 \texttt{python3} thread's waits in one histogram, and read against each run's margin it
-over-predicted the rate $2.49$ to $13.08$ times. L9 recorded every scheduling event and named the
+over-predicted the rate $\pSixRatioLo$ to $\pSixRatioHi$ times. L9 recorded every scheduling event and named the
 thread that records each acknowledgment's timestamp. That thread was mostly waiting for a CPU in
-$79.4$ to $92.0\%$ of negative readings, where L9-1 asks $90\%$. Its waits summed over time
+$\recMostlyWaitingLo$ to $\recMostlyWaitingHi\%$ of negative readings, where L9-1 asks $90\%$. Its waits summed over time
 under-predicted the rate six to ten times (L9-2). The share of acknowledgments whose own wait
 outlasted the margin came closest (L9-2b), inside the rule on four of the six pair and broker
 parts, and S16.10 draws those waits.
@@ -5368,8 +5339,7 @@ every verdict stands but P3a on the first x86 pair, whose fitted interval ends $
 outside its bar with them and $0.0037$~ms inside without them: a verdict on its rule's edge, and
 the one on all the runs is the one reported. A further 120 runs lie far from their setup's
 other repeats in end-to-end latency, publish latency or held delay, by the quality report's own rule, and they are
-kept, as the plan says. In L9's traced half the event tracer raised the rate it recorded,
-$1.36$ to $1.49$ times for \kafka{} and $3.69$ to $4.33$ times for \redis{}, and the gray rings
+kept, as the plan says. In L9's traced half the event tracer raised the rate it recorded, $\recRaisedKafkaLo$ to $\recRaisedKafkaHi$ times for \kafka{} and $\recRaisedRedisLo$ to $\recRaisedRedisHi$ times for \redis{}, and the gray rings
 of Figure~\ref{fig:lawa9} sit above the unringed runs for that reason; L9-2b's prediction and the
 rate it is held against come from the same recorded runs.
 
@@ -5460,6 +5430,6 @@ on \kafka{} on the Arm and second x86 pairs, over-predicting at $75\%$ load; and
 x86 disks on the hour.
 
 \bibliographystyle{IEEEtran}
-\bibliography{manuscript_references}
+\bibliography{manuscript_references,postmortem_references}
 
 \end{document}

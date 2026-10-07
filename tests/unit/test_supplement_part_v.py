@@ -35,9 +35,20 @@ def _flat(text):
 
 @pytest.fixture(scope="module")
 def part_v():
+    """Part V's source, flattened.
+
+    6 Oct 2026: the readings the paper's Limitations quote from this campaign are emitted
+    (`law_reading_macros`, the `rec` and `pSix` families), and Part V prints them through those
+    macros, so they are expanded to the numbers the pins below recompute.
+    """
     text = (REPO / "postmortem.tex").read_text(encoding="utf-8")
     start = text.index(r"\section*{Part V. The pre-registered law campaign}")
-    return _flat(text[start:text.index(r"\bibliographystyle", start)])
+    body = text[start:text.index(r"\bibliographystyle", start)]
+    gen = (REPO / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8")
+    ledger = dict(re.findall(r"\\newcommand\{\\(\w+)\}\{(.*)\}\s*$", gen, re.M))
+    body = re.sub(r"\\((?:rec|pSix)[A-Za-z]+)(?![A-Za-z])",
+                  lambda m: ledger.get(m.group(1), m.group(0)), body)
+    return _flat(body)
 
 
 @pytest.fixture(scope="module")

@@ -91,14 +91,14 @@ class TestTheTransportSpanCell:
 
     def test_it_reads_the_campaign(self):
         import make_method_figure as mmf
-        assert mmf._transport_span() == "77"
+        assert mmf._transport_span() == "74"  # 77 before the late messages were left out
 
     def test_it_falls_back_when_the_artefact_is_missing(self, monkeypatch):
         import make_method_figure as mmf
         import stat_intervals
         monkeypatch.setattr(stat_intervals, "payload_span",
                             lambda *a, **kw: (_ for _ in ()).throw(OSError("no campaign")))
-        assert mmf._transport_span() == "77", "the fallback is the published value"
+        assert mmf._transport_span() == "74", "the fallback is the published value"
 
     def test_the_fallback_equals_what_the_campaign_gives(self):
         """If these ever diverge the fallback is a second source, which is the whole defect."""
@@ -111,7 +111,7 @@ class TestTheTransportSpanCell:
         from make_method_figure import ROWS
         rows = [r for r in ROWS if "E-A10" in r[0]]
         assert len(rows) == 1, "one E-A10 row"
-        assert "77×" in rows[0][1], "the manipulated cell names the span"
+        assert "74×" in rows[0][1], "the manipulated cell names the span"
 
 
 class TestTheMapReadsItsResultCells:
@@ -148,11 +148,13 @@ class TestTheMapReadsItsResultCells:
         import stat_intervals
         assert mmf._tail_index() == "%.2f" % -stat_intervals.payload_fit()[0]
 
+    # 7 Oct 2026: the replication's factor and the exponent as recounted without the late
+    # messages (2.05 and 0.34 before).
     @pytest.mark.parametrize("helper,module,attr,expected", [
         ("_priority_range", "priority_pairs", "summary", "8 pairs, 7-80×"),
         ("_geometry_result", "stat_intervals", "geometry_cells",
-         "2.07×, 2.05×, at rho 0.7531"),
-        ("_tail_index", "stat_intervals", "payload_fit", "0.34"),
+         "2.07×, 2.02×, at rho 0.7531"),
+        ("_tail_index", "stat_intervals", "payload_fit", "0.33"),
     ])
     def test_each_falls_back_to_the_published_literal(self, monkeypatch, helper, module,
                                                       attr, expected):

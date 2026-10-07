@@ -516,10 +516,13 @@ def test_main_builds_every_figure_by_default(tmp_path, capsys):
 
 
 def test_the_spectrum_builder_takes_the_slice_from_the_derived_constants(tmp_path):
-    """The 3 ms in the caption and the 3 ms in the figure must have one source."""
+    """The slice in the caption and the slice in the figure must have one source.
+
+    6 Oct 2026: 2.8 ms, not 3 ms. The kernels of the Oracle hosts carry the 0.70 ms base slice
+    of Linux 6.15, backported to linux-oracle-6.8 in 6.8.0-1043 (see kernel_constants)."""
     import kernel_constants
     mrf.build_spectrum(tmp_path)
-    assert kernel_constants.constants()["base_slice_ms"] == 3.0
+    assert kernel_constants.constants()["base_slice_ms"] == 2.8
 
 
 def test_the_spectrum_builder_survives_missing_kernel_constants(tmp_path, monkeypatch):
@@ -582,7 +585,7 @@ def test_plot_repair_draws_the_curve_its_band_and_both_populations():
         assert len(ax.collections) == 3, "the band and the two scatters"
         assert ax.get_xscale() == "log"
         labels = [t.get_text() for t in ax.get_legend().get_texts()]
-        assert labels == ["expected error, $A/D$", "timed from the acknowledgment",
+        assert labels == ["$A/D$ at a fixed $A$", "timed from the acknowledgment",
                           "with $A$ added back"]
     finally:
         plt.close(fig)
@@ -637,7 +640,8 @@ def test_ttrue_points_are_the_committed_payload_sweep():
     assert len(pts) == 4
     xs = [p[0] for p in pts]
     assert xs == sorted(xs)
-    assert round(xs[-1] / xs[0]) == 77, "the span the manuscript quotes"
+    # 7 Oct 2026: 74 without the late messages (77 as first computed).
+    assert round(xs[-1] / xs[0]) == 74, "the span the manuscript quotes"
 
 
 def test_the_inversion_rate_falls_as_the_interval_grows():

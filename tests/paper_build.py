@@ -28,8 +28,10 @@ DOCUMENTS = ("paper", "supplement", "postmortem")
 #: What a build leaves beside a PDF. The first four must exist; the rest a document may lack.
 NEEDED = (".aux", ".bbl", ".blg", ".log")
 LEFT = NEEDED + (".out", ".toc", ".lof", ".lot")
-#: What the two documents are built from.
-SOURCES = ("paper.tex", "supplement.tex", "postmortem.tex", "manuscript_references.bib")
+#: What the documents are built from. 7 Oct 2026: the postmortem's own references moved to a
+#: file of their own, which it reads beside the shared one.
+SOURCES = ("paper.tex", "supplement.tex", "postmortem.tex", "manuscript_references.bib",
+           "postmortem_references.bib")
 #: 5 Oct 2026: the postmortem reads the labels of the paper it was written against, the version
 #: before the rebuild, from the label map kept with that paper in the archive; without it a
 #: scratch build leaves every one of the postmortem's main-text pointers undefined.

@@ -228,8 +228,9 @@ class TestArtefactReaders:
 
     def test_the_payload_fit_reproduces_the_papers_exponent(self):
         slope, _, r2, lo, hi = si.payload_fit()
-        assert -slope == pytest.approx(0.339, abs=0.002)
-        assert r2 == pytest.approx(0.990, abs=0.002)
+        # 7 Oct 2026: without the late messages; 0.339 and 0.990 before.
+        assert -slope == pytest.approx(0.328, abs=0.002)
+        assert r2 == pytest.approx(0.987, abs=0.002)
         assert lo < slope < hi
         assert (hi - lo) > 0.15, "four points give a wide interval; the paper must say so"
 
@@ -413,12 +414,14 @@ class TestRoundTwoReaders:
         assert g["inv_growth"] == pytest.approx(61, abs=1)
         assert g["rho_knee"] == pytest.approx(0.877, abs=0.001)
 
-    def test_the_tracer_perturbs_the_rate_it_is_used_to_predict(self):
-        """The campaign measured this and the manuscript never reported it."""
+    def test_the_tracer_leaves_the_normal_priority_rate_where_it_was(self):
+        """As first computed the traced rate sat 15% under its untraced twin, z = 3.6, and the
+        documents reported a perturbation. 7 Oct 2026: the traced runs had drained longer
+        backlogs, and without the late messages the two rates agree, inside sampling noise;
+        the documents say so, and the real-time configurations' zeros remain the tracer's."""
         o = si.observer_effect()
-        assert o["untraced"] > o["traced"], "tracing suppresses the rate here"
-        assert o["z"] > 2, "the perturbation is larger than sampling noise"
-        assert 1.0 < o["ratio"] < 1.5
+        assert abs(o["z"]) < 2, "the rates part again; the tracer passages must be rewritten"
+        assert abs(o["ratio"] - 1.0) < 0.05
 
     def test_a_missing_condition_returns_nothing_rather_than_half_a_result(self):
         assert si.observer_effect(condition="does_not_exist") == {}
@@ -774,7 +777,8 @@ class TestTheRecoveryComparisonReproduces:
 
     def test_the_shift_and_its_interval(self):
         a, b = self._populations()
-        assert si.hodges_lehmann(a, b) == pytest.approx(1.17, abs=0.01)
+        # 7 Oct 2026: 0.61 without the late messages (1.17 before); the interval held.
+        assert si.hodges_lehmann(a, b) == pytest.approx(0.61, abs=0.01)
         lo, hi = si.hl_bootstrap_ci(a, b)
         assert lo < 0.0 < hi, "the interval contains zero, which is the claim"
         assert (lo, hi) == pytest.approx((-1.8, 8.3), abs=0.1)
@@ -850,7 +854,8 @@ class TestEcdfCrossings:
     def test_the_recovery_populations_cross_where_the_caption_says(self):
         pops = si.recovery_populations()
         got = si.ecdf_crossings(pops["Pass"], pops["Fail"])
-        assert [round(x, 1) for x in got] == [18.2, 34.8]
+        # 7 Oct 2026: one crossing without the late messages (18.2 and 34.8 before).
+        assert [round(x, 1) for x in got] == [18.2]
 
     def test_empty_samples_raise(self):
         with pytest.raises(ValueError):
@@ -871,7 +876,8 @@ class TestRecoveryPopulations:
         band = si.recovery_band_edge(pops)
         tally = {k: (sum(v == 0.0 for v in p), sum(0.0 < v < band for v in p),
                      sum(v >= band for v in p)) for k, p in pops.items()}
-        assert tally == {"Pass": (14, 14, 14), "Fail": (6, 17, 5)}
+        # 7 Oct 2026: (14, 15, 13) without the late messages, thirds before.
+        assert tally == {"Pass": (14, 15, 13), "Fail": (6, 17, 5)}
 
     def test_it_reads_a_file_it_is_given(self, tmp_path):
         path = tmp_path / "s.csv"

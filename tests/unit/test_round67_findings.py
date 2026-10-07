@@ -31,6 +31,14 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).parent.parent.parent
+
+
+def _bibliographies():
+    """Both reference files, joined: the one the paper and the supplement cite, and the
+    postmortem's own, which moved to a file of its own on 7 Oct 2026. An entry is checked
+    wherever it lives."""
+    return "\n".join((REPO / name).read_text(encoding="utf-8")
+                     for name in ("manuscript_references.bib", "postmortem_references.bib"))
 PAPER = REPO / "paper.tex"
 SUPPLEMENT = REPO / "postmortem.tex"
 # 4 Oct 2026: the traced stall spectrum (the paper's Fig. 3 until then) is the journal
@@ -218,7 +226,7 @@ class TestTheHdrHistogramFindingIsReadFromItsDocumentation:
             "the exception is documented for the upper bound only.")
 
     def test_the_entry_is_in_the_bibliography(self):
-        bib = (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
+        bib = _bibliographies()
         assert "hdrhistogram_javadoc" in bib
         assert "hdrhistogram.github.io" in bib
 

@@ -601,18 +601,20 @@ def build_deletion_phases(out_dir):
     included nowhere is the dangling case the manuscript gates fail on.
 
     The paper carried it from v5 until 5 Oct 2026, when it moved to the journal supplement
-    (S4.1), whose one-column text block is 6.5 in. It is drawn at that width. Drawn at the
-    paper's 7.16 in it printed its 8 pt labels at 7.3 pt, under the legibility floor.
+    (S4.1), whose one-column text block is 6.5 in. Drawn at the paper's 7.16 in it printed its
+    8 pt labels there at 7.3 pt, under the legibility floor. 6 Oct 2026: back in the paper, as
+    Section V-C's figure across both columns, so it is drawn at the paper's 7.16 in again and
+    printed in no other document.
     """
     import make_paper_figures
     figure_style.apply()
-    # The margins are explicit because the panels have to use the whole 6.5 in: at the
+    # The margins are explicit because the panels have to use the whole width: at the
     # default ones the two panel titles ran together with under 2 pt between them. The bottom
     # margin keeps panel (b)'s x label on the canvas, where the collision gate can read it;
     # at 7.16 in by 2.10 in it hung below the edge and was never checked. No tight_layout:
     # a gridspec with its own spacing is one it leaves alone, with a warning, so the call
     # changed nothing.
-    fig = plt.figure(figsize=(6.50, 2.30))
+    fig = plt.figure(figsize=(7.16, 2.30))
     gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.15], wspace=0.25,
                           left=0.02, right=0.985, bottom=0.18)
     left = fig.add_subplot(gs[0, 0])
@@ -746,11 +748,14 @@ def plot_repair(ax, rows, lags):
     t_ms = np.logspace(np.log10(0.1), np.log10(200.0), 400)
     ax.fill_between(t_ms, 100.0 * p10 / (t_ms * 1000.0), 100.0 * p90 / (t_ms * 1000.0),
                     color=DELETED, alpha=0.14, linewidth=0)
+    # 6 Oct 2026: the curve is one path at the median publish latency; across conditions the
+    # publish latency grows with the end-to-end latency, so the crosses sit above it, and the
+    # label says which it is.
     ax.plot(t_ms, 100.0 * typical / (t_ms * 1000.0), color=DELETED, lw=1.2,
-            label="expected error, $A/D$")
+            label="$A/D$ at a fixed $A$")
     ax.axhline(100, color=GREY, lw=0.8, ls="--", zorder=1)
     ax.axvspan(0.1, 1.0, color=GREY, alpha=0.10, zorder=0)
-    ax.text(0.12, 3, "sub-millisecond", fontsize=8, color=GREY, ha="left", va="bottom")
+    ax.text(0.12, 60, "below 1 ms", fontsize=8, color=GREY, ha="left", va="center")
     xs = [r[0] for r in rows]
     ax.scatter(xs, [r[1] for r in rows], s=10, marker="x", color=DELETED, linewidths=0.8,
                label="timed from the acknowledgment", zorder=3)
@@ -763,8 +768,9 @@ def plot_repair(ax, rows, lags):
     ax.set_ylabel("error (% of the end-to-end latency)", fontsize=8)
     ax.tick_params(labelsize=8)
     ax.grid(alpha=0.25, lw=0.5)
-    ax.legend(fontsize=8, frameon=False, loc="center right", handletextpad=0.3,
-              borderaxespad=0.3)
+    # Above the axes, where neither the band nor the points can run into it.
+    ax.legend(fontsize=8, frameon=False, loc="lower center", bbox_to_anchor=(0.5, 1.0),
+              ncol=2, handletextpad=0.7, columnspacing=1.2, borderaxespad=0.6)
 
 
 def plot_priority_pairs(ax, rows):
@@ -809,24 +815,17 @@ def build_remedies(out_dir):
     matched pair. The column-width exposure curve that was the paper's Fig. 5 is panel (a)'s
     curve, and its own builder went with it.
     """
+    # 6 Oct 2026: panel (b), the priority pairs, left for the paper's mechanism table, which
+    # gives both brokers with intervals that resample whole runs. The figure is the repair panel
+    # alone, at column width; plot_priority_pairs stays for the postmortem's figure.
     figure_style.apply()
     import emit_paper_numbers
-    import priority_pairs
     lags = emit_paper_numbers._exposure_lags()
     if lags is None:                      # pragma: no cover - the corpus ships with the repo
         raise SystemExit("span_symmetry.csv is missing; the repair panel has no source")
-    pairs = priority_pairs.usable()
-    fig = plt.figure(figsize=(7.16, 2.08))
-    gs = fig.add_gridspec(1, 2, width_ratios=[1.25, 1.0], wspace=0.24, left=0.07,
-                          right=0.99, top=0.90, bottom=0.17)
-    a, b = fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1])
+    fig, a = plt.subplots(figsize=(3.5, 2.6))
     plot_repair(a, repair_rows(), lags)
-    plot_priority_pairs(b, pairs)
-    factors = [r["factor"] for r in pairs]
-    a.set_title("(a) Adding the publish latency back repairs the latency", fontsize=8,
-                loc="left")
-    b.set_title("(b) Real-time priority: %.0f–%.0f× lower rate"
-                % (min(factors), max(factors)), fontsize=8, loc="left")
+    fig.tight_layout()
     return _save(fig, out_dir, "remedies")
 
 

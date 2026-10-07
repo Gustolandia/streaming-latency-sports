@@ -12,7 +12,7 @@ committed run-level data suffices.
 Two statistical points the computations respect:
 
     Clustering. Events are clustered within runs, and a run shares one machine state, so a
-    binomial interval on 62,264/738,730 would be absurdly tight. Event-level rates get a
+    binomial interval on 62,264/708,505 would be absurdly tight. Event-level rates get a
     cluster bootstrap over runs (resample runs with replacement, recompute the pooled rate).
 
     Units. Where the run is the unit of analysis (the audit gate rejects RUNS), a Wilson

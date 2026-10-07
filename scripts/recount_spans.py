@@ -18,7 +18,8 @@ impossibility they would appear there too. If they are a late acknowledgement st
 will appear only on the acknowledgement-referenced span. This script counts both, per run,
 over every archived run, so the claim rests on arithmetic rather than on argument.
 
-What it found, and why the output is committed. Of 738,730 joined events, the
+What it found, and why the output is committed. Of 708,505 joined events (738,730 before
+the late messages of stale_backlog.py were left out on 7 Oct 2026), the
 acknowledgement-referenced span is negative 62,264 times and the send-referenced span is
 negative never. The raw archive is 800 MB and not tracked (see .gitignore), so a clean
 clone cannot re-run this. The per-run counts are therefore written to a tracked CSV, the
@@ -60,11 +61,14 @@ import statistics
 import sys
 import tarfile
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import stale_backlog  # noqa: E402
+
 DEFAULT_ARCHIVE = os.path.join("cloud_archive", "sbl_runs.tgz")
 DEFAULT_OUT = os.path.join("docs", "results", "span_recount.csv")
 
 FIELDS = [
-    "run_id", "backend", "n_events",
+    "run_id", "backend", "n_events", "n_late",
     "neg_ack", "neg_send", "neg_output_send", "neg_tti", "neg_output", "neg_acklag",
     "min_ack_us", "min_send_us", "median_ack_us", "median_send_us",
     "median_output_ns", "min_acklag_us",
@@ -102,7 +106,7 @@ def parse_rows(blob):
     return list(csv.DictReader(io.StringIO(text)))
 
 
-def join_run(prod_rows, cons_rows):
+def join_run(prod_rows, cons_rows, skip=frozenset()):
     """Join producer and consumer events on event_id and return {span_name: [deltas_ns]}.
 
     Events present on one side only are dropped. That is not a silent discard of the kind
@@ -123,7 +127,8 @@ def join_run(prod_rows, cons_rows):
     out = {name: [] for name, _, _ in SPANS}
     for row in cons_rows:
         prod = index.get(row.get("event_id"))
-        if prod is None:
+        # `skip` holds the ids drop_late leaves out (7 Oct 2026).
+        if prod is None or row["event_id"] in skip:
             continue
         try:
             cons = {
@@ -142,7 +147,21 @@ def join_run(prod_rows, cons_rows):
     return out
 
 
-def summarise_run(run_id, backend, spans):
+def drop_late(prod_rows, cons_rows):
+    """The run's spans without the messages the consumer received late behind a stale backlog.
+
+    7 Oct 2026. The runs reused topics and streams that nothing cleared, so a consumer first
+    read earlier campaigns' messages and received the run's own first ones late; a message
+    received seconds after its acknowledgment cannot give S below zero, so they diluted every
+    rate. stale_backlog.late_ids decides which, for every reader of these runs alike. Returns
+    the kept spans and how many joined messages were left out.
+    """
+    every = join_run(prod_rows, cons_rows)
+    kept = join_run(prod_rows, cons_rows, skip=stale_backlog.late_ids(prod_rows, cons_rows))
+    return kept, len(every["ack"]) - len(kept["ack"])
+
+
+def summarise_run(run_id, backend, spans, n_late=0):
     """One CSV row from one run's span lists. Returns None when nothing joined."""
     ack = spans["ack"]
     if not ack:
@@ -151,6 +170,7 @@ def summarise_run(run_id, backend, spans):
         "run_id": run_id,
         "backend": backend,
         "n_events": len(ack),
+        "n_late": n_late,
         "min_ack_us": round(min(ack) / 1000.0, 1),
         "min_send_us": round(min(spans["send"]) / 1000.0, 1),
         "median_ack_us": round(statistics.median(ack) / 1000.0, 1),
@@ -192,10 +212,11 @@ def _emit(collected, rows, skipped):
         if not prod or not cons:
             skipped.append((run_id, "empty prod=%d cons=%d" % (len(prod), len(cons))))
             continue
-        row = summarise_run(run_id, _backend_of(files.get("meta"), prod),
-                            join_run(prod, cons))
+        kept, n_late = drop_late(prod, cons)
+        row = summarise_run(run_id, _backend_of(files.get("meta"), prod), kept, n_late)
         if row is None:
-            skipped.append((run_id, "no joined events"))
+            # A run whose consumer never caught up with the stale backlog keeps no message.
+            skipped.append((run_id, "every joined event late" if n_late else "no joined events"))
             continue
         rows.append(row)
 

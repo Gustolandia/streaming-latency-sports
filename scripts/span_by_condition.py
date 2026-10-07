@@ -53,6 +53,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import recount_spans
+import stale_backlog
 
 DEFAULT_ARCHIVE = os.path.join("cloud_archive", "sbl_runs.tgz")
 OUT_JSON = os.path.join("docs", "results", "span_by_condition.json")
@@ -142,13 +143,17 @@ def consume_run(conds, run_rows, run_id, prod_rows, cons_rows):
             index[row["event_id"]] = (int(row["t_prod_send_ns"]), int(row["t_broker_ack_ns"]))
         except (KeyError, TypeError, ValueError):
             continue
+    # 7 Oct 2026: the messages the consumer received late behind a stale backlog are left out,
+    # the ids stale_backlog.late_ids gives, as every reader of these runs leaves them out; the
+    # gate verdict is read from the messages kept.
+    late = stale_backlog.late_ids(prod_rows, cons_rows)
     # First pass over the run in memory: the gate verdict needs the run's own events before
     # any condition-level accumulator is touched, so events are buffered per run. A run is a
     # few hundred events; this costs nothing.
     events = []
     for row in cons_rows:
         prod = index.get(row.get("event_id"))
-        if prod is None:
+        if prod is None or row["event_id"] in late:
             continue
         try:
             recv = int(row["t_cons_recv_ns"])
@@ -211,7 +216,8 @@ def consume_run(conds, run_rows, run_id, prod_rows, cons_rows):
             for alpha in ALPHAS:
                 if r > alpha:
                     over[alpha] += 1
-    ms_deleted = sum(1 for row in cons_rows if _ms_deleted(row, index))
+    ms_deleted = sum(1 for row in cons_rows
+                     if row.get("event_id") not in late and _ms_deleted(row, index))
     rr = {"run_id": run_id, "condition": cond, "gate": "fail" if gate_fail else "pass",
           "n_events": counted, "neg_ack": neg, "ms_deleted": ms_deleted}
     for alpha in ALPHAS:

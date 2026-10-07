@@ -101,7 +101,8 @@ class TestTheAsymmetryIsDisclosedWhereItIsDescribed:
         assert i > 0, "the supplement's subsection on where each timestamp is taken must exist"
         end = supp.find(r"\section{", i)
         section = " ".join(supp[i:end if end != -1 else len(supp)].split())
-        assert r"\ref{stab:spans}" in section, \
+        # 6 Oct 2026: the comparison is the paper's Table I again, read through its prefix.
+        assert r"\ref{P-tab:spans}" in section, \
             "the per-broker comparison must sit in the subsection that bounds the asymmetry"
         assert r"\spanHandlingSharePct" in section, \
             "the asymmetry must be bounded where the comparison it could move is made"

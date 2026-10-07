@@ -213,13 +213,15 @@ class TestUncertainty:
         assert uncertainty(self._rows(0.34)[:2], iters=100) is None
 
     def test_the_real_sweep_licenses_the_papers_sentence(self):
-        """The committed artefact, gated: alpha ~ 0.34 with CI and LOO below one."""
+        """The committed artefact, gated: alpha ~ 0.33 with CI and LOO below one.
+
+        7 Oct 2026: 0.328 since the late messages were left out (0.339 before)."""
         from fit_tail_index import load_sweep, uncertainty
         path = Path(__file__).parent.parent.parent / "docs" / "results" / "model" / "ttrue_sweep.csv"
         if not path.exists():
             pytest.skip("sweep artefact not present")
         u = uncertainty(load_sweep(str(path)), iters=3000)
-        assert u["alpha"] == pytest.approx(0.339, abs=0.01)
+        assert u["alpha"] == pytest.approx(0.328, abs=0.01)
         assert u["ci_hi"] < 1.0 and u["loo_max"] < 1.0
         assert u["mean_claim_licensed"] is True
 

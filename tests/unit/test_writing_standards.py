@@ -19,6 +19,14 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent.parent
+
+
+def _bibliographies():
+    """Both reference files, joined: the one the paper and the supplement cite, and the
+    postmortem's own, which moved to a file of its own on 7 Oct 2026. An entry is checked
+    wherever it lives."""
+    return "\n".join((REPO / name).read_text(encoding="utf-8")
+                     for name in ("manuscript_references.bib", "postmortem_references.bib"))
 PAPER = REPO / "paper.tex"
 TABLE = REPO / "docs" / "generated" / "corpus_vocabulary.json"
 
@@ -191,7 +199,7 @@ class TestTheBibliographyObeysTheVocabularyToo:
 
     def _our_fields(self):
         """(line number, text) for every note/howpublished value, brace-continuations joined."""
-        text = (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
+        text = _bibliographies()
         out, lines = [], text.splitlines()
         for i, line in enumerate(lines, 1):
             if not self.OURS.match(line):

@@ -42,6 +42,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from measurement_model import runs_test_z  # noqa: E402
+import stale_backlog  # noqa: E402
 
 THRESHOLDS_MS = [0.0, 0.5, 1.0, 2.0, 5.0]
 
@@ -62,11 +63,18 @@ def condition_timestamp(cond_dir):
 
 
 def run_series(run_dir):
-    """Per-event transport (ms) in emission order for one run."""
+    """Per-event transport (ms) in emission order for one run.
+
+    7 Oct 2026: without the messages the consumer received late behind a stale backlog, the
+    ids stale_backlog.late_ids_in reads from the run's consumer.csv, as every reader of the July
+    runs leaves them out. The Azure pilot's go-first check reads runs through here too; its
+    runs cleared their streams, and it writes no result.
+    """
     prod = os.path.join(run_dir, "producer.csv")
     cons = os.path.join(run_dir, "consumer_events.csv")
     if not (os.path.exists(prod) and os.path.exists(cons)):
         return []
+    late = stale_backlog.late_ids_in(run_dir)
     ack, order = {}, {}
     with open(prod, newline="", encoding="utf-8") as fh:
         for i, r in enumerate(csv.DictReader(fh)):
@@ -79,7 +87,7 @@ def run_series(run_dir):
         for r in csv.DictReader(fh):
             a = ack.get(r["event_id"])
             rc = r.get("t_consume_ns")
-            if a is not None and rc not in (None, "", "None"):
+            if a is not None and rc not in (None, "", "None") and r["event_id"] not in late:
                 rows.append((order.get(r["event_id"], 0), (int(rc) - a) / 1e6))
     rows.sort()
     return [t for _, t in rows]

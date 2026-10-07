@@ -356,28 +356,30 @@ with no gate, and the only one that costs $220 a page.
 
 ## Figure inventory
 
-`docs/results/figures/` holds thirty-two PDFs. Twenty-five are included by at least one
-document: three by the main text, four by the journal supplement and twenty by the postmortem.
+`docs/results/figures/` holds thirty-three PDFs. Twenty-six are included by at least one
+document: five by the main text, three by the journal supplement and twenty by the postmortem.
 Seven are included by none and are kept deliberately rather than by oversight: four are listed
 below as retained, and three are the candidates of the next section. An internal review round
 (13) asked which was which, so the answer lives here instead of in anyone's memory. A test
 (`test_every_figure_is_used_or_declared`) fails if a figure appears in the directory without
 appearing in this table, and another holds every "main text, Fig. N" below to the number the
-paper prints. Supplement numbers are those of the 5 October 2026 build and postmortem numbers
+paper prints. Supplement numbers are those of the 6 October 2026 build and postmortem numbers
 those of the 1 October 2026 build, with the section that carries the figure; both documents
 number their figures S1, S2, and so on. The rebuild of 5 October 2026 left the main text three
 figures and the journal supplement four; every figure that left them is in the postmortem or
-listed here as retained.
+listed here as retained. The revision of 6 October 2026 added two to the main text, the
+residual wait and the deletion figure, which left the journal supplement for it.
 
 | Figure | Where it appears |
 |---|---|
 | `measurement_model` | main text, Fig. 1 since 4 Oct 2026: (a) the whole system, which machine runs what, the two legs, where each timestamp is read, and where each failure enters; (b) the thread timeline, with $A$ and $D$ drawn from $t_{\mathrm{pub}}$ (panel (b) split off round 52) |
 | `s_distribution` | main text, Fig. 2 since 5 Oct 2026: the distribution of $S = t_{\mathrm{recv}} - t_{\mathrm{ack}}$ on one clock at nanosecond resolution, its values below zero in red, beside $D$ on the same messages; panel (a) of `deletion_histogram` alone at column width (`scripts/make_deletion_histogram.py --s-distribution`) |
-| `remedies` | main text, Fig. 3 since 5 Oct 2026, Fig. 4 from 4 Oct: (a) every condition's error timed from the acknowledgment, on the exposure curve, and once the publish latency is added back; (b) every matched pair at normal and real-time priority |
+| `residual_wait` | main text, Fig. 3 since 6 Oct 2026: each acknowledgment's wait for a core, on both brokers, against the shapes a whole slice and the rest of a slice predict; the column-width panel of `wait_shape` (`scripts/make_wait_shape_figure.py`, `build_paper_panel`) |
+| `remedies` | main text, Fig. 5 since 6 Oct 2026, the repair alone: every group of runs' error timed from the acknowledgment, on the exposure curve, and once the publish latency is added back. Fig. 3 from 5 Oct and Fig. 4 from 4 Oct with a panel (b), every matched pair at normal and real-time priority, which is now the first row of the main text's Table II |
 | `stall_spectrum` | supplement, Fig. S1 (S3.7), since 4 Oct 2026 (main text Fig. 3 until then; Section IV-C gives every number it draws) |
-| `deletion_phases` | supplement, Fig. S2 (S4.1), since 5 Oct 2026, drawn at the supplement's 6.5 in width since then; main text Fig. 3 from 4 Oct, Fig. 4 before (added 28 Sep 2026: the four-phase drawing of one millisecond beside the retention of every captured setting, mechanism beside consequence; its panel (b) is the former single-panel `deletion` figure, whose file and builder were retired with it; Fig. 5 until v6 put the industry's section before the practical implications) |
-| `payload_flip` | supplement, Fig. S3 (S4.3); postmortem, Fig. S5 (S10) |
-| `law_slice` | supplement, Fig. S4 (S6.2); postmortem, Fig. S17 (S36): every run of L1 and L4 with every aberrant run marked (`scripts/make_law_figures.py`, marks by `scripts/law_runs.py`) |
+| `deletion_phases` | main text, Fig. 4 since 6 Oct 2026, Section V-C's, across both columns and drawn at the paper's 7.16 in again; supplement, Fig. S2 (S4.1), from 5 Oct, drawn at the supplement's 6.5 in width; main text Fig. 3 from 4 Oct, Fig. 4 before (added 28 Sep 2026: the four-phase drawing of one millisecond beside the retention of every captured setting, mechanism beside consequence; its panel (b) is the former single-panel `deletion` figure, whose file and builder were retired with it; Fig. 5 until v6 put the industry's section before the practical implications) |
+| `payload_flip` | supplement, Fig. S2 (S4.3) since 6 Oct 2026, Fig. S3 from 5 Oct; postmortem, Fig. S5 (S10) |
+| `law_slice` | supplement, Fig. S3 (S6.2) since 6 Oct 2026, Fig. S4 from 5 Oct; postmortem, Fig. S17 (S36): every run of L1 and L4 with every aberrant run marked (`scripts/make_law_figures.py`, marks by `scripts/law_runs.py`) |
 | `two_ways` | **retained, unused** since 5 Oct 2026, when the rebuilt paper opened its results on `s_distribution` instead. Panels (a) and (b) of `deletion_histogram` side by side, so that one page showed both failures on one population: the main text's Fig. 2 from 4 Oct, Fig. 1 from 28 Sep 2026 (`scripts/make_deletion_histogram.py --two`) |
 | `exposure_curve_column` | retired 4 Oct 2026, with its builder: its curve is panel (a) of `remedies` (added 28 Sep 2026: the exposure curve redrawn at column width, because the main text's advice to authors turns on where a path sits on it; Fig. 4 until v6 moved the proxy's cost into Practical Implications) |
 | `pipeline_schematic` | postmortem, Fig. S16 (S24); the journal supplement's Fig. S1 (S1.5) until 5 Oct 2026. The v5 main text defines the timestamps in prose and gives its drawing to the inversion itself, Fig. 2 |

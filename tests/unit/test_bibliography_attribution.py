@@ -29,6 +29,14 @@ import pytest
 REPO = Path(__file__).parent.parent.parent
 BIB = REPO / "manuscript_references.bib"
 
+
+def _bibliographies():
+    """Both reference files, joined: the one the paper and the supplement cite, and the
+    postmortem's own, which moved to a file of its own on 7 Oct 2026. An entry is checked
+    wherever it lives."""
+    return "\n".join((REPO / name).read_text(encoding="utf-8")
+                     for name in ("manuscript_references.bib", "postmortem_references.bib"))
+
 #: Corporate authors that are real organizations, each with the entry that carries it. A body
 #: that publishes under its own name is a legitimate author; the rule below is about phrases
 #: that describe authorship instead of naming it.
@@ -56,7 +64,7 @@ DESCRIPTIVE = (
 
 def _entries():
     """(key, type, author) for every entry that has an author field."""
-    text = BIB.read_text(encoding="utf-8")
+    text = _bibliographies()
     out = []
     for m in re.finditer(r"@(\w+)\{([^,]+),(.*?)(?=\n@|\Z)", text, re.S):
         body = m.group(3)
@@ -100,7 +108,7 @@ class TestTheEntryThatCausedThis:
         IEEEtran renders correctly; the fuller `{Cheriya Mukkolakkal, Muhamed Ramees}` would
         too. What must not come back is a description where a name belongs.
         """
-        text = BIB.read_text(encoding="utf-8")
+        text = _bibliographies()
         assert "Apache Pulsar enterprise benchmark authors" not in text, \
             "the placeholder author is back"
         assert "Mukkolakkal" in text, (
@@ -114,7 +122,7 @@ class TestTheEntryThatCausedThis:
 
     def test_no_key_names_somebody_who_is_not_an_author(self):
         """`feng2026pulsar` named a person unconnected to the work."""
-        text = BIB.read_text(encoding="utf-8")
+        text = _bibliographies()
         assert "feng2026pulsar" not in text, \
             "the key naming an unrelated person is back"
         for doc in ("supplement.tex", "paper.tex", "postmortem.tex",
@@ -135,7 +143,7 @@ class TestTheNewCitationWasReadFromItsTitlePage:
     """W1's entry, checked against the PDF rather than against a note about it."""
 
     def test_the_three_authors_are_named(self):
-        text = BIB.read_text(encoding="utf-8")
+        text = _bibliographies()
         i = text.find("@misc{rodriguez2026causal")
         assert i > 0, "the causal-observation entry is missing"
         entry = text[i:text.index("\n}", i)]

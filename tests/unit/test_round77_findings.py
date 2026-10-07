@@ -117,7 +117,9 @@ class TestR1NoShiftRemains:
         a = [v for v in pops["Pass"] if v > 0]
         b = [v for v in pops["Fail"] if v > 0]
         assert si.hodges_lehmann(a, b) == pytest.approx(0.0, abs=0.05)
-        assert si.hl_bootstrap_ci(a, b) == pytest.approx((-8.0, 7.14), abs=0.05)
+        # 7 Oct 2026: (-8.0, 7.14) as the referee ran it; (-8.57, 6.07) once the late
+        # messages were left out of the groups. Still no shift, still zero inside.
+        assert si.hl_bootstrap_ci(a, b) == pytest.approx((-8.57, 6.07), abs=0.05)
 
     def test_the_main_text_states_the_shift_not_a_crossing(self, paper, supplement):
         """v5 (28 Sep): the shift and its labeled bracket moved from Section V-D to S16.9 with
@@ -203,7 +205,8 @@ class TestR2TheDescriptionsMatchTheData:
         gaps = [(nz[i + 1] - nz[i], nz[i], nz[i + 1]) for i in range(len(nz) - 1)]
         size, below, above = max(gaps)
         assert (round(below, 1), round(above, 1)) != (14.3, 20.0)
-        assert round(below) == 22 and round(above) == 29
+        # 7 Oct 2026: 22 to 29 as first computed; 20 to 29 without the late messages.
+        assert round(below) == 20 and round(above) == 29
 
 
 class TestW1TheTwoPopulationsAreDrawn:
@@ -223,21 +226,21 @@ class TestW1TheTwoPopulationsAreDrawn:
         assert lead == "Two populations with no detectable shift between them."
         assert not re.match(r"^(A|An|The)\b", lead)
 
-    def test_the_caption_reads_its_crossings_from_the_curves(self, supplement, ledger, pops):
+    def test_the_caption_reads_its_crossing_from_the_curves(self, supplement, ledger, pops):
+        """7 Oct 2026: the curves crossed twice, at 18.2% and 34.8%, as first computed;
+        without the late messages they cross once, and the caption says once."""
         import stat_intervals as si
         cap = supplement[supplement.index("recovery_populations.pdf"):
                          supplement.index(BS + "label{fig:recovery}")]
-        assert BS + "recoveryEcdfCrossLo" in cap and BS + "recoveryEcdfCrossHi" in cap
+        assert BS + "recoveryEcdfCross" + BS + "%" in cap
+        assert "change order once" in " ".join(cap.split())
         got = si.ecdf_crossings(pops["Pass"], pops["Fail"])
-        assert ledger["recoveryEcdfCrossLo"] == "%.1f" % got[0]
-        assert ledger["recoveryEcdfCrossHi"] == "%.1f" % got[-1]
-        assert (float(ledger["recoveryEcdfCrossLo"]), float(ledger["recoveryEcdfCrossHi"])) != \
-            (15.0, 29.0), "the referee's reading off the sketch, which the curves do not bear out"
+        assert len(got) == 1 and ledger["recoveryEcdfCross"] == "%.1f" % got[0]
+        assert float(ledger["recoveryEcdfCross"]) != 15.0, \
+            "the referee's reading off the sketch, which the curves do not bear out"
 
-    def test_at_the_second_crossing_each_population_has_one_condition_left(self, ledger, pops):
-        x = float(ledger["recoveryEcdfCrossHi"])
-        above = {k: sum(1 for v in p if v > x + 0.05) for k, p in pops.items()}
-        assert above == {"Pass": 1, "Fail": 1}, above
+    def test_one_crossing_leaves_no_change_back_to_describe(self, ledger):
+        assert "recoveryEcdfCrossLo" not in ledger and "recoveryEcdfCrossHi" not in ledger
 
     def test_the_text_points_at_the_figure(self, supplement):
         assert BS + "ref{fig:recovery}" in _s169(supplement)
@@ -312,9 +315,15 @@ class TestW5ThePreparedSwap:
     def test_the_entry_is_prepared_and_not_cited(self, paper):
         """5 Oct 2026: the rebuilt Related Work cites Georges et al. inside a group,
         "\\cite{mytkowicz2009wrong,georges2007rigorous,hoefler2015benchmarking}", so the pin
-        reads every citation's keys rather than the opening of one."""
-        bib = (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
-        assert "@article{chen2015statcomparisons," in bib
+        reads every citation's keys rather than the opening of one.
+
+        7 Oct 2026: the prepared entry left the bibliography with every entry nothing cited,
+        on the author's instruction that it hold only what the documents use. The swap stays
+        unmade and Georges et al. stays cited; the entry, should it be wanted, is in the
+        history."""
+        bib = "\n".join((REPO / name).read_text(encoding="utf-8")
+                        for name in ("manuscript_references.bib", "postmortem_references.bib"))
+        assert "@article{chen2015statcomparisons," not in bib
         prose = re.sub(r"(?m)(?<!\\)%.*$", "", paper)
         cited = {k.strip() for group in re.findall(re.escape(BS) + r"cite\{([^}]*)\}", prose)
                  for k in group.split(",")}
@@ -325,14 +334,12 @@ class TestW5ThePreparedSwap:
         """5 Oct 2026: the comment that recorded the decision beside the citation went with
         the rebuilt paper's comments, and the record is the prepared entry's own note, which
         names the work it would replace and says it was not made unprompted. A comment beside
-        the citation, should one come back, must name the entry."""
-        bib = (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
-        i = bib.index("@article{chen2015statcomparisons,")
-        entry = " ".join(bib[i:bib.index("\n}", i)].split())
-        assert "Prepared, not cited" in entry
-        assert "Georges et al." in entry and "advised against making the swap" in entry
-        for m in re.finditer(r"(?m)^%.*georges2007rigorous.*$", paper):
-            assert "chen2015statcomparisons" in paper[m.start():m.start() + 700]
+        the citation, should one come back, must name the entry.
+
+        7 Oct 2026: the note left with the entry, which nothing cited. What stays checkable is
+        that the paper does not name an entry the bibliography no longer holds, in a comment
+        or anywhere else."""
+        assert "chen2015statcomparisons" not in paper
 
 
 class TestTheRenderedPagesCarryIt:

@@ -173,10 +173,12 @@ class TestEveryClaimAboutAnEquationMatchesTheEquation:
         # falls below zero at a rate set by the waiting probability and the path's length, on
         # the timescale of the slice", and Section IV opens on the manipulations that establish
         # it. Both halves are still required, each where the paper now makes it.
+        # 6 Oct 2026: Equation 3's argument is the margin, which the path's length moves, so
+        # the delta names the margin.
         related = flat[flat.index(r"\section{Related Work}"):]
         related = related[:related.index(r"\section{", 10)]
         assert re.search(r"consequence for a difference read by two processes", related) and \
-            re.search(r"at a rate set by the waiting probability and the path's length",
+            re.search(r"at a rate set by the waiting probability and the margin",
                       related), (
             "Related Work no longer claims the rate's dependence on the delivery; if that is "
             "deliberate, say what replaced the delta over Villain et al.")
@@ -235,7 +237,10 @@ class TestTheModelDoesNotAssertWhatTheTableRefutes:
         utilization" to "any account in which utilization alone sets the rate": an outside
         editor read "every account" as a dare, and the narrower form is the one the geometry
         rows prove. The refutation is the same one; so is the guard's reason to exist."""
-        assert re.search(r"refutes any account in which utilization alone\s+sets the rate",
+        # 6 Oct 2026: read with the source's line breaks flattened; the sentence now wraps
+        # between "the" and "rate", and a guard that holds only on one line is a guard the next
+        # rewrap disables.
+        assert re.search(r"refutes any account in which utilization alone\s+sets\s+the\s+rate",
                          paper), (
             "Section V-C no longer refutes utilization-only accounts; re-examine whether "
             "Equation 6 may carry p(rho) again")

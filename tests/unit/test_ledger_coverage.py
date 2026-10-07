@@ -40,10 +40,6 @@ DOCS = ("paper.tex", "supplement.tex", "postmortem.tex")
 #: (document, macro, a distinctive fragment of the surrounding text) so that moving the
 #: sentence does not silently keep the exemption alive somewhere else.
 ALLOWED = {
-    ("postmortem.tex", "hThreeRepKafkaInline", r"returns $0.344$ against"):
-        "a payload-sweep exponent from a second day's campaign (S10), equal to round 81's E-C4 "
-        "median Kafka transport under inline timestamping in milliseconds; an exponent and a "
-        "latency sharing three digits",
     ("postmortem.tex", "indepWithinFlooredRatioOfMedians", r"falls from $7.0\%$ to $0.8\%$"):
         "the window sweep's share of events paying the start-up cost (Fig. S1), equal to round "
         "81's within-run ratio of medians at the 0.1% floor; a percentage and a ratio sharing a "
@@ -55,32 +51,34 @@ ALLOWED = {
     ("postmortem.tex", "indepFloorPct", r"within $0.1$~ms of each other"):
         "two brokers' historical medians agreeing to a tenth of a millisecond (S5), the same "
         "coincidence with the round-80 floor as the entry above",
-    ("postmortem.tex", "spanRhoMedian", r"broker transport is $0.84$ and $0.80$~ms"):
-        "E1's historical broker transport medians in milliseconds (S3, Table S2), which happen "
-        "to equal the pooled D-A correlation S24.2 began reading in round 79; a latency and a "
-        "correlation sharing two digits",
     ("postmortem.tex", "spanRhoWithinMedian", r"broker transport is $0.84$ and $0.80$~ms"):
         "the same E1 transport median in milliseconds, equal to the within-run D-A correlation "
         "emitted in round 79; the coincidence the entry above records, for the second value",
-    ("postmortem.tex", "tailRsq", r"\rho$ of $0.881$, $0.920$, $0.950$, $0.970$ and $0.990$"):
-        "a utilization in the knee sweep that happens to equal the fitted R-squared",
-    ("postmortem.tex", "tailRsq", r"Over $\rho = 0.881$ to $0.990$"):
-        "the same utilization, as the upper end of the swept range",
-    ("postmortem.tex", "tailRsq", r"($\rho = 0.881$--$0.990$)"):
-        "the same utilization again, in the round-2 restatement",
-    ("postmortem.tex", "tracedMleAlpha", r"($1.19\times$, $z=3.46$)"):
-        "a between-arm factor that happens to equal the grouped tail index",
     # The journal supplement (29 Sep) restated five of the postmortem's coincidences in its
     # own words, and added a significance level. The rebuild of 5 Oct 2026 cut the five with
     # the passages that carried them; the significance level stays, reworded.
+    # 6 Oct 2026: values the revision's new macros happen to share with older text.
+    ("postmortem.tex", "baseSliceMs", r"our tightest cell sits $2.8$ points"):
+        "a margin in percentage points above the one-half retention line, equal to the derived "
+        "base slice in milliseconds since the kernel's 0.70 ms constant",
+    ("postmortem.tex", "baseSliceMs", r"$1.4$, $2.1$ and $2.8$~ms"):
+        "the registered campaign's read-back slice at 8 CPUs on its Azure kernels, the value the "
+        "Oracle hosts' derived slice also takes; measured there, derived here",
+    ("postmortem.tex", "recOwnWaitRatioLo", r"($0.43$, $1.11$, $100.00$ at ten"):
+        "a branch retention at ten minutes in the drift test, equal to the lowest median ratio "
+        "of the registered acknowledgment-wait prediction",
+    ("supplement.tex", "placeRedisRepl", r"width=0.62\columnwidth"):
+        "a figure's printed width as a fraction of the column, equal to the Redis placement "
+        "factor in the replication",
+    ("supplement.tex", "tracedModelRatio", r"published read cost near $1.2\,\mu$s"):
+        "the hpet clocksource's published read cost in microseconds, equal to the rest-of-slice "
+        "model's bucket ratio",
     ("supplement.tex", "cpuEstimateSpread",
      r"reject the continuum at $\alpha = 0.05$ after correction"):
         "the grid test's significance level, equal to the spread of the CPU-count estimate",
     ("supplement.tex", "manipTol",
      r"reject the continuum at $\alpha = 0.05$ after correction"):
         "the same significance level, equal to the manipulation check's tolerance",
-    ("postmortem.tex", "tracedMleAlpha", r"a small $k=7$ difference ($1.19\times$"):
-        "the same factor, in the round-2 restatement",
     ("postmortem.tex", "tracedExcAlpha", r"medians as low as $0.21$~ms"):
         "the same median, quoted in S52.2 where the reading behind the claim is set out",
     ("postmortem.tex", "cpuEstimateSpread",
@@ -92,28 +90,6 @@ ALLOWED = {
      r"reject the continuum null at $\alpha = 0.05$ after"):
         "the same significance level against the manipulation tolerance, which is also 0.05 "
         "and also a chosen constant; arrived here with the same round-59 relocation",
-    ("postmortem.tex", "exposureCrossover", r"E1's $0.79$--$1.00$ and"):
-        "an E1 transport interval in S9 whose lower bound happens to equal the exposure "
-        "crossover; the check armed for this macro in this document only when round 54 "
-        "put the crossover into the new exposure figure's caption",
-    ("postmortem.tex", "recoveryShift", r"\sigma{=}1.2)$ replicates"):
-        "the standard deviation of the grid-membership null in S23, a measured parameter of "
-        "a different experiment that happens to equal the Hodges-Lehmann shift emitted in "
-        "round 75; two decimals on a shift between medians quoted to one would be false "
-        "precision, so the coincidence is recorded instead of engineered away",
-    ("postmortem.tex", "recoveryShift", r"call on HPET sit near"):
-        "a published microsecond figure for a clock_gettime call on HPET, quoted from the "
-        "kernel maintainers in S15 and older than this macro by twenty rounds; the same "
-        "coincidence as the entry above, and the reason the ledger sweep matches on value "
-        "rather than on meaning",
-    ("postmortem.tex", "recoveryKsP", r"medians center on $0.10$--$0.12$~ms"):
-        "the upper end of the powered transport medians in the gate-sensitivity table, in "
-        "milliseconds, which happens to equal the Kolmogorov-Smirnov permutation p emitted in "
-        "round 76; a latency and a probability sharing two digits",
-    ("postmortem.tex", "recoveryKsP", r"five times the $0.10$--$0.12$~ms at which"):
-        "the same condemned-run medians, quoted in S19's internal-validity threat since 27 "
-        "September to say how far below the flip point they sit; the coincidence the entry "
-        "above records",
     ("postmortem.tex", "tracedModeRatio", r"station changes} in $4.5\%$"):
         "a percentage quoted from Li's 2026 process-mining preprint in S33.4 -- how often "
         "one-minute rounding changes the top-ranked station -- which is another paper's "
@@ -125,17 +101,6 @@ ALLOWED = {
         "test_supplement_law_campaign.py; it equals the timestamping campaign's (E-C3, Table "
         "S26) median Kafka transport under callback timestamping in milliseconds, a misfit and "
         "a latency sharing digits",
-    ("postmortem.tex", "recoveryShift", r"registered law put between 0.8 and 1.2"):
-        "the upper end of the band the pre-registered law campaign put the halfway point's "
-        "slope in (S16.10), a constant of that plan and not a measurement; it equals the "
-        "recovery shift's value in points",
-    ("postmortem.tex", "recoveryShift", r"with a slope of $0.8$ to $1.2$"):
-        "the same registered band, for P2c's slope of width on tick (S16.11); the coincidence "
-        "the entry above records",
-    ("postmortem.tex", "tailRsq", r"against the measured $0.990$"):
-        "M0's measured slope of Kafka's median delivery on the added delay (S37), read from "
-        "m0_bursts.json and pinned by test_supplement_part_v.py; a slope and the tail fit's "
-        "R-squared sharing three digits",
     # The editorial revision (28 Sep) emitted S16.11's judge readings (cliff_macros), and two
     # of their values print as other quantities already typed in Part V and S16.10.
     ("postmortem.tex", "cliffPerSliceTenHi", r"measured its load $7.7$ to"):
@@ -159,6 +124,31 @@ ALLOWED = {
     ("supplement.tex", "recvWaitFactor", r"slices, 1.5 and 3~ms"):
         "the same slice, equal to the factor within which R1-d asked the three estimates to "
         "agree; a slice and a ratio sharing two digits",
+    # 7 Oct 2026: leaving out the late messages (stale_backlog.py) moved several emitted values
+    # onto numbers the documents already type for other quantities.
+    ("supplement.tex", "backlogFastestMedianMs", r"slices, 1.5 and 3~ms"):
+        "the law campaign's shorter slice in milliseconds (S6.3), equal to the median of a cloud "
+        "run's fastest delivery in S1.5; a slice and a delivery sharing two digits",
+    ("postmortem.tex", "GeomReplFactor", r"followers grew $2.02$ times in batches"):
+        "M0's growth of its burst followers' delivery in batches (S37), equal to the "
+        "replication's placement factor; a growth and a ratio of rates sharing three digits",
+    ("postmortem.tex", "exposureCrossover", r"fits poorly ($R^2 = 0.65$"):
+        "the R-squared of a power-law fit to the load ladder (S16), equal to the exposure "
+        "crossover in milliseconds; a goodness of fit and a latency sharing two digits",
+    ("postmortem.tex", "observerZ", r"($<0.1$~ms apart)"):
+        "the gap between E1's two broker medians in milliseconds (S5), equal to the tracer's "
+        "z, which leaving out the late messages brought to nearly nothing",
+    ("postmortem.tex", "observerZ", r"within $0.1$~ms of each other"):
+        "the same E1 gap, quoted again where the powered campaign is set beside it",
+    ("postmortem.tex", "recoveryKsD", r"serialization ($0.26$, $0.52$~ms)"):
+        "the added serialization at 32 KB in milliseconds (S10), equal to the "
+        "Kolmogorov-Smirnov distance between the recovery populations",
+    ("postmortem.tex", "recoveryThirdsEdgeLo", r"step width ($16.7$ points)"):
+        "half the step width of the thirds grid in points (S10), equal to the lower end of the "
+        "edges that would split the accepted conditions into thirds; two sixths sharing digits",
+    ("postmortem.tex", "spanHandlingSharePct", r"medians gets $2.6\times$"):
+        "a ratio of pooled medians among three readings of one quantity (S18), equal to the "
+        "share of Redis's delivery its parse would add, in percent",
 }
 
 

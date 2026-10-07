@@ -21,6 +21,14 @@ import pytest
 REPO = Path(__file__).parent.parent.parent
 BIB = REPO / "manuscript_references.bib"
 
+
+def _bibliographies():
+    """Both reference files, joined: the one the paper and the supplement cite, and the
+    postmortem's own, which moved to a file of its own on 7 Oct 2026. An entry is checked
+    wherever it lives."""
+    return "\n".join((REPO / name).read_text(encoding="utf-8")
+                     for name in ("manuscript_references.bib", "postmortem_references.bib"))
+
 #: What a printed note may carry: a locator, an access date, an identifier or a publication
 #: detail. Anything left over after these are removed is commentary.
 ALLOWED = [
@@ -35,6 +43,9 @@ ALLOWED = [
     r"Revision of IEEE Std [\d-]+",
     r"Obsoletes RFC \d+",
     r"Talk, Strange Loop / QCon",
+    # 6 Oct 2026: the talk's venue and place, beside the recording's URL, which the review of
+    # that day asked for; a publication detail, like the venue it replaces.
+    r"Talk, Strange Loop 2015, St\. Louis, MO, USA",
     r"Version \d+(\.\d+)*",
     r"Issue \\#\d+, opened \d{4}-\d{2}-\d{2}",
     r"\{Open Compute Project\}, Unified Intelligent Infrastructure workstream",
@@ -78,7 +89,7 @@ def cited(doc):
 
 @pytest.fixture(scope="module")
 def bib():
-    return entries(BIB.read_text(encoding="utf-8"))
+    return entries(_bibliographies())
 
 
 class TestAPrintedNoteIsACitation:
@@ -105,8 +116,11 @@ class TestAPrintedNoteIsACitation:
 class TestTheCommentaryIsKept:
 
     def test_the_audit_trail_moved_rather_than_vanished(self, bib):
+        # 82 from 7 Oct 2026, across both reference files, where 95 of 182 entries carried an
+        # annote: 13 of the 47 entries nothing cited had one, and they left together on the
+        # author's instruction.
         annotated = [key for key, body in bib.items() if field(body, "annote")]
-        assert len(annotated) >= 88
+        assert len(annotated) >= 82
 
     @pytest.mark.parametrize("key,kept", [
         ("indexdev2026brokers", "S1.9 records what we first read here"),

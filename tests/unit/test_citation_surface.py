@@ -30,6 +30,9 @@ REPO = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(REPO / "scripts"))
 
 BIB = REPO / "manuscript_references.bib"
+#: 7 Oct 2026: the references only the postmortem cites moved to a file of their own, which the
+#: postmortem reads beside the shared one; the paper and the supplement read the shared one alone.
+POSTMORTEM_BIB = REPO / "postmortem_references.bib"
 GENERATED = REPO / "docs" / "generated"
 
 #: What IEEE Transactions on Computers allows a regular paper. Verified against the journal's
@@ -75,8 +78,9 @@ TC_PAGE_LIMIT = 12
 PAPER_PAGE_FLOOR = 8
 
 
-def _bib_keys():
-    return set(re.findall(r"@\w+\{([^,]+),", BIB.read_text(encoding="utf-8")))
+def _bib_keys(paths=(BIB, POSTMORTEM_BIB)):
+    return set(re.findall(r"@\w+\{([^,]+),", "\n".join(p.read_text(encoding="utf-8")
+                                                       for p in paths)))
 
 
 def _surface():
@@ -124,8 +128,26 @@ class TestEveryCitationResolves:
         missing = sorted(_cited(_surface()) - _bib_keys())
         assert not missing, "cited but not in the bibliography: %s" % missing
 
+    def test_the_paper_and_the_supplement_resolve_in_the_file_they_read(self):
+        """7 Oct 2026: the paper and the supplement read the shared file alone, so a key they
+        cite must be there and not only in the postmortem's file, where their builds would not
+        find it. The generated tables count with them: the supplement inputs the one that
+        cites."""
+        theirs = [REPO / "paper.tex", REPO / "supplement.tex"] + sorted(GENERATED.glob("*.tex"))
+        missing = sorted(_cited(theirs) - _bib_keys((BIB,)))
+        assert not missing, "cited by the paper or the supplement, not in their file: %s" % missing
+
+    def test_the_shared_file_holds_only_what_they_cite(self):
+        """7 Oct 2026, the author's instruction: every reference in the shared file is used in
+        the paper or the supplement. Anything else is the postmortem's or is deleted."""
+        theirs = [REPO / "paper.tex", REPO / "supplement.tex"] + sorted(GENERATED.glob("*.tex"))
+        unused = sorted(_bib_keys((BIB,)) - _cited(theirs))
+        assert not unused, "in the shared file but cited by neither: %s" % unused
+
     def test_the_bibliography_parses_to_unique_keys(self):
-        raw = re.findall(r"@\w+\{([^,]+),", BIB.read_text(encoding="utf-8"))
+        """Across both files, since the postmortem reads them together."""
+        raw = re.findall(r"@\w+\{([^,]+),", "\n".join(p.read_text(encoding="utf-8")
+                                                      for p in (BIB, POSTMORTEM_BIB)))
         dupes = sorted({k for k in raw if raw.count(k) > 1})
         assert not dupes, "duplicate bibliography keys: %s" % dupes
 
@@ -181,7 +203,11 @@ class TestThePrintedReferenceListFitsTheJournal:
                                  check=True).stdout
         except (OSError, subprocess.CalledProcessError):     # pragma: no cover - tool absent
             pytest.skip("pdftotext not available")
-        n = len(re.findall(r"^\[\d+\]", out, re.M))
+        # 7 Oct 2026: read from the list's heading on. A citation in the text that a line break
+        # puts at the head of a line, "[25], Lancet by busy-polling", counted as a 46th entry.
+        at = out.rfind("\nREFERENCES\n")
+        assert at >= 0, "no reference heading found in the rendered paper"
+        n = len(re.findall(r"^\[\d+\]", out[at:], re.M))
         assert n, "no reference list found in the rendered paper"
         assert n <= TC_REFERENCE_CAP, "%d printed references against a cap of %d" % (
             n, TC_REFERENCE_CAP)

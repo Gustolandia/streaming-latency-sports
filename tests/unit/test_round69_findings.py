@@ -19,6 +19,14 @@ import sys
 import pytest
 
 REPO = Path(__file__).parent.parent.parent
+
+
+def _bibliographies():
+    """Both reference files, joined: the one the paper and the supplement cite, and the
+    postmortem's own, which moved to a file of its own on 7 Oct 2026. An entry is checked
+    wherever it lives."""
+    return "\n".join((REPO / name).read_text(encoding="utf-8")
+                     for name in ("manuscript_references.bib", "postmortem_references.bib"))
 RE_BS = chr(92) + chr(92)
 sys.path.insert(0, str(REPO / "scripts"))
 
@@ -109,7 +117,7 @@ class TestR1TheDitherRuleDoesNotClaimTheWhy:
         assert "hp1976dither" not in paper
 
     def test_the_bibliography_entry_uses_the_styles_own_patent_fields(self):
-        bib = (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
+        bib = _bibliographies()
         entry = bib[bib.index("@patent{hp1976dither"):]
         entry = entry[:entry.index("\n}")]
         for field in ("nationality", "number", "yearfiled", "monthfiled"):
@@ -120,7 +128,7 @@ class TestR1TheDitherRuleDoesNotClaimTheWhy:
         """BibTeX scans for an at-sign outside entries too. A comment naming an entry type
         with one swallows the entry below it -- which is what the first draft of round 69's
         comment did, and bibtex reported it as one error line in a log nobody reads."""
-        bib = (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
+        bib = _bibliographies()
         for n, line in enumerate(bib.splitlines(), start=1):
             if line.lstrip().startswith("%"):
                 assert "@" not in line, "bibliography comment at line %d carries an at-sign" % n
@@ -284,18 +292,23 @@ class TestW1TheGeometryFigureStaysInTheSupplement:
         draws the four phases of one millisecond as panel (a) of the deletion figure
         (`deletion_phases`, S4.1), from the plotting function `quantum_geometry`'s panel (a)
         came from, and the postmortem keeps the two-panel figure in S17. The main text still
-        reaches the journal supplement's figure through the section holding it."""
+        reaches the journal supplement's figure through the section holding it.
+
+        6 Oct 2026: the deletion figure is the main text's again, Section V-C's, on the
+        review's ruling that the paper use its room for the figures that carry its argument,
+        and it left the journal supplement, whose S4.1 and S4.2 now point at it. The two-panel
+        geometry figure stays in the postmortem's S17."""
         journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
         assert "quantum_geometry" in supplement
-        for stem in ("quantum_geometry", "deletion_phases"):
-            assert stem not in paper, "%s is back in the main text" % stem
-        at = journal.index("deletion_phases")
-        caption = " ".join(journal[at:journal.index(chr(92) + "end{figure}", at)].split())
+        assert "quantum_geometry" not in paper, "quantum_geometry is back in the main text"
+        assert "deletion_phases" not in journal, "the deletion figure is printed twice"
+        at = paper.index("deletion_phases")
+        caption = " ".join(paper[at:paper.index(chr(92) + "end{figure", at)].split())
         assert "four phases within one millisecond" in caption, \
-            "the supplement's figure no longer draws the phases of one millisecond"
-        home = re.findall(r"\\section\{(S\d+)\.", journal[:at])[-1]
-        assert re.search(r"Supplement~%s(?:\.\d+)?\b" % home, paper), \
-            "the main text reaches it by pointer"
+            "the paper's figure no longer draws the phases of one millisecond"
+        for panel in ("a", "b"):
+            assert ("Fig.~" + chr(92) + "ref{P-fig:deletion}" + panel) in journal, \
+                "the supplement reaches panel (%s) by pointer" % panel
 
     def test_the_main_text_still_carries_the_claim_the_figure_draws(self, paper):
         """v5 (28 Sep): the sentence reads "What moves retention is not the path but where the

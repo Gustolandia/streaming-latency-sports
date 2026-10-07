@@ -41,15 +41,25 @@ class TestKernelFormula:
         with pytest.raises(ValueError):
             kc._ilog2(0)
 
-    def test_the_eight_cpu_base_slice_is_three_milliseconds(self):
-        """The number Section V-G rests on. 4 x 750000 ns."""
-        assert kc.base_slice_ns(8) == 3_000_000
+    def test_the_eight_cpu_base_slice_is_two_point_eight_milliseconds(self):
+        """The number Section IV-C rests on: 4 x 700000 ns.
+
+        6 Oct 2026: it was 4 x 750000 = 3 ms, upstream v6.8's constant. The kernel every cloud
+        run recorded, 6.8.0-1057-oracle, carries the 700000 of commit 2ae891b82695 through
+        Ubuntu's stable backport (in linux-oracle-6.8 from 6.8.0-1043), so the derivation
+        starts from that."""
+        assert kc.NORMALISED_BASE_SLICE_NS == 700_000
+        assert kc.base_slice_ns(8) == 2_800_000
+
+    def test_upstream_v68_would_have_given_three_milliseconds(self):
+        """The rule is unchanged; only its constant is. Upstream v6.8's 750000 gives 3 ms."""
+        assert kc.base_slice_ns(8, normalised=kc.UPSTREAM_68_BASE_SLICE_NS) == 3_000_000
 
     def test_a_smaller_shape_would_give_a_different_slice(self):
         """Why the value could NOT have been read off a restored micro instance: it is
         computed from the online CPU count, so the same image on a one-vCPU shape reports
-        0.75 ms rather than 3 ms."""
-        assert kc.base_slice_ns(1) == 750_000
+        0.70 ms rather than 2.8 ms."""
+        assert kc.base_slice_ns(1) == 700_000
         assert kc.base_slice_ns(1) != kc.base_slice_ns(8)
 
 
@@ -91,7 +101,9 @@ class TestDerivedConstants:
         c = kc.constants()
         assert c["cpus"] == 8
         assert c["sysctl_factor"] == 4
-        assert c["base_slice_ms"] == pytest.approx(3.0)
+        # 6 Oct 2026: 2.8 ms from the backported 0.70 ms constant, no longer 3 ms.
+        assert c["base_slice_ms"] == pytest.approx(2.8)
+        assert c["normalised_slice_ms"] == pytest.approx(0.70)
         assert c["tick_ms"] == pytest.approx(1.0)
 
     def test_the_cli_reports_the_chain_not_just_the_answer(self, capsys):
@@ -103,7 +115,7 @@ class TestDerivedConstants:
     def test_json_mode(self, capsys):
         import json
         assert kc.main(["--json"]) == 0
-        assert json.loads(capsys.readouterr().out)["base_slice_ns"] == 3_000_000
+        assert json.loads(capsys.readouterr().out)["base_slice_ns"] == 2_800_000
 
 
 class TestTheCountHasTwoIndependentSources:

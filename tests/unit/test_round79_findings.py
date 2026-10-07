@@ -34,6 +34,14 @@ import sys
 import pytest
 
 REPO = Path(__file__).parent.parent.parent
+
+
+def _bibliographies():
+    """Both reference files, joined: the one the paper and the supplement cite, and the
+    postmortem's own, which moved to a file of its own on 7 Oct 2026. An entry is checked
+    wherever it lives."""
+    return "\n".join((REPO / name).read_text(encoding="utf-8")
+                     for name in ("manuscript_references.bib", "postmortem_references.bib"))
 BS = chr(92)
 sys.path.insert(0, str(REPO / "scripts"))
 sys.path.insert(0, str(REPO / "tests" / "unit"))
@@ -51,7 +59,7 @@ def supplement():
 
 @pytest.fixture(scope="module")
 def bib():
-    return (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
+    return _bibliographies()
 
 
 @pytest.fixture(scope="module")
@@ -269,15 +277,17 @@ class TestW2TheShiftSaysWhichWayItPoints:
         assert "%.1f" % statistics.median(diffs) == ledger["recoveryShift"]
         assert float(ledger["recoveryShift"]) > 0, "positive: the rejected sit higher"
 
-    def test_both_worst_conditions_really_are_equal(self, supplement, ledger):
+    def test_both_worst_conditions_lie_within_two_points(self, supplement, ledger):
         """v5 (28 Sep): "Both worst conditions are ..." left Section V-D with the rest of its
         statistics (editorial review, Section 5). S16.9 says it as "the worst condition is the
         same on both sides", beside a table printing both maxima, and the ledger must still bear
         it out, as it must for any sentence in the article that says it again."""
+        # 7 Oct 2026: the late messages left out, the maxima read 38 and 36, and the sentence
+        # says what they share now rather than that they are equal.
         s = _between(supplement, "S16.9.", "S17. The 1970 counter note")
-        assert "the worst condition is the same on both sides" in s
+        assert "the worst conditions lie within two points of each other" in s
         assert BS + "recoveryPassMax" in s and BS + "recoveryFailMax" in s
-        assert ledger["recoveryPassMax"] == ledger["recoveryFailMax"]
+        assert abs(float(ledger["recoveryPassMax"]) - float(ledger["recoveryFailMax"])) <= 2
 
 
 class TestW3Figure4ShowsTheCountItsLegendPrints:

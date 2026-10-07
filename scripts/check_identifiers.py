@@ -16,7 +16,8 @@ So this collects the identifiers the repository asserts and asks their sources:
 
   tool pins      the commit or version each tool in cloud/azure/tools.sh is run at, against
                  GitHub, and against data/tools_audit/, which is where they should have come from
-  bibliography   every DOI in manuscript_references.bib, against Crossref
+  bibliography   every DOI in manuscript_references.bib and postmortem_references.bib,
+                 against Crossref
   arXiv          every arXiv identifier cited, against arxiv.org
   deposits       every Zenodo DOI this repository publishes, against Zenodo
 
@@ -93,14 +94,20 @@ def audited_versions(texts=None):
     return " ".join(texts)
 
 
+def bibliographies():
+    """Both reference files: the one the paper and the supplement cite, and the postmortem's
+    own, split from it on 7 Oct 2026."""
+    return read("manuscript_references.bib") + "\n" + read("postmortem_references.bib")
+
+
 def dois(text=None):
-    text = read("manuscript_references.bib") if text is None else text
+    text = bibliographies() if text is None else text
     found = re.findall(r"doi\s*=\s*[{\"]([^}\"]+)", text, re.I)
     return sorted({d.strip().replace("https://doi.org/", "") for d in found})
 
 
 def arxiv_ids(text=None):
-    text = read("manuscript_references.bib") if text is None else text
+    text = bibliographies() if text is None else text
     return sorted(set(re.findall(r"arXiv[: ]\s*(\d{4}\.\d{4,5})", text, re.I)))
 
 

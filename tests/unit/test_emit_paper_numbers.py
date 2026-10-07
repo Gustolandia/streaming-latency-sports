@@ -584,14 +584,16 @@ class TestTheManipulationCaptionAndItsThreshold:
     distinguish a clean manipulation from a loose tolerance.
     """
 
-    def test_the_events_per_cell_is_the_count_every_shown_cell_agrees_on(self):
+    def test_the_per_cell_count_is_retired_now_that_the_cells_differ(self):
+        """7 Oct 2026: leaving out the late messages parted the cells, and each table now
+        states its own range (test_emit_late_messages.py); no caption can print one count."""
         got = dict(epn.manipulation_macros())
         cells = {n for level, _kb, nb, _kr, nr in stat_intervals.priority_cells()
                  if level in ("l75", "l88") for n in (nb, nr)}
         cells |= {n for phase in ("ea6", "ea6b")
                   for _c, _k, n in stat_intervals.geometry_cells(phase)}
-        assert len(cells) == 1, "the caption says 'per cell'; the artifacts must agree"
-        assert got["mechEventsPerCell"] == epn.latex_thousands(cells.pop())
+        assert len(cells) > 1
+        assert "mechEventsPerCell" not in got
 
     # 5 Oct 2026: three tests of the two shown pairs' utilization match and their per-arm
     # utilizations retired with Table II, which printed them; the paper's "matched to within"
@@ -622,21 +624,6 @@ class TestTheManipulationCaptionAndItsThreshold:
         assert float(got["manipWorst"]) < float(got["manipTol"])
         assert int(got["manipMargin"]) > 1
 
-    def test_a_level_outside_the_table_does_not_reach_the_count(self, monkeypatch):
-        """The caption is about the two pairs Table II prints, not the whole ladder.
-
-        E-A5b and E-A7 ran levels the table does not show. The committed E-A5 file happens to
-        hold only l75 and l88, so the filter never had to reject anything and its rejecting
-        branch went unexercised -- a filter nothing has ever filtered.
-        """
-        monkeypatch.setattr(stat_intervals, "priority_cells",
-                            lambda *a, **k: [("l60", 1, 999, 1, 999),
-                                             ("l75", 1, 2985, 1, 2985),
-                                             ("l88", 1, 2985, 1, 2985)])
-        got = dict(epn.manipulation_macros())
-        assert got["mechEventsPerCell"] == epn.latex_thousands(2985), \
-            "the l60 cell's 999 events must not reach a caption about l75 and l88"
-
     def test_the_worst_gap_reads_every_pair_whatever_its_level(self, monkeypatch):
         """The paper's "matched to within" is over every pair, so no level filter applies."""
         import priority_pairs
@@ -645,17 +632,12 @@ class TestTheManipulationCaptionAndItsThreshold:
         got = dict(epn.manipulation_macros())
         assert got["manipWorst"] == "0.010"
 
-    def test_cells_that_disagree_yield_no_count_rather_than_an_average(self, monkeypatch):
-        monkeypatch.setattr(stat_intervals, "priority_cells",
-                            lambda *a, **k: [("l75", 1, 100, 1, 101)])
-        assert "mechEventsPerCell" not in dict(epn.manipulation_macros())
-
-    def test_missing_priority_artifacts_drop_the_caption_macros(self, monkeypatch):
-        monkeypatch.setattr(stat_intervals, "priority_cells",
+    def test_the_threshold_needs_no_data(self, monkeypatch):
+        import priority_pairs
+        monkeypatch.setattr(priority_pairs, "pairs",
                             lambda *a, **k: (_ for _ in ()).throw(OSError("gone")))
-        got = dict(epn.manipulation_macros())
-        assert "mechEventsPerCell" not in got
-        assert "manipTol" in got, "the threshold is a constant and does not need the data"
+        assert "manipTol" in dict(epn.manipulation_macros()), \
+            "the threshold is a constant and does not need the data"
 
     def test_missing_pair_data_drops_the_gap_macros(self, monkeypatch):
         import priority_pairs
@@ -687,8 +669,8 @@ class TestTheManipulationCaptionAndItsThreshold:
         names = {n for n, _ in epn.all_pairs(measured(load_cells(
             Path(__file__).parent.parent.parent / "docs" / "results"
             / "external_campaigns_index.csv")))}
-        assert {"mechEventsPerCell", "mechGeomRho",
-                "manipTol", "manipWorst", "manipMargin"} <= names
+        assert {"mechGeomRho", "manipTol", "manipWorst", "manipMargin",
+                "mechEventsLo", "mechEventsHi"} <= names
 
 
 class TestTheSignedPayloadSlope:
@@ -1104,8 +1086,10 @@ class TestThePayloadSpanMacros:
             assert key in got, "%s is not emitted" % key
         assert round(float(got["payloadTransportFactor"])) == \
             float(got["payloadTransportFactorRound"])
+        # Two roundings of one value can sit a whole half-step apart, as 3.85 and 3.8 of 3.846
+        # do since 7 Oct 2026, so the tolerance carries a hair of slack for the float.
         assert float(got["payloadRateFallExact"]) == pytest.approx(
-            float(got["payloadRateFall"]), abs=0.05)
+            float(got["payloadRateFall"]), abs=0.05 + 1e-9)
 
     def test_a_missing_primary_campaign_drops_only_its_macros(self, monkeypatch):
         """A checkout without the sweep still emits everything else, as span_macros does."""
@@ -2449,7 +2433,9 @@ class TestTheReachAuditIsCounted:
         assert m["reachMedianConfigs"] == "868"
         assert (m["reachPrimaryConfigs"], m["reachPrimaryReports"]) == ("8", "2")
         assert m["reachStrongConfigs"] == "0"
-        assert m["reachFinerReports"] == "14"
+        # 6 Oct 2026: 9, not 14. Five reports print whole milliseconds as HdrHistogram bucket
+        # tops (507.001 and the like), which is not a finer clock; `_whole_ms_as_printed`.
+        assert m["reachFinerReports"] == "9"
 
 
 

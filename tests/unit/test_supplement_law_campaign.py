@@ -31,11 +31,15 @@ def _section(start, end):
     after one of its ranges was found to leave out, silently, the slice it does not cover. The
     pins below were written against the printed numbers and recompute them from the artifacts,
     so the macros are expanded first and the pins keep checking the numbers, not the markup.
+
+    6 Oct 2026: the readings the paper's Limitations now quote from this campaign are emitted
+    too (`law_reading_macros`, the `rec` and `pSix` families), and S16.10 prints them through
+    the same macros, so those are expanded with the others.
     """
     text = (REPO / "postmortem.tex").read_text(encoding="utf-8")
     body = text[text.index(start):text.index(end, text.index(start))]
     ledger = _ledger()
-    body = re.sub(r"\\(cliff[A-Za-z]+)(?![A-Za-z])",
+    body = re.sub(r"\\((?:cliff|rec|pSix)[A-Za-z]+)(?![A-Za-z])",
                   lambda m: ledger.get(m.group(1), m.group(0)), body)
     return " ".join(body.split())
 

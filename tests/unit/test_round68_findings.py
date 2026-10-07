@@ -294,15 +294,15 @@ class TestRecommendedItems:
         import apply_vocabulary as av
         assert av.main(["--check", "paper.tex", "supplement.tex", "postmortem.tex"]) == 0
 
-    def test_w3_table_one_prints_its_measured_zeros(self, journal, rendered_journal):
-        """5 Oct 2026: Table I, the values below zero by span, is the journal supplement's
-        now (S1.3, label stab:spans); its source and its pages are read there."""
-        i = journal.index("label{stab:spans}")
-        table = journal[i:journal.index("end{table}", i)]
+    def test_w3_table_one_prints_its_measured_zeros(self, paper, rendered_paper):
+        """5 Oct 2026: Table I, the values below zero by span, went to the journal supplement.
+        6 Oct 2026: it is the paper's Table I again (tab:spans), and is read there."""
+        i = paper.index("label{tab:spans}")
+        table = paper[i:paper.index("end{table}", i)]
         assert "---" not in table, "an em-dash in an IEEE table reads 'not measured'"
-        assert "dashed" not in journal[:i][-900:], \
+        assert "dashed" not in paper[:i][-900:], \
             "the caption stopped needing to explain the glyph"
-        flat = " ".join(rendered_journal.split())
+        flat = " ".join(rendered_paper.split())
         assert flat.count("publish (chain)0 0 0") == 3, \
             "all three publish-referenced chain rows print three measured zeros -- the "\
             "publish latency joined them in round 70"

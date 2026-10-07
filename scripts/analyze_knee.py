@@ -36,6 +36,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from measurement_model import fit_mg1, spearman  # noqa: E402
+import stale_backlog  # noqa: E402
 
 # A win smaller than this in R^2 is not a discrimination, it is noise.
 MARGIN = 0.02
@@ -77,6 +78,9 @@ def condition_inversion(cond_dir, runs_dir, backend="kafka"):
         if not (os.path.exists(prod) and os.path.exists(cons)):
             continue
         ack = {}
+        # 7 Oct 2026: the messages the consumer received late behind a stale backlog are left
+        # out, the ids stale_backlog.late_ids_in gives, as every reader of these runs does.
+        late = stale_backlog.late_ids_in(run)
         try:
             with open(prod, newline="", encoding="utf-8") as fh:
                 for r in csv.DictReader(fh):
@@ -87,7 +91,7 @@ def condition_inversion(cond_dir, runs_dir, backend="kafka"):
                 for r in csv.DictReader(fh):
                     a = ack.get(r["event_id"])
                     rc = r.get("t_consume_ns")
-                    if a is None or rc in (None, "", "None"):
+                    if a is None or rc in (None, "", "None") or r["event_id"] in late:
                         continue
                     # Parse before counting. Incrementing the denominator and then failing to
                     # parse would leave an event in the total but out of the numerator, which

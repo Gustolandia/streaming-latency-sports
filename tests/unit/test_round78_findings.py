@@ -31,6 +31,14 @@ import sys
 import pytest
 
 REPO = Path(__file__).parent.parent.parent
+
+
+def _bibliographies():
+    """Both reference files, joined: the one the paper and the supplement cite, and the
+    postmortem's own, which moved to a file of its own on 7 Oct 2026. An entry is checked
+    wherever it lives."""
+    return "\n".join((REPO / name).read_text(encoding="utf-8")
+                     for name in ("manuscript_references.bib", "postmortem_references.bib"))
 BS = chr(92)
 sys.path.insert(0, str(REPO / "scripts"))
 
@@ -47,7 +55,7 @@ def supplement():
 
 @pytest.fixture(scope="module")
 def bib():
-    return (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
+    return _bibliographies()
 
 
 @pytest.fixture(scope="module")
@@ -115,8 +123,10 @@ class TestR1TheWordsSayWhatTheIntervalsSay:
             assert ledger[macro] == "%.1f" % (round(max(abs(lo), abs(hi)), 1) + 0.0), macro
 
     def test_they_are_the_values_the_referee_computed(self, ledger):
+        """8.3 and 7.1 as the referee computed them; 7.1 and 7.5 since the late messages
+        were left out of the groups (7 Oct 2026)."""
         assert (ledger["recoveryEquivMargin"], ledger["recoveryNonzeroEquivMargin"]) == \
-            ("8.3", "7.1")
+            ("7.1", "7.5")
 
     def test_about_half_the_non_zero_median_errors(self, ledger):
         """S16.9 says so in words. Were the margins to shrink to a small fraction of the errors,
@@ -234,11 +244,15 @@ class TestW2TheBandEdgeIsTheQuartile:
         assert "recovery_band_edge(" in inspect.getsource(epn._recovery_macros)
 
     def test_the_thirds_hold_over_the_stated_range_and_nowhere_else(self, ledger, pops):
+        """7 Oct 2026: the range stops just short of the quartile now, where it ended at
+        it; no accepted condition lies between its top and the quartile."""
         import stat_intervals as si
         a = pops["Pass"]
         lo, hi = si.equal_split_edges(a)
+        band = si.recovery_band_edge(pops)
         assert ledger["recoveryThirdsEdgeLo"] == "%.1f" % lo
-        assert hi == si.recovery_band_edge(pops)
+        assert ledger["recoveryThirdsEdgeHi"] == "%.1f" % hi
+        assert hi < band and not any(hi < v < band for v in a)
 
         def tally(e):
             return (sum(v == 0.0 for v in a), sum(0.0 < v < e for v in a),
@@ -281,20 +295,28 @@ class TestW2TheBandEdgeIsTheQuartile:
         path.write_text("\n".join(rows) + "\n", encoding="utf-8")
         return dict(epn._recovery_macros(str(path)))
 
-    def test_where_the_thirds_hold_the_range_is_emitted(self, tmp_path):
+    def test_thirds_that_reach_the_quartile_withdraw_the_sentence(self, tmp_path):
+        """S16.9 now says the range stops just short of the quartile; here it ends at it."""
         got = self._macros(tmp_path, (0, 0, 50, 100, 150, 200))
-        assert got["recoveryBandPct"] == "15" and got["recoveryThirdsEdgeLo"] == "10.0"
+        assert got["recoveryBandPct"] == "15" and "recoveryThirdsEdgeLo" not in got
 
     def test_too_few_exact_recoveries_emit_nothing(self, tmp_path):
         got = self._macros(tmp_path, (0, 50, 100, 150, 200))
         assert "recoveryBandPct" in got and "recoveryThirdsEdgeLo" not in got
 
-    def test_a_quartile_away_from_the_split_emits_nothing(self, tmp_path):
+    def test_thirds_just_short_of_the_quartile_are_emitted(self, tmp_path):
         # Six exact and twelve non-zero at 1%..12%: the halves split between 6% and 7%, and the
-        # nearest-rank upper quartile of eighteen values is the fourteenth, 8%. In the real data
-        # the two coincide only because several conditions tie at the quartile.
+        # nearest-rank upper quartile of eighteen values is the fourteenth, 8%, the next value
+        # up. That is the shape the committed data have had since 7 Oct 2026.
         got = self._macros(tmp_path, (0,) * 6 + tuple(10 * i for i in range(1, 13)))
-        assert got["recoveryBandPct"] == "8" and "recoveryThirdsEdgeLo" not in got
+        assert got["recoveryBandPct"] == "8"
+        assert (got["recoveryThirdsEdgeLo"], got["recoveryThirdsEdgeHi"]) == ("6.0", "7.0")
+
+    def test_a_quartile_away_from_the_split_emits_nothing(self, tmp_path):
+        # Ten exact and twenty non-zero at 1%..20%: the halves split between 10% and 11%, and
+        # the quartile is 13%, with 12% between them, so the range is not just short of it.
+        got = self._macros(tmp_path, (0,) * 10 + tuple(10 * i for i in range(1, 21)))
+        assert got["recoveryBandPct"] == "13" and "recoveryThirdsEdgeLo" not in got
 
 
 class TestW3RedMeansDeletedAndNothingElse:

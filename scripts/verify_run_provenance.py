@@ -45,7 +45,10 @@ COUNT_COLUMNS = ("n_events", "n_runs", "n", "n_base", "n_rt", "n_matched", "even
                  "runs", "events_per_run", "trace_runs", "trace_events",
                  # colocation.csv records its counts per arm. Same lesson as above, one campaign
                  # later: the sample size was present and the checker did not recognise the name.
-                 "n_remote", "n_colocated")
+                 "n_remote", "n_colocated",
+                 # 6 Oct 2026: manipulation_run_counts.csv counts each run's messages, a sample
+                 # size named for the run it belongs to.
+                 "run_events")
 
 # Artefacts that are not measurements at all. A source audit's provenance is a file, a line and
 # a commit, not a sample size, and demanding a run count of it would be a category error. It is

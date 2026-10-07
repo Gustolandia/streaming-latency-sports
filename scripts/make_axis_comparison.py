@@ -19,7 +19,7 @@ The two things the figure is for:
     deleted. A distribution built that way cannot begin anywhere except at one tick, and theirs
     does not.
 
-    Ours, measured on the same kind of path with a finer clock, crosses zero at the 8.43rd
+    Ours, measured on the same kind of path with a finer clock, crosses zero at the 8.79th
     percentile and keeps going down to -99.8 ms. That population is not noise and it is not
     clock skew; it is the same population their guard removes, which is why their chart has a
     floor and ours does not.
@@ -68,7 +68,7 @@ def our_quantiles(path=None, span="ack"):
     The percentile paired with a bin edge is the share of events lying strictly BELOW that
     edge. Getting this wrong by one bin is not cosmetic: pairing a bin's lower edge with the
     cumulative count *after* that bin puts the zero crossing at the 11.27th percentile, when
-    the share of events actually below zero is 8.43% -- the number the paper quotes. The figure
+    the share of events actually below zero is 8.79% -- the number the paper quotes. The figure
     would then contradict the manuscript on the manuscript's own headline quantity.
 
     Bins are 50 us wide, so a quantile is read to that resolution and no finer. Ample here:

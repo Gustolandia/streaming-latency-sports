@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Target: TC](https://img.shields.io/badge/Target-IEEE%20Transactions%20on%20Computers-orange.svg)]()
-[![Tests](https://img.shields.io/badge/tests-8214_passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-8422_passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/branch_coverage-100%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
 [![DOI (code)](https://img.shields.io/badge/DOI_code-10.5281%2Fzenodo.21650031-blue.svg)](https://doi.org/10.5281/zenodo.21650031)
@@ -670,7 +670,8 @@ streaming-latency-sports/
 ├── .env                            # local environment (SB_COMMIT, etc.) — not committed
 │
 ├── paper.tex                       # IEEE paper (Trans. Computers target, IEEEtran) + supplement.tex + postmortem.tex
-├── manuscript_references.bib       # bibliography (170 entries; cited: 42 in the paper, 58 in the supplement, 112 in the postmortem)
+├── manuscript_references.bib       # what the paper and the supplement cite (52: 45 and 16)
+├── postmortem_references.bib       # what only the postmortem cites (83); it reads both
 │
 ├── docker-compose.yml              # single-broker Kafka + Redis
 ├── docker-compose-multibroker.yml  # 3 Kafka brokers (KRaft)        — Issue 2
@@ -687,6 +688,17 @@ streaming-latency-sports/
 │   ├── compare_plans.py · compare_experiments.py · make_results_table.py
 │   ├── audit_external_harness.py · harness_registry.py   # third-party harness audit
 │   ├── emit_paper_numbers.py · kernel_constants.py       # the macro ledger
+│   ├── manipulation_runs.py                             # every manipulation, both
+│   │                                                    #   brokers, intervals over runs
+│   ├── rate_by_delivery.py                              # the rate against D inside
+│   │                                                    #   a condition
+│   ├── workload_stats.py                                # message size and publish
+│   │                                                    #   rate, run by run
+│   ├── stale_backlog.py                                 # which messages waited behind
+│   │                                                    #   a stale backlog; left out
+│   ├── backlog_census.py                                # both consumer faults, run by
+│   │                                                    #   run, July and Azure
+│   ├── untraced_control.py                              # the E-A9 untraced twin's cells
 │   ├── clocksource_bound.py                             # which clocksource,
 │   │                                                    #   bounded from a measurement
 │   ├── make_paper_figures.py · make_result_figures.py    # figures, from artefacts
@@ -1137,6 +1149,41 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 ---
 
 ## 16. Changelog
+
+### 7 Oct 2026 — the late messages left out, and both consumer faults disclosed (not yet deposited)
+**Two faults of the cloud testbed's consumers came to light after its runs.** A consumer stopped after 15 s without a message, so in 1,491 runs, during a long pause in a match, the rest of the match was published, acknowledged and never read: 91,177 of 829,907 messages, which no number counted. And the runs reused topic and stream names that nothing cleared, so each consumer first read every earlier campaign's messages while its own waited in the broker; such a message cannot put S below zero, and each one diluted the rate. **The late messages are left out of every analysis of the cloud runs**, by the rule in `scripts/stale_backlog.py`: a message is late when its delivery took more than a second longer than its run's fastest, and so is a message published before the consumer caught up that arrived in the same burst. It finds 30,225 messages in 2,099 runs, none below zero, and every one of those runs began with its backlog. `scripts/backlog_census.py` counts both faults run by run (`docs/results/backlog_by_run.csv`) and checks the registered Azure campaign, which deleted its streams before each run: 0.06% of its messages are late by the same rule, and 31 of its 9,055 runs began with a wait (`docs/results/backlog_azure_by_run.csv`). **Every result of the cloud runs was recomputed.** Table I now counts 708,505 messages in 5,863 runs, and its negative-span rate is 8.79% (8.43% before). The padding repeat E-A10b, which had sat below E-A10, now agrees with it at every padding. The tracer's apparent lowering of Kafka's normal-priority rate disappears, while it still silences the real-time configurations; the supplement and the postmortem say so. The placement, padding and tracer tables are generated from their campaign files, each table states the range of messages its cells hold, and Fig. 2 reads its count from the histogram it draws. Supplement S1.5 discloses both faults; the sign check's counts come from runs no longer in the archive, and stand as counted, a lower bound. The tests follow: 8,422 pass, none skip, and every script's branches are covered.
+
+### 7 Oct 2026 — the references the documents use, and the workload in numbers (not yet deposited)
+**The bibliography holds what the documents cite.** `manuscript_references.bib` now carries the 52 references the paper and the supplement cite, 45 and 16; the 83 that only the postmortem cites moved to `postmortem_references.bib`, which the postmortem reads beside it; and the 47 that nothing cited were deleted, among them the prepared alternative to Georges et al., which stays in the history. Every printed reference list is unchanged, `scripts/check_identifiers.py` checks both files, and a test holds the shared file to what the paper and the supplement cite. **Section II gives the workload:** each message is a JSON record of an event's identifiers and timestamps, 253–321 bytes before the one experiment that pads it, and a producer publishes 0.60–1.03 messages per second in nine runs out of ten, with up to 12 producers at once, counted run by run over Table I's corpus by `scripts/workload_stats.py` from the archived producer logs (`docs/results/workload_by_run.csv`). The tests follow: 8,352 pass, none skip, and every script's branches are covered.
+
+### 6 Oct 2026 — an internal review of the rebuilt paper, taken whole (not yet deposited)
+**Every manipulation is reported on both brokers.** The mechanism's numbers had been Kafka's half
+of each run, the default of the analysis that computed them. Redis's halves now stand beside them
+in the new Table II, each factor with a 95% interval that resamples whole runs
+(`scripts/manipulation_runs.py`, `docs/results/model/manipulation_intervals.csv`): real-time
+priority cuts Redis's rate 6.0–7.8-fold where it cuts Kafka's 7–80-fold, padding the payload
+lowers it 8.0- and 5.7-fold, load raises it 21-fold, and placement at equal utilization reverses,
+the concentrated load giving Redis the higher rate where the spread load gives it to Kafka.
+**The kernel trace is set against the rate it counts.** The trace covers every Python thread of
+both brokers, so its share of long waits now stands against both brokers' pooled rate: ratios of
+0.95, 1.22 and 1.39, and the tracer check fixed in advance admits all three; the ratios against
+Kafka's rate alone stay beside them in Supplement S3.5, which also says why the real-time
+configurations give none. **The base slice is 2.8 ms, not 3 ms:**
+the Oracle hosts' kernels carry Linux 6.15's 0.70 ms base slice, backported to linux-oracle-6.8
+in 6.8.0-1043 (`scripts/kernel_constants.py`). **Section VIII reports the registered retests** of
+the kernel-trace check, the recording's own effect on the rate and Python's rate over Java's, and
+says where the model's range of validity ends: inside a condition the rate rises with the
+end-to-end latency in 24 of 56 testable conditions (`scripts/rate_by_delivery.py`). **The audit's
+facts are corrected:** librdkafka's consumer drops a latency of zero or less and prints a line
+for each; PerfTest kept only values above zero until June 2026; `emqtt-bench`'s histogram keeps
+every sample; Rezolus has counted its discards since August 2026; the benchmark's forks timestamp
+the publish in whole milliseconds. **The paper uses the room it has for evidence it needs:**
+Table I (values below zero by span) is back in Section III; Table II gives the mechanism on both
+brokers; Fig. 3 shows that a thread woken by the reply waits out the rest of a slice; Table III says
+what each of the tools we read and ran does with a latency at or below zero; Fig. 4 is the
+deletion figure, back from the supplement; and Fig. 5 keeps only the repair. The supplement gains
+S1.4, which runs each number rests on, and S2.1, the groups behind Section VI. Eight references
+join the paper's, now 45, the cap. The paper runs to 10 pages and the supplement to 18. The tests follow both documents: 8,368 pass, none skip, and every script's branches are covered.
 
 ### 5 Oct 2026 — the paper rebuilt around four bottom lines (not yet deposited)
 **Paper v8** is titled *Super-Precise Latency: How CPU Threading Affects High-Precision Latency, and an Industry-Wide Audit* and has one section per bottom line: the distribution of

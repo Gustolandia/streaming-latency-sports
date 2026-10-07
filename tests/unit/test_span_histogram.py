@@ -129,6 +129,16 @@ class TestConsumeRun:
         bad = dict(c, t_cons_recv_ns="")
         assert sh.consume_run(acc, [p], [bad]) == 0
 
+    def test_a_message_that_waited_behind_a_backlog_is_counted_as_late_not_binned(self):
+        """7 Oct 2026: stale_backlog.py's late messages are left out, and counted apart."""
+        acc = sh.new_accumulator()
+        late_p, late_c = event("e0", send=0, ack=600_000, recv=1_500_000_000,
+                               out=1_500_200_000)
+        p, c = event("e1", send=2_000_000_000, ack=2_000_600_000, recv=2_002_000_000,
+                     out=2_002_200_000)
+        assert sh.consume_run(acc, [late_p, p], [late_c, c]) == 1
+        assert acc["late"] == 1 and acc["n"]["ack"] == 1
+
 
 class TestFlush:
     def test_a_run_missing_its_consumer_half_contributes_nothing(self):

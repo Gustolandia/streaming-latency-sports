@@ -203,7 +203,9 @@ class TestR2TheSliceIsMeasuredAgainstTheDelivery:
         assert chr(92) + "spreadIncommensurateTrueMs" in sub[i:i + 420], (
             "the claim is quantitative now: retention names the fraction, where the old "
             "wording left 'most of them' resting on a range that was the wrong span")
-        assert "which puts $T_{" + chr(92) + "mathrm{true}}$ at $" + chr(92) \
+        # 6 Oct 2026: the sentence was split, the prediction from the count it tests and the
+        # count from what it gives, so the delivery is "That puts T_true at".
+        assert "That puts $T_{" + chr(92) + "mathrm{true}}$ at $" + chr(92) \
             + "spreadIncommensurateTrueMs$" in sub[i:i + 420]
         assert "our own transport measures" not in paper
         for m in re.finditer(r"\b(?:half|most|nearly all)\b", sub, re.I):
@@ -266,10 +268,12 @@ class TestRecommendedItems:
         effect as the range over the matched pairs, whose two per-pair Katz brackets and z
         are the journal supplement's S3.1. The postmortem's S12 paragraph still prints all
         four. Every factor still carries its interval wherever it is printed."""
+        # 6 Oct 2026: the intervals beside the two placement factors resample whole runs, the
+        # unit the clustering calls for, so the brackets name a bootstrap and its own macros.
         flat = " ".join(paper.split())
-        for stem in ("GeomOrig", "GeomRepl"):
-            assert ("$" + chr(92) + stem + "Factor$-fold [Katz $95" + chr(92) + "%$: $"
-                    + chr(92) + stem + "FactorCI$]") in flat, stem
+        for stem, ci in (("GeomOrig", "placeKafkaOrigCI"), ("GeomRepl", "placeKafkaReplCI")):
+            assert ("$" + chr(92) + stem + "Factor$-fold [bootstrap over runs, $95" + chr(92)
+                    + "%$: $" + chr(92) + ci + "$]") in flat, stem
         for stem in ("rtLow", "rtHigh"):
             assert not re.search(re.escape(chr(92) + stem) + r"Factor(?![A-Za-z])", flat), (
                 "%s's factor is back in the paper; its bracket is S3.1's" % stem)
@@ -498,6 +502,15 @@ class TestEveryTypedNumeralInTheMainTextIsADecision:
         "1.5": "the law campaign's registered bound on Python's rate over Java's "
                "(prediction P8), a threshold fixed in the plan before its runs and quoted "
                "from it; what the runs measured, 3.25 and 4.25, is the supplement's S6.2",
+        # 6 Oct 2026: two more thresholds fixed before their runs
+        "0.5": "the kernel trace's threshold, compiled into its probe as the counter "
+               "over_500us before the traced runs; the margin it stands for is a design "
+               "choice, not a result",
+        "90": "the registered share prediction A9-1 asked of readings below zero mostly spent "
+              "waiting, fixed in the plan before its runs; what the runs gave is emitted",
+        "0": "the subscript of s_0, the name of the kernel's per-CPU slice constant",
+        "25": "the runs each manipulation configuration was designed with, a setting of the "
+              "campaigns rather than a result",
         # settings this campaign chose
         "32": "a payload size the sweep set, naming the configuration whose registered pin "
               "failed in Section VIII",
@@ -508,6 +521,10 @@ class TestEveryTypedNumeralInTheMainTextIsADecision:
         "1": "an evaluation point on the exposure curve, and the numerator of the 1/D by "
              "which the publish latency's relative error falls",
         "10": "an evaluation point on the exposure curve",
+        # 6 Oct 2026, with the deletion figure back in the main text
+        "0.35": "the one latency panel (a) of the deletion figure draws at four phases, a "
+                "constant of make_paper_figures.plot_phases chosen so that three phases are "
+                "deleted and one kept; an illustration, not a measurement",
         # "1.0" and "2.0" left this inventory in round 76: the grid values are now emitted
         # (`ombGridPrintedLo`, `ombGridPrintedHi`) from the same rows Figure 4's ticks are drawn
         # from, so neither is typed anywhere in the main text any longer.
@@ -597,6 +614,11 @@ class TestEveryWordSpelledQuantityIsADecisionToo:
                 "fact of the plan that Supplement S6.2's verdict table lists one by one",
         "two": "ordinary English throughout: two readings, two brokers, two clocks, and the "
                "two machines of a pair",
+        # 7 Oct 2026, Section II's workload
+        "nine": "the share of runs Section II's publish-rate range covers, nine out of ten, "
+                "its 5th to 95th percentile over runs; fixed by how workload_macros computes "
+                "the range, not a measurement",
+        "ten": "the same share's denominator, nine runs out of ten",
     }
 
     def _word_macros(self):
@@ -636,8 +658,11 @@ class TestEveryWordSpelledQuantityIsADecisionToo:
             # harnessSilentIndependentWord ("independent tools") left the ledger on 5 Oct 2026.
             "harnessDisposalClassesWord": ("classes", "ways: a filter drops it"),
             "replayedMatchesWord": ("of its matches", "matches of one sport"),
+            # 6 Oct 2026: the test of Eq. 5 now states the prediction per configuration, "every
+            # configuration whose publish interval", before it counts them.
             "spreadIncommensurateWord": ("configurations whose send interval",
-                                         "configurations whose publish interval"),
+                                         "configurations whose publish interval",
+                                         "configuration whose publish interval"),
             "litComparisonsWord": ("comparisons we placed",),
             "litInsideRegimeWord": ("report figures at or below",),
             "ombEscapeCellsWordCap": (),
@@ -709,7 +734,9 @@ class TestEveryWordSpelledQuantityIsADecisionToo:
         for pattern, word in (
                 (r"(the\s+)" + RE_BS + r"ombAboveGridPartialWord\{\}(\s+settings\s+kept only)",
                  "two"),
-                (r"(All\s+)" + RE_BS + r"spreadIncommensurateWord\{\}(\s+configurations whose)",
+                # 6 Oct 2026: "The seven such configurations all keep", the test of Eq. 5,
+                # split from the prediction it tests to keep the sentences short.
+                (r"(The\s+)" + RE_BS + r"spreadIncommensurateWord\{\}(\s+such configurations)",
                  "seven")):
             bad = _re.sub(pattern, r"\g<1>" + word + r"\g<2>", paper)
             assert bad != paper, "Section V-C has been reworded; retarget this mutation"

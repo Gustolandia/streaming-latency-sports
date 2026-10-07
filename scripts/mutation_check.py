@@ -62,9 +62,10 @@ MUTATIONS = [
      r"$\condProxyLoMs$--$\condProxyHiMs$~ms"),
     # The two placement factors are the same shape and one clause apart, which is exactly the
     # swap a hurried edit makes and exactly the swap a reader cannot see.
+    # 6 Oct 2026: the interval beside the first factor resamples whole runs now, not Katz's.
     ("swap the two placement factors",
-     r"$\GeomOrigFactor$-fold [Katz",
-     r"$\GeomReplFactor$-fold [Katz"),
+     r"$\GeomOrigFactor$-fold [bootstrap",
+     r"$\GeomReplFactor$-fold [bootstrap"),
     ("understate the priority range",
      r"rate $\rtFactorLow$--$\rtFactorHigh\times$ at unchanged background load",
      r"rate $\rtFactorLow\times$ at unchanged background load"),
@@ -72,11 +73,13 @@ MUTATIONS = [
      "not at zero, so the check stays", "at zero, so the check stays"),
     ("break a cross-reference",
      r"(Fig.~\ref{fig:twoways})", r"(Fig.~\ref{fig:nosuch})"),
-    # The tracer's three ratios bracket the observed rate rather than under-predicting it,
-    # which is what makes the interpreter-lock rival bounded rather than waved away.
+    # The tracer's ratios bracket the observed rate rather than under-predicting it, which is
+    # what makes the interpreter-lock rival bounded rather than waved away. 6 Oct 2026: the
+    # sentence quotes the ratios against both brokers' runs, which the trace counts, so the
+    # anchor follows it.
     ("type the traced ratios instead of emitting them",
-     r"at ratios of $\tracedRatios$ in",
-     "at ratios of $0.78$, $1.06$ and $3.32$ in"),
+     r"at ratios of \tracedPooledRatios{} in",
+     "at ratios of 0.95, 1.22 and 3.39 in"),
 ]
 
 

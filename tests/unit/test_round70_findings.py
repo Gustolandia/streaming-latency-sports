@@ -42,12 +42,13 @@ def journal():
     return (REPO / "supplement.tex").read_text(encoding="utf-8")
 
 
-def _spans_caption(journal):
-    m = re.search(r"Values\s+below\s+zero\s+by\s+span\s+and\s+broker", journal)
+def _spans_caption(doc):
+    """6 Oct 2026: the table is the paper's Table I again, label tab:spans."""
+    m = re.search(r"Values\s+below\s+zero\s+by\s+span\s+and\s+broker", doc)
     assert m, "Table I's caption has been reworded; retarget this pin"
     j = m.start()
-    return " ".join(journal[journal.rindex(chr(92) + "caption{", 0, j):
-                            journal.index("label{stab:spans}", j)].split())
+    return " ".join(doc[doc.rindex(chr(92) + "caption{", 0, j):
+                        doc.index("label{tab:spans}", j)].split())
 
 
 def _rendered(name):
@@ -74,7 +75,8 @@ class TestR1TheAcknowledgmentLagIsCounted:
         assert agg["neg_acklag"] == 0, (
             "if this ever moves off zero it is a finding, not a failure -- but the sentence "
             "in Section II and the row in Table I both have to move with it")
-        assert agg["events"] == 738730, "counted over the whole corpus, not a subset"
+        # 7 Oct 2026: 708,505 since the late messages were left out (738,730 before).
+        assert agg["events"] == 708505, "counted over the whole corpus, not a subset"
         assert agg["shallowest_acklag_us"] > 0, (
             "the margin is what turns 'never inverted' from a fact about a threshold into a "
             "fact about distance from one")
@@ -94,19 +96,19 @@ class TestR1TheAcknowledgmentLagIsCounted:
         assert m["spanKafkaNegAckLag"] == "0" and m["spanRedisNegAckLag"] == "0"
         assert int(m["spanAckLagFloorUs"]) > 0
 
-    def test_table_one_carries_the_fourth_chain(self, journal):
-        """5 Oct 2026: Table I is the journal supplement's (see the `journal` fixture)."""
-        i = journal.index("label{stab:spans}")
-        table = journal[i:journal.index("end{table}", i)]
+    def test_table_one_carries_the_fourth_chain(self, paper):
+        """6 Oct 2026: Table I is the paper's again (tab:spans)."""
+        i = paper.index("label{tab:spans}")
+        table = paper[i:paper.index("end{table}", i)]
         assert "spanNegAckLag" in table, "the row exists"
         assert table.count("publish (chain)") == 3, (
             "three spans now take the publish timestamp as their origin, and all three are rows")
         assert "---" not in table, "round 68's measured zeros stay measured zeros"
 
-    def test_the_caption_gives_the_margin_rather_than_only_the_zero(self, journal):
+    def test_the_caption_gives_the_margin_rather_than_only_the_zero(self, paper):
         """5 Oct 2026: the caption reads "Values below zero by span and broker" and gives "the
         smallest run minimum of the publish latency A ... clear of zero"."""
-        caption = _spans_caption(journal)
+        caption = _spans_caption(paper)
         assert "spanAckLagFloorUs" in caption
         assert "clear of zero" in caption
 
@@ -162,17 +164,17 @@ class TestR1TheAcknowledgmentLagIsCounted:
         flat = " ".join(paper.split())
         assert "neither $D$ nor $A$ falls below zero once" in flat
         prose = " ".join(journal.split())
-        i = prose.index(r"Table~\ref{stab:spans} counts the values below zero in each span")
+        i = prose.index(r"Table~\ref{P-tab:spans} counts the values below zero in each span")
         passage = prose[i:i + 500]
         assert ("Only $S$, the one span whose two timestamps have no causal order" in passage
                 and "ever does" in passage), "the chain inventory no longer says it is complete"
-        caption = _spans_caption(journal)
+        caption = _spans_caption(paper)
         assert caption.startswith(chr(92) + "caption{" + chr(92) + "textbf{Only $S$ falls below "
                                   "zero"), "the table's claim is no longer that only S inverts"
 
     def test_the_rendered_table_shows_four_clean_chains(self):
-        """5 Oct 2026: on the journal supplement's pages, where Table I is."""
-        flat = " ".join(_rendered("supplement").split())
+        """6 Oct 2026: on the paper's pages, where Table I is again."""
+        flat = " ".join(_rendered("paper").split())
         assert flat.count("publish (chain)0 0 0") == 3
         assert "event time0 0 0" in flat
 
@@ -200,8 +202,9 @@ class TestR2TheFloorIsAScaleNotALimit:
         # settles, as the measured range, "not at zero", which is the same claim made without
         # a bound; and it may not call that range a floor or a bound the rate respects.
         flat = " ".join(paper.split())
+        # 6 Oct 2026: both brokers' ranges, Kafka's first, then "not at zero".
         m = re.search(r"settles at \$" + RE_BS + r"rtResidualMin\$--\$" + RE_BS
-                      + r"rtResidualMax\$, not at zero", flat)
+                      + r"rtResidualMax\$ on .{0,120}?, not at zero", flat)
         assert m, "the main text no longer says where the real-time rate settles"
         clause = flat[max(0, m.start() - 200):m.end() + 120]
         assert not re.search(r"\b(?:floor|bound|bounded|reaches but)\b", clause), clause
@@ -317,10 +320,11 @@ class TestRecommendedItems:
 
         5 Oct 2026: Table I is the journal supplement's and its caption opens "Only S falls
         below zero"; the rebuilt Limitations say "We classified the ten tools by reading
-        them"."""
+        them".
+
+        6 Oct 2026: Table I is the paper's again, in Section III, caption unchanged."""
         flat = " ".join(paper.split())
-        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
-        assert "Only $S$ falls below zero" in _spans_caption(journal), \
+        assert "Only $S$ falls below zero" in _spans_caption(paper), \
             "the span inventory no longer says it is complete"
         assert re.search(r"classified the " + RE_BS + r"harnessAuditedWord\{\} tools by reading "
                          r"them", flat), "the source-reading concession has gone"

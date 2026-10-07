@@ -45,6 +45,14 @@ import sys
 import pytest
 
 REPO = Path(__file__).parent.parent.parent
+
+
+def _bibliographies():
+    """Both reference files, joined: the one the paper and the supplement cite, and the
+    postmortem's own, which moved to a file of its own on 7 Oct 2026. An entry is checked
+    wherever it lives."""
+    return "\n".join((REPO / name).read_text(encoding="utf-8")
+                     for name in ("manuscript_references.bib", "postmortem_references.bib"))
 BS = chr(92)
 sys.path.insert(0, str(REPO / "scripts"))
 
@@ -289,7 +297,7 @@ class TestW3AndW4TheTwoLiteratureItems:
         assert "arithmetic without the sign" in passage
 
     def test_both_entries_exist_in_the_bibliography(self):
-        bib = (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
+        bib = _bibliographies()
         for key in ("otel_obi_2568", "li2026rounding"):
             assert ("@misc{%s," % key) in bib, key
 
@@ -306,7 +314,14 @@ class TestW3AndW4TheTwoLiteratureItems:
 
         37 since 5 Oct 2026: the rebuilt paper cites what its seven pages of text need. The
         pin follows the article's own count, so the list still cannot grow or shrink
-        unnoticed, and the cap stands beside it."""
+        unnoticed, and the cap stands beside it.
+
+        45 since 6 Oct 2026, the cap again: the review of that day asked for the work the paper
+        stands beside. Li et al. and Leverich and Kozyrakis on tail latency from the host,
+        Danzig and Melvin on clocks too coarse for what they time, Bristot de Oliveira et al.
+        on the operating system's own noise, and Baccelli et al. on Poisson sampling in
+        Related Work; Stoica et al. for the scheduler's rule and Corbet for its custom
+        slices; and Karimov et al. for the definition Fig. 1 draws."""
         bbl = REPO / "paper.bbl"
         if not bbl.is_file():                           # pragma: no cover - built by CI
             pytest.skip("paper.bbl absent")
@@ -314,8 +329,9 @@ class TestW3AndW4TheTwoLiteratureItems:
         assert n <= 45, "TC caps the article at 45 references; this is %d" % n
         # 45 from 4 Oct 2026, the cap: Nosek et al. (PNAS) for "registered" and Leek and Peng
         # (Nature) for the void result, both checked against Crossref. 37 from the rebuild of
-        # 5 Oct, which kept Nosek et al. and cut the void result with Leek and Peng.
-        assert n == 37, "the article's reference count moved from the rebuilt paper's 37 to %d" % n
+        # 5 Oct, which kept Nosek et al. and cut the void result with Leek and Peng. 45 from
+        # 6 Oct, with the eight above.
+        assert n == 45, "the article's reference count moved from 45 to %d" % n
 
 
 class TestW5TheFigureLetsTheReaderCheckItsCaption:
@@ -347,10 +363,11 @@ class TestW5TheFigureLetsTheReaderCheckItsCaption:
         values being the grid values they print.
 
         5 Oct 2026: the figure is the journal supplement's (S4.1, label sfig:deletion),
-        caption unchanged, so the caption is read there."""
-        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
-        i = journal.index(BS + "label{sfig:deletion}")
-        caption = " ".join(journal[journal.rindex(BS + "caption{", 0, i):i].split())
+        caption unchanged, so the caption is read there.
+
+        6 Oct 2026: the paper's again, Fig. 4 (label fig:deletion), and read there."""
+        i = paper.index(BS + "label{fig:deletion}")
+        caption = " ".join(paper[paper.rindex(BS + "caption{", 0, i):i].split())
         assert BS + "ombGridMedianCells" in caption
         assert BS + "ombGridPrintedLo" in caption and BS + "ombGridPrintedHi" in caption
         assert "$1.0$ or $2.0$" not in caption

@@ -121,8 +121,11 @@ def paths(rows=None):
     out = {}
     for r in classified(rows):
         key = (r["harness"], r["path"])
+        # 6 Oct 2026: vendor and language travel with the verdict, so the supplement's table
+        # can show the rows behind "five languages and nine vendors".
         v = out.setdefault(key, {"clock": r["clock"], "kinds": set(),
-                                 "counts_discards": False, "lines": 0})
+                                 "counts_discards": False, "lines": 0,
+                                 "vendor": r.get("vendor", ""), "language": r.get("language", "")})
         v["kinds"].update(r["kinds"])
         v["counts_discards"] = v["counts_discards"] or r["is_counter"]
         v["lines"] += 1

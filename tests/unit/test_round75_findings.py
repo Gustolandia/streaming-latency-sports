@@ -242,9 +242,11 @@ class TestR2TheRecoveryPopulationsDoNotSeparate:
         assert abs(float(ledger["recoveryShift"])) < 3.0, (
             "the Hodges-Lehmann shift has moved; Section V-D's 'the populations behind them "
             "do not differ' must be re-argued, not merely re-emitted")
-        assert ledger["recoveryPassMax"] == ledger["recoveryFailMax"], (
-            "Section V-D says the worst condition is the same on either side and prints one "
-            "of the two macros; if they diverge the sentence is false")
+        # 7 Oct 2026: leaving out the late messages parted the two maxima by two points, 38
+        # and 36, and S16.9 now says the worst conditions lie within two points of each other.
+        assert abs(float(ledger["recoveryPassMax"]) - float(ledger["recoveryFailMax"])) <= 2, (
+            "S16.9 says the worst conditions lie within two points of each other; if they "
+            "part further the sentence is false")
 
     def test_the_concentration_at_zero_is_what_moves_the_median(self, ledger):
         """The structure the corrected sentence attributes the median gap to."""

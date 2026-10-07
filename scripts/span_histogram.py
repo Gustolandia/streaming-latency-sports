@@ -18,7 +18,7 @@ when the corpus is rescanned.
 
 Two spans matter and they behave differently, which is the whole point:
 
-    ack-referenced   t_cons_recv - t_broker_ack    negative 62,264 times in 738,730 events
+    ack-referenced   t_cons_recv - t_broker_ack    negative 62,264 times in 708,505 events
     send-referenced  t_cons_recv - t_prod_send     negative never, at nanosecond resolution
 
 What the benchmark sees is neither. The OpenMessaging Benchmark reads a millisecond-resolution
@@ -50,6 +50,7 @@ import os
 import sys
 
 import recount_spans
+import stale_backlog
 
 DEFAULT_ARCHIVE = os.path.join("cloud_archive", "sbl_runs.tgz")
 DEFAULT_OUT = os.path.join("docs", "results", "span_histogram.csv")
@@ -100,6 +101,8 @@ def new_accumulator():
         "ms": {name: {} for name, _, _ in SPANS},
         "runs": 0,
         "events": 0,
+        # Messages left out as received late behind a stale backlog (stale_backlog.py).
+        "late": 0,
     }
 
 
@@ -141,6 +144,9 @@ def consume_run(acc, prod_rows, cons_rows):
         except (KeyError, TypeError, ValueError):
             continue
 
+    # 7 Oct 2026: the messages the consumer received late behind a stale backlog are left out,
+    # the ids stale_backlog.late_ids gives, as every reader of these runs leaves them out.
+    late = stale_backlog.late_ids(prod_rows, cons_rows)
     counted = 0
     for row in cons_rows:
         prod = index.get(row.get("event_id"))
@@ -152,6 +158,9 @@ def consume_run(acc, prod_rows, cons_rows):
                 "t_output_ns": int(row["t_output_ns"]),
             }
         except (KeyError, TypeError, ValueError):
+            continue
+        if row["event_id"] in late:
+            acc["late"] += 1
             continue
         counted += 1
         # One merged dict per event, matching `recount_spans.join_run`. Round 43 added a
@@ -298,6 +307,7 @@ def write_stats(acc, out):
     payload = {
         "runs": acc["runs"],
         "events": acc["events"],
+        "late": acc["late"],
         "bin_lo_us": BIN_LO_US,
         "bin_hi_us": BIN_HI_US,
         "bin_width_us": BIN_WIDTH_US,

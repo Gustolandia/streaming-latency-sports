@@ -196,9 +196,9 @@ each number rests on.
 In the ideal case $S$ is close to zero, because its two readings follow one write and are taken
 on one machine and one clock. Measured, it is spread over milliseconds, and part of it falls below
 zero (Fig.~\ref{fig:twoways}). Over the $\spanEvents$ messages of the $\spanRuns$ cloud runs that
-produced matched records, $\spanNegAck$ values of $S$, $\spanNegAckPct\%$, fall below zero. These
-counts leave out the messages a consumer received late because it was still reading earlier
-runs' messages (Supplement~S1.5). We call this share the \emph{negative-span rate}. It pools runs at every load we ran, each weighted
+produced matched records, $\spanNegAck$ values of $S$, $\spanNegAckPct\%$, fall below zero
+(excluding $\backlogLate$ messages delayed by a testbed fault; Supplement~S1.5). We call this
+share the \emph{negative-span rate}. It pools runs at every load we ran, each weighted
 by its messages. Per run it goes from zero, in $\spanRunsNoNegative$ runs, to
 $\spanRunRateMaxPct\%$, with a median of $\spanRunRateMedianPct\%$, and Section~\ref{sec:mechanism}
 shows what moves it. Both brokers show it, \kafka{} on

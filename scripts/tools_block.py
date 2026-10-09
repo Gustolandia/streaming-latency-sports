@@ -69,6 +69,12 @@ TRIPS = {
     "rabbitmq-perftest": "in one process",
     "nats-latency": "in one process",
     "rdkafka_performance": "across two processes",
+    # Freeze 30's five, as its addendum read their invocations before any of their runs (D33-5).
+    "omb": "across two processes",
+    "pulsar-perf": "across two processes",
+    "emqtt-bench": "across two processes",
+    "ycsb": "round trip",
+    "nats-bench": "round trip",
 }
 
 _STEP = re.compile(r"t1-(.+)-step\.json$")

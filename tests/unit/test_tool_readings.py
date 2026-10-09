@@ -5,10 +5,13 @@ the finding. hey printing four decimals of a second cannot report a difference b
 that ceiling has to survive into the reading, not be smoothed away. So these tests hold the
 numbers *and* the step the tool's own printing puts under them.
 """
+import base64
 import io
 import json
 import os
+import struct
 import sys
+import zlib
 
 import pytest
 
@@ -629,3 +632,317 @@ class TestTheCommand:
                             "--out", str(where)])
         assert code == 1
         assert json.loads(where.read_text(encoding="utf-8"))["smallest_reported_ms"] is None
+
+
+# Freeze 30's five, each fixture cut from what the tool printed in the pilot of 9 October on the
+# first x86 pair (runs/azure/collected/matched/pilot_v33_20261009T203142Z): lines kept as they
+# came, the rest of the run's log left out.
+
+PULSAR = (
+    "2026-10-09T20:21:38,968+0000 [main] INFO  org.apache.pulsar.testclient.PerformanceConsumer"
+    " - Throughput received:     402 msg --- 40.085  msg/s --- 0.157 Mbit/s  --- Latency: mean:"
+    " 4.328 ms - med: 4 - 95pct: 6 - 99pct: 19 - 99.9pct: 42 - 99.99pct: 42 - Max: 42 {}\n"
+    "2026-10-09T20:21:48,975+0000 [main] INFO  org.apache.pulsar.testclient.PerformanceConsumer"
+    " - ------------------- DONE ----------------------- {}\n"
+    "2026-10-09T20:21:48,976+0000 [perf-client-shutdown] INFO  org.apache.pulsar.testclient."
+    "PerformanceConsumer - Aggregated throughput stats --- 500 records received --- 16.645 msg/s"
+    " --- 0.065 Mbit/s --- AckRate: 16.64474808009164  msg/s --- ack failed 0 msg {}\n"
+    "2026-10-09T20:21:48,983+0000 [perf-client-shutdown] INFO  org.apache.pulsar.testclient."
+    "PerformanceConsumer - Aggregated latency stats --- Latency: mean: 4.214 ms - med: 4 - 95pct:"
+    " 5 - 99pct: 10 - 99.9pct: 42 - 99.99pct: 42 - 99.999pct: 42 - Max: 42 {}\n")
+
+EMQTT = (
+    "Start with 1 workers, addrs pool size: 1 and req interval: 10 ms \n"
+    "\n"
+    "1s sub total=1 rate=0.99/sec\n"
+    "1s connect_succ total=1 rate=0.99/sec\n"
+    "5s publish_latency avg=1ms\n"
+    "5s recv total=2 rate=0.40/sec\n"
+    "6s publish_latency avg=1ms\n"
+    "6s recv total=52 rate=50.00/sec\n"
+    "15s publish_latency avg=1ms\n"
+    "15s recv total=500 rate=48.00/sec\n"
+    "# emqtt-bench's /metrics, read at the end of the run\n"
+    "publish_latency 500\n"
+    "recv 500\n"
+    'e2e_latency_bucket{le="1"} 500\n'
+    'e2e_latency_bucket{le="5"} 500\n'
+    'e2e_latency_bucket{le="+Inf"} 500\n'
+    "e2e_latency_count 500\n"
+    "e2e_latency_sum 500\n")
+
+OMB = (
+    "20:25:51.916 [main] INFO DistributedWorkersEnsemble - Workers list - producers:"
+    " [http://127.0.0.1:8180]\n"
+    "20:25:51.916 [main] INFO DistributedWorkersEnsemble - Workers list - consumers:"
+    " http://127.0.0.1:8182\n"
+    "20:26:55.800 [main] INFO Benchmark - Writing test result into"
+    " /home/ubuntu/pilot33/p_omb/result_dist.json\n"
+    "# the benchmark's result file\n"
+    "{\n"
+    '  "workload" : "sbl-tools",\n'
+    '  "driver" : "Kafka",\n'
+    '  "aggregatedEndToEndLatencyQuantiles" : {\n'
+    '    "91.3502806206669" : 2.0,\n'
+    '    "98.8114889402443" : 3.0,\n'
+    '    "99.70287223506108" : 4.0,\n'
+    '    "100.0" : 12.0\n'
+    "  },\n"
+    '  "aggregatedEndToEndLatencyAvg" : 2.1066358534169694,\n'
+    '  "aggregatedEndToEndLatency50pct" : 2.0,\n'
+    '  "aggregatedEndToEndLatency99pct" : 4.0,\n'
+    '  "aggregatedEndToEndLatencyMax" : 12.0\n'
+    "}\n")
+
+YCSB = (
+    "[OVERALL], RunTime(ms), 10016\n"
+    "[OVERALL], Throughput(ops/sec), 49.92012779552716\n"
+    "[READ], Operations, 500\n"
+    "[READ], AverageLatency(us), 667.286\n"
+    "[READ], MinLatency(us), 599\n"
+    "[READ], MaxLatency(us), 5551\n"
+    "[READ], 50thPercentileLatency(us), 655\n"
+    "[READ], 99thPercentileLatency(us), 792\n"
+    "[READ], Return=OK, 500\n")
+
+NATS_BENCH = (
+    "20:28:22 Starting Core NATS service requester benchmark [clients=1, duration=10.00s,"
+    " msg-size=512 B, msgs=500, sleep=0s, subject=sbl.bench, throughput=50]\n"
+    "20:28:22 [1] Starting Core NATS service requester, requesting 500 messages\n\n"
+    "NATS Core NATS service requester stats: 49 msgs/sec ~ 25 KiB/sec ~ min: 1,194.58us ~ avg:"
+    " 1,267.59us ~ max: 3,132.66us ~ P50: 1,260.20us ~ P90: 1,290.43us ~ P99: 1,338.33us ~"
+    " P99.9: 3,132.66us\n")
+
+
+class TestFreeze30sFiveTools:
+    """The five tools the plan registered and version 15 left unrun, read from what each printed
+    in the pilot. Each reading keeps the step the tool's own record puts under its figures."""
+
+    def test_pulsar_perf_reads_its_closing_line_and_not_a_running_one(self):
+        got = tr.read_tool("pulsar-perf", PULSAR)
+        assert got["reported_ms"] == {"avg": pytest.approx(4.214), "p50": 4.0, "p99": 10.0,
+                                      "max": 42.0}
+        assert got["steps_ms"]["avg"] == pytest.approx(0.001)
+        assert got["steps_ms"]["p50"] == 1.0, "every percentile is a whole millisecond"
+
+    def test_pulsar_perf_counts_what_arrived_and_says_nothing_of_what_it_kept(self):
+        """Its count is every message received, the refused ones among them."""
+        got = tr.read_tool("pulsar-perf", PULSAR)
+        assert got["received"] == 500 and got["kept"] is None
+
+    def test_pulsar_perf_without_its_closing_lines_reads_nothing(self):
+        got = tr.read_tool("pulsar-perf", PULSAR.split("Aggregated")[0])
+        assert got["reported_ms"] == {} and got["received"] is None
+
+    def test_pulsar_perf_says_what_it_kept_from_the_histogram_file_it_writes(self):
+        text = PULSAR + hdr_log([0, 0, 0, 0, 120, 280], [0, 0, 0, 0, 60, 40])
+        got = tr.read_tool("pulsar-perf", text)
+        assert got["kept"] == 500 and got["received"] == 500
+        assert got["reported_ms"]["avg"] == pytest.approx(4.214)
+
+    def test_pulsar_perfs_empty_histogram_prints_zeros_that_are_not_measurements(self):
+        """The audit's finding (apache/pulsar#13250): an empty histogram prints a mean of 0.000
+        and every percentile as 0. Where its file shows it kept nothing, there is no reading."""
+        zeros = PULSAR.replace("mean: 4.214 ms - med: 4 - 95pct: 5 - 99pct: 10 - 99.9pct: 42"
+                               " - 99.99pct: 42 - 99.999pct: 42 - Max: 42",
+                               "mean: 0.000 ms - med: 0 - 95pct: 0 - 99pct: 0 - 99.9pct: 0"
+                               " - 99.99pct: 0 - 99.999pct: 0 - Max: 0")
+        got = tr.read_tool("pulsar-perf", zeros + hdr_log([], []))
+        assert got["reported_ms"] == {} and got["kept"] == 0 and got["received"] == 500
+
+    def test_pulsar_perfs_zeros_are_read_where_its_file_shows_it_kept_them(self):
+        zeros = PULSAR.replace("mean: 4.214 ms - med: 4", "mean: 0.000 ms - med: 0")
+        got = tr.read_tool("pulsar-perf", zeros + hdr_log([500]))
+        assert got["kept"] == 500 and got["reported_ms"]["avg"] == 0.0
+
+    @pytest.mark.parametrize("line", ["0.1,10.0,4.0,not base64 at all!",
+                                      "0.1,10.0,4.0," + base64.b64encode(b"short").decode(),
+                                      "0.1,10.0,4.0," + base64.b64encode(
+                                          struct.pack(">ii", 0x1c849314, 4) + b"bad!").decode()])
+    def test_a_histogram_file_that_cannot_be_read_counts_nothing_and_hides_nothing(self, line):
+        got = tr.read_tool("pulsar-perf", PULSAR + tr.PULSAR_HISTOGRAM + "\n" + line + "\n")
+        assert got["kept"] is None and got["reported_ms"]["p99"] == 10.0, \
+            "the figures stand as printed when the file cannot say otherwise"
+
+
+def _varint(n):
+    """HdrHistogram's ZigZag LEB128 for one count, or a run of empty buckets as a negative."""
+    v = n * 2 if n >= 0 else -n * 2 - 1
+    out = bytearray()
+    for i in range(9):
+        if i == 8:
+            out.append(v & 0xFF)
+            break
+        byte, v = v & 0x7F, v >> 7
+        out.append(byte | (0x80 if v else 0))
+        if not v:
+            break
+    return bytes(out)
+
+
+def hdr_encode(counts, inner_cookie=0x1c849313):
+    """One histogram as an HdrHistogram log writes it: counts by bucket, runs of empty ones as
+    a negative, the V2 header, compressed, then base64."""
+    payload, zeros = bytearray(), 0
+    for count in counts:
+        if count == 0:
+            zeros += 1
+            continue
+        if zeros:
+            payload += _varint(-zeros)
+            zeros = 0
+        payload += _varint(count)
+    inner = struct.pack(">iiiiqqd", inner_cookie, len(payload), 0, 3, 1, 3600000000, 1.0) \
+        + bytes(payload)
+    squeezed = zlib.compress(inner)
+    return base64.b64encode(struct.pack(">ii", 0x1c849314, len(squeezed)) + squeezed).decode()
+
+
+def hdr_log(*intervals):
+    """pulsar-perf's histogram file as the runner writes it after the log: a legend, then one
+    interval a line."""
+    lines = [tr.PULSAR_HISTOGRAM, "#[Histogram log format version 1.3]",
+             '"StartTimestamp","Interval_Length","Interval_Max","Interval_Compressed_Histogram"']
+    lines += ["%.3f,10.000,42.000,%s" % (10.0 * i, hdr_encode(c)) for i, c in enumerate(intervals)]
+    return "\n" + "\n".join(lines) + "\n"
+
+
+#: pulsar-perf's own histogram file from the shakedown of 9 October (host-pulsar-perf in
+#: runs/azure/collected/matched/shakedown_v33_20261009T213112Z), written by its Java HdrHistogram
+#: library, from a run at no offset in which the consumer said "1500 records received".
+PULSAR_HLOG = (
+    "#[Histogram log format version 1.3]\n"
+    '"StartTimestamp","Interval_Length","Interval_Max","Interval_Compressed_Histogram"\n'
+    "1791580211.996,10.611,0.000,HISTFAAAAB942pNpmSzMwMDAyAABrFAazDeun8Fg/wEqAgBL/APH\n"
+    "1791580222.607,10.050,0.000,HISTFAAAAC542pNpmSzMwMDAzwABrFCaEUQY189gsP8AlehgXsMiw8XAwszCy8TNBACVogVi\n"
+    "1791580232.657,10.019,0.000,HISTFAAAACZ42pNpmSzMwMDAzgABrFCaEUQY189gsP8AlfjA/IKZjwUAbTEFwg==\n"
+    "1791580242.676,10.005,0.000,HISTFAAAACd42pNpmSzMwMDAwQABrFCaEUQY189gsP8AlZjFsouZh4UFAG/gBUI=\n"
+    "1791580252.681,10.005,0.000,HISTFAAAAB942pNpmSzMwMDAyAABrFAazDeun8Fg/wEqAgBL/APH\n"
+    "1791580262.686,10.013,0.000,HISTFAAAAB942pNpmSzMwMDAyAABrFAazDeun8Fg/wEqAgBL/APH\n")
+
+
+class TestHdrHistogramCounts:
+    """The count pulsar-perf's histogram file holds, decoded as HdrHistogram's Java code encodes."""
+
+    def test_the_tools_own_file_counts_every_message_of_a_run_nothing_could_drop(self):
+        """Not decoded by our own encoder: written by the Java library, and checked against the
+        tool's own count of what it received, which at no offset is everything it kept."""
+        counts = [tr.hdr_count(line.rsplit(",", 1)[1]) for line in PULSAR_HLOG.splitlines()
+                  if not line.startswith(("#", '"'))]
+        assert counts == [0, 499, 501, 500, 0, 0] and sum(counts) == 1500
+        text = PULSAR.replace("500 records received", "1500 records received")
+        got = tr.read_tool("pulsar-perf", text + tr.PULSAR_HISTOGRAM + "\n" + PULSAR_HLOG)
+        assert got["kept"] == got["received"] == 1500
+
+    def test_a_histogram_counts_its_buckets_and_skips_its_empty_runs(self):
+        assert tr.hdr_count(hdr_encode([0, 0, 0, 7, 0, 5, 1])) == 13
+
+    def test_an_empty_histogram_counts_nothing(self):
+        assert tr.hdr_count(hdr_encode([])) == 0
+
+    def test_a_count_needing_all_nine_bytes_is_read_whole(self):
+        assert tr.hdr_count(hdr_encode([2 ** 57])) == 2 ** 57
+
+    @pytest.mark.parametrize("encoded", [
+        base64.b64encode(struct.pack(">ii", 0x1c849303, 0)).decode(),
+        hdr_encode([1], inner_cookie=0x1c849304)])
+    def test_anything_but_a_compressed_v2_histogram_is_refused(self, encoded):
+        with pytest.raises(ValueError):
+            tr.hdr_count(encoded)
+
+    def test_emqtt_bench_takes_its_average_from_the_histogram_that_keeps_every_sample(self):
+        got = tr.read_tool("emqtt-bench", EMQTT)
+        assert got["reported_ms"] == {"avg": pytest.approx(1.0)}
+        assert got["steps_ms"]["avg"] == pytest.approx(1.0 / 500), \
+            "a sum of whole milliseconds over its count"
+        assert got["kept"] == 500 and got["received"] == 500
+
+    def test_emqtt_bench_keeps_its_consoles_averages_as_printed(self):
+        assert tr.read_tool("emqtt-bench", EMQTT)["console_avg_ms"] == [1, 1, 1]
+
+    def test_emqtt_bench_reads_a_negative_sum(self):
+        """Under T2's offset the histogram's sum goes below zero; that is what it is for."""
+        text = EMQTT.replace("e2e_latency_sum 500", "e2e_latency_sum -1500")
+        assert tr.read_tool("emqtt-bench", text)["reported_ms"]["avg"] == pytest.approx(-3.0)
+
+    @pytest.mark.parametrize("text", [
+        EMQTT.split(tr.EMQTT_METRICS)[0],
+        EMQTT.replace("e2e_latency_count 500", "e2e_latency_count 0"),
+        "5s publish_latency avg=1ms\n" + tr.EMQTT_METRICS + "\ne2e_latency_count 3\n",
+    ])
+    def test_emqtt_bench_without_a_whole_histogram_reads_no_average(self, text):
+        """No metrics read, an empty histogram, or a count with no sum: no average either way."""
+        assert tr.read_tool("emqtt-bench", text)["reported_ms"] == {}
+
+    def test_omb_reads_its_result_file_and_steps_its_percentiles_in_milliseconds(self):
+        got = tr.read_tool("omb", OMB)
+        assert got["reported_ms"] == {"avg": pytest.approx(2.1066358534169694), "p50": 2.0,
+                                      "p99": 4.0, "max": 12.0, "min": 2.0}
+        assert got["steps_ms"]["p50"] == got["steps_ms"]["min"] == 1.0, \
+            "whole milliseconds by construction, whatever digits the file gives them"
+        assert got["steps_ms"]["avg"] < 1e-9 and got["kept"] is None
+
+    @pytest.mark.parametrize("text", [
+        OMB.split(tr.OMB_RESULT)[0],
+        OMB.split(tr.OMB_RESULT)[0] + tr.OMB_RESULT + "\nno file was written\n",
+        OMB.split(tr.OMB_RESULT)[0] + tr.OMB_RESULT + "\n{ this is not json\n",
+    ])
+    def test_omb_without_a_result_file_reads_nothing(self, text):
+        assert tr.read_tool("omb", text)["reported_ms"] == {}
+
+    def test_omb_reads_only_the_file_and_not_what_follows_it(self):
+        assert tr.read_tool("omb", OMB + "benchmark exit 0\n")["reported_ms"]["p99"] == 4.0
+
+    def test_omb_takes_what_the_file_holds_and_leaves_out_what_it_does_not(self):
+        text = (tr.OMB_RESULT + '\n{"aggregatedEndToEndLatencyAvg": 3, '
+                '"aggregatedEndToEndLatency50pct": null, "aggregatedEndToEndLatencyQuantiles": '
+                '{"100.0": "x"}}\n')
+        assert tr.read_tool("omb", text)["reported_ms"] == {"avg": 3.0}
+
+    def test_omb_whose_histogram_recorded_nothing_has_no_figures(self):
+        """Its filter leaves nothing when every difference is at or below zero, and an empty
+        histogram reports a mean, percentiles and a maximum of 0.0 that are not measurements."""
+        text = (tr.OMB_RESULT + '\n{"aggregatedEndToEndLatencyAvg": 0.0, '
+                '"aggregatedEndToEndLatency50pct": 0.0, "aggregatedEndToEndLatency99pct": 0.0, '
+                '"aggregatedEndToEndLatencyMax": 0.0, "aggregatedEndToEndLatencyQuantiles": {}}\n')
+        got = tr.read_tool("omb", text)
+        assert got["reported_ms"] == {} and got["kept"] == 0
+
+    def test_omb_with_quantiles_in_another_shape_has_no_minimum(self):
+        text = (tr.OMB_RESULT + '\n{"aggregatedEndToEndLatencyAvg": 2.5, '
+                '"aggregatedEndToEndLatencyQuantiles": [2.0, 3.0]}\n')
+        assert tr.read_tool("omb", text)["reported_ms"] == {"avg": 2.5}
+
+    def test_ycsb_reads_its_reads_in_microseconds(self):
+        got = tr.read_tool("ycsb", YCSB)
+        assert got["reported_ms"] == {"avg": pytest.approx(0.667286), "min": pytest.approx(0.599),
+                                      "max": pytest.approx(5.551), "p50": pytest.approx(0.655),
+                                      "p99": pytest.approx(0.792)}
+        assert got["steps_ms"]["min"] == pytest.approx(0.001)
+        assert got["steps_ms"]["avg"] == pytest.approx(1e-6)
+        assert got["kept"] == 500
+
+    def test_ycsb_reads_nothing_from_a_run_that_did_no_reads(self):
+        got = tr.read_tool("ycsb", "[OVERALL], RunTime(ms), 10016\n")
+        assert got["reported_ms"] == {} and got["kept"] is None
+
+    def test_nats_bench_reads_microseconds_with_their_thousands_separators(self):
+        got = tr.read_tool("nats-bench", NATS_BENCH)
+        assert got["reported_ms"] == {"min": pytest.approx(1.19458), "avg": pytest.approx(1.26759),
+                                      "max": pytest.approx(3.13266), "p50": pytest.approx(1.2602),
+                                      "p99": pytest.approx(1.33833)}
+        assert got["steps_ms"]["p99"] == pytest.approx(1e-5)
+
+    def test_nats_bench_does_not_read_its_p99_9_as_its_p99(self):
+        text = NATS_BENCH.replace("P99: 1,338.33us ~ ", "")
+        assert "p99" not in tr.read_tool("nats-bench", text)["reported_ms"]
+
+    def test_nats_bench_reads_nothing_from_a_run_with_no_stats(self):
+        assert tr.read_tool("nats-bench", NATS_BENCH.split("\n\n")[0])["reported_ms"] == {}
+
+    def test_each_of_the_five_crosses_the_delayed_direction_once(self):
+        """D33-5: a reply to a request, or a message delivered to the process that subtracts."""
+        staircase = [(0.0, {"reported_ms": {"avg": 1.0}}), (1.0, {"reported_ms": {"avg": 2.0}}),
+                     (2.0, {"reported_ms": {"avg": 3.0}})]
+        for tool in ("omb", "pulsar-perf", "emqtt-bench", "ycsb", "nats-bench"):
+            assert tr.slope_against_delay(staircase, tool)["crossings"] == 1

@@ -29,10 +29,13 @@ they print. Where the two disagree, the prediction is reported as failed, not co
     python3 scripts/tool_readings.py read --tool vegeta --file report.txt
 """
 import argparse
+import base64
 import json
 import os
 import re
+import struct
 import sys
+import zlib
 
 #: How many milliseconds one of the tool's units is.
 UNITS_MS = {"ns": 1e-6, "us": 1e-3, "µs": 1e-3, "μs": 1e-3, "ms": 1.0, "s": 1000.0, "m": 60000.0}
@@ -377,6 +380,232 @@ def read_nats_latency(text):
     return _reading("nats-latency", got, steps)
 
 
+#: HdrHistogram's two V2 encodings, as its Java implementation writes them (AbstractHistogram).
+#: The low nibble of a cookie's last byte carries the word size, so it is masked off.
+HDR_COMPRESSED, HDR_PLAIN = 0x1c849304, 0x1c849303
+
+
+def _zigzag_varints(data):
+    """HdrHistogram's counts: ZigZag LEB128, seven bits a byte for eight bytes, then all eight
+    bits of a ninth (ZigZagEncoding.getLong). A negative number is a run of empty buckets."""
+    at = 0
+    while at < len(data):
+        value, shift = 0, 0
+        while True:
+            byte = data[at]
+            at += 1
+            if shift == 56:
+                value |= byte << shift
+                break
+            value |= (byte & 0x7F) << shift
+            if not byte & 0x80:
+                break
+            shift += 7
+        yield (value >> 1) ^ -(value & 1)
+
+
+def hdr_count(encoded):
+    """How many values one compressed histogram, as an HdrHistogram log writes it, holds."""
+    raw = base64.b64decode(encoded)
+    cookie, length = struct.unpack(">ii", raw[:8])
+    if cookie & ~0xF0 != HDR_COMPRESSED:
+        raise ValueError("not a compressed HdrHistogram: cookie %#x" % cookie)
+    inner = zlib.decompress(raw[8:8 + length])
+    cookie, payload = struct.unpack(">ii", inner[:8])
+    if cookie & ~0xF0 != HDR_PLAIN:
+        raise ValueError("not an HdrHistogram: cookie %#x" % cookie)
+    # The header: cookie, payload length, normalising offset, significant digits (four bytes
+    # each), the lowest and highest trackable values and the conversion ratio (eight each).
+    return sum(v for v in _zigzag_varints(inner[40:40 + payload]) if v > 0)
+
+
+#: The line the runner writes between pulsar-perf's log and its histogram file.
+PULSAR_HISTOGRAM = "# pulsar-perf's histogram file"
+
+
+def read_pulsar_perf(text):
+    """Apache Pulsar's performance consumer, `pulsar-perf consume`, at release 4.2.4.
+
+    It closes with two lines, the second carrying the latencies of the whole run:
+
+        Aggregated throughput stats --- 500 records received --- 16.645 msg/s --- ...
+        Aggregated latency stats --- Latency: mean: 4.214 ms - med: 4 - 95pct: 5 - 99pct: 10
+            - 99.9pct: 42 - 99.99pct: 42 - 99.999pct: 42 - Max: 42
+
+    The mean has three decimals and every percentile is a whole number of milliseconds, because
+    the consumer subtracts the producer's publish stamp from System.currentTimeMillis() and
+    records the difference only when it is at or above zero (PerformanceConsumer.java:277-283 at
+    v4.2.4). "Records received" counts every message, the ones the histogram refused among them,
+    so it is what arrived rather than what was kept.
+
+    What it kept is in the histogram file it writes with --histogram-file, ten seconds a line,
+    which the runner writes after the log under a line of its own: the sum of every interval's
+    count. It decides one thing more. An empty histogram prints a mean of 0.000 and every
+    percentile as 0 -- the audit found it, and a user filed it (apache/pulsar#13250) -- which
+    reads exactly like a run whose every latency was zero. Where the file shows the tool kept
+    nothing, those zeros are not measurements and the reading has no figures.
+    """
+    log, marker, histograms = (text or "").partition(PULSAR_HISTOGRAM)
+    match = _last(log, r"Aggregated latency stats --- Latency: mean:\s*(-?[\d.]+)\s*ms"
+                       r" - med:\s*(-?\d+) - 95pct:\s*(-?\d+) - 99pct:\s*(-?\d+).*?"
+                       r"Max:\s*(-?\d+)")
+    kept = None
+    if marker:
+        lines = [line.strip() for line in histograms.splitlines()]
+        try:
+            kept = sum(hdr_count(line.rsplit(",", 1)[1]) for line in lines
+                       if line and not line.startswith(("#", '"')) and "," in line)
+        except (ValueError, IndexError, struct.error, zlib.error):
+            kept = None
+    got, steps = {}, {}
+    if match and kept != 0:
+        for key, group in (("avg", 1), ("p50", 2), ("p99", 4), ("max", 5)):
+            _put(got, steps, key, match.group(group), "ms")
+    received = _find(log, r"Aggregated throughput stats --- (\d+) records received")
+    return _reading("pulsar-perf", got, steps, kept=kept,
+                    received=int(received) if received else None)
+
+
+#: The line the runner writes between emqtt-bench's console and its /metrics page.
+EMQTT_METRICS = "# emqtt-bench's /metrics, read at the end of the run"
+
+
+def read_emqtt_bench(text):
+    """emqtt-bench's subscriber at tag 0.6.3, the publisher stamping each payload (`ts`).
+
+    It reports a latency in two places, and they handle a value at or below zero differently:
+
+      * its console, once a second: `6s publish_latency avg=1ms`. A counter that adds only
+        latencies above zero, divided by every message received that second, in whole
+        milliseconds (src/emqtt_bench.erl:489-494 and 1431-1434). A value at or below zero is
+        counted as zero.
+      * its Prometheus histogram, `e2e_latency`, which records every latency, zero and below
+        included, and whose sum and count the runner reads off /metrics at the end of the run
+        and writes after the console's lines:
+
+            e2e_latency_count 500
+            e2e_latency_sum 500
+
+    The average read is the histogram's, its sum over its count: the tool's own record of every
+    sample, and the only one of its figures fine enough for T1's staircase (D33-4). Its step is a
+    millisecond over the count, because the sum is of whole milliseconds. The console's averages
+    are kept beside it, as printed, for what they show of the console's own rule. The tool prints
+    no percentile: its histogram's finest bucket holds everything up to a millisecond.
+    """
+    got, steps = {}, {}
+    head, _, metrics = (text or "").partition(EMQTT_METRICS)
+    count = _find(metrics, r"^e2e_latency_count\s+(\d+)\s*$")
+    total = _find(metrics, r"^e2e_latency_sum\s+(-?\d+(?:\.\d+)?)\s*$")
+    if count and total is not None and int(count) > 0:
+        got["avg"] = float(total) / int(count)
+        steps["avg"] = (step_of(total) or 1.0) / int(count)
+    printed = [int(v) for v in re.findall(r"publish_latency avg=(-?\d+)ms", head)]
+    received = _last(head, r"recv total=(\d+)")
+    return _reading("emqtt-bench", got, steps, kept=int(count) if count else None,
+                    console_avg_ms=printed,
+                    received=int(received.group(1)) if received else None)
+
+
+#: The line the runner writes between OMB's log and its result file.
+OMB_RESULT = "# the benchmark's result file"
+
+
+def read_omb(text):
+    """The OpenMessaging Benchmark at 5b1fa709, in its distributed mode, with its Kafka driver.
+
+    At this commit its log prints the publish latency as it goes and no end-to-end figure at all;
+    the end-to-end ones are in the result file it writes with --output, which the runner writes
+    after the log:
+
+        "aggregatedEndToEndLatencyAvg" : 2.53156146179402,
+        "aggregatedEndToEndLatency50pct" : 2.0,
+        "aggregatedEndToEndLatency99pct" : 5.0,
+        "aggregatedEndToEndLatencyMax" : 9.0,
+        "aggregatedEndToEndLatencyQuantiles" : {"53.588039867109636" : 2.0, ...}
+
+    Every end-to-end sample is a whole number of milliseconds -- the consumer subtracts two
+    System.currentTimeMillis() stamps and converts the difference to microseconds -- so each
+    percentile, and the smallest value its quantiles hold, steps in whole milliseconds whatever
+    digits the file gives it. Only the average can see less. Nothing in the file counts what the
+    filter kept or what it dropped.
+
+    The quantiles list every value the histogram recorded, so an empty list is a histogram that
+    recorded none -- what the filter leaves when every difference is at or below zero. The
+    histogram then reports a mean, percentiles and a maximum of 0.0, which are not measurements,
+    and the reading has no figures.
+    """
+    got, steps = {}, {}
+    _, marker, tail = (text or "").partition(OMB_RESULT)
+    start = tail.find("{")
+    try:
+        #: The first object after the line and nothing past it: what the runner prints after the
+        #: file is not part of the file.
+        result = json.JSONDecoder().raw_decode(tail[start:])[0] if marker and start >= 0 else {}
+    except ValueError:
+        result = {}
+    quantiles = result.get("aggregatedEndToEndLatencyQuantiles")
+    if isinstance(quantiles, dict) and not quantiles:
+        return _reading("omb", got, steps, kept=0)
+    avg = result.get("aggregatedEndToEndLatencyAvg")
+    if isinstance(avg, (int, float)):
+        got["avg"] = float(avg)
+        steps["avg"] = step_of(repr(float(avg)))
+    for key, name in (("p50", "aggregatedEndToEndLatency50pct"),
+                      ("p99", "aggregatedEndToEndLatency99pct"),
+                      ("max", "aggregatedEndToEndLatencyMax")):
+        if isinstance(result.get(name), (int, float)):
+            got[key], steps[key] = float(result[name]), 1.0
+    values = [v for v in (quantiles if isinstance(quantiles, dict) else {}).values()
+              if isinstance(v, (int, float))]
+    if values:
+        got["min"], steps["min"] = float(min(values)), 1.0
+    return _reading("omb", got, steps)
+
+
+def read_ycsb(text):
+    """YCSB's summary for its reads, in microseconds, at 66302f30 with its Redis binding.
+
+        [READ], Operations, 500
+        [READ], AverageLatency(us), 667.286
+        [READ], MinLatency(us), 599
+        [READ], MaxLatency(us), 5551
+        [READ], 50thPercentileLatency(us), 655
+        [READ], 99thPercentileLatency(us), 792
+
+    It times each read on System.nanoTime() and records it as whole microseconds, so the average
+    carries decimals and every other figure steps in a microsecond. The 50th percentile is printed
+    because the runner asks for it (hdrhistogram.percentiles), as k6 is asked for its 99th.
+    """
+    got, steps = {}, {}
+    for key, name in (("avg", "AverageLatency"), ("min", "MinLatency"), ("max", "MaxLatency"),
+                      ("p50", "50thPercentileLatency"), ("p99", "99thPercentileLatency")):
+        _put(got, steps, key, _find(text, r"^\[READ\],\s*%s\(us\),\s*(-?[\d.]+)\s*$" % name), "us")
+    operations = _find(text, r"^\[READ\],\s*Operations,\s*(\d+)\s*$")
+    return _reading("ycsb", got, steps, kept=int(operations) if operations else None)
+
+
+def read_nats_bench(text):
+    """The NATS CLI's benchmark in its request mode, at cc0a8e32 (the nats-latency build).
+
+        NATS Core NATS service requester stats: 49 msgs/sec ~ 25 KiB/sec ~ min: 1,194.58us ~
+            avg: 1,267.59us ~ max: 3,132.66us ~ P50: 1,260.20us ~ P90: 1,290.43us ~
+            P99: 1,338.33us ~ P99.9: 3,132.66us
+
+    Microseconds with two decimals and a comma at every thousand (internal/bench/stats.go,
+    humanize.CommafWithDigits). The comma is a separator, not a decimal point, and is dropped
+    before the figure is read; the step is taken from the decimals.
+    """
+    line = _last(text, r"^.*stats:.*\bmin:.*$")
+    found = line.group(0) if line else ""
+    got, steps = {}, {}
+    for key, name in (("min", "min"), ("avg", "avg"), ("max", "max"), ("p50", "P50"),
+                      ("p99", "P99")):
+        pair = re.search(r"\b%s:\s*(-?[\d,]+(?:\.\d+)?)(%s)(?=\s|$)" % (name, GO_UNITS), found)
+        if pair:
+            _put(got, steps, key, pair.group(1).replace(",", ""), pair.group(2))
+    return _reading("nats-bench", got, steps)
+
+
 #: Every tool this reads, by the name a campaign calls it.
 READERS = {
     "vegeta": read_vegeta,
@@ -390,6 +619,12 @@ READERS = {
     "rdkafka_performance": read_rdkafka_performance,
     "rabbitmq-perftest": read_rabbitmq_perftest,
     "nats-latency": read_nats_latency,
+    # The five the plan registered and version 15 left unrun (D15-6), run under freeze 30.
+    "omb": read_omb,
+    "pulsar-perf": read_pulsar_perf,
+    "emqtt-bench": read_emqtt_bench,
+    "ycsb": read_ycsb,
+    "nats-bench": read_nats_bench,
 }
 
 
@@ -447,6 +682,9 @@ def step_seen(staircase):
 #: broker's traffic toward the driver, so a round trip meets it once. kafka-end-to-end sends,
 #: waits for the broker's acknowledgement, and then fetches the message back: twice.
 #: rdkafka_performance's consumer fetches what a producer waiting on acknowledgements sent: twice.
+#: The five of freeze 30 each cross it once (D33-5): a reply to a request (ycsb, nats-bench), or
+#: a message delivered to the process that subtracts, stamped before it left a producer that
+#: waits for nothing (omb, pulsar-perf, emqtt-bench).
 CROSSINGS = {"kafka-end-to-end": 2, "rdkafka_performance": 2}
 
 

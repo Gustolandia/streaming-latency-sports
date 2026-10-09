@@ -33,10 +33,15 @@ cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)" || exit 1
 #: each later round has a folder of its own, so no round writes over another's runs. Until 25
 #: September there was no round here at all: the block ran once where the plan asks for four,
 #: and a second pass would have landed on top of the first.
+#:
+#: The five tools freeze 30 adds (D33-1) are a block of their own and write under a name of their
+#: own, SBL_TOOLS_DIR=runs/azure/tools_v33, so that none of their rounds can land in a folder of
+#: the eleven's.
+BASE="${SBL_TOOLS_DIR:-runs/azure/tools}"
 ROUND="${SBL_TOOLS_ROUND:-1}"
 case "$ROUND" in
-  1) DIR="runs/azure/tools" ;;
-  [2-9]) DIR="runs/azure/tools_round$ROUND" ;;
+  1) DIR="$BASE" ;;
+  [2-9]) DIR="${BASE}_round$ROUND" ;;
   *) echo "SBL_TOOLS_ROUND is a round from 1 to 9, not '$ROUND'" >&2; exit 2 ;;
 esac
 #: The AMQP broker our own reference client talks to: the same default the tools are given in
@@ -105,13 +110,39 @@ kafka-producer-perf|kafka|995cfcf99f7917403e030428c00b5c51808ddc61
 wrk2|git|44a94c17d8e6a0bac8559b53da76848e430cb7a7
 rabbitmq-perftest|jar|ba718d2eae542ee5557a676f5454d4492739e714
 nats-latency|go|cc0a8e3224d564b134a92f6f2c2081452f885549
+omb|git|5b1fa70951a323da26bd587174b58bb2c65b0b5c
+pulsar-perf|tarball|4.2.4
+emqtt-bench|git|cb86b18848da17cae1024e1d06f7e43f8f6691a1
+ycsb|git|66302f301b13f60d4bcb2f29f478586bb1d6f2e0
+nats-bench|go|cc0a8e3224d564b134a92f6f2c2081452f885549
 '
+#: The last five are the tools the plan registered and version 15 left unrun (D15-6), run under
+#: freeze 30 (D33-1), each at the version the audit read (data/tools_audit/batch_01, 03, 04 and
+#: 06). Pulsar is pinned to release 4.2.4, which the audit cross-checked: its consumer keeps a
+#: latency only when it is at or above zero exactly as the audited master does
+#: (PerformanceConsumer.java:277-283 there, PerformanceConsumerBase.java:544-551 on master).
+#: nats-bench is the same build of the NATS CLI as nats-latency; it is another of its commands.
 
-#: The tools libfaketime can reach, because they read the clock through the C library.
+#: What those five are built and run with, pinned like them and checked against the checksums
+#: their publishers give, because each is part of what produced the program whose behaviour the
+#: block reports. OMB needs a newer Maven than Ubuntu's 3.6.3 (its enforcer asks for 3.8.6), and
+#: emqtt-bench an Erlang no older than 27.2 where Ubuntu ships 24; Pulsar and OMB run on Java 17.
+JAVA17="/usr/lib/jvm/java-17-openjdk-amd64"
+JAVA11="/usr/lib/jvm/java-11-openjdk-amd64"
+MAVEN_VERSION="3.9.9"
+MAVEN_SHA512="a555254d6b53d267965a3404ecb14e53c3827c09c3b94b5678835887ab404556bfaf78dcfe03ba76fa2508649dca8531c74bca4d5846513522404d48e8c4ac8b"
+OTP_VERSION="28.1"
+OTP_SHA256="60c1083df707642f20831c762a68db191984314fef1d4d80b05bb8caf70b70bf"
+PULSAR_VERSION="4.2.4"
+PULSAR_SHA512="8c0a63cc6421c8eb3c4a55b8895ca08a38a1c6771758251fc7a82edbc4c6a42bb8ba5c956066b637ec7e049149d467c034e854b571a4cb000f42a47ae6105971"
+
+#: The tools libfaketime can reach, because they read the clock through the C library. The JVM
+#: and the Erlang VM do: in the pilot of 9 October a five-second offset reached
+#: System.currentTimeMillis() and os:system_time(millisecond) both.
 FAKEABLE="wrk2 valkey-benchmark memtier_benchmark rdkafka_performance kafka-end-to-end \
-kafka-producer-perf rabbitmq-perftest"
+kafka-producer-perf rabbitmq-perftest omb pulsar-perf emqtt-bench ycsb"
 #: The tools it cannot: Go does not go through the C library for the clock.
-GO_TOOLS="vegeta hey k6 nats-latency"
+GO_TOOLS="vegeta hey k6 nats-latency nats-bench"
 
 #: The Go toolchain the three Go tools are built with. Ubuntu 22.04 ships Go 1.18 and k6 needs
 #: newer, so it is fetched rather than apt-installed -- and pinned, because the compiler is part
@@ -246,6 +277,117 @@ get_perftest () {
   ( cd "$src" && git rev-parse HEAD ) > "$DIR/commit_perftest.txt" 2>/dev/null
 }
 
+#: Java 17 beside the Java 11 the first eleven were built and run with, which stays the machine's
+#: default. Installing 17 makes it the default -- it did in the pilot of 9 October -- and Kafka's
+#: own tools and PerfTest would then run on a runtime their rounds never ran on. The tools that
+#: need 17 are given it by path.
+get_java17 () {
+  [ -x "$JAVA17/bin/java" ] || sudo apt-get install -y -qq openjdk-17-jdk-headless >/dev/null 2>&1 \
+    || { log "   WARN: Java 17 could not be installed"; return 1; }
+  local t
+  for t in java javac jar; do
+    [ -x "$JAVA11/bin/$t" ] && sudo update-alternatives --set "$t" "$JAVA11/bin/$t" >/dev/null 2>&1
+  done
+  return 0
+}
+
+#: An archive fetched into $WORK and refused unless it matches the checksum written above.
+fetch_checked () {  # url, file, sha bits (256 or 512), sum
+  (cd "$WORK" && curl -fsSL -o "$2" "$1" && echo "$4  $2" | "sha$3sum" -c - >/dev/null 2>&1)
+}
+
+get_maven () {
+  [ -x "$WORK/apache-maven-$MAVEN_VERSION/bin/mvn" ] && return 0
+  fetch_checked "https://archive.apache.org/dist/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz" \
+      maven.tgz 512 "$MAVEN_SHA512" && (cd "$WORK" && tar -xzf maven.tgz) \
+    || { log "   WARN: Maven $MAVEN_VERSION could not be fetched, or did not match its checksum"; return 1; }
+}
+
+#: The three built from source keep their sources under $WORK/src and install to a folder of
+#: their own under ~/tools. The first version built each where it installed it, and the package
+#: unpacked over the source tree it came from.
+#: Built from the commit the audit read; the project has no releases. Its docker module builds
+#: container images and is left out: nothing here runs in a container.
+get_omb () {
+  local version="$1" src="$WORK/src/omb" home="$HOME/tools/omb"
+  [ -x "$home/bin/benchmark" ] && { log "   omb already here"; return 0; }
+  get_java17 && get_maven || return 1
+  [ -d "$src" ] || git clone -q https://github.com/openmessaging/benchmark "$src" \
+    || { log "   WARN: the OpenMessaging Benchmark could not be cloned"; return 1; }
+  log "   building omb from $version"
+  ( cd "$src" && git fetch -q --all && git checkout -q "$version" \
+    && JAVA_HOME="$JAVA17" "$WORK/apache-maven-$MAVEN_VERSION/bin/mvn" -B -q -DskipTests \
+         -Dlicense.skip=true -Dspotless.check.skip=true -Dspotless.apply.skip=true \
+         -Dcheckstyle.skip=true -Dspotbugs.skip=true -pl '!docker' install ) \
+    > "$DIR/build_omb.log" 2>&1 \
+    || { log "   WARN: omb did not build; see $DIR/build_omb.log"; return 1; }
+  mkdir -p "$home" \
+    && tar -xzf "$(ls "$src"/package/target/openmessaging-benchmark-*-bin.tar.gz | head -1)" \
+         -C "$home" --strip-components=1 \
+    || { log "   WARN: omb built, but its package could not be unpacked"; return 1; }
+  ( cd "$src" && git rev-parse HEAD ) > "$DIR/commit_omb.txt" 2>/dev/null
+}
+
+#: Pulsar's client tools, from the release archive the audit cross-checked. The same archive is
+#: the server on the broker (brokers_here).
+get_pulsar () {
+  local home="$HOME/tools/pulsar"
+  [ -x "$home/bin/pulsar-perf" ] && { log "   pulsar-perf already here"; return 0; }
+  get_java17 || return 1
+  fetch_checked "https://archive.apache.org/dist/pulsar/pulsar-$PULSAR_VERSION/apache-pulsar-$PULSAR_VERSION-bin.tar.gz" \
+      pulsar.tgz 512 "$PULSAR_SHA512" \
+    || { log "   WARN: Pulsar $PULSAR_VERSION could not be fetched, or did not match its checksum"; return 1; }
+  mkdir -p "$home" && tar -xzf "$WORK/pulsar.tgz" -C "$home" --strip-components=1 \
+    || { log "   WARN: the Pulsar archive could not be unpacked"; return 1; }
+  echo "$PULSAR_VERSION" > "$DIR/pulsar_version.txt"
+}
+
+#: Erlang/OTP as hex.pm builds it for Ubuntu 22.04 -- the build setup-beam installs -- checked
+#: against its published SHA-256, then emqtt-bench at its tag. QUIC is left out of the build; the
+#: block speaks MQTT over TCP.
+get_emqtt_bench () {
+  local version="$1" src="$WORK/src/emqtt-bench" home="$HOME/tools/emqtt-bench" otp="$HOME/tools/otp"
+  [ -x "$home/emqtt_bench" ] && [ -x "$otp/bin/erl" ] && { log "   emqtt-bench already here"; return 0; }
+  if [ ! -x "$otp/bin/erl" ]; then
+    fetch_checked "https://builds.hex.pm/builds/otp/amd64/ubuntu-22.04/OTP-$OTP_VERSION.tar.gz" \
+        otp.tgz 256 "$OTP_SHA256" \
+      && mkdir -p "$otp" && tar -xzf "$WORK/otp.tgz" -C "$otp" --strip-components=1 \
+      && (cd "$otp" && ./Install -minimal "$otp" >/dev/null) \
+      || { log "   WARN: Erlang/OTP $OTP_VERSION could not be installed"; return 1; }
+  fi
+  [ -d "$src" ] || git clone -q https://github.com/emqx/emqtt-bench "$src" \
+    || { log "   WARN: emqtt-bench could not be cloned"; return 1; }
+  log "   building emqtt-bench from $version"
+  ( cd "$src" && git fetch -q --all --tags && git checkout -q "$version" \
+    && PATH="$otp/bin:$PATH" BUILD_WITHOUT_QUIC=1 make compile ) \
+    > "$DIR/build_emqtt-bench.log" 2>&1 \
+    || { log "   WARN: emqtt-bench did not build; see $DIR/build_emqtt-bench.log"; return 1; }
+  mkdir -p "$home" && cp "$src"/_build/default/bin/* "$home/" && [ -x "$home/emqtt_bench" ] \
+    || { log "   WARN: emqtt-bench built no program"; return 1; }
+  ( cd "$src" && git rev-parse HEAD ) > "$DIR/commit_emqtt-bench.txt" 2>/dev/null
+}
+
+#: YCSB's Redis binding at the commit the audit read, built with Java 11 like the first eleven's
+#: Java tools. The binding's own archive carries its launcher and its workloads.
+get_ycsb () {
+  local version="$1" src="$WORK/src/ycsb" home="$HOME/tools/ycsb"
+  [ -x "$home/bin/ycsb.sh" ] && { log "   ycsb already here"; return 0; }
+  command -v mvn >/dev/null || sudo apt-get install -y -qq maven \
+    || { log "   WARN: maven is not available, so YCSB cannot be built"; return 1; }
+  [ -d "$src" ] || git clone -q https://github.com/brianfrankcooper/YCSB "$src" \
+    || { log "   WARN: YCSB could not be cloned"; return 1; }
+  log "   building ycsb from $version"
+  ( cd "$src" && git fetch -q --all && git checkout -q "$version" \
+    && JAVA_HOME="$JAVA11" mvn -B -q -pl site.ycsb:redis-binding -am clean package -DskipTests ) \
+    > "$DIR/build_ycsb.log" 2>&1 \
+    || { log "   WARN: ycsb did not build; see $DIR/build_ycsb.log"; return 1; }
+  mkdir -p "$home" \
+    && tar -xzf "$(ls "$src"/redis/target/ycsb-redis-binding-*.tar.gz | head -1)" -C "$home" \
+         --strip-components=1 \
+    || { log "   WARN: ycsb built, but its archive could not be unpacked"; return 1; }
+  ( cd "$src" && git rev-parse HEAD ) > "$DIR/commit_ycsb.txt" 2>/dev/null
+}
+
 install () {
   log "== the tools, at the versions the audit read"
   sudo apt-get update -qq || stop "apt-get update failed"
@@ -279,12 +421,23 @@ install () {
   git_build valkey https://github.com/valkey-io/valkey 9.1.2 src/valkey-benchmark make -j2
   get_kafka
   get_perftest ba718d2eae542ee5557a676f5454d4492739e714
+  # Freeze 30's five (D33-1). nats-bench needs nothing more: it is the nats built above.
+  get_omb 5b1fa70951a323da26bd587174b58bb2c65b0b5c
+  get_pulsar
+  get_emqtt_bench cb86b18848da17cae1024e1d06f7e43f8f6691a1
+  get_ycsb 66302f301b13f60d4bcb2f29f478586bb1d6f2e0
   #: The client our own AMQP reference speaks through (scripts/amqp_reference.py). Pinned like
   #: the tools, and system-wide, because the reference runs as this user inside the receiver's
   #: namespace, where a user-local install is not on the path sudo gives it.
   sudo pip3 install -q "pika==1.3.2" >/dev/null 2>&1 \
     && log "   pika $(python3 -c 'import pika; print(pika.__version__)' 2>/dev/null), for the AMQP reference" \
     || log "   WARN: pika did not install, so rabbitmq-perftest can have no reference"
+  #: And the one our Pulsar reference speaks through (scripts/pulsar_reference.py), for the same
+  #: reasons. Pulsar's protocol is binary and framed in protobuf, too much to write by hand the way
+  #: the NATS and MQTT references are written.
+  sudo pip3 install -q "pulsar-client==3.13.0" >/dev/null 2>&1 \
+    && log "   pulsar-client $(python3 -c 'import pulsar; print(pulsar.__version__)' 2>/dev/null), for the Pulsar reference" \
+    || log "   WARN: pulsar-client did not install, so pulsar-perf can have no reference"
 
   # What is actually on this machine afterwards, with its own fingerprint, so a run can say which
   # build produced its numbers rather than which version we meant to install.
@@ -295,7 +448,7 @@ for tool, binary in (("vegeta", "vegeta"), ("hey", "hey"), ("k6", "k6"), ("wrk2"
                      ("valkey-benchmark", "valkey-benchmark"),
                      ("memtier_benchmark", "memtier_benchmark"),
                      ("rdkafka_performance", "rdkafka_performance"),
-                     ("nats-latency", "nats"),
+                     ("nats-latency", "nats"), ("nats-bench", "nats"),
                      ("kafka-end-to-end", "kafka-run-class.sh"),
                      ("kafka-producer-perf", "kafka-producer-perf-test.sh")):
     where = shutil.which(binary)
@@ -337,6 +490,20 @@ else:
     found["rabbitmq-perftest"] = {"present": False,
                                   "why": ("no Main-Class in its manifest" if os.path.exists(jar)
                                           else "no jar at %s" % jar)}
+# Freeze 30's four that are not one program on the path: each is fingerprinted by the file that
+# carries its own code, where it was unpacked or built.
+import glob
+for tool, pattern in (("omb", "omb/lib/*benchmark-framework*.jar"),
+                      ("pulsar-perf", "pulsar/lib/*pulsar-testclient*.jar"),
+                      ("emqtt-bench", "emqtt-bench/emqtt_bench"),
+                      ("ycsb", "ycsb/lib/core-*.jar")):
+    hits = sorted(glob.glob(os.path.join(os.path.expanduser("~/tools"), pattern)))
+    if not hits:
+        found[tool] = {"present": False, "why": "nothing at ~/tools/%s" % pattern}
+        continue
+    with open(hits[0], "rb") as fh:
+        found[tool] = {"present": True, "path": hits[0],
+                       "sha256": hashlib.sha256(fh.read()).hexdigest(), "version_says": ""}
 with open(sys.argv[1], "w", encoding="utf-8") as fh:
     json.dump(found, fh, indent=2, sort_keys=True)
 print("\n".join("   %-22s %s" % (t, "ok" if v["present"] else "MISSING")
@@ -355,7 +522,9 @@ PY
 # and a set of firewall rules between the tool and the broker, which adds its own delay and its
 # own scheduling. This block measures tenths of a millisecond, so an extra hop would land inside
 # the thing being measured. Kafka and Valkey are already standing from the law campaigns; these
-# are the two that only the tools block needs, plus the web server the HTTP tools talk to.
+# are the two that only the tools block needs, plus the web server the HTTP tools talk to, and
+# the two freeze 30's tools need besides (D33-3): Mosquitto for emqtt-bench and Pulsar for
+# pulsar-perf. OMB speaks to the Kafka, YCSB to the Redis and nats-bench to the NATS already here.
 #: The servers belong on the broker, and this script's header says so. On 24 September `brokers`
 #: was run on the driver anyway, and nothing stopped it: it installed and configured the servers
 #: there, asked 127.0.0.1 whether they answered, and they did -- the driver's own. The broker the
@@ -373,7 +542,8 @@ brokers () {
     remote_broker "cd sbl && { git pull -q --ff-only origin main || echo 'the broker could not pull; running the setup it has'; } && BROKER_PRIV=$BROKER_PRIV bash cloud/azure/tools.sh brokers" \
       || stop "setting the servers up on the broker failed; see above"
     local bad=0 tool why
-    for tool in wrk2 valkey-benchmark rdkafka_performance rabbitmq-perftest nats-latency; do
+    for tool in wrk2 valkey-benchmark rdkafka_performance rabbitmq-perftest nats-latency \
+                pulsar-perf emqtt-bench; do
       if why=$(server_answers "$tool"); then
         log "   from here, $tool's server answers it"
       else
@@ -390,8 +560,8 @@ brokers () {
 brokers_here () {
   log "== the servers the tools block needs, on this host"
   sudo apt-get update -qq || stop "apt-get update failed"
-  sudo apt-get install -y -qq nginx rabbitmq-server \
-    || log "WARN: nginx or rabbitmq-server was not available; each is checked below"
+  sudo apt-get install -y -qq nginx rabbitmq-server mosquitto openjdk-17-jre-headless \
+    || log "WARN: nginx, rabbitmq-server, mosquitto or Java 17 was not available; each is checked below"
 
   # nats-server is a single Go binary and is not in Ubuntu's archive. Its release assets carry
   # the version in their own names -- nats-server-v2.11.0-linux-amd64.zip -- so GitHub's
@@ -456,16 +626,48 @@ brokers_here () {
     sudo systemctl enable --now sbl-nats >/dev/null 2>&1
   fi
 
+  # Mosquitto, the MQTT broker emqtt-bench speaks to (freeze 30). It listens on every address and
+  # lets anyone in, for the reason RabbitMQ does above: it answers only on the pair's own private
+  # subnet, holds no data, and lives as long as the experiment.
+  printf 'listener 1883 0.0.0.0\nallow_anonymous true\n' \
+    | sudo tee /etc/mosquitto/conf.d/sbl.conf >/dev/null
+  sudo systemctl enable --now mosquitto >/dev/null 2>&1
+  sudo systemctl restart mosquitto >/dev/null 2>&1
+
+  # Pulsar on its own, as `pulsar standalone`: broker, bookie and metadata store in one process,
+  # from the release archive the driver's pulsar-perf comes from. It is told the address the
+  # tools reach it at, and given 8090 for its web port, because nginx already holds 8080 for the
+  # HTTP tools; functions and stream storage are off, being nothing the block uses. A gigabyte of
+  # heap, as in the pilot: this broker has 8 GB and already carries Kafka, Redis, RabbitMQ and
+  # NATS. A unit, like NATS, so that it outlives the session that started it.
+  local pulsar="$HOME/tools/pulsar"
+  if [ ! -x "$pulsar/bin/pulsar" ]; then
+    fetch_checked "https://archive.apache.org/dist/pulsar/pulsar-$PULSAR_VERSION/apache-pulsar-$PULSAR_VERSION-bin.tar.gz" \
+        pulsar.tgz 512 "$PULSAR_SHA512" \
+      && mkdir -p "$pulsar" && tar -xzf "$WORK/pulsar.tgz" -C "$pulsar" --strip-components=1 \
+      || log "WARN: Pulsar $PULSAR_VERSION could not be fetched, or did not match its checksum"
+  fi
+  if [ -x "$pulsar/bin/pulsar" ]; then
+    sed -i "s/^webServicePort=8080$/webServicePort=8090/; s/^advertisedAddress=.*$/advertisedAddress=$BROKER_PRIV/" \
+      "$pulsar/conf/standalone.conf"
+    printf '[Unit]\nDescription=Pulsar standalone for the tools block\nAfter=network.target\n\n[Service]\nUser=%s\nWorkingDirectory=%s\nEnvironment=JAVA_HOME=%s\nEnvironment="PULSAR_MEM=-Xms1g -Xmx1g -XX:MaxDirectMemorySize=1g"\nExecStart=%s/bin/pulsar standalone --no-functions-worker --no-stream-storage\nRestart=always\n\n[Install]\nWantedBy=multi-user.target\n' \
+      "$(id -un)" "$pulsar" "$JAVA17" "$pulsar" | sudo tee /etc/systemd/system/sbl-pulsar.service >/dev/null
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now sbl-pulsar >/dev/null 2>&1
+  fi
+
   # What is actually answering, which is the only thing a campaign can rely on -- but asked for
   # up to fifteen seconds rather than once. These servers are started a few lines above and a
   # cold one is not listening by the time the next statement runs: on 22 September nats-server
   # logged "Server is ready" at 10:56:10.503 and this check had already called it dead in the
-  # same second, which stopped the whole tools block.
+  # same second, which stopped the whole tools block. Pulsar is given two minutes: it starts a
+  # bookie and a metadata store before its broker, and took about forty seconds in the pilot.
   local bad=0
-  for pair in "nginx 8080 http" "rabbitmq-server 5672 amqp" "nats-server 4222 nats"; do
+  for pair in "nginx 8080 http" "rabbitmq-server 5672 amqp" "nats-server 4222 nats" \
+              "mosquitto 1883 mqtt" "pulsar 6650 pulsar 120"; do
     set -- $pair
-    local waited=0
-    while ! (echo > "/dev/tcp/127.0.0.1/$2") 2>/dev/null && [ "$waited" -lt 15 ]; do
+    local waited=0 patience="${4:-15}"
+    while ! (echo > "/dev/tcp/127.0.0.1/$2") 2>/dev/null && [ "$waited" -lt "$patience" ]; do
       sleep 1; waited=$(( waited + 1 ))
     done
     if (echo > "/dev/tcp/127.0.0.1/$2") 2>/dev/null; then
@@ -557,8 +759,8 @@ release_delay () {
 reference_for () {
   local tool="$1" out="$2" backend id plan speedup me client=""
   case "$tool" in
-    valkey-benchmark|memtier_benchmark) backend=redis ;;
-    rdkafka_performance|kafka-end-to-end|kafka-producer-perf) backend=kafka ;;
+    valkey-benchmark|memtier_benchmark|ycsb) backend=redis ;;
+    rdkafka_performance|kafka-end-to-end|kafka-producer-perf|omb) backend=kafka ;;
     #: Our own clients for the protocols the study's program does not speak, written on
     #: 25 September because seven of the eleven tools had no reference at all, and T2 takes its
     #: offsets and its predictions from one. Each is timed the way its tools time, from inside the
@@ -566,7 +768,11 @@ reference_for () {
     #: clears the environment, which is how k6 came to make no request.
     vegeta|hey|k6|wrk2) client="http_reference.py --host $BROKER_PRIV --port 8080" ;;
     rabbitmq-perftest) client="amqp_reference.py --uri $RABBIT" ;;
-    nats-latency) client="nats_reference.py --host $BROKER_PRIV --port 4222" ;;
+    nats-latency|nats-bench) client="nats_reference.py --host $BROKER_PRIV --port 4222" ;;
+    #: Freeze 30's two new protocols, each with a client of ours written before any of their
+    #: tools' runs: MQTT by hand like NATS, and Pulsar through its own client library.
+    emqtt-bench) client="mqtt_reference.py --host $BROKER_PRIV --port 1883" ;;
+    pulsar-perf) client="pulsar_reference.py --url pulsar://$BROKER_PRIV:6650" ;;
     *) log "   no client of ours speaks $tool's protocol, so no reference is taken"; return 1 ;;
   esac
   if [ -n "$client" ]; then
@@ -664,14 +870,29 @@ server_answers () {
       [ "$got" = "200 512" ] \
         || { echo "http://$host:8080/ answered '$got' where the fixed 512-byte page is 200 512"
              return 1; } ;;
-    valkey-benchmark|memtier_benchmark)
+    valkey-benchmark|memtier_benchmark|ycsb)
       got=$(timeout 5 bash -c "exec 3<>/dev/tcp/${VALKEY_HOST:-$host}/6379 \
         && printf 'PING\r\n' >&3 && head -c 5 <&3" 2>/dev/null | tr -d '\r\n')
       [ "$got" = "+PONG" ] \
         || { echo "Redis at ${VALKEY_HOST:-$host}:6379 answered '$got' to PING"; return 1; } ;;
-    rdkafka_performance|kafka-end-to-end|kafka-producer-perf)
+    rdkafka_performance|kafka-end-to-end|kafka-producer-perf|omb)
       timeout 5 bash -c "echo > /dev/tcp/$host/19092" 2>/dev/null \
         || { echo "nothing listens for Kafka at $host:19092"; return 1; } ;;
+    pulsar-perf)
+      #: A broker that knows its cluster, asked on its web port. An open 6650 is a JVM that has
+      #: bound a socket, which Pulsar does before its broker can take a topic.
+      got=$(curl -s -m 5 "http://$host:8090/admin/v2/clusters")
+      [ "$got" = '["standalone"]' ] \
+        || { echo "Pulsar at $host:8090 named its clusters as '$got'"; return 1; }
+      timeout 5 bash -c "echo > /dev/tcp/$host/6650" 2>/dev/null \
+        || { echo "nothing listens for Pulsar's protocol at $host:6650"; return 1; } ;;
+    emqtt-bench)
+      #: An MQTT CONNECT, and the CONNACK that lets a client in: 20 02 00 00.
+      got=$(timeout 5 bash -c "exec 3<>/dev/tcp/$host/1883 \
+        && printf '\x10\x15\x00\x04MQTT\x04\x02\x00\x0a\x00\x09sbl-check' >&3 \
+        && head -c 4 <&3" 2>/dev/null | od -An -tx1 | tr -d ' \n')
+      [ "$got" = "20020000" ] \
+        || { echo "no MQTT broker let a client in at $host:1883 (got '$got')"; return 1; } ;;
     rabbitmq-perftest)
       timeout 5 bash -c "echo > /dev/tcp/$host/5672" 2>/dev/null \
         || { echo "nothing listens for AMQP at $host:5672"; return 1; }
@@ -682,7 +903,7 @@ server_answers () {
         | grep -q '{loopback_users,\[\]}' \
         || { echo "RabbitMQ on $host lets its user in from the broker only (loopback_users)"
              return 1; } ;;
-    nats-latency)
+    nats-latency|nats-bench)
       got=$(timeout 5 bash -c "exec 3<>/dev/tcp/$host/4222 && head -c 4 <&3" 2>/dev/null)
       [ "$got" = "INFO" ] \
         || { echo "no NATS greeting from $host:4222 (got '$got')"; return 1; } ;;

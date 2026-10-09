@@ -648,7 +648,15 @@ class TestTheToolsBlock:
         #: The code, not the comment that explains why the code is as it is.
         code = " ".join(line for line in runner.splitlines()
                         if not line.lstrip().startswith("#"))
-        assert "127.0.0.1" not in code, "no target is the machine the tool runs on"
+        #: Freeze 30's two-process tools talk to themselves -- OMB's coordinator to its workers,
+        #: emqtt-bench's subscriber serving its own metrics -- and that one loopback address is
+        #: named once and used only for them.
+        own = 'OWN="${SBL_TOOL_OWN:-127.0.0.1}"'
+        assert code.count(own) == 1
+        assert "127.0.0.1" not in code.replace(own, ""), "no target is the machine the tool runs on"
+        for line in re.findall(r"^.*\$OWN\b.*$", runner, re.M):
+            assert any(own_use in line for own_use in ("--workers", "--restapi", "/metrics")), \
+                "the loopback names a tool's own processes, never a server: %s" % line.strip()
         assert "localhost" not in code
         for target in ("SBL_TOOL_HTTP:-http://$BROKER_PRIV:8080/", "SBL_VALKEY_HOST:-$BROKER_PRIV",
                        "SBL_KAFKA:-$BROKER_PRIV:19092", "SBL_NATS:-nats://$BROKER_PRIV:4222"):
@@ -698,10 +706,14 @@ class TestTheToolsBlock:
         block measures tenths of a millisecond."""
         code = self.tools()
         assert "brokers ()" in code
-        for server in ("nginx", "rabbitmq-server", "nats-server"):
-            assert server in code, "%s is one of the servers the ten tools need" % server
-        assert "docker" not in code.lower(), "natively, so nothing sits in the path"
+        for server in ("nginx", "rabbitmq-server", "nats-server", "mosquitto", "sbl-pulsar"):
+            assert server in code, "%s is one of the servers the tools need" % server
+        #: Where the servers are set up. OMB's build leaves out its own docker module, which is the
+        #: one other place the word appears, and that is the point of naming it there.
+        setup = code.split("\nbrokers () {", 1)[1].split("\n# T1:", 1)[0]
+        assert "docker" not in setup.lower(), "natively, so nothing sits in the path"
         assert "listen 8080" in code, "the HTTP tools' target is the block's own site"
+        assert "webServicePort=8090" in setup, "and Pulsar's web port does not take nginx's 8080"
 
     def test_what_is_installed_is_fingerprinted_rather_than_assumed(self):
         code = self.tools()
@@ -719,6 +731,78 @@ class TestTheToolsBlock:
         assert code.count("bash cloud/azure/tools_run.sh") == 5
         assert 'SBL_TOOL_WRAP="$wrap"' in code
         assert 'WRAP="${SBL_TOOL_WRAP:-}"' in self.runner()
+
+    def case(self, tool):
+        """One tool's lines in the runner, comments dropped and continuations joined."""
+        code = self.runner().split("\n  %s)" % tool, 1)[1].split(";;", 1)[0]
+        joined, held = [], ""
+        for line in code.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.endswith("\\"):
+                held += line[:-1] + " "
+                continue
+            joined.append(held + line)
+            held = ""
+        return joined
+
+    def test_the_lines_the_readers_look_for_are_the_lines_the_runner_writes(self):
+        """Three of freeze 30's tools put a second output after their log, under a line of their
+        own, and the reader finds it by that line. A word changed on one side alone would read
+        every run as having no histogram, no metrics or no result file."""
+        sys.path.insert(0, str(REPO / "scripts"))
+        import tool_readings
+        runner = self.runner()
+        for line in (tool_readings.EMQTT_METRICS, tool_readings.OMB_RESULT,
+                     tool_readings.PULSAR_HISTOGRAM):
+            assert 'echo "%s"' % line in runner, line
+
+    def test_pulsar_perfs_consumer_listens_first_runs_by_time_and_writes_its_histogram(self):
+        """Stopped by a count, it exits on the last message before recording that message's latency
+        and before writing its last ten seconds to the file."""
+        lines = self.case("pulsar-perf")
+        consumer = next(i for i, line in enumerate(lines) if " consume " in line)
+        producer = next(i for i, line in enumerate(lines) if " produce " in line)
+        assert consumer < producer and lines[consumer].endswith("&")
+        assert lines[consumer].startswith("$WRAP ") and not lines[producer].startswith("$WRAP")
+        assert "-sp Latest" in lines[consumer] and "-time " in lines[consumer]
+        assert " -m " not in lines[consumer], "a count stops it before its last interval is written"
+        assert '--histogram-file "$histogram"' in lines[consumer]
+
+    def test_emqtt_bench_subtracts_in_the_wrapped_subscriber_and_is_read_after_its_publisher(self):
+        lines = self.case("emqtt-bench")
+        sub = next(i for i, line in enumerate(lines) if " sub " in line)
+        pub = next(i for i, line in enumerate(lines) if " pub " in line)
+        metrics = next(i for i, line in enumerate(lines) if " curl " in line and "/metrics" in line)
+        assert sub < pub < metrics, "listening first, and its histogram read once the sends are done"
+        assert lines[sub].startswith("$NS ") and "$REST" in lines[sub]
+        assert "$REST" not in lines[pub] and "$NS" not in lines[pub]
+        assert lines[sub].count("--payload-hdrs ts") == 1 and "--payload-hdrs ts" in lines[pub]
+        assert lines[metrics].startswith("$NS "), "asked in the network the subscriber is in"
+
+    def test_omb_runs_distributed_with_the_wrap_on_the_consumer_worker_alone(self):
+        lines = self.case("omb")
+        workers = [line for line in lines if "bin/benchmark-worker" in line]
+        assert len(workers) == 2 and all(line.startswith("$NS ") for line in workers)
+        assert "$REST" not in workers[0] and "--port 8180" in workers[0], "the producer's worker"
+        assert "$REST" in workers[1] and "--port 8182" in workers[1], "the consumer's, wrapped"
+        coordinator = next(line for line in lines if "bin/benchmark --workers" in line)
+        assert "http://$OWN:8180,http://$OWN:8182" in coordinator, \
+            "producers to the first worker, consumers to the second"
+        assert lines.index(coordinator) < lines.index("stop_own"), "and both stopped after it"
+
+    def test_the_one_process_tools_wrap_what_they_time_and_nothing_else(self):
+        ycsb = self.case("ycsb")
+        load = next(line for line in ycsb if " load redis " in line)
+        run = next(line for line in ycsb if " run redis " in line)
+        assert not load.startswith("$WRAP") and run.startswith("$WRAP"), \
+            "the records are loaded outside the wrap and the timing"
+        nats = self.case("nats-bench")
+        serve = next(line for line in nats if "service serve" in line)
+        request = next(line for line in nats if "service request" in line)
+        assert not serve.startswith("$WRAP") and request.startswith("$WRAP")
+        assert nats.index(serve) < nats.index(request)
 
     def test_t2_takes_its_control_with_no_offset_and_before_the_offsets(self):
         """Without it, "its figures did not move" cannot be told from "it did something none of
@@ -852,7 +936,7 @@ class TestT2ForcedNegatives:
         under it would be a run with no offset at all. D15-1 says what to do instead: move the
         machine's own clock and put it back. Until 25 September this script only refused."""
         code = self.tools()
-        assert 'GO_TOOLS="vegeta hey k6 nats-latency"' in code
+        assert 'GO_TOOLS="vegeta hey k6 nats-latency nats-bench"' in code
         t2 = code.split("\nt2 () {", 1)[1].split("\n}\n", 1)[0]
         assert "how=clock" in t2 and "step_clock" in t2
         go = t2.split('*" $tool "*)', 1)[1].split(";;", 1)[0]
@@ -987,8 +1071,10 @@ class TestT2ForcedNegatives:
         tool and the step, so a second pass would have landed on the first (25 September)."""
         code = self.tools()
         assert 'ROUND="${SBL_TOOLS_ROUND:-1}"' in code
-        assert '1) DIR="runs/azure/tools" ;;' in code, "round 1 stays where it always was"
-        assert '[2-9]) DIR="runs/azure/tools_round$ROUND" ;;' in code
+        assert 'BASE="${SBL_TOOLS_DIR:-runs/azure/tools}"' in code, \
+            "the eleven's round 1 stays where it always was, and another block names its own"
+        assert '1) DIR="$BASE" ;;' in code
+        assert '[2-9]) DIR="${BASE}_round$ROUND" ;;' in code
 
     def test_no_stage_writes_over_runs_that_are_already_there(self):
         code = self.tools()
@@ -1268,18 +1354,26 @@ def test_the_check_that_the_loop_is_alive_needs_no_name_for_it():
 def test_a_round_finds_its_own_folder_and_will_not_write_over_runs_already_in_it(tmp_path):
     """tools.sh's own lines for the round and the guard, run as they are written."""
     code = (KIT / "tools.sh").read_text(encoding="utf-8")
-    rounds = 'ROUND="${SBL_TOOLS_ROUND:-1}"' + code.split('ROUND="${SBL_TOOLS_ROUND:-1}"', 1)[1] \
-        .split("\nesac\n", 1)[0] + "\nesac\n"
+    start = 'BASE="${SBL_TOOLS_DIR:-runs/azure/tools}"'
+    rounds = start + code.split(start, 1)[1].split("\nesac\n", 1)[0] + "\nesac\n"
     guard = "not_run_yet () {" + code.split("\nnot_run_yet () {", 1)[1].split("\n}\n", 1)[0] + "\n}\n"
     head = "log () { echo \"$*\"; }\nstop () { log \"STOP_RULE: $*\"; exit 1; }\n"
 
-    def ask(round_, then):
+    def ask(round_, then, base=None):
+        env = {"SBL_TOOLS_ROUND": round_}
+        if base:
+            env["SBL_TOOLS_DIR"] = base
         return bash(["-c", head + rounds + guard + then], cwd=tmp_path, capture_output=True,
-                    text=True, extra_env={"SBL_TOOLS_ROUND": round_})
+                    text=True, extra_env=env)
 
     assert ask("1", 'echo "$DIR"').stdout.strip() == "runs/azure/tools"
     assert ask("3", 'echo "$DIR"').stdout.strip() == "runs/azure/tools_round3"
     assert ask("x", 'echo "$DIR"').returncode == 2, "a round that is not a number is refused"
+    #: Freeze 30's block writes under a name of its own, so none of its rounds can land in the
+    #: eleven's folders.
+    assert ask("1", 'echo "$DIR"', "runs/azure/tools_v33").stdout.strip() == "runs/azure/tools_v33"
+    assert ask("4", 'echo "$DIR"', "runs/azure/tools_v33").stdout.strip() \
+        == "runs/azure/tools_v33_round4"
     first = tmp_path / "runs" / "azure" / "tools_round2" / "t1-vegeta-0_5ms"
     first.mkdir(parents=True)
     assert ask("2", 'not_run_yet T1 vegeta "t1-vegeta-*ms/tool.txt"; echo free').stdout.strip() \
@@ -1757,12 +1851,15 @@ class TestEveryPinnedToolHasSomethingThatInstallsIt:
         return [line.split("|")[0] for line in table.strip().splitlines() if line.strip()]
 
     def test_the_block_pins_the_ten_tools_the_plan_counts(self):
-        assert len(self._tools()) == 11, "ten runnable plus wrk2's pair"
+        """Eleven for the first block (ten runnable, Kafka's two bundled tools apart), and the
+        five freeze 30 adds (D33-1)."""
+        assert len(self._tools()) == 16
 
     @pytest.mark.parametrize("tool", ["vegeta", "hey", "k6", "wrk2", "valkey-benchmark",
                                       "memtier_benchmark", "rdkafka_performance",
                                       "kafka-end-to-end", "kafka-producer-perf",
-                                      "rabbitmq-perftest", "nats-latency"])
+                                      "rabbitmq-perftest", "nats-latency", "omb", "pulsar-perf",
+                                      "emqtt-bench", "ycsb", "nats-bench"])
     def test_each_one_is_fetched_or_built_by_the_install_step(self, tool):
         """The invariant that was missing. A tool named in the table and nowhere else in the
         step is a tool the step cannot produce, and every run of it fails hours later."""
@@ -1772,14 +1869,44 @@ class TestEveryPinnedToolHasSomethingThatInstallsIt:
                     "memtier_benchmark": "git_build memtier",
                     "rdkafka_performance": "git_build librdkafka",
                     "kafka-end-to-end": "get_kafka", "kafka-producer-perf": "get_kafka",
-                    "rabbitmq-perftest": "get_perftest", "nats-latency": "go_tool nats"}
+                    "rabbitmq-perftest": "get_perftest", "nats-latency": "go_tool nats",
+                    "omb": "get_omb 5b1fa709", "pulsar-perf": "get_pulsar",
+                    "emqtt-bench": "get_emqtt_bench cb86b188", "ycsb": "get_ycsb 66302f30",
+                    "nats-bench": "go_tool nats"}
         assert builders[tool] in install, "%s has nothing that installs it" % tool
+
+    def test_the_five_are_installed_at_the_versions_their_pins_name(self):
+        """The table and the step that installs say the same thing, so neither can drift alone."""
+        text = (KIT / "tools.sh").read_text(encoding="utf-8")
+        table = dict(line.split("|")[0::2] for line in
+                     text.split("PINNED='", 1)[1].split("'", 1)[0].strip().splitlines())
+        install = text.split("\ninstall () {", 1)[1].split("\n}\n", 1)[0]
+        for tool, call in (("omb", "get_omb"), ("emqtt-bench", "get_emqtt_bench"),
+                           ("ycsb", "get_ycsb")):
+            assert "%s %s" % (call, table[tool]) in install, tool
+        assert table["pulsar-perf"] == re.search(r'PULSAR_VERSION="([\d.]+)"', text).group(1)
+        assert table["nats-bench"] == table["nats-latency"], "one build of the NATS CLI"
+
+    def test_what_their_builders_fetch_is_checked_against_a_published_checksum(self):
+        text = (KIT / "tools.sh").read_text(encoding="utf-8")
+        for name, bits in (("MAVEN_SHA512", 128), ("OTP_SHA256", 64), ("PULSAR_SHA512", 128)):
+            assert re.search(r'%s="[0-9a-f]{%d}"' % (name, bits), text), name
+        check = text.split("\nfetch_checked () {", 1)[1].split("\n}\n", 1)[0]
+        assert 'sha$3sum" -c -' in check, "and the archive is refused when it does not match"
+
+    def test_java_17_comes_in_without_taking_java_11s_place(self):
+        """Installing 17 made it the default in the pilot; the first eleven ran on 11."""
+        body = (KIT / "tools.sh").read_text(encoding="utf-8").split("\nget_java17 () {", 1)[1] \
+            .split("\n}\n", 1)[0]
+        assert 'update-alternatives --set "$t" "$JAVA11/bin/$t"' in body
 
     def test_a_tool_that_will_not_build_does_not_stop_the_other_nine(self):
         """A block reporting on nine tools is worth more than one reporting on none because a
         single upstream moved."""
         text = (KIT / "tools.sh").read_text(encoding="utf-8")
-        for helper in ("go_tool () {", "git_build () {", "get_kafka () {", "get_perftest () {"):
+        for helper in ("go_tool () {", "git_build () {", "get_kafka () {", "get_perftest () {",
+                       "get_java17 () {", "get_maven () {", "get_omb () {", "get_pulsar () {",
+                       "get_emqtt_bench () {", "get_ycsb () {"):
             body = text.split(helper, 1)[1].split("\n}", 1)[0]
             assert "WARN" in body and "stop " not in body, helper
 
@@ -2080,7 +2207,9 @@ class TestEveryToolHasAReferenceOfOurOwn:
     @pytest.mark.parametrize("tool,client", [
         ("vegeta", "http_reference.py"), ("hey", "http_reference.py"),
         ("k6", "http_reference.py"), ("wrk2", "http_reference.py"),
-        ("rabbitmq-perftest", "amqp_reference.py"), ("nats-latency", "nats_reference.py")])
+        ("rabbitmq-perftest", "amqp_reference.py"), ("nats-latency", "nats_reference.py"),
+        ("nats-bench", "nats_reference.py"), ("emqtt-bench", "mqtt_reference.py"),
+        ("pulsar-perf", "pulsar_reference.py")])
     def test_each_protocol_has_a_client(self, tool, client):
         cases = self.reference().split('case "$tool" in', 1)[1].split("esac", 1)[0]
         line = next(l for l in cases.splitlines() if re.search(r"(^|\|)\s*%s[|)]" % re.escape(
@@ -2099,6 +2228,16 @@ class TestEveryToolHasAReferenceOfOurOwn:
         code = (KIT / "tools.sh").read_text(encoding="utf-8")
         install = code.split("\ninstall () {", 1)[1].split("\n}\n", 1)[0]
         assert re.search(r'pip3 install -q "pika==\d+\.\d+\.\d+"', install)
+        assert re.search(r'pip3 install -q "pulsar-client==\d+\.\d+\.\d+"', install), \
+            "and so is the library the Pulsar reference speaks through"
+
+    def test_the_tools_that_speak_kafka_or_redis_are_read_against_our_own_program(self):
+        """OMB and YCSB speak to the same Kafka and Redis the law campaigns do, so their reference
+        is the study's own client, as it is for the five tools that speak those already."""
+        cases = self.reference().split('case "$tool" in', 1)[1].split("esac", 1)[0]
+        assert re.search(r"^\s*valkey-benchmark\|memtier_benchmark\|ycsb\) backend=redis", cases,
+                         re.M)
+        assert re.search(r"\|omb\) backend=kafka", cases)
 
 
 class TestFreeze21InTheToolsBlock:

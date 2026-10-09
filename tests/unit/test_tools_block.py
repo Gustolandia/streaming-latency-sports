@@ -58,7 +58,7 @@ class TestT1:
 
     def test_a_tool_the_plan_never_read_stops_the_fold(self, tmp_path):
         """Its interval is unknown, and printing a row without one would hide that."""
-        _step(tmp_path, "ycsb", 1.0)
+        _step(tmp_path, "jmeter", 1.0)
         with pytest.raises(KeyError):
             tb.t1_rows("1", str(tmp_path))
 
@@ -134,4 +134,8 @@ class TestMain:
             t2 = list(csv.DictReader(fh))
         assert len({r["tool"] for r in t1}) == 11 and len({r["round"] for r in t1}) == 4
         assert len(t1) == 44 and len(t2) == 88
-        assert set(r["tool"] for r in t1) == set(tb.TRIPS)
+        #: Every tool in the tables has the interval the plan read for it; the five freeze 30
+        #: adds have theirs already, read before any of their runs.
+        assert set(r["tool"] for r in t1) <= set(tb.TRIPS)
+        assert set(tb.TRIPS) - set(r["tool"] for r in t1) == {
+            "omb", "pulsar-perf", "emqtt-bench", "ycsb", "nats-bench"}

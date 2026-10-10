@@ -571,3 +571,112 @@ class TestTheCommand:
         assert code == 0
         assert json.loads(where.read_text(encoding="utf-8"))["behaviour"] == \
             "replaces the negatives with zero"
+
+
+class TestTheCorrectionsOfFreeze31:
+    """D34-1 and D34-2, frozen after the block of 10 October showed the gap and before any run
+    was judged again under them. Freeze 21's rule is kept as it was and stays the default: every
+    verdict it gave is reported beside the corrected one, never replaced by it."""
+
+    #: pulsar-perf, round 1, 10 October: its control averaged 3.142 ms over 3,001 kept; with its
+    #: consumer's clock moved back 5.049 ms it kept 7 of the 3,000 it was asked to send, the slow
+    #: tail of its own trips, averaging 6.571. Our reference's trips have no such tail.
+    CONTROL = reading(avg=3.142, kept=3001)
+    RUN = reading(avg=6.571, kept=7)
+    OURS = [2.0] * 20
+
+    def judge(self, rule):
+        return tn.what_it_did(self.RUN, self.OURS, 5.044, sent=3000, control=self.CONTROL,
+                              shift_ms=5.049, noise={"avg": 8.13}, rule=rule)
+
+    def test_freeze_21_judged_a_run_that_kept_7_of_3000_to_time_against_one_clock(self):
+        """The gap, reproduced: the count ruled out what keeps every value, a printed figure
+        ruled out what keeps nothing, and the one hypothesis the count was never held against
+        was left standing alone."""
+        got = self.judge(tn.FREEZE_21)
+        assert got["decided"] and got["behaviour"] == tn.ONE_CLOCK
+        assert got["rule"] == tn.FREEZE_21
+
+    def test_freeze_31_holds_the_count_against_one_clock_as_well(self):
+        got = self.judge(tn.FREEZE_31)
+        assert not got["decided"] and got["rule"] == tn.FREEZE_31
+        assert got["ruled_out"][tn.ONE_CLOCK] ==             "it counted 7 of the 3000 it was asked to send, and this keeps every value"
+        assert "none of the five" in got["why"]
+
+    def test_freeze_21_stays_the_rule_a_judgement_names_by_default(self):
+        got = tn.what_it_did(self.RUN, self.OURS, 5.044, sent=3000, control=self.CONTROL,
+                             shift_ms=5.049, noise={"avg": 8.13})
+        assert got["rule"] == tn.FREEZE_21
+
+    def test_a_whole_count_leaves_one_clock_where_freeze_21_left_it(self):
+        """valkey-benchmark's kind of run: nothing moved, nothing missing."""
+        for rule in (tn.FREEZE_21, tn.FREEZE_31):
+            got = tn.what_it_did(reading(avg=1.825, low=0.58, kept=20), TRIPS, 1.812, sent=20,
+                                 control=reading(avg=1.75, low=0.5), shift_ms=2.0,
+                                 noise={"avg": 0.05, "min": 0.05}, rule=rule)
+            assert got["behaviour"] == tn.ONE_CLOCK, rule
+
+
+class TestTheClockQuestion:
+    """D34-2: two clocks or one, from the offset itself, asked before the five hypotheses."""
+
+    def test_a_count_short_of_what_was_sent_and_of_its_control_is_two_clocks(self):
+        answer, why = tn.clocks(reading(avg=6.571, kept=7), reading(avg=3.142, kept=3001),
+                                5.049, sent=3000)
+        assert answer == "two" and why == "it kept 7 of the 3000 it was asked to send"
+
+    def test_a_tool_that_kept_nothing_and_printed_nothing_is_two_clocks(self):
+        """OMB, round 3: its filter left its histogram empty, and the reader printed nothing."""
+        answer, _ = tn.clocks(reading(kept=0), reading(avg=1.963, low=2.0, p50=None), 4.663,
+                              sent=3000)
+        assert answer == "two"
+
+    def test_a_count_its_control_was_as_short_of_is_not_held_against_it(self):
+        """A tool that loses a few of every run whatever its clock does."""
+        answer, _ = tn.clocks(reading(avg=1.0, kept=2990), reading(avg=1.0, kept=2990), 2.0,
+                              sent=3000)
+        assert answer == "undecided", "short of what was sent, so not one; no shorter, so not two"
+
+    def test_a_median_that_moved_more_than_half_the_offset_is_two_clocks(self):
+        """OMB, round 1: only its slow tail survived the filter, and its median rose 2 to 21."""
+        run = dict(reading(avg=30.75, low=1.0), reported_ms={"avg": 30.75, "p50": 21.0,
+                                                             "min": 1.0})
+        control = dict(reading(), reported_ms={"avg": 2.049, "p50": 2.0, "min": 2.0})
+        answer, why = tn.clocks(run, control, 4.744)
+        assert answer == "two" and "p50 +19.000" in why and "more than half" in why
+
+    def test_figures_that_fell_by_more_than_half_are_two_clocks_too(self):
+        """emqtt-bench: its histogram's average fell from 1 to -3 ms under a 3.7 ms offset."""
+        assert tn.clocks(reading(avg=-3.0, kept=3000), reading(avg=1.0, kept=3000), 3.666,
+                         sent=3000)[0] == "two"
+
+    def test_figures_within_a_quarter_of_the_offset_and_a_whole_count_are_one_clock(self):
+        """YCSB, round 1: average and median up about 0.016 ms under a 1.769 ms offset."""
+        run = dict(reading(), reported_ms={"avg": 0.681, "p50": 0.674, "min": 0.62}, kept=3000)
+        control = dict(reading(), reported_ms={"avg": 0.665, "p50": 0.659, "min": 0.6}, kept=3000)
+        answer, why = tn.clocks(run, control, 1.769, sent=3000)
+        assert answer == "one" and "within a quarter" in why
+
+    def test_without_a_count_figures_within_a_quarter_are_one_clock(self):
+        """nats bench prints no count."""
+        assert tn.clocks(reading(avg=1.216), reading(avg=1.172), 1.713)[0] == "one"
+
+    def test_figures_between_a_quarter_and_half_the_offset_are_undecided(self):
+        """OMB, round 1: median, average and minimum down about 1 ms under 2.7 ms."""
+        run = dict(reading(), reported_ms={"avg": 1.0, "p50": 1.0, "min": 1.0})
+        control = dict(reading(), reported_ms={"avg": 2.049, "p50": 2.0, "min": 2.0})
+        answer, why = tn.clocks(run, control, 2.698)
+        assert answer == "undecided" and "between a quarter and half" in why
+
+    def test_a_99th_percentile_or_a_maximum_is_not_asked(self):
+        """A few messages each, and they move with those few."""
+        run = dict(reading(), reported_ms={"avg": 1.0, "p99": 40.0, "max": 63.0})
+        control = dict(reading(), reported_ms={"avg": 1.0, "p99": 2.0, "max": 5.0})
+        assert tn.clocks(run, control, 2.0)[0] == "one"
+
+    def test_with_nothing_to_compare_it_does_not_answer(self):
+        answer, why = tn.clocks(reading(), reading(avg=1.0), 2.0)
+        assert answer == "undecided" and "no average, median or minimum" in why
+
+    def test_a_count_with_nothing_to_hold_it_against_is_not_evidence(self):
+        assert tn.clocks(reading(avg=1.0, kept=7), reading(avg=1.0), 2.0)[0] == "one"

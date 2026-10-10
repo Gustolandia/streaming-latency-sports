@@ -203,7 +203,13 @@ def figures_moved(reading, control, step_ms=None):
     return moved_by, any(gap > (step_ms or 0.0) for gap in moved_by.values())
 
 
-def judged_by_noise(verdict, reading, trips_ms, sent, step_ms, control, noise):
+#: The rule each judgement names. Freeze 21's is the one every T2 run was judged by as it ran;
+#: freeze 31's corrects one clause of it (D34-1) and is reported beside it, never in its place.
+FREEZE_21 = "freeze 21 (D25-1, D25-2)"
+FREEZE_31 = "freeze 31 (D34-1)"
+
+
+def judged_by_noise(verdict, reading, trips_ms, sent, step_ms, control, noise, rule=FREEZE_21):
     """Freeze 21's T2 judgement (D25-1, D25-2), on a verdict what_it_did has started.
 
     1. The change of each judged figure is the offset run's value less the control run's, the
@@ -222,6 +228,12 @@ def judged_by_noise(verdict, reading, trips_ms, sent, step_ms, control, noise):
        another client, so its count is not predicted as a number.
     6. The verdict is the one hypothesis left standing; otherwise it is undecided, with the
        numbers beside it.
+
+    Under freeze 31 (D34-1) the count in step 5 is held against "times against one clock" as
+    well. A tool on one clock keeps every value -- no value below zero can arise in it -- so a
+    count short of what it was asked to send rules it out exactly as it rules out a behaviour
+    that keeps every value. Freeze 21 left it out, and on 10 October pulsar-perf, keeping 7 of
+    3,000 latencies with every other hypothesis ruled out, was judged to time against one clock.
     """
     shift = verdict["offset_ms"]
     expected = verdict["expected"]
@@ -234,7 +246,7 @@ def judged_by_noise(verdict, reading, trips_ms, sent, step_ms, control, noise):
             changes[figure] = said[figure] - was[figure]
             printed = _step_of(reading, figure) or 0.0
             allowed[figure] = max(NOISE_BANDS * noise[figure] * 2.0 ** 0.5, 2.0 * printed)
-    verdict.update({"rule": "freeze 21 (D25-1, D25-2)", "noise_ms": dict(noise),
+    verdict.update({"rule": rule, "noise_ms": dict(noise),
                     "changes_ms": changes, "allowed_ms": allowed,
                     "moved_from_control_ms": {f: abs(c) for f, c in changes.items()}})
     if not changes:
@@ -266,8 +278,9 @@ def judged_by_noise(verdict, reading, trips_ms, sent, step_ms, control, noise):
         #: its two dropping behaviours were ruled out on "3001 where this would count 50" -- which
         #: decided the run. A count now answers one question only: whether the tool left anything
         #: out of what it was asked to send.
-        if why is None and name != ONE_CLOCK and kept is not None and sent is not None \
-                and kept < sent and expected[name]["count"] == len(trips_ms):
+        keeps_all = (expected[name]["count"] == len(trips_ms) if name != ONE_CLOCK
+                     else rule == FREEZE_31)
+        if why is None and keeps_all and kept is not None and sent is not None and kept < sent:
             why = ("it counted %d of the %d it was asked to send, and this keeps every value"
                    % (kept, sent))
         if why is None:
@@ -305,8 +318,51 @@ def judged_by_noise(verdict, reading, trips_ms, sent, step_ms, control, noise):
     return verdict
 
 
+#: The figures the clock question reads (D34-2): the central ones a tool prints. The average and
+#: the minimum are T2's two; the median is the figure T1's slope is read on. A 99th percentile
+#: or a maximum is a few messages, and moves with them.
+CENTRAL = ("avg", "p50", "min")
+
+
+def clocks(reading, control, offset_ms, sent=None):
+    """Freeze 31's first question (D34-2): do the tool's two timestamps come from two clocks?
+
+    Asked before the five hypotheses, as version 19 asked it (D23-1), and answered from the offset
+    itself rather than from a prediction. A tool on two clocks sees every difference move by the
+    offset, so a figure that keeps its value moves by all of it and a filter that drops what goes
+    below zero drops values; a tool on one clock sees nothing move at all. So:
+
+      * **two** where the tool kept fewer than it was asked to send and fewer than its control
+        kept, or where its average, median or minimum moved from the control by more than half
+        the offset, either way: a filter's survivors can be the slow tail, and rise;
+      * **one** where every one of those figures it prints stayed within a quarter of the offset
+        of the control, and its count, where it gives one, is whole;
+      * otherwise **undecided**, which is also the answer where there is nothing to compare.
+
+    Returns (answer, why). `offset_ms` is the offset measured at the clock.
+    """
+    said = reading.get("reported_ms") or {}
+    was = (control or {}).get("reported_ms") or {}
+    kept, before = reading.get("kept"), (control or {}).get("kept")
+    if kept is not None and sent is not None and kept < sent and (before is None or kept < before):
+        return "two", "it kept %d of the %d it was asked to send" % (kept, sent)
+    moves = {f: float(said[f]) - float(was[f]) for f in CENTRAL if f in said and f in was}
+    if not moves:
+        return "undecided", "no average, median or minimum to hold against its control"
+    shown = ", ".join("%s %+.3f" % (f, moves[f]) for f in CENTRAL if f in moves)
+    if any(abs(m) > offset_ms / 2.0 for m in moves.values()):
+        return "two", "its figures moved by more than half the %.3f ms offset (%s)" % (
+            offset_ms, shown)
+    if all(abs(m) <= offset_ms / 4.0 for m in moves.values()) and (kept is None or sent is None
+                                                                    or kept >= sent):
+        return "one", "its figures stayed within a quarter of the %.3f ms offset (%s)" % (
+            offset_ms, shown)
+    return "undecided", "its figures moved between a quarter and half the %.3f ms offset (%s)" % (
+        offset_ms, shown)
+
+
 def what_it_did(reading, trips_ms, offset_ms, sent=None, exit_code=0, plain=None,
-                step_ms=None, control=None, shift_ms=None, noise=None):
+                step_ms=None, control=None, shift_ms=None, noise=None, rule=FREEZE_21):
     """Which behaviour this run rules out, and whether one alone is left standing.
 
     `reading` is one of tool_readings' readings, taken from the tool's output under the offset.
@@ -363,7 +419,7 @@ def what_it_did(reading, trips_ms, offset_ms, sent=None, exit_code=0, plain=None
         verdict["why"] = "there are no reference trips, so there is nothing to compare"
         return verdict
     if noise is not None:
-        return judged_by_noise(verdict, reading, trips_ms, sent, step_ms, control, noise)
+        return judged_by_noise(verdict, reading, trips_ms, sent, step_ms, control, noise, rule)
 
     #: D23-1. Asked first, because a tool whose figures did not move is not a tool that did
     #: something strange with negatives: it is a tool in which no negative can arise, and the

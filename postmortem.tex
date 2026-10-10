@@ -3572,6 +3572,14 @@ above is the only record of them this artifact holds --- a limitation, and part 
 cross-host claim rests on source reading rather than on these runs. A draft upstream report is
 at \texttt{docs/omb\_distributed\_issue.md} (not filed --- filing is the author's action).
 
+\emph{Added on 10~October 2026.} On the registered campaign's Azure machines the unmodified
+benchmark's distributed mode ran: a coordinator and two workers on one machine, against a
+\kafka{} broker on another, in the tools block that ran five more tools that month (the
+supplementary material's S4.5 and S5). It completed every run it was given. When the consuming
+worker's clock was moved back, its filter dropped what then computed to zero or below, and nothing
+counted what it dropped. The eleven attempts recorded here, all on the Oracle machines, stand as
+they were.
+
 
 \paragraph{The cross-host case is the one whose subtraction spans two clocks} There OMB's subtraction spans two of them, and its own
 distributed mode never completed a run in our hands --- eleven attempts, all failing

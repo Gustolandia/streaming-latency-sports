@@ -419,11 +419,12 @@ counted (Table~\ref{tab:tools}).
 % (Supplement S5), where each verdict carries its source line; the clock steps are the tools'.
 \begin{table*}[t]
 \caption{\textbf{What the tools we read and ran do with a latency at or below zero.} The tools are
-grouped by where they take their two readings; only the first group times the trip from one
-process to another (Section~\ref{sec:toolsrun}). Step: the smallest change in the latency a tool
-reports. \kafka{}'s two bundled tools count as one. The benchmark of Section~\ref{sec:extmethod}
-was read, and measured in depth there, apart from the \toolsRunWord{} run. Source lines,
-versions and dates: Supplement~S5.}
+grouped by where they take their two timestamps. Only the first group measures a one-way latency
+(Section~\ref{sec:toolsrun}). Step: the smallest change in the latency a tool reports. Read:
+classified from its source (Section~\ref{sec:tools}). Run: run in the registered campaign
+(Section~\ref{sec:toolsrun}). \kafka{}'s two bundled tools count as one tool read but two tools
+run. The last group times no message, but its tools also delete or replace such a value. Source
+lines, versions and dates: Supplement~S5.}
 \label{tab:tools}
 \centering
 \footnotesize
@@ -433,20 +434,20 @@ versions and dates: Supplement~S5.}
 Tool & Step & What happens to a value at or below zero & Read, run \\
 \midrule
 \multicolumn{4}{@{}l}{\emph{Timestamps taken in two processes, as a one-way latency needs}} \\
-The benchmark of Section~\ref{sec:extmethod} & 1~ms & Dropped by a filter that keeps values
+OpenMessaging Benchmark & 1~ms & Dropped by a filter that keeps values
 above zero, uncounted; at that step the filter also drops every message faster than a
-millisecond & read \\
+millisecond & read, run \\
 Apache Pulsar's performance client & 1~ms & Dropped when below zero, uncounted; a zero is kept &
-read \\
-\texttt{emqtt-bench} & 1~ms & Kept in its histogram, since January 2025; its printed average
-counts it as zero & read \\
+read, run \\
+\texttt{emqtt-bench} & 1~ms & Kept in its histogram since January 2025; its average counts it
+as zero and is printed only when some value is above zero & read, run \\
 \raggedright librdkafka's \brk{rdkafka_performance} & 10~$\mu$s & Dropped unless above zero, with a
 printed line, uncounted; none reached zero in our runs & run \\
 \midrule
 \multicolumn{4}{@{}l}{\emph{Both timestamps in one process: publish to receipt, or to the
 acknowledgment}} \\
-\kafka{}'s end-to-end and producer tools & 1~ms & Cannot arise in one process; on a path faster
-than a millisecond every percentile of the end-to-end tool reads zero & read, run \\
+\kafka{}'s end-to-end and producer tools & 1~ms & Cannot fall below zero in one process; on a path
+faster than a millisecond every percentile of the end-to-end tool reads zero & read, run \\
 RabbitMQ PerfTest & 1~$\mu$s & Replaced by its absolute value, uncounted; until June 2026 a zero
 was dropped too & read, run \\
 NATS command-line latency test & 1~$\mu$s & Kept for its minimum, median and maximum, refused by
@@ -455,10 +456,11 @@ its histogram library for its percentiles; uncounted & read, run \\
 \multicolumn{4}{@{}l}{\emph{Both timestamps in one process: request to reply, a round trip}} \\
 \texttt{wrk2} & 10~$\mu$s & Printed as impossible, then refused by its histogram library, or the
 run aborts; uncounted & read, run \\
-\raggedright \texttt{hey}, \texttt{k6}, \texttt{memtier}, Valkey benchmark, Vegeta & 1~ns--0.1~ms & Not read
-at source; none arose when the clock was moved back & run \\
+\raggedright \texttt{hey}, \texttt{k6}, \texttt{memtier}, Valkey benchmark, Vegeta, YCSB,
+\texttt{nats~bench} & 1~ns--0.1~ms & Cannot fall below zero in one process; none did when the
+clock was moved back & run \\
 \midrule
-\multicolumn{4}{@{}l}{\emph{Intervals inside one host}} \\
+\multicolumn{4}{@{}l}{\emph{A curiosity: intervals inside one host, which time no message}} \\
 \texttt{fio}, input and output completion & 1~ns & Replaced by zero, uncounted & read \\
 \texttt{btt}, block-layer stages & 1~ns & Replaced by 1~ns, also when the two timestamps are
 equal; uncounted & read \\
@@ -487,19 +489,25 @@ counted its discards since August 2026~\cite{rezolus}, keep the evidence.
 \label{sec:toolsrun}
 Reading a tool shows what it does with a value below zero, not whether it ever meets one. The
 registered campaign therefore ran \toolsRunWord{} benchmarking tools against a broker on a second
-machine, \toolsRoundsWord{} rounds each, with predictions fixed from their source before any run
-(Supplement~S5). A delay added to the path in steps moved every tool's figure
-$\toolsSlopeLo$--$\toolsSlopeHi$~ms per millisecond added, for each time the interval it times
-crosses the delay, so every tool measures the path. Moving back the clock a tool reads, by more
-than the interval it times, separated the tools that read one clock from those that read two. The
-figures of \toolsOneClockWord{} tools did not move in $\toolsOneClockRuns$ of their
-$\toolsOneClockOf$ runs, the rest undecided, because each takes both timestamps in one process,
-timing a round trip or a message it publishes and receives itself. Such a tool never meets a value
-below zero, and for the same reason it cannot measure the one-way latency of the delivery a broker
-exists to provide. The eleventh, librdkafka's \texttt{rdkafka\_performance}, timestamps in the
-producer and subtracts in the consumer, so its figures moved with the clock and add the clocks'
-offset to the path's latency. Its consumer drops every latency of zero or less and prints a line
-for each, though none of its own values came near zero in our runs (Supplement~S5).
+machine, \toolsRoundsWord{} rounds each, with predictions fixed from their source before any run.
+Five of them ran later, in a block of their own, because one version of the plan had left them
+out (Supplement~S5). A delay added to the path in steps moved every tool's figure
+$\toolsSlopeLo$--$\toolsSlopeHi$~ms per millisecond added and per crossing of the delay, so every
+tool measures the path. Moving back the clock of the process that subtracts, at two offsets longer
+than the interval the tool times, separated the tools that read one clock from those that read
+two. The
+figures of \toolsOneClockWord{} tools stayed within a quarter of the offset in every one of their
+$\toolsOneClockOf$ runs, because each takes both timestamps in one process, timing a round trip or
+a message it publishes and receives itself. Such a tool never meets a value below zero, and for
+the same reason it cannot measure the one-way latency of the delivery a broker exists to provide.
+The other \toolsTwoClockWord{} timestamp a message in one process and subtract in another. In
+$\toolsTwoClockRuns$ of their $\toolsTwoClockOf$ runs the moved clock shifted their figures or cut
+what they kept, and the rest were undecided. Of the \toolsTwoClockWord{}, librdkafka's
+\texttt{rdkafka\_performance} adds the clocks' offset to the path's latency. Pulsar's client and
+the OpenMessaging Benchmark drop what comes out below zero, uncounted. Under the larger offset
+Pulsar's client kept $\toolsPulsarKeptLo$ to $\toolsPulsarKeptHi$ of $\toolsAskedToSend$
+latencies. \texttt{emqtt-bench}'s histogram keeps values below zero, but its console printed no
+latency under either offset (Supplement~S5).
 
 \subsection{A positivity filter on a millisecond clock}
 \label{sec:extmethod}
@@ -827,12 +835,14 @@ those of one EEVDF-era kernel. Designs that pin a busy-polling thread to a dedic
 timestamp in hardware, remove the waiting state, and we make no claim about them.
 
 The deletion is demonstrated in one benchmark, in its embedded mode, and reproduced in one
-independent program of our own; the benchmark's distributed mode failed on every attempt
-(Supplement~S4.5). One registered detail failed: the $32$~KB configuration pins at
-$\flipPinThirtyTwo\%$ retention, not the predicted $\flipVertexTwoThirds\%$. The audit found the
+independent program of our own. The benchmark's distributed mode failed on every attempt on the
+Oracle machines but ran unmodified on the Azure machines. There a moved clock showed its filter
+dropping values below zero, but nothing counted what it dropped (Supplement~S4.5). One registered
+detail failed: the $32$~KB configuration pins at $\flipPinThirtyTwo\%$ retention, not the
+predicted $\flipVertexTwoThirds\%$. The audit found the
 deletion's signature in few public results, so we claim it for those and our own runs only. We
-classified the \harnessAuditedWord{} tools by reading them, and ran the \toolsRunWord{} on one
-pair of machines, one kernel and one publish rate. How much a deployment loses depends on its
+classified the \harnessAuditedWord{} tools by reading them, and ran the \toolsRunWord{} tools on
+one pair of machines, one kernel and one publish rate. How much a deployment loses depends on its
 end-to-end latency and publish rate, so we recommend reporting retention rather than calling any
 reported number wrong.
 

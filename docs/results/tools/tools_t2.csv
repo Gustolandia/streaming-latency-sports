@@ -1,89 +1,129 @@
-round,tool,offset_ms,verdict,standing
-1,hey,1.8141,times against one clock,times against one clock
-1,hey,3.8124,times against one clock,times against one clock
-1,k6,1.8280,times against one clock,times against one clock
-1,k6,3.8309,times against one clock,times against one clock
-1,kafka-end-to-end,3.3979,undecided,drops zero and below; times against one clock
-1,kafka-end-to-end,5.4233,times against one clock,times against one clock
-1,kafka-producer-perf,3.2614,times against one clock,times against one clock
-1,kafka-producer-perf,5.2324,times against one clock,times against one clock
-1,memtier_benchmark,1.8189,times against one clock,times against one clock
-1,memtier_benchmark,3.8111,times against one clock,times against one clock
-1,nats-latency,1.7524,times against one clock,times against one clock
-1,nats-latency,3.7544,times against one clock,times against one clock
-1,rabbitmq-perftest,1.8848,undecided,drops the negatives; drops zero and below; times against one clock
-1,rabbitmq-perftest,3.8872,times against one clock,times against one clock
-1,rdkafka_performance,3.4343,undecided,drops the negatives; drops zero and below; keeps every value; replaces the negatives with zero; times against one clock
-1,rdkafka_performance,5.4759,undecided,keeps every value; replaces the negatives with zero
-1,valkey-benchmark,1.7839,times against one clock,times against one clock
-1,valkey-benchmark,3.8090,times against one clock,times against one clock
-1,vegeta,1.8233,times against one clock,times against one clock
-1,vegeta,3.8217,times against one clock,times against one clock
-1,wrk2,1.8340,undecided,drops the negatives; drops zero and below; times against one clock
-1,wrk2,3.8194,times against one clock,times against one clock
-2,hey,1.8354,times against one clock,times against one clock
-2,hey,3.8346,times against one clock,times against one clock
-2,k6,1.8249,times against one clock,times against one clock
-2,k6,3.8251,times against one clock,times against one clock
-2,kafka-end-to-end,2.6832,times against one clock,times against one clock
-2,kafka-end-to-end,4.6524,times against one clock,times against one clock
-2,kafka-producer-perf,3.3352,times against one clock,times against one clock
-2,kafka-producer-perf,5.3380,times against one clock,times against one clock
-2,memtier_benchmark,1.8268,times against one clock,times against one clock
-2,memtier_benchmark,3.8022,times against one clock,times against one clock
-2,nats-latency,1.6805,undecided,
-2,nats-latency,3.6812,times against one clock,times against one clock
-2,rabbitmq-perftest,1.8830,times against one clock,times against one clock
-2,rabbitmq-perftest,3.8607,times against one clock,times against one clock
-2,rdkafka_performance,2.5935,keeps every value,keeps every value
-2,rdkafka_performance,4.5867,keeps every value,keeps every value
-2,valkey-benchmark,1.8947,times against one clock,times against one clock
-2,valkey-benchmark,3.8576,times against one clock,times against one clock
-2,vegeta,1.8249,times against one clock,times against one clock
-2,vegeta,3.8262,times against one clock,times against one clock
-2,wrk2,1.8293,undecided,drops the negatives; drops zero and below; times against one clock
-2,wrk2,3.8414,times against one clock,times against one clock
-3,hey,1.8655,times against one clock,times against one clock
-3,hey,3.8653,times against one clock,times against one clock
-3,k6,1.8077,times against one clock,times against one clock
-3,k6,3.8077,times against one clock,times against one clock
-3,kafka-end-to-end,2.6687,times against one clock,times against one clock
-3,kafka-end-to-end,4.6761,times against one clock,times against one clock
-3,kafka-producer-perf,2.7237,times against one clock,times against one clock
-3,kafka-producer-perf,4.6954,times against one clock,times against one clock
-3,memtier_benchmark,1.8723,times against one clock,times against one clock
-3,memtier_benchmark,3.8520,undecided,drops the negatives; drops zero and below; times against one clock
-3,nats-latency,1.7256,times against one clock,times against one clock
-3,nats-latency,3.7282,times against one clock,times against one clock
-3,rabbitmq-perftest,1.8772,times against one clock,times against one clock
-3,rabbitmq-perftest,3.8986,undecided,
-3,rdkafka_performance,2.6603,keeps every value,keeps every value
-3,rdkafka_performance,4.6786,keeps every value,keeps every value
-3,valkey-benchmark,1.8438,times against one clock,times against one clock
-3,valkey-benchmark,3.8641,times against one clock,times against one clock
-3,vegeta,1.8192,times against one clock,times against one clock
-3,vegeta,3.8174,times against one clock,times against one clock
-3,wrk2,1.7870,undecided,drops the negatives; drops zero and below; times against one clock
-3,wrk2,3.7870,times against one clock,times against one clock
-4,hey,1.8397,times against one clock,times against one clock
-4,hey,3.8375,times against one clock,times against one clock
-4,k6,1.9154,times against one clock,times against one clock
-4,k6,3.9130,times against one clock,times against one clock
-4,kafka-end-to-end,2.7256,undecided,drops zero and below; times against one clock
-4,kafka-end-to-end,4.7474,times against one clock,times against one clock
-4,kafka-producer-perf,2.9472,times against one clock,times against one clock
-4,kafka-producer-perf,4.9186,times against one clock,times against one clock
-4,memtier_benchmark,1.9548,times against one clock,times against one clock
-4,memtier_benchmark,3.9724,times against one clock,times against one clock
-4,nats-latency,1.9187,times against one clock,times against one clock
-4,nats-latency,3.9222,times against one clock,times against one clock
-4,rabbitmq-perftest,2.0942,times against one clock,times against one clock
-4,rabbitmq-perftest,4.0679,times against one clock,times against one clock
-4,rdkafka_performance,2.7649,keeps every value,keeps every value
-4,rdkafka_performance,4.7816,keeps every value,keeps every value
-4,valkey-benchmark,1.9196,times against one clock,times against one clock
-4,valkey-benchmark,3.9294,times against one clock,times against one clock
-4,vegeta,1.9337,times against one clock,times against one clock
-4,vegeta,3.9342,times against one clock,times against one clock
-4,wrk2,1.9042,undecided,drops the negatives; drops zero and below; times against one clock
-4,wrk2,3.9228,times against one clock,times against one clock
+round,tool,offset_ms,verdict,standing,sent,kept,verdict_31,clocks,clocks_why
+1,hey,1.8141,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.814 ms offset (avg +0.000, min -0.100)"
+1,hey,3.8124,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.812 ms offset (avg +0.000, min +0.000)"
+1,k6,1.8280,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 1.828 ms offset (avg +0.002, p50 +0.004, min +0.004)"
+1,k6,3.8309,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 3.831 ms offset (avg -0.006, p50 -0.002, min -0.016)"
+1,kafka-end-to-end,3.3979,undecided,drops zero and below; times against one clock,3000,,undecided,one,"its figures stayed within a quarter of the 3.398 ms offset (avg +0.006, p50 +0.000)"
+1,kafka-end-to-end,5.4233,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 5.423 ms offset (avg -0.001, p50 +0.000)"
+1,kafka-producer-perf,3.2614,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.261 ms offset (avg +0.160, p50 +0.000)"
+1,kafka-producer-perf,5.2324,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 5.232 ms offset (avg +0.100, p50 +0.000)"
+1,memtier_benchmark,1.8189,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 1.819 ms offset (avg +0.071, p50 +0.072)"
+1,memtier_benchmark,3.8111,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 3.811 ms offset (avg +0.146, p50 +0.144)"
+1,nats-latency,1.7524,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 1.752 ms offset (p50 -0.001, min -0.014)"
+1,nats-latency,3.7544,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 3.754 ms offset (p50 +0.017, min +0.027)"
+1,rabbitmq-perftest,1.8848,undecided,drops the negatives; drops zero and below; times against one clock,3000,,undecided,one,"its figures stayed within a quarter of the 1.885 ms offset (p50 -0.024, min -0.015)"
+1,rabbitmq-perftest,3.8872,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 3.887 ms offset (p50 -0.002, min -0.043)"
+1,rdkafka_performance,3.4343,undecided,drops the negatives; drops zero and below; keeps every value; replaces the negatives with zero; times against one clock,3000,,undecided,two,"its figures moved by more than half the 3.434 ms offset (avg -3.450, min -2.980)"
+1,rdkafka_performance,5.4759,undecided,keeps every value; replaces the negatives with zero,3000,,undecided,two,"its figures moved by more than half the 5.476 ms offset (avg -5.420, min -5.080)"
+1,valkey-benchmark,1.7839,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.784 ms offset (avg +0.075, p50 +0.072, min +0.080)"
+1,valkey-benchmark,3.8090,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.809 ms offset (avg -0.055, p50 -0.056, min -0.056)"
+1,vegeta,1.8233,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.823 ms offset (avg -0.004, p50 -0.008, min -0.003)"
+1,vegeta,3.8217,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.822 ms offset (avg +0.011, p50 +0.009, min +0.008)"
+1,wrk2,1.8340,undecided,drops the negatives; drops zero and below; times against one clock,3000,3001,undecided,one,"its figures stayed within a quarter of the 1.834 ms offset (avg -0.100, p50 -0.040)"
+1,wrk2,3.8194,times against one clock,times against one clock,3000,3001,times against one clock,one,"its figures stayed within a quarter of the 3.819 ms offset (avg +0.010, p50 +0.050)"
+2,hey,1.8354,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.835 ms offset (avg +0.000, p50 +0.000, min -0.100)"
+2,hey,3.8346,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.835 ms offset (avg +0.000, p50 +0.000, min -0.100)"
+2,k6,1.8249,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 1.825 ms offset (avg +0.008, p50 +0.004, min +0.012)"
+2,k6,3.8251,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 3.825 ms offset (avg -0.001, p50 -0.003, min -0.011)"
+2,kafka-end-to-end,2.6832,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 2.683 ms offset (avg -0.080, p50 +0.000)"
+2,kafka-end-to-end,4.6524,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 4.652 ms offset (avg +0.048, p50 +0.000)"
+2,kafka-producer-perf,3.3352,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.335 ms offset (avg -0.110, p50 +0.000)"
+2,kafka-producer-perf,5.3380,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 5.338 ms offset (avg -0.050, p50 +0.000)"
+2,memtier_benchmark,1.8268,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 1.827 ms offset (avg +0.007, p50 +0.008)"
+2,memtier_benchmark,3.8022,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 3.802 ms offset (avg +0.073, p50 +0.072)"
+2,nats-latency,1.6805,undecided,,3000,,undecided,one,"its figures stayed within a quarter of the 1.681 ms offset (p50 +0.153, min +0.142)"
+2,nats-latency,3.6812,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 3.681 ms offset (p50 +0.029, min +0.042)"
+2,rabbitmq-perftest,1.8830,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 1.883 ms offset (p50 +0.004, min -0.015)"
+2,rabbitmq-perftest,3.8607,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 3.861 ms offset (p50 +0.040, min +0.039)"
+2,rdkafka_performance,2.5935,keeps every value,keeps every value,3000,,keeps every value,two,"its figures moved by more than half the 2.594 ms offset (avg -2.570, min -2.700)"
+2,rdkafka_performance,4.5867,keeps every value,keeps every value,3000,,keeps every value,two,"its figures moved by more than half the 4.587 ms offset (avg -4.680, min -3.740)"
+2,valkey-benchmark,1.8947,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.895 ms offset (avg +0.020, p50 +0.024, min +0.024)"
+2,valkey-benchmark,3.8576,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.858 ms offset (avg +0.041, p50 +0.040, min +0.040)"
+2,vegeta,1.8249,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.825 ms offset (avg -0.027, p50 -0.026, min -0.013)"
+2,vegeta,3.8262,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.826 ms offset (avg -0.031, p50 -0.029, min -0.013)"
+2,wrk2,1.8293,undecided,drops the negatives; drops zero and below; times against one clock,3000,3001,undecided,one,"its figures stayed within a quarter of the 1.829 ms offset (avg +0.000, p50 -0.080)"
+2,wrk2,3.8414,times against one clock,times against one clock,3000,3001,times against one clock,one,"its figures stayed within a quarter of the 3.841 ms offset (avg -0.130, p50 -0.190)"
+3,hey,1.8655,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.865 ms offset (avg +0.000, p50 +0.000, min +0.000)"
+3,hey,3.8653,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.865 ms offset (avg +0.000, p50 +0.000, min +0.000)"
+3,k6,1.8077,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 1.808 ms offset (avg -0.012, p50 -0.016, min -0.019)"
+3,k6,3.8077,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 3.808 ms offset (avg +0.009, p50 +0.008, min -0.006)"
+3,kafka-end-to-end,2.6687,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 2.669 ms offset (avg +0.199, p50 +0.000)"
+3,kafka-end-to-end,4.6761,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 4.676 ms offset (avg +0.011, p50 +0.000)"
+3,kafka-producer-perf,2.7237,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 2.724 ms offset (avg -0.030, p50 +0.000)"
+3,kafka-producer-perf,4.6954,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 4.695 ms offset (avg -0.030, p50 +0.000)"
+3,memtier_benchmark,1.8723,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 1.872 ms offset (avg -0.055, p50 -0.056)"
+3,memtier_benchmark,3.8520,undecided,drops the negatives; drops zero and below; times against one clock,3000,,undecided,one,"its figures stayed within a quarter of the 3.852 ms offset (avg +0.037, p50 +0.032)"
+3,nats-latency,1.7256,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 1.726 ms offset (p50 +0.067, min +0.059)"
+3,nats-latency,3.7282,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 3.728 ms offset (p50 +0.021, min +0.007)"
+3,rabbitmq-perftest,1.8772,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 1.877 ms offset (p50 -0.110, min -0.072)"
+3,rabbitmq-perftest,3.8986,undecided,,3000,,undecided,one,"its figures stayed within a quarter of the 3.899 ms offset (p50 -0.145, min -0.122)"
+3,rdkafka_performance,2.6603,keeps every value,keeps every value,3000,,keeps every value,two,"its figures moved by more than half the 2.660 ms offset (avg -2.930, min -3.000)"
+3,rdkafka_performance,4.6786,keeps every value,keeps every value,3000,,keeps every value,two,"its figures moved by more than half the 4.679 ms offset (avg -4.710, min -4.870)"
+3,valkey-benchmark,1.8438,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.844 ms offset (avg -0.074, p50 -0.072, min -0.072)"
+3,valkey-benchmark,3.8641,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.864 ms offset (avg -0.043, p50 -0.040, min -0.040)"
+3,vegeta,1.8192,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.819 ms offset (avg -0.013, p50 +0.005, min +0.007)"
+3,vegeta,3.8174,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.817 ms offset (avg -0.008, p50 +0.012, min +0.033)"
+3,wrk2,1.7870,undecided,drops the negatives; drops zero and below; times against one clock,3000,3001,undecided,one,"its figures stayed within a quarter of the 1.787 ms offset (avg +0.110, p50 +0.190)"
+3,wrk2,3.7870,times against one clock,times against one clock,3000,3001,times against one clock,one,"its figures stayed within a quarter of the 3.787 ms offset (avg -0.030, p50 +0.050)"
+4,hey,1.8397,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.840 ms offset (avg +0.000, p50 +0.000, min +0.000)"
+4,hey,3.8375,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.837 ms offset (avg +0.000, p50 +0.000, min +0.000)"
+4,k6,1.9154,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 1.915 ms offset (avg +0.030, p50 +0.037, min +0.002)"
+4,k6,3.9130,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 3.913 ms offset (avg +0.010, p50 +0.013, min -0.010)"
+4,kafka-end-to-end,2.7256,undecided,drops zero and below; times against one clock,3000,,undecided,one,"its figures stayed within a quarter of the 2.726 ms offset (avg -0.023, p50 +0.000)"
+4,kafka-end-to-end,4.7474,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 4.747 ms offset (avg +0.019, p50 +0.000)"
+4,kafka-producer-perf,2.9472,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 2.947 ms offset (avg -0.050, p50 +0.000)"
+4,kafka-producer-perf,4.9186,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 4.919 ms offset (avg -0.170, p50 +0.000)"
+4,memtier_benchmark,1.9548,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 1.955 ms offset (avg +0.076, p50 +0.072)"
+4,memtier_benchmark,3.9724,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 3.972 ms offset (avg +0.026, p50 +0.016)"
+4,nats-latency,1.9187,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 1.919 ms offset (p50 +0.001, min -0.001)"
+4,nats-latency,3.9222,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 3.922 ms offset (p50 +0.054, min +0.086)"
+4,rabbitmq-perftest,2.0942,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 2.094 ms offset (p50 -0.004, min +0.014)"
+4,rabbitmq-perftest,4.0679,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 4.068 ms offset (p50 -0.053, min -0.039)"
+4,rdkafka_performance,2.7649,keeps every value,keeps every value,3000,,keeps every value,two,"its figures moved by more than half the 2.765 ms offset (avg -2.760, min -2.840)"
+4,rdkafka_performance,4.7816,keeps every value,keeps every value,3000,,keeps every value,two,"its figures moved by more than half the 4.782 ms offset (avg -4.870, min -4.870)"
+4,valkey-benchmark,1.9196,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.920 ms offset (avg +0.096, p50 +0.096, min +0.096)"
+4,valkey-benchmark,3.9294,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.929 ms offset (avg +0.049, p50 +0.048, min +0.048)"
+4,vegeta,1.9337,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.934 ms offset (avg +0.002, p50 -0.008, min -0.007)"
+4,vegeta,3.9342,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.934 ms offset (avg -0.031, p50 -0.038, min -0.008)"
+4,wrk2,1.9042,undecided,drops the negatives; drops zero and below; times against one clock,3000,3001,undecided,one,"its figures stayed within a quarter of the 1.904 ms offset (avg +0.020, p50 +0.050)"
+4,wrk2,3.9228,times against one clock,times against one clock,3000,3001,times against one clock,one,"its figures stayed within a quarter of the 3.923 ms offset (avg +0.140, p50 +0.190)"
+1,emqtt-bench,1.6641,undecided,keeps every value; replaces the negatives with zero,3000,3000,undecided,two,its figures moved by more than half the 1.664 ms offset (avg -1.999)
+1,emqtt-bench,3.6426,keeps every value,keeps every value,3000,3000,keeps every value,two,its figures moved by more than half the 3.643 ms offset (avg -3.999)
+1,nats-bench,1.7227,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 1.723 ms offset (avg +0.045, p50 +0.046, min +0.020)"
+1,nats-bench,3.7207,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 3.721 ms offset (avg +0.237, p50 +0.237, min +0.209)"
+1,omb,2.6983,undecided,drops the negatives; drops zero and below; keeps every value; replaces the negatives with zero; times against one clock,3000,,undecided,undecided,"its figures moved between a quarter and half the 2.698 ms offset (avg -1.049, p50 -1.000, min -1.000)"
+1,omb,4.6741,undecided,replaces the negatives with zero; times against one clock,3000,,undecided,two,"its figures moved by more than half the 4.674 ms offset (avg +28.701, p50 +19.000, min -1.000)"
+1,pulsar-perf,3.0451,undecided,drops the negatives; drops zero and below; keeps every value; replaces the negatives with zero; times against one clock,3000,3000,undecided,two,"its figures moved by more than half the 3.045 ms offset (avg -2.927, p50 -3.000)"
+1,pulsar-perf,5.0490,times against one clock,times against one clock,3000,7,undecided,two,it kept 7 of the 3000 it was asked to send
+1,ycsb,1.7713,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.771 ms offset (avg +0.016, p50 +0.015, min +0.022)"
+1,ycsb,3.7491,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.749 ms offset (avg +0.051, p50 +0.051, min +0.056)"
+2,emqtt-bench,1.6537,undecided,drops the negatives; drops zero and below; keeps every value; replaces the negatives with zero; times against one clock,3000,3000,undecided,two,its figures moved by more than half the 1.654 ms offset (avg -0.999)
+2,emqtt-bench,3.6577,keeps every value,keeps every value,3000,3000,keeps every value,two,its figures moved by more than half the 3.658 ms offset (avg -3.000)
+2,nats-bench,1.7563,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 1.756 ms offset (avg -0.062, p50 -0.061, min -0.080)"
+2,nats-bench,3.7571,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 3.757 ms offset (avg -0.163, p50 -0.162, min -0.161)"
+2,omb,2.9564,undecided,,3000,,undecided,two,"its figures moved by more than half the 2.956 ms offset (avg +3.981, p50 +4.000, min +4.000)"
+2,omb,4.8984,undecided,,3000,,undecided,two,"its figures moved by more than half the 4.898 ms offset (avg +10.981, p50 +9.000, min +0.000)"
+2,pulsar-perf,2.9933,undecided,drops the negatives; keeps every value; replaces the negatives with zero; times against one clock,3000,3000,undecided,two,"its figures moved by more than half the 2.993 ms offset (avg -2.980, p50 -3.000)"
+2,pulsar-perf,5.0353,undecided,drops the negatives; times against one clock,3000,7,drops the negatives,two,it kept 7 of the 3000 it was asked to send
+2,ycsb,1.7872,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.787 ms offset (avg -0.004, p50 -0.006, min -0.008)"
+2,ycsb,3.7806,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.781 ms offset (avg +0.077, p50 +0.078, min +0.052)"
+3,emqtt-bench,1.7086,undecided,drops the negatives; keeps every value; replaces the negatives with zero,3000,3000,undecided,two,its figures moved by more than half the 1.709 ms offset (avg -2.000)
+3,emqtt-bench,3.6949,keeps every value,keeps every value,3000,3000,keeps every value,two,its figures moved by more than half the 3.695 ms offset (avg -3.990)
+3,nats-bench,1.7103,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 1.710 ms offset (avg -0.052, p50 -0.052, min -0.046)"
+3,nats-bench,3.7081,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 3.708 ms offset (avg -0.073, p50 -0.072, min -0.065)"
+3,omb,2.5844,undecided,drops the negatives; drops zero and below; replaces the negatives with zero; times against one clock,3000,,undecided,undecided,"its figures moved between a quarter and half the 2.584 ms offset (avg -0.963, p50 -1.000, min +0.000)"
+3,omb,4.5840,undecided,,3000,0,undecided,two,it kept 0 of the 3000 it was asked to send
+3,pulsar-perf,3.0362,undecided,,3000,3000,undecided,two,"its figures moved by more than half the 3.036 ms offset (avg -2.926, p50 -3.000)"
+3,pulsar-perf,5.0543,undecided,,3000,3,undecided,two,it kept 3 of the 3000 it was asked to send
+3,ycsb,1.8029,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.803 ms offset (avg +0.061, p50 +0.060, min +0.078)"
+3,ycsb,3.8090,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.809 ms offset (avg +0.002, p50 +0.005, min +0.028)"
+4,emqtt-bench,1.6233,keeps every value,keeps every value,3000,3000,keeps every value,two,its figures moved by more than half the 1.623 ms offset (avg -2.000)
+4,emqtt-bench,3.6152,keeps every value,keeps every value,3000,3000,keeps every value,two,its figures moved by more than half the 3.615 ms offset (avg -3.255)
+4,nats-bench,1.6469,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 1.647 ms offset (avg -0.028, p50 -0.027, min -0.018)"
+4,nats-bench,3.6444,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 3.644 ms offset (avg +0.044, p50 +0.044, min +0.049)"
+4,omb,2.5872,undecided,drops the negatives; keeps every value; replaces the negatives with zero; times against one clock,3000,,undecided,undecided,"its figures moved between a quarter and half the 2.587 ms offset (avg -0.502, p50 -1.000, min -1.000)"
+4,omb,4.5838,undecided,,3000,,undecided,two,"its figures moved by more than half the 4.584 ms offset (avg +8.998, p50 +9.000, min +9.000)"
+4,pulsar-perf,2.9499,undecided,,3000,3000,undecided,two,"its figures moved by more than half the 2.950 ms offset (avg -3.016, p50 -3.000)"
+4,pulsar-perf,5.0073,undecided,,3000,4,undecided,two,it kept 4 of the 3000 it was asked to send
+4,ycsb,1.7420,undecided,drops the negatives; drops zero and below; times against one clock,3000,3000,undecided,one,"its figures stayed within a quarter of the 1.742 ms offset (avg +0.007, p50 +0.010, min +0.006)"
+4,ycsb,3.7875,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.788 ms offset (avg -0.023, p50 -0.013, min -0.037)"

@@ -1035,7 +1035,7 @@ second clock to disagree with, which is why the \kafka{} discards hold no negati
 positivity filter thus hides a loss of resolution under \kafka{} and a clock failure under
 \redis{}, and an unsigned discard counter could not tell them apart.
 
-\subsection{S4.5. An independent harness reproduces the deletion, and the benchmark's distributed mode never completed a run}
+\subsection{S4.5. An independent harness reproduces the deletion, and the benchmark's distributed mode, which failed on the cloud testbed, ran in the registered campaign}
 \label{s:crosshost}
 
 The deletion does not depend on the benchmark's code. We reproduced the positivity filter in a
@@ -1050,16 +1050,28 @@ to hide the drift. Over four replicates there, cross-host retention wandered fro
 $\harnessXHostRetLo$ to $\harnessXHostRetHi\%$, while on one clock the same configuration's
 replicates spanned $\harnessOneClockSpread$ points.
 
-The benchmark's own distributed mode, where its subtraction spans two clocks, could not be
-measured. It never completed a run in eleven attempts: eight at three background-load levels,
-including none, and three more run with full diagnostics. The unloaded attempts failed like the
-loaded ones, which refutes our own hypothesis that processor starvation was the cause, and the
-three diagnosed attempts failed identically, in the coordinator-to-worker path before any workload
-started. The first attempt, made before the validity gate of \ref{s:filterpatch} existed, wrote a
-vacuous zero that the artifact keeps marked invalid, and the gate refused every later attempt with
-its reason. The distributed mode's exposure to the deletion therefore rests on reading its source.
-The timestamp is written on the producer's host and read on the consumer's, and the positivity
-filter drops every difference at or below zero.
+On the cloud testbed the benchmark's own distributed mode, where its subtraction spans two clocks,
+could not be measured. It never completed a run in eleven attempts: eight at three
+background-load levels, including none, and three more run with full diagnostics. The unloaded
+attempts failed like the loaded ones, which refutes our own hypothesis that processor starvation
+was the cause, and the three diagnosed attempts failed identically, in the coordinator-to-worker
+path before any workload started. The first attempt, made before the validity gate of
+\ref{s:filterpatch} existed, wrote a vacuous zero that the artifact keeps marked invalid, and the
+gate refused every later attempt with its reason. On that testbed the distributed mode's exposure
+to the deletion therefore rested on reading its source. The timestamp is written on the
+producer's host and read on the consumer's, and the positivity filter drops every difference at or
+below zero.
+
+On the registered campaign's machines the distributed mode ran unmodified in October 2026, in the
+campaign's tools block (S5). A coordinator and two workers, one producing and one consuming, ran
+on one machine against a \kafka{} broker on the other. The benchmark's median followed a delay
+added to the path. We moved the consuming worker's clock back at two offsets of a few
+milliseconds, and the filter dropped whatever then computed to zero or below. In three of the four
+runs at the smaller offset the median fell to 1~ms, the smallest value a surviving sample can
+take. Elsewhere only the slow tail survived, and the median rose to the tail's; in one run nothing
+survived to print. The unmodified benchmark counts nothing it drops, so these runs show its filter
+at work across two processes but do not measure the deletion, which rests on the embedded mode and
+on the harness above.
 
 \section{S5. Tools read at source, tools run, and public reports}
 \label{s:tools}
@@ -1151,26 +1163,62 @@ latency benchmark.
 whether it ever meets one. The registered law campaign ran \toolsRunWord{} benchmarking tools on
 the first x86 pair, \toolsRoundsWord{} rounds each, under predictions fixed from their source
 before any run (its tools block, frozen with the plan; every amendment that touched it is
-listed in \brk{freezes/README.md}). Table~\ref{stab:toolsrun} lists them. Under a delay added in steps,
-every tool's slope lies in the band fixed in advance, and \toolsOneClockWord{} tools were judged to
-time on one clock in every run that decided it. The registered judge read the one tool spanning
-two clocks, librdkafka's \texttt{rdkafka\_performance}, as keeping every value in
-\toolsKeepsRoundsWord{} of its \toolsRoundsWord{} rounds, but it judged from the trips of the
-reference client, not the tool's own. The tool's consumer drops any value at or below zero and
-prints a line for each. No such line appears in any of its runs, and none of its own values came
-near zero, so that verdict tested nothing. The per-run verdicts are in
-\texttt{docs/results/tools/tools\_t1.csv} and \texttt{tools\_t2.csv}, folded by
-\texttt{scripts/tools\_block.py} from the runs, and the write-up with its five recorded faults is
-\texttt{docs/results/tools/t1-t4-eleven-tools.md}.
+listed in \brk{freezes/README.md}). Eleven ran in September. The plan had registered five more,
+but its version 15 left them unrun. They ran in October as a second block, under version 33
+(\brk{freezes/30-experiment-plan}), which was public before any of their runs.
+Table~\ref{stab:toolsrun} lists all of them. Under a delay added in steps, every tool's figure
+followed the delay at a slope inside the band the plan fixed in advance.
+
+A second test, T2, moved back the clock of the process that subtracts, at two offsets longer than
+the interval the tool times. A program registered with the plan, the judge, then chose for each
+run among five behaviors: keeps every value, drops the negatives, drops zero and below, replaces
+the negatives with zero, and times against one clock. The second block exposed two faults in the
+judge. First, a tool that kept fewer values than it was asked to publish was ruled out of the
+behaviors that keep every value, but not out of timing against one clock. Yet a tool on one clock
+keeps every value too, so a run of Pulsar's client that kept \toolsPulsarOneClockKept{} of
+\toolsAskedToSend{} latencies was judged to time against one clock. Second, the judge predicts
+each behavior's figures from the trips of a reference, our own client for the same server, not
+from the tool's. A tool with a slow tail of its own can therefore be ruled out of the behavior it
+shows. Version 34 (\brk{freezes/31-experiment-plan}), public before either block was judged
+again, corrects the first fault. It also decides how many clocks a tool reads from the offset
+alone, without the reference. A tool reads two if it lost values, or if its average, median or
+minimum moved by more than half the offset. It reads one if it kept every value and none of those
+figures moved by a quarter of the offset. Every T2 run of both blocks was judged again under both
+rules, beside the verdict it was given. The corrected rule changes two verdicts, both for runs of
+Pulsar's client. The run above becomes undecided, and one undecided run becomes ``drops the
+negatives''.
+
+Table~\ref{stab:toolsrun} gives each tool's answer in its Clocks column. \toolsOneClockWordCap{}
+tools take both timestamps in one process, and moving the clock left their figures within a
+quarter of the offset in every one of their $\toolsOneClockOf$ runs. The other
+\toolsTwoClockWord{} timestamp a message in one process and subtract in another. The judge read
+librdkafka's \texttt{rdkafka\_performance} as keeping every value in \toolsKeepsRoundsWord{} of
+its \toolsRoundsWord{} rounds, but its consumer drops any value at or below zero and prints a line
+for each. No such line appears in any of its runs, and none of its own values came near zero, so
+that verdict tested nothing. Pulsar's client drops a value below zero and keeps a zero. Under the
+larger offset it kept $\toolsPulsarKeptLo$ to $\toolsPulsarKeptHi$ of $\toolsAskedToSend$
+latencies, yet its summary printed $\toolsAskedToSend$ records received beside latency figures
+computed from those few. The OpenMessaging Benchmark drops every value at or below zero (S4.5).
+\texttt{emqtt-bench}'s histogram kept every value, its sum going below zero with the clock. Its
+console printed no latency in any of its offset runs, because it prints its once-a-second average
+only when a counter that adds the latencies above zero changes.
+
+The per-run verdicts are in \brk{docs/results/tools/tools_t1.csv} and \brk{tools_t2.csv}, folded
+by \brk{scripts/tools_block.py} from the runs. The write-ups are
+\brk{docs/results/tools/t1-t4-eleven-tools.md}, with its five recorded faults, and
+\brk{docs/results/tools/t1-t4-five-tools.md}.
 
 \begin{table}[tb]
-\caption{\textbf{Eleven tools, run.} The registered campaign's tools block,
-\toolsRoundsWord{} rounds per tool on one pair of machines. Interval: what the tool times, as its
-invocation was read before any run. Slope: how far its figure moved per millisecond of delay,
-divided by the number of times the interval crosses the delay, in its lowest and highest round.
-Clocks: how many clocks its two timestamps come from, as moving the tool's clock back by more
-than the interval it times showed. Runs: the offset runs that decided this, of all of that
-tool's. The rest were undecided.}
+\caption{\textbf{\toolsOneClockWordCap{} of the tools run time on one clock, and
+\toolsTwoClockWord{} on two.} The registered campaign's tools block, \toolsRoundsWord{} rounds
+per tool on one pair of machines, eleven tools in September and five in October. Interval: what
+the tool times, as its invocation was read before any run. Slope: how far its figure moved per
+millisecond of delay, divided by the number of times the interval crosses the delay, in its
+lowest and highest round. Clocks: how many clocks its two timestamps come from, answered from the
+offset alone as version 34 asks. Two means that moving back the clock of the process that
+subtracts cut what the tool kept, or moved its average, median or minimum by more than half the
+offset. One means that it kept every value and none of those moved by a quarter of the offset.
+Runs: the offset runs so answered, of all of that tool's. The rest were undecided.}
 \label{stab:toolsrun}
 \centering
 \footnotesize

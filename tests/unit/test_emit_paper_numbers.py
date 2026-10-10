@@ -2520,16 +2520,21 @@ class TestTheRegistryCells:
 
 
 class TestTheToolsBlock:
-    """Section V-F (2 Oct 2026): the eleven tools run under registered predictions.
+    """Section V-B and Supplement S5: the tools run under registered predictions.
 
-    Every sentence there is a fold over two committed tables, and three of them would turn
-    false if a re-run moved the data: that every tool measured the path, that the one-clock
-    tools were never judged to do anything else, and that the one tool on two clocks keeps
-    every value. Each is a guard, and each guard is made to fire here.
+    Every sentence there is a fold over two committed tables, and each would turn false if a
+    re-run moved the data: that every tool measured the path, that each tool is on one clock or
+    on two as its invocation was read before any run, that the one-clock tools were answered so
+    in every run, that rdkafka_performance's decided runs kept every value, and what Pulsar's
+    client kept. Each is a guard, and each guard is made to fire here.
+
+    The tables are shaped as tools_block.py writes them: a T2 row carries the verdict the run
+    was given, freeze 31's corrected verdict and its clocks answer (D34-2, D34-3).
     """
 
     T1 = ("round", "tool", "trip", "figure", "crossings", "slope")
-    T2 = ("round", "tool", "offset_ms", "verdict", "standing")
+    T2 = ("round", "tool", "offset_ms", "verdict", "standing", "sent", "kept", "verdict_31",
+          "clocks", "clocks_why")
     ONE = "times against one clock"
     KEEPS = "keeps every value"
 
@@ -2542,43 +2547,57 @@ class TestTheToolsBlock:
                 w.writerows(rows)
         return str(p1), str(p2)
 
-    def _tables(self, tmp_path, rdkafka_round2=KEEPS, slope="1.0084", drop_round2=False):
+    def _t2(self, rnd, tool, offset, verdict, clocks, kept="", sent="3000", corrected=None):
+        return (rnd, tool, offset, verdict, "", sent, kept,
+                verdict if corrected is None else corrected, clocks, "")
+
+    def _pulsar(self, kept1="7", kept2="3", judged_one=1, sent2="3000"):
+        """pulsar-perf as 10 October left it: every value kept at the smaller offset, a few at
+        the larger, and one run that freeze 21 judged to time against one clock."""
+        return [self._t2("1", "pulsar-perf", "3.05", "undecided", "undecided", kept="3000"),
+                self._t2("1", "pulsar-perf", "5.05", self.ONE, "two", kept=kept1,
+                         corrected="undecided"),
+                self._t2("2", "pulsar-perf", "2.99", "undecided", "two", kept="3000"),
+                self._t2("2", "pulsar-perf", "5.04", self.ONE if judged_one > 1 else "undecided",
+                         "two", kept=kept2, sent=sent2, corrected="drops the negatives")]
+
+    def _tables(self, tmp_path, rdkafka_round2=KEEPS, slope="1.0084", drop_round2=False,
+                rdkafka_round1="undecided", wrk2_clocks="one", rdkafka_clocks="two",
+                pulsar=None):
         t1 = [("1", "wrk2", "round trip", "p50", "1", slope),
               ("1", "rdkafka_performance", "across two processes", "avg", "2", "1.9583"),
+              ("1", "pulsar-perf", "across two processes", "p50", "1", "1.0285"),
               ("2", "wrk2", "round trip", "p50", "1", "1.0448"),
               ("2", "rdkafka_performance", "across two processes", "avg", "2", ""),
-              ("2", "kafka-producer-perf", "send to acknowledgment", "p50", "1", "1.1411")]
-        t2 = [("1", "wrk2", "3.82", self.ONE, ""), ("1", "wrk2", "1.83", "undecided", ""),
-              ("2", "wrk2", "3.84", self.ONE, ""),
-              ("1", "rdkafka_performance", "5.48", "undecided", ""),
-              ("1", "kafka-producer-perf", "5.23", self.ONE, "")]
+              ("2", "kafka-producer-perf", "send to acknowledgment", "p50", "1", "1.1411"),
+              ("2", "pulsar-perf", "across two processes", "p50", "1", "1.1411")]
+        t2 = [self._t2("1", "wrk2", "3.82", self.ONE, "one", kept="3001"),
+              self._t2("1", "wrk2", "1.83", "undecided", wrk2_clocks, kept="3001"),
+              self._t2("2", "wrk2", "3.84", self.ONE, "one", kept="3001"),
+              self._t2("1", "rdkafka_performance", "5.48", rdkafka_round1, rdkafka_clocks),
+              self._t2("1", "kafka-producer-perf", "5.23", self.ONE, "one")]
+        t2 += self._pulsar() if pulsar is None else pulsar
         if not drop_round2:
-            t2.append(("2", "rdkafka_performance", "4.59", rdkafka_round2, ""))
+            t2.append(self._t2("2", "rdkafka_performance", "4.59", rdkafka_round2, "two"))
         return self._write(tmp_path, t1, t2)
 
     def test_the_counts_the_section_quotes(self, tmp_path):
         got = dict(epn.tools_block_macros(*self._tables(tmp_path)))
-        assert got == {"toolsRunWord": "three", "toolsRoundsWord": "two",
+        assert got == {"toolsRunWord": "four", "toolsRoundsWord": "two",
                        "toolsSlopeLo": "0.98", "toolsSlopeHi": "1.14",
                        "toolsOneClockWord": "two", "toolsOneClockWordCap": "Two",
-                       "toolsOneClockRuns": "3", "toolsOneClockOf": "4",
-                       "toolsKeepsRoundsWord": "one"}
+                       "toolsOneClockOf": "4",
+                       "toolsTwoClockWord": "two", "toolsTwoClockRuns": "5",
+                       "toolsTwoClockOf": "6", "toolsKeepsRoundsWord": "one",
+                       "toolsPulsarKeptLo": "3", "toolsPulsarKeptHi": "7",
+                       "toolsPulsarOneClockKept": "7", "toolsAskedToSend": "3{,}000"}
 
     def test_a_round_with_no_run_of_the_two_clock_tool_is_not_counted_for_it(self, tmp_path):
         """A round that never ran the tool must not count as one in which it kept every value:
         `all()` of nothing is true, which is the trap the `runs and` guards."""
-        p1, p2 = self._write(
-            tmp_path,
-            [("1", "wrk2", "round trip", "p50", "1", "1.0"),
-             ("2", "wrk2", "round trip", "p50", "1", "1.0"),
-             ("2", "rdkafka_performance", "across two processes", "avg", "2", "2.0")],
-            [("1", "wrk2", "3.8", self.ONE, ""), ("2", "wrk2", "3.8", self.ONE, ""),
-             ("2", "rdkafka_performance", "4.6", self.KEEPS, "")])
-        assert dict(epn.tools_block_macros(p1, p2))["toolsKeepsRoundsWord"] == "one"
-
-    def test_a_two_clock_tool_that_was_never_decided_stops_the_build(self, tmp_path):
-        with pytest.raises(ValueError, match="keeps every value"):
-            epn.tools_block_macros(*self._tables(tmp_path, drop_round2=True))
+        got = dict(epn.tools_block_macros(*self._tables(tmp_path, rdkafka_round1=self.KEEPS,
+                                                        drop_round2=True)))
+        assert got["toolsKeepsRoundsWord"] == "one"
 
     def test_absent_tables_emit_nothing(self, tmp_path, capsys):
         assert epn.tools_block_macros(str(tmp_path / "a.csv"), str(tmp_path / "b.csv")) == []
@@ -2586,7 +2605,7 @@ class TestTheToolsBlock:
 
     def test_tables_that_name_different_tools_are_refused(self, tmp_path):
         p1, p2 = self._write(tmp_path, [("1", "wrk2", "round trip", "p50", "1", "1.0")],
-                             [("1", "k6", "3.8", self.ONE, "")])
+                             [self._t2("1", "k6", "3.8", self.ONE, "one")])
         with pytest.raises(ValueError, match="name different tools"):
             epn.tools_block_macros(p1, p2)
 
@@ -2594,23 +2613,64 @@ class TestTheToolsBlock:
         with pytest.raises(ValueError, match="outside the band"):
             epn.tools_block_macros(*self._tables(tmp_path, slope="1.6"))
 
-    def test_a_two_clock_tool_that_does_something_else_stops_the_build(self, tmp_path):
-        with pytest.raises(ValueError, match="keeps every value"):
-            epn.tools_block_macros(*self._tables(tmp_path, rdkafka_round2="drops the negatives"))
-
     def test_no_slope_at_all_stops_the_build(self, tmp_path):
         p1, p2 = self._write(tmp_path, [("1", "wrk2", "round trip", "p50", "1", "")],
-                             [("1", "wrk2", "3.8", self.ONE, "")])
+                             [self._t2("1", "wrk2", "3.8", self.ONE, "one")])
         with pytest.raises(ValueError, match="outside the band"):
+            epn.tools_block_macros(p1, p2)
+
+    def test_a_tool_answered_both_ways_stops_the_build(self, tmp_path):
+        with pytest.raises(ValueError, match="answered one way.*'wrk2': \\['one', 'two'\\]"):
+            epn.tools_block_macros(*self._tables(tmp_path, wrk2_clocks="two"))
+
+    def test_a_tool_never_answered_stops_the_build(self, tmp_path):
+        p1, p2 = self._write(tmp_path, [("1", "wrk2", "round trip", "p50", "1", "1.0")],
+                             [self._t2("1", "wrk2", "3.8", "undecided", "undecided")])
+        with pytest.raises(ValueError, match="'wrk2': \\[\\]"):
+            epn.tools_block_macros(p1, p2)
+
+    def test_a_tool_answered_otherwise_than_its_invocation_was_read_stops_the_build(self,
+                                                                                    tmp_path):
+        """rdkafka_performance was read, before any run, to subtract in a second process."""
+        with pytest.raises(ValueError, match="the way its invocation was read"):
+            epn.tools_block_macros(*self._tables(tmp_path, rdkafka_clocks="one"))
+
+    def test_a_one_clock_run_left_undecided_stops_the_build(self, tmp_path):
+        """The prose says every one of the one-clock tools' runs was answered one."""
+        with pytest.raises(ValueError, match="every one of their"):
+            epn.tools_block_macros(*self._tables(tmp_path, wrk2_clocks="undecided"))
+
+    def test_rdkafka_decided_as_anything_but_keeping_every_value_stops_the_build(self, tmp_path):
+        with pytest.raises(ValueError, match="keeping every value"):
+            epn.tools_block_macros(*self._tables(tmp_path, rdkafka_round2="drops the negatives"))
+
+    def test_a_round_whose_larger_offset_left_no_count_stops_the_build(self, tmp_path):
+        with pytest.raises(ValueError, match="Pulsar's client kept"):
+            epn.tools_block_macros(*self._tables(tmp_path, pulsar=self._pulsar(kept2="")))
+
+    def test_two_pulsar_runs_judged_to_time_against_one_clock_stop_the_build(self, tmp_path):
+        with pytest.raises(ValueError, match="Pulsar's client kept"):
+            epn.tools_block_macros(*self._tables(tmp_path, pulsar=self._pulsar(judged_one=2)))
+
+    def test_rounds_asked_to_send_different_counts_stop_the_build(self, tmp_path):
+        """One count is quoted as what every round was asked to send."""
+        with pytest.raises(ValueError, match="Pulsar's client kept"):
+            epn.tools_block_macros(*self._tables(tmp_path, pulsar=self._pulsar(sent2="2000")))
+
+    def test_tables_without_pulsar_stop_the_build(self, tmp_path):
+        p1, p2 = self._write(tmp_path, [("1", "wrk2", "round trip", "p50", "1", "1.0")],
+                             [self._t2("1", "wrk2", "3.8", self.ONE, "one")])
+        with pytest.raises(ValueError, match="Pulsar's client kept"):
             epn.tools_block_macros(p1, p2)
 
     def test_the_table_lists_each_tool_by_its_interval(self, tmp_path):
         table = epn.render_tools_table(*self._tables(tmp_path))
         rows = [l for l in table.splitlines() if l.endswith("\\\\") and "&" in l][1:]
         assert rows == [
-            "wrk2 & round trip & 1.01--1.04 & one & 2/3 \\\\",
+            "wrk2 & round trip & 1.01--1.04 & one & 3/3 \\\\",
             "\\kafka{} producer & to ack. & 1.14--1.14 & one & 1/1 \\\\",
-            "librdkafka perf. & two processes & 0.98--0.98 & two & 1/2 \\\\"]
+            "Pulsar perf. & two processes & 1.03--1.14 & two & 3/4 \\\\",
+            "librdkafka perf. & two processes & 0.98--0.98 & two & 2/2 \\\\"]
 
     def test_the_committed_table_is_the_one_the_data_give(self):
         repo = Path(__file__).resolve().parents[2]

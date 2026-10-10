@@ -3483,6 +3483,8 @@ TOOLS_T2 = os.path.join("docs", "results", "tools", "tools_t2.csv")
 DEFAULT_TOOLS_TABLE = os.path.join("docs", "generated", "tools_run_table.tex")
 ONE_CLOCK = "times against one clock"
 KEEPS_EVERY_VALUE = "keeps every value"
+#: How tools_block.py records a T2 run its judge left more than one behaviour standing in.
+UNDECIDED_RUN = "undecided"
 
 #: The band freeze 21 fixed before any tool ran (D25-5): a figure that follows the path moves
 #: half to one and a half milliseconds per millisecond added, for each time the interval the
@@ -3502,6 +3504,11 @@ TOOL_NAMES = {
     "rabbitmq-perftest": "RabbitMQ PerfTest",
     "nats-latency": "NATS latency",
     "rdkafka_performance": "librdkafka perf.",
+    "omb": "OpenMessaging Benchmark",
+    "pulsar-perf": "Pulsar perf.",
+    "emqtt-bench": "emqtt-bench",
+    "ycsb": "YCSB",
+    "nats-bench": "NATS bench",
 }
 
 #: The table's row order: by the interval timed, one-clock intervals first; and how each is set
@@ -3523,32 +3530,40 @@ def _tools_rows(t1_path, t2_path):
 
 
 def _tools_judged(t1, t2):
-    """What Section V-F's sentences rest on, checked before any of it is printed.
+    """What Section V-B's sentences rest on, checked before any of it is printed.
 
-    Three sentences depend on the judged runs and would be wrong if a re-run moved them: that
-    every tool measured the path (every staircase slope inside the band fixed in advance), that
-    the one-clock tools were never judged to do anything else, and that exactly one tool spans
-    two clocks and keeps every value. Each is a guard here, so a change in the data stops the
-    build instead of leaving the prose behind.
+    The sentences depend on the judged runs and would be wrong if a re-run moved them: that every
+    tool measured the path (every staircase slope inside the band fixed in advance), and that
+    each tool is on one clock or on two. Which, is freeze 31's answer from the offset itself
+    (D34-2, the `clocks` column), not the five hypotheses' verdict, which stays beside it. A tool
+    answered both ways, a tool never answered, and a tool whose answer is not what its invocation
+    was read to time before any run, each stops the build instead of leaving the prose behind.
     """
     per_crossing = [float(r["slope"]) / int(r["crossings"]) for r in t1 if r["slope"]]
     if not per_crossing or not all(SLOPE_BAND[0] <= s <= SLOPE_BAND[1] for s in per_crossing):
         raise ValueError("a staircase slope lies outside the band frozen for it, so 'every "
                          "tool measures the path' no longer holds")
-    decided = {}
+    trip = {r["tool"]: r["trip"] for r in t1}
+    answered = {tool: set() for tool in trip}
     for r in t2:
-        if r["verdict"] != "undecided":
-            decided.setdefault(r["tool"], set()).add(r["verdict"])
-    one = sorted(t for t, v in decided.items() if v == {ONE_CLOCK})
-    other = sorted(t for t, v in decided.items() if v != {ONE_CLOCK})
-    if len(other) != 1 or decided[other[0]] != {KEEPS_EVERY_VALUE}:
-        raise ValueError("the prose names one tool on two clocks, which keeps every value; the "
-                         "judged runs say %s" % {t: sorted(decided[t]) for t in other})
-    return per_crossing, one, other[0]
+        if r["clocks"] in ("one", "two"):
+            answered[r["tool"]].add(r["clocks"])
+    wrong = {t: sorted(a) for t, a in answered.items()
+             if len(a) != 1 or (a == {"two"}) != (trip[t] == "across two processes")}
+    if wrong:
+        raise ValueError("each tool must be answered one way, and the way its invocation was read "
+                         "to time: %s" % wrong)
+    one = sorted(t for t, a in answered.items() if a == {"one"})
+    two = sorted(t for t, a in answered.items() if a == {"two"})
+    #: The prose says the one-clock tools' figures stayed put in every one of their runs.
+    if any(r["clocks"] != "one" for r in t2 if r["tool"] in one):
+        raise ValueError("a run of a one-clock tool was not answered one, so 'every one of their "
+                         "runs' no longer holds")
+    return per_crossing, one, two
 
 
 def tools_block_macros(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
-    """Section V-F's counts: the tools block, run under predictions registered in advance.
+    """Section V-B's counts: the tools block, run under predictions registered in advance.
 
     Folded from the two tables scripts/tools_block.py writes from the judged runs. The words are
     emitted beside the numbers they spell, because each opens or sits inside a sentence, and only
@@ -3562,11 +3577,34 @@ def tools_block_macros(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
     per_crossing, one, two = _tools_judged(t1, t2)
     rounds = sorted({r["round"] for r in t1})
     one_runs = [r for r in t2 if r["tool"] in one]
+    two_runs = [r for r in t2 if r["tool"] in two]
+    #: rdkafka_performance, the one tool on two clocks the first block ran, read by the rule frozen
+    #: with that block as keeping every value at both offsets of a round (S5 says what that tested,
+    #: and would mislead if the rule had decided any of its runs as anything else).
+    rdkafka = [r for r in t2 if r["tool"] == "rdkafka_performance"]
+    if {r["verdict"] for r in rdkafka} - {KEEPS_EVERY_VALUE, UNDECIDED_RUN}:
+        raise ValueError("the supplement reads rdkafka_performance's decided runs as keeping every "
+                         "value; the judged runs say %s" % sorted({r["verdict"] for r in rdkafka}))
     keeps = []
     for rnd in rounds:
-        runs = [r for r in t2 if r["tool"] == two and r["round"] == rnd]
+        runs = [r for r in rdkafka if r["round"] == rnd]
         if runs and all(r["verdict"] == KEEPS_EVERY_VALUE for r in runs):
             keeps.append(rnd)
+    #: What Pulsar's client kept, of what it was asked to send, under the larger of each round's two
+    #: offsets; and the one run of it freeze 21 judged to time against one clock. Both are quoted.
+    larger = {}
+    for r in t2:
+        if r["tool"] == "pulsar-perf":
+            larger.setdefault(r["round"], []).append((float(r["offset_ms"]), r["kept"], r["sent"]))
+    larger = [max(runs) for runs in larger.values()]
+    wrong = [r for r in t2 if r["tool"] == "pulsar-perf" and r["verdict"] == ONE_CLOCK]
+    if (not larger or any(not k for _, k, _ in larger) or len(wrong) != 1
+            or {s for _, _, s in larger} != {wrong[0]["sent"]}):
+        raise ValueError("the prose quotes what Pulsar's client kept under the larger offset of "
+                         "every round, of one count it was asked to send, and the one run of it "
+                         "judged to time against one clock; the tables do not hold them")
+    kept = [int(k) for _, k, _ in larger]
+    (wrong,) = wrong
     return [
         ("toolsRunWord", _spell(len({r["tool"] for r in t1}))),
         ("toolsRoundsWord", _spell(len(rounds))),
@@ -3574,18 +3612,25 @@ def tools_block_macros(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
         ("toolsSlopeHi", "%.2f" % max(per_crossing)),
         ("toolsOneClockWord", _spell(len(one))),
         ("toolsOneClockWordCap", _spell(len(one)).capitalize()),
-        ("toolsOneClockRuns", str(sum(r["verdict"] == ONE_CLOCK for r in one_runs))),
         ("toolsOneClockOf", str(len(one_runs))),
+        ("toolsTwoClockWord", _spell(len(two))),
+        ("toolsTwoClockRuns", str(sum(r["clocks"] == "two" for r in two_runs))),
+        ("toolsTwoClockOf", str(len(two_runs))),
         ("toolsKeepsRoundsWord", _spell(len(keeps))),
+        ("toolsPulsarKeptLo", str(min(kept))),
+        ("toolsPulsarKeptHi", str(max(kept))),
+        ("toolsPulsarOneClockKept", wrong["kept"]),
+        ("toolsAskedToSend", "{:,}".format(int(wrong["sent"])).replace(",", "{,}")),
     ]
 
 
 def render_tools_table(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
-    """The table of Section V-F: each tool, what it times, how it followed the path, and T2.
+    """The supplement's table of the tools run: each tool, what it times, how it followed the
+    path, and how many clocks T2 found its two timestamps on.
 
     The slope column is per crossing, the minimum and maximum over the rounds; the last column
-    counts the T2 runs judged to show the behaviour named, out of all of that tool's T2 runs, the
-    rest being undecided (`_tools_judged` has already refused anything else).
+    counts the T2 runs answered as the clocks named (D34-2), out of all of that tool's T2 runs,
+    the rest being undecided (`_tools_judged` has already refused anything else).
     """
     t1, t2 = _tools_rows(t1_path, t2_path)
     _, one, _two = _tools_judged(t1, t2)
@@ -3602,10 +3647,10 @@ def render_tools_table(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
         slopes = [float(r["slope"]) / int(r["crossings"])
                   for r in t1 if r["tool"] == tool and r["slope"]]
         runs = [r for r in t2 if r["tool"] == tool]
-        verdict, label = (ONE_CLOCK, "one") if tool in one else (KEEPS_EVERY_VALUE, "two")
+        label = "one" if tool in one else "two"
         lines.append("%s & %s & %.2f--%.2f & %s & %d/%d \\\\" % (
             TOOL_NAMES[tool], TRIP_CELLS[trip[tool]], min(slopes), max(slopes), label,
-            sum(r["verdict"] == verdict for r in runs), len(runs)))
+            sum(r["clocks"] == label for r in runs), len(runs)))
     lines += ["\\bottomrule", "\\end{tabular}"]
     return "\n".join(lines) + "\n"
 

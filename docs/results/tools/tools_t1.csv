@@ -43,3 +43,23 @@ round,tool,trip,figure,crossings,slope
 4,valkey-benchmark,round trip,p50,1,1.0509
 4,vegeta,round trip,p50,1,0.9881
 4,wrk2,round trip,p50,1,0.9786
+1,emqtt-bench,across two processes,avg,1,0.9138
+1,nats-bench,round trip,p50,1,1.0255
+1,omb,across two processes,p50,1,1.0364
+1,pulsar-perf,across two processes,p50,1,1.0285
+1,ycsb,round trip,p50,1,1.0072
+2,emqtt-bench,across two processes,avg,1,0.9469
+2,nats-bench,round trip,p50,1,1.0185
+2,omb,across two processes,p50,1,0.9997
+2,pulsar-perf,across two processes,p50,1,1.0285
+2,ycsb,round trip,p50,1,1.0136
+3,emqtt-bench,across two processes,avg,1,0.9033
+3,nats-bench,round trip,p50,1,1.0230
+3,omb,across two processes,p50,1,0.8427
+3,pulsar-perf,across two processes,p50,1,1.1411
+3,ycsb,round trip,p50,1,1.0026
+4,emqtt-bench,across two processes,avg,1,1.0523
+4,nats-bench,round trip,p50,1,1.0010
+4,omb,across two processes,p50,1,0.5574
+4,pulsar-perf,across two processes,p50,1,1.1411
+4,ycsb,round trip,p50,1,1.0389

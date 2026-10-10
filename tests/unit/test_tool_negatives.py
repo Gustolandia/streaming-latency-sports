@@ -600,7 +600,8 @@ class TestTheCorrectionsOfFreeze31:
     def test_freeze_31_holds_the_count_against_one_clock_as_well(self):
         got = self.judge(tn.FREEZE_31)
         assert not got["decided"] and got["rule"] == tn.FREEZE_31
-        assert got["ruled_out"][tn.ONE_CLOCK] ==             "it counted 7 of the 3000 it was asked to send, and this keeps every value"
+        assert got["ruled_out"][tn.ONE_CLOCK] == (
+            "it counted 7 of the 3000 it was asked to send, and this keeps every value")
         assert "none of the five" in got["why"]
 
     def test_freeze_21_stays_the_rule_a_judgement_names_by_default(self):

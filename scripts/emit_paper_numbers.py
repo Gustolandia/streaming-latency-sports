@@ -1813,7 +1813,8 @@ def literature_macros(path=os.path.join("docs", "results", "external",
 
 #: The message tools that cut nothing out of what they report, as the paper and the supplement
 #: group them: one keeps a value below zero out of its figures and counts it; three time in one
-#: process on a monotonic clock and never meet one; and three keep it.
+#: process on a monotonic clock and never meet one; and three keep it. The prose spells the sizes
+#: of the three groups, so a registry that moves a tool between them stops the build below.
 MESSAGE_KEEP_COUNTS = ["SBK"]
 MESSAGE_KEEP_NEVER_MEET = ["Apache Kafka (bundled)", "IBM Sarama producer perf", "mqtt-benchmark"]
 MESSAGE_KEEP_KEEP = ["PerfKit Benchmarker messaging", "Redpanda kgo-repeater",
@@ -3599,13 +3600,16 @@ TOOL_NAMES = {
     "trogdor": "\\kafka{} Trogdor",
     "stream-perftest": "Stream PerfTest",
     "ysb": "Yahoo Streaming Bench.",
+    "pkb": "PerfKit messaging",
 }
 
 #: The table's row order: by the interval timed, one-clock intervals first; and how each is set
 #: in a column-wide table.
-TRIP_ORDER = ("round trip", "send to acknowledgment", "in one process", "across two processes")
+TRIP_ORDER = ("round trip", "send to acknowledgment", "in one process", "two processes, one clock",
+              "across two processes")
 TRIP_CELLS = {"round trip": "round trip", "send to acknowledgment": "to ack.",
-              "in one process": "one process", "across two processes": "two processes"}
+              "in one process": "one process", "two processes, one clock": "one host",
+              "across two processes": "two processes"}
 
 
 def _tools_rows(t1_path, t2_path):
@@ -3730,6 +3734,18 @@ def tools_block_macros(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
                          "runs as timing against one clock, and version 34's judge left all of "
                          "them undecided with an answer of two from the offset; the tables "
                          "disagree")
+    #: Of the tools on one clock, the prose says all take both timestamps in one process but
+    #: PerfKit, whose publisher and receiver are two processes on one machine (freeze 34, D37-2).
+    trip = {r["tool"]: r["trip"] for r in t1}
+    one_host = sorted(t for t in one if trip[t] == "two processes, one clock")
+    if one_host != ["pkb"]:
+        raise ValueError("the prose names PerfKit as the one tool on one clock across two "
+                         "processes; the tables say %s" % one_host)
+    #: And it says freeze 21's judge, whose noise allowance comes from a staircase PerfKit has
+    #: none of, decided none of PerfKit's runs.
+    if any(r["verdict"] != UNDECIDED_RUN for r in t2 if r["tool"] == "pkb"):
+        raise ValueError("the supplement says freeze 21's judge left every PerfKit run "
+                         "undecided; the tables disagree")
     #: The supplement names two of the one-clock tools, and says Trogdor's clamp left its runs at
     #: the larger offset of each round undecided while those at the smaller read two.
     trogdor = {}
@@ -3748,6 +3764,7 @@ def tools_block_macros(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
         ("toolsSlopeLo", "%.2f" % min(per_crossing)),
         ("toolsSlopeHi", "%.2f" % max(per_crossing)),
         ("toolsOneClockWord", _spell(len(one))),
+        ("toolsOneProcessWord", _spell(len(one) - len(one_host))),
         ("toolsOneClockOf", str(len(one_runs))),
         ("toolsTwoClockWord", _spell(len(two))),
         ("toolsTwoClockRuns", str(sum(r["clocks"] == "two" for r in two_runs))),
@@ -3773,6 +3790,14 @@ DEFAULT_TOOLS_T3_TABLE = os.path.join("docs", "generated", "tools_load_table.tex
 #: it took back nearly all of it. A threshold for describing T3, which has no rule of its own.
 TAIL_BACK_SHARE = 0.9
 
+#: The tools T3's figures describe apart, because a wait for a core cannot be read in theirs.
+#: YSB's tail is set by its flush once a second, as its staircase showed (scripts/ysb_post_hoc.py).
+#: PerfKit's trip goes to a managed queue in a data centre, and its 99th percentile of 100
+#: messages, set by the queue's own tail, swung by some 140 ms between its idle rounds, far more
+#: than a wait for a core adds (freeze 34). T3 has no rule, so this decides only what is described.
+T3_APART = {"ysb": "its figure is set by its flush",
+            "pkb": "its tail is the managed queue's, swinging by more between rounds"}
+
 #: The tools whose median the load moved by exactly one step of what they print, by that step:
 #: Trogdor prints whole milliseconds, and its median went from 2 to 3. The prose names it, and
 #: quotes the largest move of the others beside it, rather than let one printed step stand as
@@ -3797,9 +3822,8 @@ def _tools_load(t3_path=TOOLS_T3):
         cells.setdefault((r["tool"], r["round"]), {})[(r["load_pct"], r["go_first"])] = r
     fold = {}
     for (tool, _rnd), c in sorted(cells.items()):
-        #: A tool predicted not to follow the path cannot show the wait for a core in its figure
-        #: either: YSB's tail is set by its flush once a second. It is described on its own.
-        if tool in SLOPE_PREDICTED_OUTSIDE:
+        #: The tools whose figure cannot show a wait for a core, described on their own.
+        if tool in T3_APART:
             continue
         idle, under, ahead = c.get(("0", "no")), c.get((busy, "no")), c.get((busy, "yes"))
         if not (idle and under and ahead and idle["p99"] and under["p99"] and ahead["p99"]):
@@ -3962,6 +3986,91 @@ def ysb_fit_macros(csv_path=YSB_FIT_CSV):
     ]
 
 
+S1_CSV = os.path.join("docs", "results", "tools", "s1.csv")
+S1_VERDICTS = os.path.join("docs", "results", "tools", "s1_verdicts.json")
+DEFAULT_S1_TABLE = os.path.join("docs", "generated", "s1_table.tex")
+#: S1's tools in the table's order, as the documents name them, with what each one's own output
+#: shows of a value below zero (freeze 34, D37-4); the control tool shows none by design.
+S1_TOOLS = (("pkb", "PerfKit messaging", "samples below zero, in its mean and percentiles"),
+            ("strimzi-canary", "Strimzi Canary", "durations below zero, in its log"),
+            ("stream-perftest-one", "Stream PerfTest, one instance",
+             "latencies not kept, uncounted"),
+            ("xinfra-monitor", "Xinfra Monitor", "values pinned to zero, in a debug line"),
+            ("kafka-end-to-end", "\\kafka{} end-to-end",
+             "median and 99th percentile within 1~ms of its control's"))
+
+
+def _s1(csv_path=S1_CSV, verdicts_path=S1_VERDICTS):
+    """S1's runs and verdicts (scripts/s1_block.py), checked against what the prose says: that
+    every stepped run passed S1-a, and that each tool's prediction held in every round."""
+    import csv as _csv
+    with open(csv_path, encoding="utf-8", newline="") as fh:
+        rows = list(_csv.DictReader(fh))
+    with open(verdicts_path, encoding="utf-8") as fh:
+        verdicts = json.load(fh)
+    failing = {t: v["verdict"] for t, v in verdicts.items() if v["verdict"] != "holds"}
+    if failing:
+        raise ValueError("the prose says each tool's S1 prediction held in every round; the "
+                         "verdicts say %s" % failing)
+    if {t for t, _, _ in S1_TOOLS} != set(verdicts):
+        raise ValueError("the documents name S1's tools as %s; the verdicts judge %s"
+                         % (sorted(t for t, _, _ in S1_TOOLS), sorted(verdicts)))
+    stepped = [r for r in rows if r["run"] == "stepped"]
+    if not stepped or any(r["instrument_ok"] != "True" for r in stepped):
+        raise ValueError("the prose says every stepped S1 run passed S1-a; the table holds one "
+                         "that did not, or none")
+    return rows, stepped
+
+
+def _below(rows, tool, run="stepped"):
+    return [int(r["below_zero"]) for r in rows
+            if r["tool"] == tool and r["run"] == run and r["below_zero"] != ""]
+
+
+def s1_macros(csv_path=S1_CSV, verdicts_path=S1_VERDICTS):
+    """The step test's sentences: how many values below zero each tool's own output showed in its
+    stepped runs, and how close to the PTP clock the steps left the wall clock."""
+    if not (os.path.exists(csv_path) and os.path.exists(verdicts_path)):
+        print("note: S1 tables absent")
+        return []
+    rows, stepped = _s1(csv_path, verdicts_path)
+    out = [("sOneRoundsWord", _spell(len({r["round"] for r in rows})))]
+    for tool, stem in (("pkb", "Pkb"), ("strimzi-canary", "Canary"),
+                       ("stream-perftest-one", "Stream"), ("xinfra-monitor", "Xinfra")):
+        found = _below(rows, tool)
+        out += [("sOne%sLo" % stem, str(min(found))), ("sOne%sHi" % stem, str(max(found)))]
+    out.append(("sOneClockBackMs",
+                "%.1f" % max(abs(float(r["clock_after_ms"])) for r in stepped)))
+    return out
+
+
+def render_s1_table(csv_path=S1_CSV, verdicts_path=S1_VERDICTS):
+    """The supplement's S1 table: each tool's step, the steps a stepped run made, the values below
+    zero its own output showed in its stepped runs and in its controls, and what that output is."""
+    rows, stepped = _s1(csv_path, verdicts_path)
+    lines = [
+        "% Generated by scripts/emit_paper_numbers.py from docs/results/tools/s1.csv.",
+        "% Do not edit by hand.",
+        "\\begin{tabular}{@{}lrrrrl@{}}",
+        "\\toprule",
+        " & Step & & \\multicolumn{2}{c}{Below zero} & \\\\",
+        "\\cmidrule(lr){4-5}",
+        "Tool & (ms) & Steps & stepped & controls & What its output shows \\\\",
+        "\\midrule",
+    ]
+    for tool, name, shows in S1_TOOLS:
+        runs = [r for r in stepped if r["tool"] == tool]
+        steps = [int(r["steps"]) for r in runs]
+        step = float(runs[0]["stepped_back_ms"]) / steps[0]
+        hit, ctl = _below(rows, tool), _below(rows, tool, "control")
+        cells = (("%d--%d" % (min(hit), max(hit)), str(max(ctl))) if hit and ctl
+                 else ("---", "---"))
+        lines.append("%s & %g & %d--%d & %s & %s & %s \\\\" % (
+            name, step, min(steps), max(steps), cells[0], cells[1], shows))
+    lines += ["\\bottomrule", "\\end{tabular}"]
+    return "\n".join(lines) + "\n"
+
+
 K1_CSV = os.path.join("docs", "results", "tools", "k1.csv")
 K1_VERDICTS = os.path.join("docs", "results", "tools", "k1_verdicts.json")
 DEFAULT_K1_TABLE = os.path.join("docs", "generated", "k1_table.tex")
@@ -4077,9 +4186,12 @@ def render_tools_table(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
                   for r in t1 if r["tool"] == tool and r["slope"]]
         runs = [r for r in t2 if r["tool"] == tool]
         label = "one" if tool in one else "two"
-        lines.append("%s & %s & %s--%s & %s & %d/%d \\\\" % (
-            TOOL_NAMES[tool], TRIP_CELLS[trip[tool]], _signed(min(slopes)), _signed(max(slopes)),
-            label, sum(r["clocks"] == label for r in runs), len(runs)))
+        #: A tool whose T1 is the zero step alone has no slope: PerfKit, whose managed queue the
+        #: staircase cannot reach (D37-1).
+        slope = "%s--%s" % (_signed(min(slopes)), _signed(max(slopes))) if slopes else "---"
+        lines.append("%s & %s & %s & %s & %d/%d \\\\" % (
+            TOOL_NAMES[tool], TRIP_CELLS[trip[tool]], slope, label,
+            sum(r["clocks"] == label for r in runs), len(runs)))
     lines += ["\\bottomrule", "\\end{tabular}"]
     return "\n".join(lines) + "\n"
 
@@ -4741,7 +4853,7 @@ def _all_pairs(m):
             + arm_macros() + manipulation_macros()
             + deletion_macros() + literature_macros() + cliff_macros() + reach_macros()
             + tools_block_macros() + tools_load_macros() + ysb_flush_macros() + ysb_fit_macros()
-            + k1_macros() + recv_wait_macros()
+            + k1_macros() + s1_macros() + recv_wait_macros()
             + law_reading_macros()
             + s_window_macros() + rate_by_delivery_macros() + mechanism_interval_macros()
             + traced_pooled_macros() + workload_macros() + backlog_macros()
@@ -4767,6 +4879,7 @@ def main(argv=None):
     ap.add_argument("--tools-table", default=DEFAULT_TOOLS_TABLE)
     ap.add_argument("--tools-load-table", default=DEFAULT_TOOLS_T3_TABLE)
     ap.add_argument("--k1-table", default=DEFAULT_K1_TABLE)
+    ap.add_argument("--s1-table", default=DEFAULT_S1_TABLE)
     ap.add_argument("--recv-wait-table", default=DEFAULT_RECV_WAIT_TABLE)
     ap.add_argument("--mechanism-table", default=DEFAULT_MECHANISM_TABLE)
     ap.add_argument("--groups-table", default=DEFAULT_GROUPS_TABLE)
@@ -4814,6 +4927,9 @@ def main(argv=None):
     # K1 like the tools block: its guard is why the table exists, so only its absence is tolerated.
     if os.path.exists(K1_CSV) and os.path.exists(K1_VERDICTS):
         targets.append((args.k1_table, render_k1_table()))
+    # S1 the same way (freeze 34).
+    if os.path.exists(S1_CSV) and os.path.exists(S1_VERDICTS):
+        targets.append((args.s1_table, render_s1_table()))
     recv = render_recv_wait_table()
     if recv:
         targets.append((args.recv_wait_table, recv))

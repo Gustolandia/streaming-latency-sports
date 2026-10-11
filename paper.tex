@@ -109,9 +109,10 @@ the threads that read the clock ahead of every thread at the default \emph{norma
 it $\rtFactorLow$--$\rtFactorHigh\times$ on \kafka{} and $\rtRedisFactorLow$--$\rtRedisFactorHigh\times$ on \redis{} at unchanged load.
 \item \textbf{The industry-wide audit} (Section~\ref{sec:external}). Of the \harnessMessageWord{}
 message tools we read at source, \harnessMessageCutWord{} cut such values out of a figure they
-report, without counting them, \kafka{}'s own never measures them, and one keeps them.
-Of the \toolsRunWord{} we ran, \toolsOneClockWord{} take both timestamps in one process, so
-they never measure a \emph{one-way latency}, the time from one process to another. On a
+report, without counting them. Of the rest, one counts what it cuts, three never meet such a
+value, \kafka{}'s own among them, and three keep them. Of the \toolsRunWord{} we ran,
+\toolsOneProcessWord{} take both timestamps in one process, so they never measure a
+\emph{one-way latency}, the time from one process to another. On a
 millisecond clock, a filter that keeps only latencies above zero, a \emph{positivity filter}, also
 deletes the fastest messages, and no public report we audited says how many samples it kept.
 \item \textbf{What to do} (Section~\ref{sec:practice}). Checks for benchmark authors and
@@ -450,7 +451,8 @@ RabbitMQ Stream PerfTest, as producer and consumer & 1~ms & Dropped when below z
 since June 2026; a zero is kept & read, run \\
 Yahoo Streaming Benchmark & 1~ms & Kept in its output file; dropped by the notebook that
 analyses it, uncounted & read, run \\
-PerfKit Benchmarker, messaging & 1~ms & Kept, floored to whole milliseconds & read \\
+PerfKit Benchmarker, messaging & 1~ms & Kept, floored to whole milliseconds, also when a step of
+the clock makes one & read, run \\
 Apache ActiveMQ Artemis's \texttt{perf} & 1~$\mu$s & Refused by its histogram library; the session
 is rolled back and the run still reads success; uncounted & read \\
 Google's Pub/Sub load test framework & 1~ms & Binned with the fastest messages by its Java client;
@@ -532,20 +534,25 @@ sampler since August 2026~\cite{rezolus}.
 \label{sec:toolsrun}
 Reading a tool shows what it does with a value below zero, not whether it ever meets one. The
 registered campaign therefore ran \toolsRunWord{} benchmarking tools against a broker on a second
-machine, \toolsRoundsWord{} rounds each, with predictions fixed from their source before any run.
-Ten of them ran later, in blocks of their own: five that one version of the plan had left out, and
-five read in October (Supplement~S5). A delay added to the path in steps moved the figure of every
-tool but one $\toolsSlopeLo$--$\toolsSlopeHi$~ms per millisecond added and per crossing of the
-delay, so those tools measure the path. The Yahoo Streaming Benchmark's did not, as predicted,
-though for another reason: each write of its results waits for four replies that cross the delay
-(Supplement~S5). Moving back the clock
-of the process that subtracts, at two offsets longer
-than the interval the tool times, separated the tools that read one clock from those that read
-two. The
-figures of \toolsOneClockWord{} tools stayed within a quarter of the offset in every one of their
-$\toolsOneClockOf$ runs, because each takes both timestamps in one process, timing a round trip or
-a message it publishes and receives itself. Such a tool never meets a value below zero, and for
-the same reason it cannot measure the one-way latency of the delivery a broker exists to provide.
+machine, PerfKit Benchmarker against a managed queue, \toolsRoundsWord{} rounds each, with
+predictions fixed from their source before any run. Eleven of them ran later, in blocks of their
+own: five that one version of the plan had left out, and six read in October (Supplement~S5). A
+delay added to the path in steps, which cannot reach the managed queue's, moved the figure of
+every other tool but one $\toolsSlopeLo$--$\toolsSlopeHi$~ms per millisecond added and per crossing
+of the delay, so those tools measure the path. The Yahoo Streaming Benchmark's did not, as
+predicted, though for another reason: each write of its results waits for four replies that cross
+the delay (Supplement~S5). Moving back the clock of the process that subtracts, at two offsets
+longer than the interval the tool times, separated the tools that read one clock from those that
+read two. The figures of \toolsOneClockWord{} tools stayed within a quarter of the offset in every
+one of their $\toolsOneClockOf$ runs, because each reads both timestamps from one clock. All but
+PerfKit Benchmarker, whose two processes share one machine, take them in one process, timing a
+round trip or a message they publish and receive themselves, so they cannot measure the one-way
+latency of the delivery a broker exists to provide. A constant offset cannot make a value below
+zero in any of these tools, but a step of the clock can. Stepping the wall clock back under four
+tools that time on one clock showed, in all \sOneRoundsWord{} rounds and as their sources predicted,
+what each does with such a value. PerfKit Benchmarker keeps it, Strimzi Canary logs it, Stream
+PerfTest, run as one process, drops it uncounted, and Xinfra Monitor's metrics library pins it to
+the floor of its percentiles, saying so only at debug level (Supplement~S5).
 The other \toolsTwoClockWord{} timestamp a message in one process and subtract in another. In
 $\toolsTwoClockRuns$ of their $\toolsTwoClockOf$ runs the moved clock shifted their figures or cut
 what they kept, and the rest were undecided. Of the \toolsTwoClockWord{}, librdkafka's

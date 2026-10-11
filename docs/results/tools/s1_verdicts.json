@@ -1,0 +1,57 @@
+{
+  "kafka-end-to-end": {
+    "failed_in_rounds": [],
+    "held_in_rounds": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "not_judged_in_rounds": [],
+    "verdict": "holds"
+  },
+  "pkb": {
+    "failed_in_rounds": [],
+    "held_in_rounds": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "not_judged_in_rounds": [],
+    "verdict": "holds"
+  },
+  "stream-perftest-one": {
+    "failed_in_rounds": [],
+    "held_in_rounds": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "not_judged_in_rounds": [],
+    "verdict": "holds"
+  },
+  "strimzi-canary": {
+    "failed_in_rounds": [],
+    "held_in_rounds": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "not_judged_in_rounds": [],
+    "verdict": "holds"
+  },
+  "xinfra-monitor": {
+    "failed_in_rounds": [],
+    "held_in_rounds": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "not_judged_in_rounds": [],
+    "verdict": "holds"
+  }
+}

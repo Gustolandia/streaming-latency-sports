@@ -2642,6 +2642,23 @@ class TestToolsUnderLoad:
         with pytest.raises(ValueError, match="one background load"):
             epn.tools_load_macros(self._table(tmp_path, self._cells("1", "hey", 2, 3, 2, load="50")))
 
+    def test_the_tools_described_apart_stay_out_of_every_figure(self, tmp_path):
+        """YSB's figure is set by its flush, and PerfKit's tail is its managed queue's. Their first
+        rounds, as freezes 33 and 34 left them, would move every figure here if folded in."""
+        apart = [("1", "ysb", "0", "no", "521.0000", "1168.0900", "515.6512"),
+                 ("1", "ysb", "0", "yes", "533.0000", "1152.6000", "530.2977"),
+                 ("1", "ysb", "88", "no", "422.0000", "1193.7000", "484.6094"),
+                 ("1", "ysb", "88", "yes", "479.0000", "1133.5800", "521.8189"),
+                 ("1", "pkb", "0", "no", "22.0000", "80.3300", "33.1100"),
+                 ("1", "pkb", "0", "yes", "21.5000", "192.2000", "32.5100"),
+                 ("1", "pkb", "88", "no", "22.0000", "245.8700", "40.0100"),
+                 ("1", "pkb", "88", "yes", "22.0000", "157.9500", "37.6500")]
+        alone = epn.tools_load_macros(self._table(tmp_path))
+        assert epn.tools_load_macros(self._table(tmp_path, apart)) == alone
+        table = epn.render_tools_load_table(self._table(tmp_path, apart))
+        assert "Yahoo" not in table and "PerfKit" not in table
+        assert set(epn.T3_APART) == {"ysb", "pkb"}
+
     def test_an_absent_table_emits_nothing(self, tmp_path, capsys):
         assert epn.tools_load_macros(str(tmp_path / "none.csv")) == []
         assert "load table absent" in capsys.readouterr().out
@@ -2818,11 +2835,13 @@ class TestTheToolsBlock:
                          "two", kept=kept2, sent=sent2, corrected="drops the negatives")]
 
     def _october(self, ysb_verdict=ONE, ysb_corrected="undecided", trogdor_larger="undecided",
-                 stream_sent="3000", canary=True, ysb=True):
-        """The five tools read in October, shaped as 11 October left them: Xinfra Monitor and the
+                 stream_sent="3000", canary=True, ysb=True, pkb=True, pkb_verdict="undecided"):
+        """The six tools read in October, shaped as 11 October left them: Xinfra Monitor and the
         canary on one clock; Stream PerfTest keeping a few at the larger offset; Trogdor two at
-        the smaller offset and undecided at the larger; and YSB, two by the offset, one of its
-        runs read by freeze 21 as timing against one clock, version 34 deciding none."""
+        the smaller offset and undecided at the larger; YSB, two by the offset, one of its runs
+        read by freeze 21 as timing against one clock, version 34 deciding none; and PerfKit, one
+        clock across its two processes on one host, with no slope, since its queue is out of the
+        staircase's reach, and none of its runs decided by freeze 21's judge."""
         t1 = [("1", "stream-perftest", "across two processes", "p50", "1", "1.1411"),
               ("1", "trogdor", "across two processes", "p50", "1", "1.1411"),
               ("1", "xinfra-monitor", "in one process", "avg", "1", "1.0390")]
@@ -2846,6 +2865,12 @@ class TestTheToolsBlock:
                             corrected="undecided"),
                    self._t2("1", "ysb", "423.51", ysb_verdict, "two", kept="578", sent="1200",
                             corrected=ysb_corrected)]
+        if pkb:
+            t1.append(("1", "pkb", "two processes, one clock", "p50", "1", ""))
+            t2 += [self._t2("1", "pkb", "24.0212", pkb_verdict, "one", kept="100", sent="100",
+                            corrected="undecided"),
+                   self._t2("1", "pkb", "26.0110", "undecided", "one", kept="100", sent="100",
+                            corrected="undecided")]
         return t1, t2
 
     def _tables(self, tmp_path, rdkafka_round2=KEEPS, slope="1.0084", drop_round2=False,
@@ -2870,13 +2895,16 @@ class TestTheToolsBlock:
         return self._write(tmp_path, t1 + more_t1, t2 + more_t2)
 
     def test_the_counts_the_section_quotes(self, tmp_path):
-        """Nine tools: four on one clock in seven runs, five on two answered so in twelve of
-        their fourteen runs (Pulsar's undecided run and Trogdor's at the larger offset are the
-        two). YSB's slopes are its own, held outside the band and out of the band's figures."""
+        """Ten tools: five on one clock in nine runs, four of them taking both timestamps in one
+        process and PerfKit in two on one host; five on two, answered so in twelve of their
+        fourteen runs (Pulsar's undecided run and Trogdor's at the larger offset are the two).
+        YSB's slopes are its own, held outside the band and out of the band's figures, and
+        PerfKit, with none, adds nothing to them."""
         got = dict(epn.tools_block_macros(*self._tables(tmp_path)))
-        assert got == {"toolsRunWord": "nine", "toolsRoundsWord": "two",
+        assert got == {"toolsRunWord": "ten", "toolsRoundsWord": "two",
                        "toolsSlopeLo": "0.98", "toolsSlopeHi": "1.14",
-                       "toolsOneClockWord": "four", "toolsOneClockOf": "7",
+                       "toolsOneClockWord": "five", "toolsOneProcessWord": "four",
+                       "toolsOneClockOf": "9",
                        "toolsTwoClockWord": "five", "toolsTwoClockRuns": "12",
                        "toolsTwoClockOf": "14", "toolsKeepsRoundsWord": "one",
                        "toolsPulsarKeptLo": "3", "toolsPulsarKeptHi": "7",
@@ -2964,6 +2992,7 @@ class TestTheToolsBlock:
             "\\kafka{} producer & to ack. & 1.14--1.14 & one & 1/1 \\\\",
             "Strimzi Canary & one process & 1.00--1.00 & one & 1/1 \\\\",
             "Xinfra Monitor & one process & 1.04--1.04 & one & 2/2 \\\\",
+            "PerfKit messaging & one host & --- & one & 2/2 \\\\",
             "Pulsar perf. & two processes & 1.03--1.14 & two & 3/4 \\\\",
             "librdkafka perf. & two processes & 0.98--0.98 & two & 2/2 \\\\",
             "Stream PerfTest & two processes & 1.14--1.14 & two & 4/4 \\\\",
@@ -3000,6 +3029,18 @@ class TestTheToolsBlock:
         """The supplement names Xinfra Monitor and Strimzi Canary among the one-clock tools."""
         with pytest.raises(ValueError, match="Xinfra Monitor and Strimzi Canary"):
             epn.tools_block_macros(*self._tables(tmp_path, october=self._october(canary=False)))
+
+    def test_tables_without_perfkit_stop_the_build(self, tmp_path):
+        """The prose says every one-clock tool but PerfKit takes both timestamps in one process."""
+        with pytest.raises(ValueError, match="PerfKit as the one tool on one clock"):
+            epn.tools_block_macros(*self._tables(tmp_path, october=self._october(pkb=False)))
+
+    def test_perfkit_decided_by_freeze_21s_judge_stops_the_build(self, tmp_path):
+        """The supplement says that judge, whose allowance for noise comes from a staircase
+        PerfKit has none of, left every one of its runs undecided."""
+        with pytest.raises(ValueError, match="left every PerfKit run undecided"):
+            epn.tools_block_macros(*self._tables(
+                tmp_path, october=self._october(pkb_verdict=self.ONE)))
 
     def test_stream_asked_to_send_another_count_stops_the_build(self, tmp_path):
         """Its kept count is quoted of the count Pulsar's client was asked to send."""
@@ -3177,3 +3218,94 @@ class TestKOne:
     def test_absent_tables_emit_nothing(self, tmp_path, capsys):
         assert epn.k1_macros(str(tmp_path / "none.csv"), str(tmp_path / "none.json")) == []
         assert "K1 tables absent" in capsys.readouterr().out
+
+
+class TestTheStepTest:
+    """S1 for the paper's sentence and the supplement's paragraph and table (freeze 34, D37-4):
+    what four one-clock tools do with a value below zero when the clock steps back under them,
+    beside a control tool that cannot see the steps. The prose says every stepped run passed S1-a
+    and every prediction held in every round, so a table that says otherwise is a guard, not a
+    note. The faulty tables here are the committed runs with one fault put in, not a made-up
+    world, so they carry every field a real run sets."""
+
+    def _copy(self, tmp_path, rows=None, verdicts=None):
+        import json
+        src = Path(__file__).resolve().parents[2] / "docs" / "results" / "tools"
+        with (src / "s1.csv").open(encoding="utf-8", newline="") as fh:
+            have = list(csv.DictReader(fh))
+        found = json.loads((src / "s1_verdicts.json").read_text(encoding="utf-8"))
+        out, judged = tmp_path / "s1.csv", tmp_path / "s1_verdicts.json"
+        with out.open("w", encoding="utf-8", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=list(have[0]), lineterminator="\n")
+            w.writeheader()
+            w.writerows(rows(have) if rows else have)
+        judged.write_text(json.dumps(verdicts(found) if verdicts else found), encoding="utf-8")
+        return str(out), str(judged)
+
+    def test_the_committed_runs_give_the_printed_numbers(self):
+        assert epn.s1_macros() == [
+            ("sOneRoundsWord", "four"), ("sOnePkbLo", "8"), ("sOnePkbHi", "18"),
+            ("sOneCanaryLo", "10"), ("sOneCanaryHi", "20"), ("sOneStreamLo", "16"),
+            ("sOneStreamHi", "25"), ("sOneXinfraLo", "40"), ("sOneXinfraHi", "84"),
+            ("sOneClockBackMs", "0.1")]
+
+    def test_a_copy_of_the_committed_runs_reads_the_same(self, tmp_path):
+        """The faulty tables below differ from the committed ones by their fault alone."""
+        assert epn.s1_macros(*self._copy(tmp_path)) == epn.s1_macros()
+
+    def test_its_table_gives_each_tool_a_row(self):
+        """The control tool reports no count, so its two cells are dashes, not zeros."""
+        rows = [l for l in epn.render_s1_table().splitlines()
+                if l.endswith("\\\\") and "&" in l][2:]
+        assert len(rows) == len(epn.S1_TOOLS)
+        assert rows[0] == ("PerfKit messaging & 50 & 363--397 & 8--18 & 0 & samples below zero, "
+                           "in its mean and percentiles \\\\")
+        assert rows[-1].startswith("\\kafka{} end-to-end & 20 & 29--33 & --- & --- & ")
+
+    def test_the_committed_table_is_the_one_the_data_give(self):
+        repo = Path(__file__).resolve().parents[2]
+        have = (repo / "docs" / "generated" / "s1_table.tex").read_text(encoding="utf-8")
+        assert have.replace("\r\n", "\n") == epn.render_s1_table()
+
+    def test_a_prediction_that_failed_stops_the_build(self, tmp_path):
+        def fail(found):
+            found["xinfra-monitor"]["verdict"] = "fails"
+            return found
+        with pytest.raises(ValueError, match="'xinfra-monitor': 'fails'"):
+            epn.s1_macros(*self._copy(tmp_path, verdicts=fail))
+
+    def test_verdicts_on_other_tools_stop_the_build(self, tmp_path):
+        def short(found):
+            del found["kafka-end-to-end"]
+            return found
+        with pytest.raises(ValueError, match="name S1's tools"):
+            epn.s1_macros(*self._copy(tmp_path, verdicts=short))
+
+    def test_a_stepped_run_that_failed_s1_a_stops_the_build(self, tmp_path):
+        """A run whose clock was not put back near the PTP clock is not judged, so 'every
+        stepped run passed S1-a' no longer holds."""
+        def broken(rows):
+            (first,) = [r for r in rows if r["run"] == "stepped" and r["tool"] == "pkb"
+                        and r["round"] == "1"]
+            first["instrument_ok"] = "False"
+            return rows
+        with pytest.raises(ValueError, match="passed S1-a"):
+            epn.s1_macros(*self._copy(tmp_path, rows=broken))
+
+    def test_a_table_with_no_stepped_run_stops_the_build(self, tmp_path):
+        with pytest.raises(ValueError, match="passed S1-a"):
+            epn.render_s1_table(*self._copy(
+                tmp_path, rows=lambda rows: [r for r in rows if r["run"] != "stepped"]))
+
+    def test_absent_tables_emit_nothing(self, tmp_path, capsys):
+        assert epn.s1_macros(str(tmp_path / "none.csv"), str(tmp_path / "none.json")) == []
+        assert "S1 tables absent" in capsys.readouterr().out
+
+    def test_main_skips_the_table_where_s1_is_absent(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(epn, "S1_CSV", str(tmp_path / "none.csv"))
+        led, out = tmp_path / "l.csv", tmp_path / "n.tex"
+        write_ledger(led, [("load_sweep", 10, 90, 0)])
+        table = tmp_path / "s1.tex"
+        assert main(["--ledger", str(led), "--out", str(out), "--table",
+                     str(tmp_path / "t.tex"), "--s1-table", str(table)]) == 0
+        assert not table.exists()

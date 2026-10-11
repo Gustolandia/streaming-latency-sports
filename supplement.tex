@@ -1257,9 +1257,13 @@ but its version 15 left them unrun. They ran in October as a second block, under
 source in October, ran under versions 35 and 36 (\brk{freezes/32-experiment-plan},
 \brk{freezes/33-experiment-plan}), each public before its runs: Xinfra Monitor, Strimzi Canary,
 \kafka{}'s Trogdor and RabbitMQ Stream PerfTest on the same pair, and the Yahoo Streaming
-Benchmark on the second x86 pair, of the same machine type and processor.
-Table~\ref{stab:toolsrun} lists all of them. Under a delay added in steps, every tool's figure but
-one followed the delay at a slope inside the band the plan fixed in advance. The Yahoo Streaming
+Benchmark on the second x86 pair, of the same machine type and processor. The last, PerfKit
+Benchmarker's messaging benchmark, ran under version 37 (\brk{freezes/34-experiment-plan}),
+public before its runs, from the first pair's driver against an Azure Service Bus queue made for
+it and deleted once its runs were home. Table~\ref{stab:toolsrun} lists all of them. A delay added
+in steps cannot reach the managed queue's path, so PerfKit's T1 was its zero step alone. Of the
+others, every tool's figure but one followed the delay at a slope inside the band the plan fixed in
+advance. The Yahoo Streaming
 Benchmark's did not, as version 36 predicted: its slopes ran from $\toolsYsbSlopeLo$ to
 $\toolsYsbSlopeHi$~ms per millisecond added. The prediction's reason, read again after the runs,
 was wrong. It took a window's figure, the time of the window's last write to Redis less the
@@ -1294,9 +1298,14 @@ Pulsar's client. The run above becomes undecided, and one undecided run becomes 
 negatives''.
 
 Table~\ref{stab:toolsrun} gives each tool's answer in its Clocks column. Of the tools run,
-\toolsOneClockWord{} take both timestamps in one process, and moving the clock left their figures
+\toolsOneClockWord{} read both timestamps from one clock, and moving the clock left their figures
 within a quarter of the offset in every one of their $\toolsOneClockOf$ runs. Xinfra Monitor and
-Strimzi Canary are among them: each runs its producer and its consumer in one process. The other
+Strimzi Canary are among them: each runs its producer and its consumer in one process. All but
+PerfKit Benchmarker take both timestamps in one process; PerfKit's publisher and receiver are two
+processes of one program on one machine, and T2's offset moved the clock of both. Freeze 21's judge
+left all of PerfKit's clock-moved runs undecided, because its allowance for noise comes from a
+staircase, which PerfKit has none of; version 34's answer from the offset alone is one clock in
+every one of them, as version 37 predicted. The other
 \toolsTwoClockWord{} timestamp a message in one process and subtract in another. The judge read
 librdkafka's \texttt{rdkafka\_performance} as keeping every value in \toolsKeepsRoundsWord{} of
 its \toolsRoundsWord{} rounds, but its consumer drops any value at or below zero and prints a line
@@ -1340,6 +1349,9 @@ milliseconds it prints. Real-time priority took at least nine tenths of the rise
 \toolsTailBackWord{} of them. A tool times the wait for a core together with everything else it
 times, so the wait reads as latency. The Yahoo Streaming Benchmark is left out of these figures,
 because its figure is set by its flush, as above, and not by the trip a waiting thread lengthens.
+So is PerfKit Benchmarker: its trip goes to a managed queue in a data center, and its 99th
+percentile of 100 messages, set by that queue's own tail, swung between its idle rounds by far
+more than a wait for a core adds.
 
 \textbf{\kafka{}'s own end-to-end tool, beside an observer.} \kafka{}'s end-to-end tool publishes
 each message, waits for its acknowledgment, and only then polls for the message, so it cannot time
@@ -1360,20 +1372,43 @@ percentile was $\kOneToolNine$~ms where the observer's was $\kOneObservedNine$~m
 reports is the publish, the acknowledgment and the poll, one after another: a waiting thread
 lengthens it, and a message that overtook its acknowledgment cannot shorten it.
 
+\textbf{The step test.} A tool whose two timestamps come from one clock meets a value below zero
+only if that clock steps back between them, as it did for a user of Stream PerfTest during a
+cluster's rolling restart. T2's constant offset cannot make one, so version 37
+(\brk{freezes/34-experiment-plan}) added S1. Each of five tools ran once as it is and once while
+the driver's wall clock stepped back by 20~ms, or by 50~ms for PerfKit, whose trip is longer, at
+gaps drawn around a fifth of a second, with chrony stopped (Table~\ref{stab:sone}). A message still
+on its way when the clock steps back is timed short by the step, and so comes out below zero if the
+step is longer than its trip. Every prediction version 37 fixed from the tools' sources held in all \sOneRoundsWord{}
+rounds. PerfKit printed $\sOnePkbLo$ to $\sOnePkbHi$ samples below zero in each stepped run and
+counted them in its mean and percentiles. Strimzi Canary logged $\sOneCanaryLo$ to
+$\sOneCanaryHi$ durations below zero. Stream PerfTest, run as one instance, kept $\sOneStreamLo$ to
+$\sOneStreamHi$ fewer latencies than the messages it consumed, and said nothing. Xinfra Monitor's
+metrics library pinned $\sOneXinfraLo$ to $\sOneXinfraHi$ values to the floor of its percentiles,
+which only its debug line shows: its printed 99th percentile was the control's in every round.
+None of them showed such a value in its control, and \kafka{}'s end-to-end tool, which times with
+a monotonic clock, did not see the steps. Once the steps were undone, the wall clock was within
+$\sOneClockBackMs$~ms of the hypervisor's PTP clock. Stream PerfTest's
+handling is the one T2 showed of it run as two instances; the other three could not have been seen
+without the steps.
+
 The per-run verdicts and figures are in \brk{docs/results/tools/tools_t1.csv},
 \brk{tools_t2.csv} and \brk{tools_t3.csv}, folded by \brk{scripts/tools_block.py} from the runs;
-K1's are in \brk{docs/results/tools/k1.csv}, judged by \brk{scripts/kafka_clamp.py}, and the
-Yahoo Streaming Benchmark's readings after its runs in \brk{docs/results/tools/ysb_flush.csv} and
+K1's are in \brk{docs/results/tools/k1.csv}, judged by \brk{scripts/kafka_clamp.py}; S1's in
+\brk{docs/results/tools/s1.csv}, judged by \brk{scripts/s1_block.py}; and the Yahoo Streaming
+Benchmark's readings after its runs in \brk{docs/results/tools/ysb_flush.csv} and
 \brk{ysb_t2_fit.csv}. The write-ups are
 \brk{docs/results/tools/t1-t4-eleven-tools.md}, with its five recorded faults,
-\brk{docs/results/tools/t1-t4-five-tools.md} and
-\brk{docs/results/tools/t1-t4-october-tools.md}.
+\brk{docs/results/tools/t1-t4-five-tools.md},
+\brk{docs/results/tools/t1-t4-october-tools.md} and
+\brk{docs/results/tools/t1-t4-perfkit-and-s1.md}.
 
 \begin{table}[tb]
 \caption{\textbf{Of the tools run, \toolsOneClockWord{} time on one clock and \toolsTwoClockWord{}
 on two.} The registered campaign's tools block, \toolsRoundsWord{} rounds per tool, eleven tools
-in September and ten in October, each on one pair of machines and the Yahoo Streaming Benchmark on
-a second pair of the same type. Interval: what
+in September and eleven in October, each on one pair of machines and the Yahoo Streaming Benchmark
+on a second pair of the same type; PerfKit Benchmarker timed a managed queue, which the staircase
+cannot reach, so it has no slope (---), and its two processes share one host. Interval: what
 the tool times, as its invocation was read before any run. Slope: how far its figure moved per
 millisecond of delay, divided by the number of times the interval crosses the delay, in its
 lowest and highest round. Clocks: how many clocks its two timestamps come from, answered from the
@@ -1413,6 +1448,20 @@ message's start to its arrival, each the median over the rounds.}
 \centering
 \footnotesize
 \input{docs/generated/k1_table}
+\end{table}
+
+\begin{table}[tb]
+\caption{\textbf{With the clock stepped back under them, four tools that read one clock each
+handled a value below zero their own way.} S1: each tool once as it is and once while the driver's
+wall clock stepped back by the step shown at gaps drawn around a fifth of a second,
+\sOneRoundsWord{} rounds. Steps: how many a stepped run made, lowest and highest round. Below zero:
+how many values below zero the tool's own output showed in a stepped run, lowest and highest round,
+and the most it showed in any control. \kafka{}'s end-to-end tool times with a monotonic clock and
+is the control.}
+\label{stab:sone}
+\centering
+\footnotesize
+\input{docs/generated/s1_table}
 \end{table}
 
 \textbf{Public reports.}\label{s:reach} Published results rarely carry the deletion's signature,

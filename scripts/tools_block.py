@@ -101,6 +101,14 @@ ROUNDS_V36 = tuple(
     for rnd, folder in (("1", "tools_v36"), ("2", "tools_v36_round2"), ("3", "tools_v36_round3"),
                         ("4", "tools_v36_round4")))
 
+#: Freeze 34's block (D37-1): PerfKit Benchmarker against its managed queue, on the first pair.
+#: Its T1 is the zero step alone, whose step file carries no slope (D37-1). S1, which ran in the
+#: same folders, is folded by s1_block.py.
+ROUNDS_V37 = tuple(
+    (rnd, "v37_20261011T142007Z/x/runs/azure/" + folder, None, {})
+    for rnd, folder in (("1", "tools_v37"), ("2", "tools_v37_round2"), ("3", "tools_v37_round3"),
+                        ("4", "tools_v37_round4")))
+
 #: The interval each tool times, as the plan read its invocation before any run (the addendum
 #: of freeze 21, "How each tool keeps time"). It is how the tool was run, not a measurement, and
 #: T2 is its test: every tool read as one clock was found on one, and the tool read as spanning
@@ -131,6 +139,9 @@ TRIPS = {
     "stream-perftest": "across two processes",
     # Freeze 33's YSB (D36-4): its generator stamps the events, its TaskManager the window.
     "ysb": "across two processes",
+    # Freeze 34's PerfKit Benchmarker (D37-2): its publisher and its receiver are two processes
+    # of one program on the driver, both reading the driver's wall clock.
+    "pkb": "two processes, one clock",
 }
 
 _STEP = re.compile(r"t1-(.+)-step\.json$")
@@ -287,6 +298,7 @@ def collect(collected, rounds=None):
     """The three tables, every round, from the folders the write-up names."""
     t1, t2, t3 = [], [], []
     for rnd, runs, verdicts, read_again in (ROUNDS + ROUNDS_V33 + ROUNDS_V35 + ROUNDS_V36
+                                            + ROUNDS_V37
                                             if rounds is None else rounds):
         again = {tool: os.path.join(collected, d, "t1-%s-step.json" % tool)
                  for tool, d in read_again.items()}

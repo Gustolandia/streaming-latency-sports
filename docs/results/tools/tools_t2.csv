@@ -167,3 +167,11 @@ round,tool,offset_ms,verdict,standing,sent,kept,verdict_31,clocks,clocks_why
 3,ysb,383.5058,times against one clock,times against one clock,1300,613,undecided,two,it kept 613 of the 1300 it was asked to send
 4,ysb,354.5230,times against one clock,times against one clock,1300,677,undecided,two,it kept 677 of the 1300 it was asked to send
 4,ysb,356.4957,times against one clock,times against one clock,1262,659,undecided,two,it kept 659 of the 1262 it was asked to send
+1,pkb,24.0212,undecided,,100,100,undecided,one,"its figures stayed within a quarter of the 24.021 ms offset (avg -0.550, p50 +0.000, min +0.000)"
+1,pkb,26.0110,undecided,,100,100,undecided,one,"its figures stayed within a quarter of the 26.011 ms offset (avg +0.070, p50 +1.000, min +0.000)"
+2,pkb,23.4979,undecided,,100,100,undecided,one,"its figures stayed within a quarter of the 23.498 ms offset (avg -3.520, p50 -1.500, min +0.000)"
+2,pkb,25.5771,undecided,,100,100,undecided,one,"its figures stayed within a quarter of the 25.577 ms offset (avg -2.410, p50 -0.500, min -1.000)"
+3,pkb,22.9931,undecided,,100,100,undecided,one,"its figures stayed within a quarter of the 22.993 ms offset (avg +1.810, p50 +1.000, min +0.000)"
+3,pkb,24.9979,undecided,,100,100,undecided,one,"its figures stayed within a quarter of the 24.998 ms offset (avg +3.860, p50 +2.000, min +0.000)"
+4,pkb,22.0134,undecided,,100,100,undecided,one,"its figures stayed within a quarter of the 22.013 ms offset (avg -1.350, p50 +0.000, min +0.000)"
+4,pkb,24.0034,undecided,,100,100,undecided,one,"its figures stayed within a quarter of the 24.003 ms offset (avg +1.890, p50 +0.000, min -1.000)"

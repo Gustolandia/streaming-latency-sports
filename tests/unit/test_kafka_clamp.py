@@ -126,7 +126,9 @@ class TestTornRows:
     """
 
     def _text(self, path, text):
-        path.write_text(text, encoding="utf-8", newline="")
+        #: open(), not Path.write_text(): its newline argument came in Python 3.10, and CI runs 3.9.
+        with open(path, "w", encoding="utf-8", newline="") as fh:
+            fh.write(text)
         return str(path)
 
     def test_a_last_line_without_its_end_is_left_out_and_counted(self, tmp_path):

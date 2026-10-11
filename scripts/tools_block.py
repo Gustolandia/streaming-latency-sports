@@ -15,11 +15,14 @@ writes two small tables, which are committed:
   docs/results/tools/tools_t1.csv   round, tool, trip, figure, crossings, slope
   docs/results/tools/tools_t2.csv   round, tool, offset_ms, verdict, standing, sent, kept,
                                     verdict_31, clocks, clocks_why
+  docs/results/tools/tools_t3.csv   round, tool, load_pct, go_first, p50, p99, avg
 
 T1 is the staircase: a known delay added to the path in ten steps, and the slope at which the
 tool's figure follows it, on the figure the staircase was read from. T2 moves the clock the tool
 reads back by more than its trip and asks what the tool does with the result: the verdict is
-the one behaviour still standing, or "undecided" when more than one is.
+the one behaviour still standing, or "undecided" when more than one is. T3 runs the tool idle and
+against a background load that keeps every core 88% busy, each with and without go-first, and
+keeps what the tool printed; the plan fixed no rule for it, so its table is description.
 
 Every T2 run is also judged again as freeze 31 says (D34-3), from the readings, controls,
 reference trips, staircases, counts and measured shifts it left: `verdict_31` under the corrected
@@ -56,6 +59,7 @@ UNDECIDED = "undecided"
 T1_FIELDS = ("round", "tool", "trip", "figure", "crossings", "slope")
 T2_FIELDS = ("round", "tool", "offset_ms", "verdict", "standing", "sent", "kept", "verdict_31",
              "clocks", "clocks_why")
+T3_FIELDS = ("round", "tool", "load_pct", "go_first", "p50", "p99", "avg")
 
 #: What a T2 run was asked to send where it wrote no asked_to_send.txt: round 1 of the eleven ran
 #: before D26-2 wrote one, and tools_run.sh's defaults, 50 a second for 60 s, were never
@@ -105,6 +109,9 @@ _STEP = re.compile(r"t1-(.+)-step\.json$")
 #: An offset run, as tools.sh names it: the tool, then the offset asked for, `_` for the point.
 #: The controls (`t2-<tool>-control`) carry no verdict and do not match.
 _OFFSET = re.compile(r"t2-(.+)-(\d+(?:_\d+)?)ms$")
+#: A T3 cell, as tools.sh names it: the tool, the background load in percent, and whether the
+#: tool's own process ran ahead of the load at real-time priority ("go-first").
+_CELL = re.compile(r"t3-(.+)-l(\d+)-first(yes|no)$")
 
 
 def t1_rows(rnd, folder, read_again=None):
@@ -230,16 +237,35 @@ def t2_rows(rnd, folder, runs=None):
     return rows
 
 
+def t3_rows(rnd, folder):
+    """One row per T3 cell: the median, 99th percentile and average the tool printed, idle or
+    under the background load, with or without go-first. T3 has no rule fixed in advance, so
+    these are figures to describe, and nothing here judges them. A figure the tool does not print
+    is left empty."""
+    rows = []
+    for path in sorted(glob.glob(os.path.join(folder, "t3-*", "reading.json"))):
+        m = _CELL.match(os.path.basename(os.path.dirname(path)))
+        if not m:
+            continue
+        said = _load(path).get("reported_ms") or {}
+        rows.append(dict({"round": rnd, "tool": m.group(1), "load_pct": m.group(2),
+                          "go_first": m.group(3)},
+                         **{f: "" if said.get(f) is None else "%.4f" % said[f]
+                            for f in ("p50", "p99", "avg")}))
+    return rows
+
+
 def collect(collected, rounds=None):
-    """Both tables, every round, from the folders the write-up names."""
-    t1, t2 = [], []
+    """The three tables, every round, from the folders the write-up names."""
+    t1, t2, t3 = [], [], []
     for rnd, runs, verdicts, read_again in (ROUNDS + ROUNDS_V33 if rounds is None else rounds):
         again = {tool: os.path.join(collected, d, "t1-%s-step.json" % tool)
                  for tool, d in read_again.items()}
         t1 += t1_rows(rnd, os.path.join(collected, runs), again)
         t2 += t2_rows(rnd, os.path.join(collected, verdicts or runs),
                       os.path.join(collected, runs))
-    return t1, t2
+        t3 += t3_rows(rnd, os.path.join(collected, runs))
+    return t1, t2, t3
 
 
 def write(rows, fields, path):
@@ -255,14 +281,15 @@ def main(argv=None):
     ap.add_argument("--collected", default=os.path.join("runs", "azure", "collected", "matched"))
     ap.add_argument("--out", default=os.path.join("docs", "results", "tools"))
     args = ap.parse_args(argv)
-    t1, t2 = collect(args.collected)
+    t1, t2, t3 = collect(args.collected)
     if not t1 or not t2:
         print("no judged tool runs under %s" % args.collected)
         return 1
     write(t1, T1_FIELDS, os.path.join(args.out, "tools_t1.csv"))
     write(t2, T2_FIELDS, os.path.join(args.out, "tools_t2.csv"))
-    print("%d T1 rows and %d T2 rows from %d rounds"
-          % (len(t1), len(t2), len({r["round"] for r in t1})))
+    write(t3, T3_FIELDS, os.path.join(args.out, "tools_t3.csv"))
+    print("%d T1 rows, %d T2 rows and %d T3 rows from %d rounds"
+          % (len(t1), len(t2), len(t3), len({r["round"] for r in t1})))
     return 0
 
 

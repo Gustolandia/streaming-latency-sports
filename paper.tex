@@ -107,8 +107,9 @@ on where the load is placed, falls as the timed path lengthens, and has the time
 scheduler's slice, which the kernel sets from the CPU count. \emph{Real-time priority}, which runs
 the threads that read the clock ahead of every thread at the default \emph{normal priority}, cut
 it $\rtFactorLow$--$\rtFactorHigh\times$ on \kafka{} and $\rtRedisFactorLow$--$\rtRedisFactorHigh\times$ on \redis{} at unchanged load.
-\item \textbf{The industry-wide audit} (Section~\ref{sec:external}). \harnessSilentWordCap{} of
-the \harnessAuditedWord{} tools we read at source dispose of such values without counting them.
+\item \textbf{The industry-wide audit} (Section~\ref{sec:external}). Of the \harnessMessageWord{}
+message tools we read at source, \harnessMessageCutWord{} cut such values out of a figure they
+report, without counting them, and \kafka{}'s own never measures them.
 \toolsOneClockWordCap{} of the \toolsRunWord{} we ran take both timestamps in one process, so
 they never measure a \emph{one-way latency}, the time from one process to another. On a
 millisecond clock, a filter that keeps only latencies above zero, a \emph{positivity filter}, also
@@ -442,7 +443,7 @@ read, run \\
 \texttt{emqtt-bench} & 1~ms & Kept in its histogram since January 2025; its average counts it
 as zero and is printed only when some value is above zero & read, run \\
 \raggedright librdkafka's \brk{rdkafka_performance} & 10~$\mu$s & Dropped unless above zero, with a
-printed line, uncounted; none reached zero in our runs & run \\
+printed line, uncounted; none reached zero in our runs & read, run \\
 \midrule
 \multicolumn{4}{@{}l}{\emph{Both timestamps in one process: publish to receipt, or to the
 acknowledgment}} \\
@@ -474,16 +475,22 @@ Rezolus, scheduler wakeups & 1~ns & Discarded and counted, since August 2026 & r
 We read \harnessAuditedWord{} measurement tools at source, across \harnessLanguagesWord{}
 languages and \harnessVendorsWord{} vendors, and classified them with one program whose
 verdicts, each with its source line, are in the supplement's tool registry (Supplement~S5).
-\harnessSilentWordCap{} dispose of a value at or below zero without counting it, in
+Of these, \harnessMessageWord{} time messages, and \harnessMessageCutWord{} of those cut a value at
+or below zero out of a figure they report, without counting it, in
 \harnessDisposalClassesWord{} ways: a filter drops it, the tool's own library refuses it, or
-another value replaces it. Replacement hides best, because nothing looks missing: \texttt{fio}
-and \texttt{btt} substitute zero and one nanosecond, and RabbitMQ PerfTest takes the absolute
-value~\cite{rabbitmq_perftest}. Until June 2026 PerfTest also kept only values above zero, which in
-its millisecond mode deleted every trip shorter than a millisecond. Apache \kafka{}'s own
-end-to-end tool rounds each latency down to whole milliseconds, so on a path faster than a
-millisecond every percentile it reports is zero~\cite{kafka_tools}. Only \texttt{emqtt-bench},
-whose histogram keeps every sample~\cite{emqtt_bench}, and Rezolus, whose scheduler sampler has
-counted its discards since August 2026~\cite{rezolus}, keep the evidence.
+another value replaces it. Replacement hides best, because nothing looks missing. RabbitMQ
+PerfTest takes the absolute value~\cite{rabbitmq_perftest}, and \texttt{emqtt-bench} keeps every
+sample in its histogram but counts such a value as zero in the average it
+prints~\cite{emqtt_bench}. Until June 2026 PerfTest also kept only values above zero, which in its
+millisecond mode deleted every trip shorter than a millisecond. The filter in librdkafka's
+\texttt{rdkafka\_performance} prints a line for each value it drops but keeps no count. The
+remaining message tool, Apache \kafka{}'s bundled pair, never measures such a value. Its
+end-to-end tool waits for each acknowledgment before it polls for the message, so a message that
+reached the consumer first is reported no earlier than its acknowledgment. It also rounds each
+latency down to whole milliseconds, so on a path faster than a millisecond every percentile it
+reports is zero~\cite{kafka_tools}. Of the tools that time no message, \texttt{fio} and \texttt{btt}
+substitute zero and one nanosecond, and only Rezolus counts what it discards, in its scheduler
+sampler since August 2026~\cite{rezolus}.
 
 \subsection{Tools run}
 \label{sec:toolsrun}
@@ -507,7 +514,11 @@ what they kept, and the rest were undecided. Of the \toolsTwoClockWord{}, librdk
 the OpenMessaging Benchmark drop what comes out below zero, uncounted. Under the larger offset
 Pulsar's client kept $\toolsPulsarKeptLo$ to $\toolsPulsarKeptHi$ of $\toolsAskedToSend$
 latencies. \texttt{emqtt-bench}'s histogram keeps values below zero, but its console printed no
-latency under either offset (Supplement~S5).
+latency under either offset (Supplement~S5). Waiting for a core shows in these tools as time added
+rather than as a value below zero. With every core $\toolsLoadPct\%$ busy, the 99th percentile of
+each of the \toolsTailToolsWord{} tools that print one rose by $\toolsTailRiseLo$--$\toolsTailRiseHi$~ms
+while its median moved by at most $\toolsMedianMoveHi$~ms, and real-time priority took nearly all of
+that rise back in \toolsTailBackWord{} of them (Supplement~S5).
 
 \subsection{A positivity filter on a millisecond clock}
 \label{sec:extmethod}

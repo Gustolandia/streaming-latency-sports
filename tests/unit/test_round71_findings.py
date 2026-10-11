@@ -401,8 +401,10 @@ class TestW3FoundTheRegistryWasSpillingARow:
         import harness_registry as hr
         rows = hr.load()
         # 20 since 2 Oct 2026: RabbitMQ PerfTest's getDifference and the NATS CLI's histogram
-        # bound check, the two lines our first readings never reached.
-        assert len(rows) == 20
+        # bound check, the two lines our first readings never reached. 24 since 11 Oct 2026:
+        # librdkafka's rdkafka_performance, its consumer's subtraction and guard and its
+        # producer's unguarded span, and Kafka's end-to-end tool sending before it polls.
+        assert len(rows) == 24
         assert all(set(r) == set(hr.FIELDS) for r in rows)
 
     def test_the_pulsar_evidence_points_at_the_file_that_holds_it(self):
@@ -423,11 +425,13 @@ class TestW3FoundTheRegistryWasSpillingARow:
         import harness_registry as hr
         s = hr.summary()
         assert s["nonnegative_filters"] == ["Apache Pulsar perf"]
-        assert s["filters"] == ["OpenMessaging Benchmark"]
+        assert s["filters"] == ["OpenMessaging Benchmark", "librdkafka rdkafka_performance"]
         # The relocation moved nothing. What moved later, on 2 Oct 2026, were PerfTest and the
-        # NATS CLI: one evidence line and one silent tool each (test_harness_registry).
-        assert s["evidence_lines"] == 20 and s["harnesses"] == 10
-        assert s["n_silent"] == 7 and "Apache Pulsar perf" in s["silent"]
+        # NATS CLI: one evidence line and one silent tool each (test_harness_registry). On 11 Oct
+        # 2026 librdkafka's rdkafka_performance added three lines and an eighth silent tool, and
+        # Kafka's end-to-end tool one line: it sends, waits for the acknowledgment, then polls.
+        assert s["evidence_lines"] == 24 and s["harnesses"] == 11
+        assert s["n_silent"] == 8 and "Apache Pulsar perf" in s["silent"]
 
 
 class TestW3TheScriptIsCoveredWithoutTouchingTheNetwork:

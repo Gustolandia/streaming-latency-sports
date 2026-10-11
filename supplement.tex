@@ -1076,17 +1076,24 @@ on the harness above.
 \section{S5. Tools read at source, tools run, and public reports}
 \label{s:tools}
 
-\textbf{Tools read at source.} \harnessSilentWordCap{} of the \harnessAuditedWord{} tools we read
-at source dispose of a value at or below zero without counting it. Every verdict traces to a line
-of source a reader can check. Each row of the registry file,
+\textbf{Tools read at source.} \harnessMessageWordCap{} of the \harnessAuditedWord{} tools we read
+at source time messages, and \harnessMessageCutWord{} of those cut a value at or below zero out of
+a figure they report without counting it. One of the \harnessMessageCutWord{},
+\texttt{emqtt-bench}, keeps the value in its histogram and leaves it out of the average it prints.
+The remaining one, \kafka{}'s bundled pair, never measures it (the note on
+\texttt{EndToEndLatency} below). Counted by whether
+the sample itself is lost, \harnessSilentWord{} of all \harnessAuditedWord{} dispose of it,
+\texttt{fio} and \texttt{btt} among them. Every verdict traces to a line of source a reader can
+check. Each row of the registry file,
 \brk{docs/results/external/harness_registry.csv}, carries one source line, the file and symbol it
 came from, the upstream URL and the date it was read. The class labels are not stored. They are
 recomputed on every build and every test run by the classifier that read the OpenMessaging
 Benchmark a month before the other tools were audited (\brk{classify()} in
 \brk{scripts/audit_external_harness.py}), so a reader who disagrees with a verdict can check the
 line against the pattern that matched it. Its patterns were written against JVM sources and had to
-be extended before they could read an Erlang guard or clock call, and they see only what they
-recognize, so the registry's count of disposals is a lower bound for the field.
+be extended before they could read an Erlang guard or clock call, or librdkafka's guard in C, and
+they see only what they recognize, so the registry's count of disposals is a lower bound for the
+field.
 
 We call a tool's own conditional on the sign of an interval its \emph{guard}. A guard is a deletion
 only if what it guards is the sample itself, not a counter. Table~\ref{stab:tools} is the
@@ -1094,7 +1101,7 @@ registry, one row per span because one tool can treat two spans differently, gen
 registry file at build time. Its sources, in row order, are \registryTableSources.
 
 \begin{table}[tb]
-\caption{\textbf{Ten tools, read at source.} The span each measures, the clock it reads, what
+\caption{\textbf{\harnessAuditedWordCap{} tools, read at source.} The span each measures, the clock it reads, what
 happens to a value at or below zero, and whether the tool counts what it discards; one row per
 span where a tool measures two, and a dash where nothing is discarded. The source line behind
 every row is in the artifact's registry.}
@@ -1107,8 +1114,9 @@ every row is in the artifact's registry.}
 The \harnessSilentWord{} silent disposals take \harnessDisposalClassesWord{} forms. A filter drops
 what its comparison excludes and reports no count of what it removed. The test $>0$ deletes every
 sample that computes to exactly zero, while $\geq 0$ keeps those and drops only values below zero.
-The benchmark filters at $>0$. Apache Pulsar's performance client guards at $\geq 0$, so the zeros
-the benchmark deletes pile up visibly at zero. A substitution keeps the sample count, so any
+The benchmark and librdkafka's \texttt{rdkafka\_performance} filter at $>0$.
+Apache Pulsar's performance client guards at $\geq 0$, so the zeros the benchmark deletes pile up
+visibly at zero. A substitution keeps the sample count, so any
 retention computed downstream reads $100\%$, which makes it harder to detect than a filter. A
 library refusal leaves the sample unrecorded because the tool never checks whether its library
 rejected it. Truncation is a separate loss: it keeps every sample but loses precision. The
@@ -1119,13 +1127,23 @@ carry what the table cannot.
 times its \ombGuardedPath{} latency on a \ombGuardedClock{} clock and filters it, and times its
 \ombUnguardedPath{} latency in \ombUnguardedClock{}s and records every sample
 (Section~\ref{P-sec:extmethod}).
+\item librdkafka's \texttt{rdkafka\_performance} also appears twice, and its two spans differ in the
+same place. Its consumer subtracts the timestamp the producer wrote into the message from its own
+wall clock, in microseconds, and keeps the result only if it is above zero and under five minutes.
+For each value it drops it prints a line saying the value was ignored, but it keeps no count. Its
+producer times each message from that timestamp to the delivery report on its own clock and
+records every value.
 \item The \texttt{EndToEndLatency} tool bundled with \kafka{} cannot produce a value below zero,
 because it uses one thread, one monotonic clock and a synchronous publish call. It loses the
 measurement anyway. Each sample prints in floating point, but the \texttt{long[]} its percentiles
 come from is filled by the integer division \texttt{elapsed / 1000 / 1000}, so on a path faster
-than a millisecond its p50, p99 and p999 all read zero. The companion \texttt{ProducerPerformance}
-takes its publish-to-acknowledgment difference on \texttt{System.currentTimeMillis()} and casts it
-to \texttt{int}.
+than a millisecond its p50, p99 and p999 all read zero. Its synchronous publish call has a second
+effect: it polls for the message only once the acknowledgment has returned, so a message that
+reached the consumer first is timed no earlier than its acknowledgment. The
+receipt-minus-acknowledgment difference this paper measures is held at zero by the order of two
+calls, and a poll that finds nothing stops the run rather than dropping the message. The companion
+\texttt{ProducerPerformance} takes its publish-to-acknowledgment difference on
+\texttt{System.currentTimeMillis()} and casts it to \texttt{int}.
 \item In \texttt{fio} the guard appears in three timing functions, each returning zero for a
 negative interval under the comment ``time warp bug on some kernels?''. Nothing records that it
 fired.
@@ -1203,8 +1221,20 @@ computed from those few. The OpenMessaging Benchmark drops every value at or bel
 console printed no latency in any of its offset runs, because it prints its once-a-second average
 only when a counter that adds the latencies above zero changes.
 
-The per-run verdicts are in \brk{docs/results/tools/tools_t1.csv} and \brk{tools_t2.csv}, folded
-by \brk{scripts/tools_block.py} from the runs. The write-ups are
+A third test, T3, ran each tool idle and against a background load that kept every core
+$\toolsLoadPct\%$ busy, each with and without real-time priority on the process that subtracts. The
+plan fixed no rule for T3, so what follows describes the runs and judges nothing. The load
+lengthened the tail of every tool that prints a 99th percentile and barely moved its median
+(Table~\ref{stab:toolsload}). Taking the median over the four rounds, the 99th percentile of each
+of the \toolsTailToolsWord{} rose by $\toolsTailRiseLo$--$\toolsTailRiseHi$~ms, of the order of the
+$\baseSliceMs$~ms slice a thread can wait for a core (Section~\ref{P-sec:tail}), while the median
+moved by at most $\toolsMedianMoveHi$~ms. Real-time priority took at least nine tenths of the rise
+back in \toolsTailBackWord{} of them. A tool times the wait for a core together with everything
+else it times, so the wait reads as latency.
+
+The per-run verdicts and figures are in \brk{docs/results/tools/tools_t1.csv},
+\brk{tools_t2.csv} and \brk{tools_t3.csv}, folded by \brk{scripts/tools_block.py} from the runs.
+The write-ups are
 \brk{docs/results/tools/t1-t4-eleven-tools.md}, with its five recorded faults, and
 \brk{docs/results/tools/t1-t4-five-tools.md}.
 
@@ -1224,6 +1254,17 @@ Runs: the offset runs so answered, of all of that tool's. The rest were undecide
 \footnotesize
 \setlength{\tabcolsep}{3pt}
 \input{docs/generated/tools_run_table}
+\end{table}
+
+\begin{table}[tb]
+\caption{\textbf{On a busy machine every tool's tail lengthened and its median barely moved.} T3:
+each tool idle and against a background load keeping every core $\toolsLoadPct\%$ busy; real-time:
+the process that subtracts ran ahead of the load at real-time priority. Each figure is the median
+over the four rounds, in milliseconds, for the tools that print a 99th percentile.}
+\label{stab:toolsload}
+\centering
+\footnotesize
+\input{docs/generated/tools_load_table}
 \end{table}
 
 \textbf{Public reports.}\label{s:reach} Published results rarely carry the deletion's signature,

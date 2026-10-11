@@ -2518,6 +2518,108 @@ class TestTheRegistryCells:
     def test_nothing_discarded_has_nothing_to_count(self):
         assert epn._registry_cells({"kinds": set(), "counts_discards": False}) == ("---", "---")
 
+    def test_a_guarded_tally_keeps_the_sample_and_says_what_the_printed_figure_does(self):
+        """emqtt-bench: every sample reaches its histogram, but the sum its printed average
+        divides is guarded, so in that average a value at or below zero counts as zero."""
+        got = epn._registry_cells({"kinds": set(), "counts_discards": False, "tally_guard": True})
+        assert got == ("kept; zero in its printed average", "no")
+
+
+class TestTheMessageToolCount:
+    """Sections I and V-A lead with the tools that time a message (11 Oct 2026): how many cut a
+    value at or below zero out of a figure they report, and which one never measures it."""
+
+    def test_the_committed_registry_gives_seven_of_eight(self):
+        got = dict(epn.registry_macros())
+        assert (got["harnessMessageWord"], got["harnessMessageWordCap"]) == ("eight", "Eight")
+        assert (got["harnessMessageCutWord"], got["harnessMessageCutWordCap"]) == ("seven", "Seven")
+        assert not {"harnessMessage", "harnessMessageCut"} & set(got), \
+            "the digits are quoted nowhere, so they are not emitted"
+
+    def test_a_registry_whose_remaining_tool_is_not_kafkas_stops_the_build(self, monkeypatch):
+        import harness_registry
+        real = harness_registry.summary()
+        fake = dict(real, message_cut=sorted(set(real["message_cut"]) - {"wrk2"}))
+        monkeypatch.setattr(harness_registry, "summary", lambda *a, **k: fake)
+        with pytest.raises(ValueError, match="names Kafka's bundled tools"):
+            epn.registry_macros()
+
+
+class TestToolsUnderLoad:
+    """T3, folded for one sentence of Section V-B and the supplement's table: a busy machine
+    lengthens each tool's tail, barely moves its median, and real-time priority takes most of
+    the rise back. T3 has no rule of its own, so these are descriptions, each a fold over the
+    committed table, and the one claim the prose makes of every tool -- that its tail rose --
+    is a guard."""
+
+    FIELDS = ("round", "tool", "load_pct", "go_first", "p50", "p99", "avg")
+
+    def _write(self, tmp_path, rows):
+        p = tmp_path / "t3.csv"
+        with p.open("w", newline="", encoding="utf-8") as fh:
+            w = csv.writer(fh)
+            w.writerow(self.FIELDS)
+            w.writerows(rows)
+        return str(p)
+
+    def _cells(self, rnd, tool, idle, under, ahead, p50=(0.70, 0.72), load="88"):
+        """One round of one tool: idle and loaded, each without and with go-first."""
+        return [(rnd, tool, "0", "no", "%.4f" % p50[0], "%.4f" % idle, ""),
+                (rnd, tool, "0", "yes", "%.4f" % p50[0], "%.4f" % idle, ""),
+                (rnd, tool, load, "no", "%.4f" % p50[1], "%.4f" % under, ""),
+                (rnd, tool, load, "yes", "%.4f" % p50[1], "%.4f" % ahead, "")]
+
+    def _table(self, tmp_path, extra=()):
+        rows = (self._cells("1", "k6", 0.86, 2.92, 0.85) + self._cells("2", "k6", 0.84, 2.94, 0.85)
+                + self._cells("1", "nats-bench", 1.39, 4.21, 3.94, p50=(1.31, 1.38))
+                + self._cells("2", "nats-bench", 1.43, 4.02, 3.96, p50=(1.35, 1.26))
+                # A round whose idle tail outran its loaded one, as kafka-producer-perf's round 4
+                # did: it counts in the rise and leaves the share taken back alone.
+                + self._cells("3", "nats-bench", 5.00, 4.00, 3.90, p50=(1.30, 1.30))
+                # emqtt-bench prints no percentile and stays out of every figure.
+                + [("1", "emqtt-bench", "0", "no", "", "", "1.0000"),
+                   ("1", "emqtt-bench", "88", "no", "", "", "1.8500")])
+        return self._write(tmp_path, rows + list(extra))
+
+    def test_the_figures_the_sentence_quotes(self, tmp_path):
+        got = dict(epn.tools_load_macros(self._table(tmp_path)))
+        assert got == {"toolsLoadPct": "88", "toolsTailToolsWord": "two",
+                       "toolsTailRiseLo": "2.1", "toolsTailRiseHi": "2.6",
+                       "toolsMedianMoveHi": "0.1", "toolsTailBackWord": "one"}
+
+    def test_a_tool_whose_tail_did_not_rise_stops_the_build(self, tmp_path):
+        flat = self._cells("1", "vegeta", 1.6, 1.5, 1.5) + self._cells("2", "vegeta", 1.6, 1.5, 1.5)
+        with pytest.raises(ValueError, match="did not for \\['vegeta'\\]"):
+            epn.tools_load_macros(self._table(tmp_path, flat))
+
+    def test_a_second_load_is_refused(self, tmp_path):
+        with pytest.raises(ValueError, match="one background load"):
+            epn.tools_load_macros(self._table(tmp_path, self._cells("1", "hey", 2, 3, 2, load="50")))
+
+    def test_an_absent_table_emits_nothing(self, tmp_path, capsys):
+        assert epn.tools_load_macros(str(tmp_path / "none.csv")) == []
+        assert "load table absent" in capsys.readouterr().out
+
+    def test_the_table_has_a_row_per_tool_that_prints_a_percentile(self, tmp_path):
+        table = epn.render_tools_load_table(self._table(tmp_path))
+        rows = [l for l in table.splitlines() if l.endswith("\\\\") and "&" in l][2:]
+        assert rows == ["k6 & 0.70 & 0.72 & 0.85 & 2.93 & 0.85 \\\\",
+                        "NATS bench & 1.31 & 1.30 & 1.43 & 4.02 & 3.94 \\\\"]
+
+    def test_the_committed_table_is_the_one_the_data_give(self):
+        repo = Path(__file__).resolve().parents[2]
+        have = (repo / "docs" / "generated" / "tools_load_table.tex").read_text(encoding="utf-8")
+        assert have.replace("\r\n", "\n") == epn.render_tools_load_table()
+
+    def test_main_skips_the_load_table_where_t3_is_absent(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(epn, "TOOLS_T3", str(tmp_path / "none.csv"))
+        led, out = tmp_path / "l.csv", tmp_path / "n.tex"
+        write_ledger(led, [("load_sweep", 10, 90, 0)])
+        load = tmp_path / "load.tex"
+        assert main(["--ledger", str(led), "--out", str(out), "--table",
+                     str(tmp_path / "t.tex"), "--tools-load-table", str(load)]) == 0
+        assert not load.exists()
+
 
 class TestTheToolsBlock:
     """Section V-B and Supplement S5: the tools run under registered predictions.

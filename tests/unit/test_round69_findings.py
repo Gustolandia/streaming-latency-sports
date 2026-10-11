@@ -150,7 +150,8 @@ class TestR2TheTwoThresholdsAreDifferentThings:
     def test_pulsar_is_in_the_weaker_class_and_still_silent(self):
         import harness_registry
         s = harness_registry.summary()
-        assert s["filters"] == ["OpenMessaging Benchmark"]
+        # 11 Oct 2026: librdkafka's rdkafka_performance joined the strict class when it was read.
+        assert s["filters"] == ["OpenMessaging Benchmark", "librdkafka rdkafka_performance"]
         assert s["nonnegative_filters"] == ["Apache Pulsar perf"]
         assert "Apache Pulsar perf" in s["silent"], "a weaker guard is still an uncounted one"
 
@@ -162,10 +163,11 @@ class TestR2TheTwoThresholdsAreDifferentThings:
         substitutes a value and joins the silent tools; so does the NATS CLI, whose percentile
         table is recorded into a library that refuses a negative, with the error ignored. Seven,
         not five. The other three counts hold, and test_harness_registry records why the two
-        were missed."""
+        were missed. 11 Oct 2026: librdkafka's rdkafka_performance, read into the registry,
+        made it eleven tools, eight silent and ten vendors; C was already among the languages."""
         import harness_registry
         s = harness_registry.summary()
-        assert (s["harnesses"], s["n_silent"], s["vendors"], s["languages"]) == (10, 7, 9, 5)
+        assert (s["harnesses"], s["n_silent"], s["vendors"], s["languages"]) == (11, 8, 10, 5)
 
     def test_a_threshold_is_not_a_new_response(self):
         from audit_external_harness import DISPOSAL_KINDS, DISPOSAL_RESPONSES

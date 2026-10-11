@@ -306,14 +306,21 @@ def test_the_round6_reaudit_headline_counts():
     ignores the error. Its minimum, median and maximum keep the value; its percentiles do not.
     That is wrk2's class, and `n_silent` is 7. emqtt-bench's histogram is the one that keeps
     every sample, and Rezolus the one that counts.
+
+    On 11 Oct 2026 the survey took in librdkafka's rdkafka_performance, which the tools block
+    had run but nobody had read into the registry. Its consumer keeps a latency only if it is
+    above zero, `if (ts > 0 && ts < (1000000 * 60 * 5))`, prints a line for each value it
+    drops and counts none of them: the strict guard, the benchmark's, and an eighth silent
+    tool among eleven.
     """
     s = summary()
-    assert s["harnesses"] == 10
-    assert s["n_silent"] == 7
+    assert s["harnesses"] == 11
+    assert s["n_silent"] == 8
     assert s["suppressors"] == ["RabbitMQ PerfTest", "blktrace btt", "fio"]
     assert s["counts_discards"] == ["Rezolus"]
     assert "emqtt-bench" not in s["silent"]
-    assert s["filters"] == ["OpenMessaging Benchmark"], "the strict guard, `> 0`"
+    assert s["filters"] == ["OpenMessaging Benchmark", "librdkafka rdkafka_performance"], \
+        "the strict guard, `> 0`"
     assert s["nonnegative_filters"] == ["Apache Pulsar perf"], "the weaker one, `>= 0`"
     assert "Apache Pulsar perf" in s["silent"], "a weaker guard is still a silent one"
     assert s["library_refusals"] == ["NATS CLI", "wrk2"]

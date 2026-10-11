@@ -1004,6 +1004,11 @@ def _registry_cells(v):
                 "yes" if v["counts_discards"] else "no")
     if v["counts_discards"]:
         return "discard", "yes"
+    # 11 Oct 2026: a guard on the tally a tool prints from keeps the value out of that figure
+    # though the sample is kept; emqtt-bench's row read "---" beside a printed average that
+    # counts a value at or below zero as zero.
+    if v.get("tally_guard"):
+        return "kept; zero in its printed average", "no"
     return "---", "---"
 
 
@@ -1059,6 +1064,8 @@ REGISTRY_CITES = {
     "Apache Kafka (bundled)": "kafka_tools",
     "RabbitMQ PerfTest": "rabbitmq_perftest",
     "NATS CLI": "nats_cli",
+    # 11 Oct 2026: read in after the tools block had run it, at the commit it built.
+    "librdkafka rdkafka_performance": "librdkafka_perf",
 }
 
 
@@ -1069,6 +1076,8 @@ def _tt(name):
         return "\\texttt{%s}" % name.replace("_", "\\_")
     if name == "blktrace btt":
         return "\\texttt{blktrace/btt}"
+    if name == "librdkafka rdkafka_performance":
+        return "\\texttt{rdkafka\\_performance}"
     if name == "OpenMessaging Benchmark":
         return "OpenMessaging Bench."
     return name
@@ -1827,7 +1836,17 @@ def registry_macros():
         # that counts is what left Section IV-D describing it as "a fifth entry" of nothing.
         ("harnessNoDisposal",
          str(s["harnesses"] - s["n_silent"] - len(s["counts_discards"]))),
+        # 11 Oct 2026: the count Sections I and V-A lead with is over the tools that time a
+        # message, and a tool counts as cutting the value if any figure it reports leaves it out.
+        ("harnessMessage", str(len(s["message_tools"]))),
+        ("harnessMessageCut", str(len(s["message_cut"]))),
     ]
+    #: The prose names the one message tool that cuts nothing, Kafka's bundled pair, and says why:
+    #: it times inside one process. If the registry ever says otherwise, the build stops here.
+    rest = sorted(set(s["message_tools"]) - set(s["message_cut"]))
+    if rest != ["Apache Kafka (bundled)"]:
+        raise ValueError("the paper names Kafka's bundled tools as the one message tool that cuts "
+                         "nothing; the registry says %s" % rest)
     # Spelled forms of the same counts. IEEE house style wants a small number spelled in
     # prose; the alternative to emitting the word was transcribing it, which is the failure
     # mode this whole file exists to prevent.
@@ -1837,6 +1856,11 @@ def registry_macros():
     # And the same word capitalised, because several of these open a sentence and a macro
     # cannot know that it does. Emitting both beats teaching the manuscript to remember.
     out += [(name + "WordCap", word[:1].upper() + word[1:]) for name, word in spelled]
+    # The documents quote the message-tool counts only as words, so their digits leave the
+    # ledger once the words are spelled: a macro nobody reads is a number nobody checks. The
+    # capitalised twins stay, as every spelled count's does.
+    out = [(name, value) for name, value in out
+           if name not in ("harnessMessage", "harnessMessageCut")]
     # The scope of the guard, computed rather than remembered. A referee who opens
     # MessageProducer.java finds a nanosecond clock and no filter, and will read an
     # unqualified "the benchmark filters" as overstated. These macros make the qualifier a
@@ -3624,6 +3648,99 @@ def tools_block_macros(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
     ]
 
 
+TOOLS_T3 = os.path.join("docs", "results", "tools", "tools_t3.csv")
+DEFAULT_TOOLS_T3_TABLE = os.path.join("docs", "generated", "tools_load_table.tex")
+
+#: How much of the tail's rise under load real-time priority must take back for the prose to say
+#: it took back nearly all of it. A threshold for describing T3, which has no rule of its own.
+TAIL_BACK_SHARE = 0.9
+
+
+def _tools_load(t3_path=TOOLS_T3):
+    """T3, folded to one figure per tool: the median over the rounds, for each tool that prints a
+    99th percentile, of how far that percentile rose from idle to the background load, how far the
+    median moved, and what share of the rise real-time priority took back. Each round compares
+    its own cells, so a round's idle reading is held only against the same round's load."""
+    import csv as _csv
+    with open(t3_path, encoding="utf-8") as fh:
+        rows = list(_csv.DictReader(fh))
+    loads = sorted({int(r["load_pct"]) for r in rows} - {0})
+    if len(loads) != 1:
+        raise ValueError("T3 ran at one background load besides idle; the table holds %s" % loads)
+    busy = str(loads[0])
+    cells = {}
+    for r in rows:
+        cells.setdefault((r["tool"], r["round"]), {})[(r["load_pct"], r["go_first"])] = r
+    fold = {}
+    for (tool, _rnd), c in sorted(cells.items()):
+        idle, under, ahead = c.get(("0", "no")), c.get((busy, "no")), c.get((busy, "yes"))
+        if not (idle and under and ahead and idle["p99"] and under["p99"] and ahead["p99"]):
+            continue
+        i99, u99, a99 = float(idle["p99"]), float(under["p99"]), float(ahead["p99"])
+        f = fold.setdefault(tool, {"rise": [], "move": [], "back": [], "idle": [], "under": [],
+                                   "ahead": [], "p50_idle": [], "p50_under": []})
+        f["rise"].append(u99 - i99)
+        f["idle"].append(i99)
+        f["under"].append(u99)
+        f["ahead"].append(a99)
+        f["move"].append(abs(float(under["p50"]) - float(idle["p50"])))
+        f["p50_idle"].append(float(idle["p50"]))
+        f["p50_under"].append(float(under["p50"]))
+        if u99 > i99:
+            f["back"].append((u99 - a99) / (u99 - i99))
+    import statistics as _st
+    out = {t: {k: _st.median(v) for k, v in f.items() if v} for t, f in fold.items()}
+    #: The prose says the tail rose in every tool that prints one; a tool whose median rise is
+    #: not above zero would make that false, and the build stops instead.
+    flat = sorted(t for t, v in out.items() if v["rise"] <= 0)
+    if flat:
+        raise ValueError("the prose says every tool's 99th percentile rose under load; it did not "
+                         "for %s" % flat)
+    return busy, out
+
+
+def tools_load_macros(t3_path=TOOLS_T3):
+    """Section V-B's sentence on T3, and the supplement's: how a busy machine moved each tool's
+    tail and its median, and how much of that real-time priority took back."""
+    if not os.path.exists(t3_path):
+        print("note: tools block load table absent")
+        return []
+    busy, fold = _tools_load(t3_path)
+    rises = [v["rise"] for v in fold.values()]
+    back = [t for t, v in fold.items() if v.get("back", 0.0) >= TAIL_BACK_SHARE]
+    return [
+        ("toolsLoadPct", busy),
+        ("toolsTailToolsWord", _spell(len(fold))),
+        ("toolsTailRiseLo", "%.1f" % min(rises)),
+        ("toolsTailRiseHi", "%.1f" % max(rises)),
+        ("toolsMedianMoveHi", "%.1f" % max(v["move"] for v in fold.values())),
+        ("toolsTailBackWord", _spell(len(back))),
+    ]
+
+
+def render_tools_load_table(t3_path=TOOLS_T3):
+    """The supplement's T3 table: for each tool that prints a 99th percentile, its median and its
+    99th percentile idle and under the load, and the 99th percentile under the load when the tool
+    ran ahead of it at real-time priority, each the median over the rounds."""
+    busy, fold = _tools_load(t3_path)
+    lines = [
+        "% Generated by scripts/emit_paper_numbers.py from docs/results/tools/tools_t3.csv.",
+        "% Do not edit by hand.",
+        "\\begin{tabular}{@{}lrrrrr@{}}",
+        "\\toprule",
+        " & \\multicolumn{2}{c}{Median} & \\multicolumn{3}{c}{99th percentile} \\\\",
+        "\\cmidrule(lr){2-3}\\cmidrule(l){4-6}",
+        "Tool & idle & %s\\%% & idle & %s\\%% & %s\\%%, real-time \\\\" % (busy, busy, busy),
+        "\\midrule",
+    ]
+    for tool in sorted(fold, key=lambda t: TOOL_NAMES[t].lower()):
+        v = fold[tool]
+        lines.append("%s & %.2f & %.2f & %.2f & %.2f & %.2f \\\\" % (
+            TOOL_NAMES[tool], v["p50_idle"], v["p50_under"], v["idle"], v["under"], v["ahead"]))
+    lines += ["\\bottomrule", "\\end{tabular}"]
+    return "\n".join(lines) + "\n"
+
+
 def render_tools_table(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
     """The supplement's table of the tools run: each tool, what it times, how it followed the
     path, and how many clocks T2 found its two timestamps on.
@@ -4311,7 +4428,8 @@ def _all_pairs(m):
             + spread_macros() + payload_flip_macros() + literature_census_macros()
             + arm_macros() + manipulation_macros()
             + deletion_macros() + literature_macros() + cliff_macros() + reach_macros()
-            + tools_block_macros() + recv_wait_macros() + law_reading_macros()
+            + tools_block_macros() + tools_load_macros() + recv_wait_macros()
+            + law_reading_macros()
             + s_window_macros() + rate_by_delivery_macros() + mechanism_interval_macros()
             + traced_pooled_macros() + workload_macros() + backlog_macros()
             + cell_events_macros() + tracer_macros() + geometry_seven_macros())
@@ -4334,6 +4452,7 @@ def main(argv=None):
     ap.add_argument("--spread-table", default=DEFAULT_SPREAD_TABLE)
     ap.add_argument("--interval-table", default=DEFAULT_INTERVAL_TABLE)
     ap.add_argument("--tools-table", default=DEFAULT_TOOLS_TABLE)
+    ap.add_argument("--tools-load-table", default=DEFAULT_TOOLS_T3_TABLE)
     ap.add_argument("--recv-wait-table", default=DEFAULT_RECV_WAIT_TABLE)
     ap.add_argument("--mechanism-table", default=DEFAULT_MECHANISM_TABLE)
     ap.add_argument("--groups-table", default=DEFAULT_GROUPS_TABLE)
@@ -4376,6 +4495,8 @@ def main(argv=None):
     # beside data that no longer supports it. Only its absence is tolerated.
     if os.path.exists(TOOLS_T1) and os.path.exists(TOOLS_T2):
         targets.append((args.tools_table, render_tools_table()))
+    if os.path.exists(TOOLS_T3):
+        targets.append((args.tools_load_table, render_tools_load_table()))
     recv = render_recv_wait_table()
     if recv:
         targets.append((args.recv_wait_table, recv))

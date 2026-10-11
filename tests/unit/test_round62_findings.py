@@ -66,6 +66,16 @@ COUNTS = {
         # inventoried here by hand; any phrase not listed still has to pass on the right.
         "named_before": ("uncounted disposal in",),
     },
+    # 11 Oct 2026: Sections I and V-A lead with the tools that time a message, and with how
+    # many of those cut a value at or below zero out of a figure they report.
+    "harnessMessageWord": {
+        "counts": "the tools read at source that time a message",
+        "require": ("message",),
+    },
+    "harnessMessageCutWord": {
+        "counts": "the message tools that cut the value out of a figure they report",
+        "require": ("cut", "out of"),
+    },
 }
 
 
@@ -133,9 +143,13 @@ class TestACountMacroMatchesTheSentenceItStandsIn:
 
     @pytest.mark.parametrize("macro", sorted(COUNTS))
     def test_the_macro_is_actually_used(self, macro, paper):
-        """An inventory row for a macro nobody uses is a row that tests nothing."""
-        assert _uses(paper, macro), \
-            "\\%s is inventoried but the article does not use it" % macro
+        """An inventory row for a macro nobody uses is a row that tests nothing.
+
+        11 Oct 2026: the paper's own count moved to the message tools, and the count of all the
+        tools that lose the sample stays in the journal supplement's S5, which the rule above
+        reads too; a use there is a use."""
+        assert _uses(paper, macro) or _uses(_flat("supplement.tex"), macro), \
+            "\\%s is inventoried but neither the article nor its supplement uses it" % macro
 
     def test_round_62s_own_defect_is_pinned(self, paper):
         """The Threats concession covers every tool that was read, not the subset.
@@ -216,7 +230,10 @@ class TestEveryResultSectionBelongsToAContribution:
         owner = paper[start:paper.index(r"\section{", start)]
         assert r"\label{sec:tools}" in owner, \
             "the tool audit has left the section the contribution claims"
-        assert any(re.search(r"\\harnessAuditedWord\{\} tools we read at source", i)
+        # 11 Oct 2026: the contribution names the message tools it read, which is the count it
+        # leads with since the curiosities that time no message left it.
+        assert any(re.search(r"\\harness(Audited|Message)Word\{\} (message )?tools we read at "
+                             r"source", i)
                    for i in items), "the claiming contribution no longer names the tools it read"
 
 

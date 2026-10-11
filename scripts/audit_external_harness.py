@@ -50,6 +50,11 @@ CROSS_PROCESS = [
     # Go: `time.Now().UnixNano() - sendTime`, where sendTime was decoded from the payload.
     # NATS spells the cross-process subtraction inline with no intervening field access.
     re.compile(r"Now\(\)\.Unix(Nano|Milli)\(\)\s*-\s*\w*(send|pub|start)\w*", re.I),
+    # C: librdkafka's `ts = wall_clock() - remote_ts;`, the consumer's own clock call minus the
+    # stamp that arrived in the payload. `remote` is how that tool names the arriving stamp; its
+    # producer's `wall_clock() - source_ts` subtracts a stamp it took itself, in one process,
+    # and must not match. Added on 11 Oct 2026 with the tool.
+    re.compile(r"\b\w*clock\(\)\s*-\s*\w*remote\w*"),
     # The subtraction can also be behind an abstraction, which is the harder case to see and
     # the reason this list is patterns rather than a grep for a minus sign. RabbitMQ
     # PerfTest's `timestampProvider.getDifference(now, messageTimestamp)` is a cross-process
@@ -85,6 +90,12 @@ POSITIVE_FILTER = [
     # `E2ELatency > 0 andalso record(...)`. Added when auditing beyond the JVM found the
     # identical shape in a language whose syntax the original patterns could not see.
     re.compile(r"\b(\w*[Ll]atency\w*)\s*>\s*0\s+andalso\b"),
+    # C, with an upper bound on the same value: librdkafka's
+    # `if (ts > 0 && ts < (1000000 * 60 * 5)) {` keeps a latency only above zero and under five
+    # minutes. The strict `> 0` on the value about to be recorded is the filter; the bound drops
+    # stale stamps. The same name on both sides of the `&&` is what makes it a range on one
+    # value rather than two unrelated tests. Added on 11 Oct 2026 with the tool.
+    re.compile(r"if\s*\(\s*(\w+)\s*>\s*0\s*&&\s*\1\s*<"),
 ]
 
 #: The weaker guard: drops inversions, keeps the quantum's zeros.
@@ -229,6 +240,21 @@ DISPOSAL_RESPONSES = {
     "silent_suppression": "substitute",
     "library_refusal": "refuse",
 }
+
+
+def guards_a_tally(line):
+    """A sign guard whose consequent is a counter increment.
+
+    classify() withdraws the filter label from such a line, rightly for the sample: it is not
+    deleted, and in emqtt-bench every one still reaches the histogram (round 6). What the guard
+    does delete is the value from the tally it guards, and that tally can be the one a tool
+    prints its figure from -- emqtt-bench's printed average divides that guarded sum by every
+    message, so a value at or below zero enters the average as zero. Said separately, so that
+    a tool can be counted as cutting the value from what it reports without being called one
+    that deletes the sample (11 Oct 2026).
+    """
+    return (any(p.search(line) for p in POSITIVE_FILTER + NONNEGATIVE_FILTER)
+            and bool(COUNTER_CONSEQUENT.search(line)))
 
 
 def classify(line):

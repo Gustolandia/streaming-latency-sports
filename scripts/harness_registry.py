@@ -35,7 +35,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from audit_external_harness import (  # noqa: E402
-    DISCARD_COUNTER, DISPOSAL_KINDS, classify)
+    DISCARD_COUNTER, DISPOSAL_KINDS, classify, guards_a_tally)
 
 REGISTRY = os.path.join("docs", "results", "external", "harness_registry.csv")
 
@@ -43,6 +43,11 @@ REGISTRY = os.path.join("docs", "results", "external", "harness_registry.csv")
 # that makes it a pattern, then the two suppressors, then the counterexample.
 FIELDS = ("harness", "vendor", "language", "path", "clock", "file", "symbol", "evidence",
           "source_url", "retrieved", "note")
+
+#: The spans a message travels: from publish to receipt, from publish to acknowledgment, or a
+#: request and its reply, which the registry also files as end-to-end. A tool with none of them
+#: times an interval inside one host -- an I/O completion, a block-layer stage, a wakeup.
+MESSAGE_SPANS = ("end-to-end", "publish")
 
 
 #: Where `csv.DictReader` files the values of a row that has more fields than the header.
@@ -89,6 +94,7 @@ def classified(rows):
         d = dict(r)
         d["kinds"] = classify(r["evidence"])
         d["is_counter"] = bool(DISCARD_COUNTER.search(r["evidence"]))
+        d["tally_guard"] = guards_a_tally(r["evidence"])
         out.append(d)
     return out
 
@@ -100,9 +106,12 @@ def by_harness(rows):
         h = out.setdefault(r["harness"], {
             "vendor": r["vendor"], "language": r["language"],
             "kinds": set(), "counts_discards": False, "lines": 0,
+            "tally_guard": False, "paths": set(),
         })
         h["kinds"].update(r["kinds"])
         h["counts_discards"] = h["counts_discards"] or r["is_counter"]
+        h["tally_guard"] = h["tally_guard"] or r["tally_guard"]
+        h["paths"].add(r["path"])
         h["lines"] += 1
     return out
 
@@ -124,10 +133,11 @@ def paths(rows=None):
         # 6 Oct 2026: vendor and language travel with the verdict, so the supplement's table
         # can show the rows behind "five languages and nine vendors".
         v = out.setdefault(key, {"clock": r["clock"], "kinds": set(),
-                                 "counts_discards": False, "lines": 0,
+                                 "counts_discards": False, "lines": 0, "tally_guard": False,
                                  "vendor": r.get("vendor", ""), "language": r.get("language", "")})
         v["kinds"].update(r["kinds"])
         v["counts_discards"] = v["counts_discards"] or r["is_counter"]
+        v["tally_guard"] = v["tally_guard"] or r["tally_guard"]
         v["lines"] += 1
     return out
 
@@ -172,6 +182,15 @@ def summary(rows=None):
     # round 6: a value dropped by the recording library is as gone as one dropped by an `if`,
     # and counted in one place fewer.
     silent = sorted((set(filters) | set(nonneg) | set(supp) | set(refusal)) - set(counted))
+    # 11 Oct 2026. The tools that time a message, which the paper counts apart from the three
+    # that time an interval inside one host; and of those, the ones that cut a value at or below
+    # zero out of what they report without counting it. That is every silent one, and also a
+    # tool whose guard keeps the value out of the tally its printed figure is computed from,
+    # though the sample itself survives elsewhere -- emqtt-bench, whose histogram keeps it and
+    # whose printed average counts it as zero.
+    message = sorted(h for h, v in fold.items() if v["paths"] & set(MESSAGE_SPANS))
+    tallied = sorted(h for h, v in fold.items() if v["tally_guard"])
+    cut = sorted((set(silent) | set(tallied)) - set(counted))
     # Named so a reader can check the union above against the classifier rather than trust it.
     assert set(DISPOSAL_KINDS) == {"positive_only_filter", "nonnegative_filter",
                                    "silent_suppression", "library_refusal"}, DISPOSAL_KINDS
@@ -188,6 +207,9 @@ def summary(rows=None):
         "counts_discards": sorted(counted),
         "silent": silent,
         "n_silent": len(silent),
+        "message_tools": message,
+        "tally_guards": tallied,
+        "message_cut": sorted(set(cut) & set(message)),
     }
 
 

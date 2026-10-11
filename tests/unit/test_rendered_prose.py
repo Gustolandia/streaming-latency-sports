@@ -94,7 +94,11 @@ ABBREVIATIONS = frozenset((
 #: 67 since 7 Oct 2026, when the placement table became generated: its four rates and the four
 #: intervals uncertainty_audit.py paired with them were read by nothing and left the ledger,
 #: and with them the census's largest foreign read, which S1.5 does not print.
-UNUSED_MACRO_CEILING = 67
+#: 68 since 11 Oct 2026: harnessMessageCutWordCap, the capitalised twin of the count of message
+#: tools that cut the value. The count never opens a sentence, but test_emit_paper_numbers
+#: holds every spelled count to its twin, so that a sentence can open on one without a new
+#: macro; half a pair is not a pair. The count's digits, read by nothing, are not emitted.
+UNUSED_MACRO_CEILING = 68
 
 
 def rendered(name):

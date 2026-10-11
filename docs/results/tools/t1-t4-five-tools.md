@@ -167,6 +167,36 @@ answered "two" are the four whose invocations time across two processes.
 `scripts/emit_paper_numbers.py` refuses to build the paper's numbers if either stops being so, or
 if any run of a one-clock tool is answered anything but "one".
 
+## T3: under load
+
+Each tool idle and against a background load that kept every core 88% busy, each with and without
+go-first (real-time priority on the process that subtracts). The plan fixed no rule for T3, so
+this is description. Median and 99th percentile in milliseconds, round by round; emqtt-bench
+prints no percentile, so its average stands in.
+
+| Tool | Figure | Round | Idle | 88% | Idle, go-first | 88%, go-first |
+|---|---|---|---|---|---|---|
+| ycsb | median | 1–4 | 0.71, 0.75, 0.75, 0.65 | 0.63, 0.64, 0.63, 0.64 | 0.65, 0.75, 0.62, 0.74 | 0.64, 0.71, 0.63, 0.61 |
+| ycsb | p99 | 1–4 | 0.85, 0.90, 0.88, 0.78 | 2.01, 3.14, 2.93, 2.94 | 0.79, 0.92, 0.77, 0.88 | 0.77, 0.87, 0.77, 0.76 |
+| nats-bench | median | 1–4 | 1.31, 1.35, 1.31, 1.20 | 1.38, 1.26, 1.37, 1.30 | 1.21, 1.25, 1.18, 1.24 | 1.34, 1.27, 1.21, 1.28 |
+| nats-bench | p99 | 1–4 | 1.39, 1.43, 1.38, 1.27 | 4.21, 4.02, 4.23, 4.35 | 1.30, 1.33, 1.26, 1.29 | 3.94, 3.96, 3.82, 3.94 |
+| omb | median | 1–4 | 2, 2, 2, 2 | 3, 2, 2, 2 | 2, 2, 2, 2 | 2, 2, 2, 2 |
+| omb | p99 | 1–4 | 2, 2, 2, 3 | 6, 6, 6, 6 | 3, 3, 2, 3 | 5, 5, 5, 5 |
+| pulsar-perf | median | 1–4 | 3, 3, 3, 3 | 3, 3, 3, 3 | 3, 3, 3, 3 | 3, 3, 3, 3 |
+| pulsar-perf | p99 | 1–4 | 4, 4, 4, 4 | 8, 8, 8, 8 | 4, 4, 4, 4 | 6, 6, 6, 6 |
+| emqtt-bench | average | 1–4 | 0.00, 0.79, 1.00, 1.00 | 1.85, 1.19, 1.79, 1.85 | 1.00, 1.00, 1.00, 0.99 | 0.27, 0.27, 0.13, 0.25 |
+
+The load lengthened every tail and left every median within about a tenth of a millisecond, or
+unchanged for the tools that print whole milliseconds (OMB's round-1 median, 2 to 3 ms, is the one
+step it moved). The 99th percentile rose by about 1.2 to 2.2 ms for YCSB, 2.6 to 3.1 for nats
+bench, 3 to 4 for OMB and 4 for pulsar-perf, of the order of the 2.8 ms base slice the machine's eight
+CPUs give the scheduler: a thread waits for a core inside the interval the tool times, and the
+wait reads as latency. Go-first took YCSB's rise back entirely, and took back a quarter of OMB's,
+half of pulsar-perf's and a tenth of nats bench's. emqtt-bench's average follows the
+whole-millisecond phase its publisher keeps (T1 above) more than it follows the load. The same
+holds across the sixteen tools: docs/results/tools/tools_t3.csv folds every round of both blocks,
+and the supplement's table of T3 is generated from it.
+
 ## Faults and departures
 
 - **OMB's workers could not write their own log file in T2.** T1, T3 and T4 run the tool as root in

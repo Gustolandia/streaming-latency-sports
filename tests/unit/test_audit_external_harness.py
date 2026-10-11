@@ -335,6 +335,24 @@ class TestPatternsAddedForNonJvmSources:
     def test_erlang_system_time_subtraction_is_cross_process(self):
         assert "cross_process_latency" in classify("E2ELatency = os:system_time(millisecond) - TS,")
 
+    def test_c_clock_call_minus_a_remote_stamp_is_cross_process(self):
+        """librdkafka's consumer, read on 11 Oct 2026: its own clock minus the stamp that
+        arrived in the payload."""
+        assert "cross_process_latency" in classify("ts = wall_clock() - remote_ts;")
+
+    def test_c_clock_call_minus_a_stamp_taken_in_the_same_process_is_not(self):
+        """Its producer subtracts a stamp it wrote itself; nothing crosses a process."""
+        line = 'latency_add(wall_clock() - source_ts, "producer");'
+        assert classify(line) == []
+
+    def test_a_c_positivity_guard_bounded_above_on_the_same_value_is_a_filter(self):
+        """`> 0` on the value about to be recorded is the filter; the bound drops stale stamps."""
+        line = "if (ts > 0 && ts < (1000000 * 60 * 5)) {"
+        assert "positive_only_filter" in classify(line)
+
+    def test_a_range_test_on_two_different_values_is_not_a_filter(self):
+        assert "positive_only_filter" not in classify("if (n > 0 && len < max) {")
+
     def test_a_discard_metric_named_for_samples_counts_as_a_counter(self):
         # Rezolus names the noun it counts "samples", not "count".
         assert has_discard_counter_line('name = "scheduler_discarded_samples",')

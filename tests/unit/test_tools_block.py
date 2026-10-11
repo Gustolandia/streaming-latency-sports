@@ -148,6 +148,29 @@ class TestT2:
         assert [(r["tool"], r["standing"]) for r in rows] == [("hey", "")]
 
 
+class TestT3:
+    """T3 keeps what each tool printed in each cell; it has no rule, so nothing is judged."""
+
+    def test_one_row_per_cell_with_the_figures_the_tool_printed(self, tmp_path):
+        _json(tmp_path / "t3-wrk2-l88-firstyes" / "reading.json", _reading("wrk2", 1.21, 1.19, 1.0))
+        _json(tmp_path / "t3-hey-l0-firstno" / "reading.json",
+              {"tool": "hey", "reported_ms": {"avg": 0.8}, "kept": None})
+        (row_hey, row_wrk2) = tb.t3_rows("2", str(tmp_path))
+        assert row_wrk2 == {"round": "2", "tool": "wrk2", "load_pct": "88", "go_first": "yes",
+                            "p50": "1.1900", "p99": "2.0000", "avg": "1.2100"}
+        assert (row_hey["load_pct"], row_hey["go_first"]) == ("0", "no")
+        assert (row_hey["p50"], row_hey["p99"], row_hey["avg"]) == ("", "", "0.8000")
+
+    def test_a_reading_that_printed_nothing_keeps_its_row_with_empty_figures(self, tmp_path):
+        _json(tmp_path / "t3-omb-l88-firstno" / "reading.json", {"tool": "omb", "reported_ms": None})
+        (row,) = tb.t3_rows("1", str(tmp_path))
+        assert (row["p50"], row["p99"], row["avg"]) == ("", "", "")
+
+    def test_a_folder_not_named_as_a_cell_is_left_out(self, tmp_path):
+        _json(tmp_path / "t3-k6-loaded" / "reading.json", _reading("k6", 1, 1, 1))
+        assert tb.t3_rows("1", str(tmp_path)) == []
+
+
 class TestJudgedAgainUnderFreeze31:
     """D34-3: every T2 run judged again under freeze 31, from what the run left, beside its
     verdict -- and only after the same inputs have given back the verdict it was given."""
@@ -316,7 +339,8 @@ class TestCollect:
         _step(tmp_path / "snap" / "tools_round2", "hey", 1.0)
         _verdict(tmp_path / "snap" / "tools_round2", "t2-hey-1_84ms", 1.84,
                  "times against one clock")
-        t1, t2 = tb.collect(str(tmp_path), rounds)
+        t1, t2, t3 = tb.collect(str(tmp_path), rounds)
+        assert t3 == []
         assert [(r["round"], r["slope"]) for r in t1] == [("1", "1.0377"), ("2", "1.0000")]
         assert [(r["round"], r["verdict"]) for r in t2] == [
             ("1", "times against one clock"), ("2", "times against one clock")]
@@ -325,7 +349,7 @@ class TestCollect:
                                                                                     tmp_path):
         _world(tmp_path / "snap" / "tools")
         _verdict(tmp_path / "rejudged", "t2-vegeta-1_816ms", 1.8249, tn.ONE_CLOCK)
-        _, (row,) = tb.collect(str(tmp_path), (("1", "snap/tools", "rejudged", {}),))
+        _, (row,), _ = tb.collect(str(tmp_path), (("1", "snap/tools", "rejudged", {}),))
         assert row["clocks"] == "one"
 
     def test_freeze_30s_block_is_folded_beside_the_first(self):
@@ -341,6 +365,8 @@ class TestMain:
         monkeypatch.setattr(tb, "ROUNDS_V33", ())
         _step(tmp_path / "in" / "r1", "k6", 1.0111)
         _verdict(tmp_path / "in" / "r1", "t2-k6-3_821ms", 3.8309, "times against one clock")
+        _json(tmp_path / "in" / "r1" / "t3-k6-l88-firstno" / "reading.json",
+              _reading("k6", 0.79, 0.716, 0.6))
         out = tmp_path / "out"
         assert tb.main(["--collected", str(tmp_path / "in"), "--out", str(out)]) == 0
         with (out / "tools_t1.csv").open(encoding="utf-8") as fh:
@@ -348,7 +374,9 @@ class TestMain:
         with (out / "tools_t2.csv").open(encoding="utf-8") as fh:
             row = list(csv.DictReader(fh))[0]
         assert row["offset_ms"] == "3.8309" and tuple(row) == tb.T2_FIELDS
-        assert "1 T1 rows and 1 T2 rows from 1 rounds" in capsys.readouterr().out
+        with (out / "tools_t3.csv").open(encoding="utf-8") as fh:
+            assert [r["p99"] for r in csv.DictReader(fh)] == ["1.5800"]
+        assert "1 T1 rows, 1 T2 rows and 1 T3 rows from 1 rounds" in capsys.readouterr().out
 
     def test_a_folder_with_no_judged_runs_writes_nothing(self, tmp_path, capsys):
         out = tmp_path / "out"
@@ -370,3 +398,9 @@ class TestMain:
         #: every tool the plan read was run.
         assert {r["tool"] for r in t1} == set(tb.TRIPS)
         assert all(r["clocks"] in ("one", "two", "undecided") and r["verdict_31"] for r in t2)
+        #: T3: every tool, every round, idle and loaded, each with and without go-first.
+        with (repo / "docs" / "results" / "tools" / "tools_t3.csv").open(encoding="utf-8") as fh:
+            t3 = list(csv.DictReader(fh))
+        assert len(t3) == 256 and {r["tool"] for r in t3} == set(tb.TRIPS)
+        assert {(r["load_pct"], r["go_first"]) for r in t3} == {
+            ("0", "no"), ("0", "yes"), ("88", "no"), ("88", "yes")}

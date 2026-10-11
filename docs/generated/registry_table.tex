@@ -13,8 +13,10 @@ OpenMessaging Bench. & Java, Linux Foundation & publish & nanosecond & --- & ---
 RabbitMQ PerfTest & Java, Broadcom/VMware & end-to-end & nanosecond & substitute a value & no \\
 Rezolus & Rust, IOP Systems & scheduler wakeup & nanosecond & discard & yes \\
 \texttt{blktrace/btt} & C, Alan D. Brunelle & block stage & nanosecond & substitute a value & no \\
-\texttt{emqtt-bench} & Erlang, EMQ Technologies & end-to-end & millisecond & --- & --- \\
+\texttt{emqtt-bench} & Erlang, EMQ Technologies & end-to-end & millisecond & kept; zero in its printed average & no \\
 \texttt{fio} & C, Jens Axboe & I/O completion & nanosecond & substitute a value & no \\
+\texttt{rdkafka\_performance} & C, Confluent & end-to-end & microsecond & filter, $>0$ & no \\
+\texttt{rdkafka\_performance} & C, Confluent & publish & microsecond & --- & --- \\
 wrk2 & C, G. Tene & end-to-end & microsecond & refused by own library & no \\
 \bottomrule
 \end{tabular}

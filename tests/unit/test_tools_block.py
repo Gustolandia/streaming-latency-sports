@@ -19,9 +19,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 import tool_negatives as tn  # noqa: E402
 import tools_block as tb  # noqa: E402
 
-#: The four tools freeze 32 registered, with how each keeps time, before their block ran (D35-2).
-#: Their runs are not in the committed tables until that block is folded, when this goes.
-FREEZE_32_UNFOLDED = {"xinfra-monitor", "strimzi-canary", "trogdor", "stream-perftest"}
+#: The four tools freeze 32 registered, with how each keeps time, before their block ran (D35-2),
+#: and freeze 33's YSB (D36-4). Their runs are not in the committed tables until their blocks are
+#: folded, when each goes from here.
+FREEZE_32_UNFOLDED = {"xinfra-monitor", "strimzi-canary", "trogdor", "stream-perftest", "ysb"}
 
 #: The five columns freeze 31's re-judging adds to a T2 row.
 REJUDGED = ("sent", "kept", "verdict_31", "clocks", "clocks_why")

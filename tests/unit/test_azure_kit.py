@@ -655,10 +655,13 @@ class TestTheToolsBlock:
         assert code.count(own) == 1
         assert "127.0.0.1" not in code.replace(own, ""), "no target is the machine the tool runs on"
         #: Freeze 32 adds Trogdor's agents and coordinator, which its node file places on the
-        #: loopback, and whose coordinator the client asks on its port 8889.
+        #: loopback, and whose coordinator the client asks on its port 8889; freeze 33, YSB's Flink
+        #: JobManager, waited for on its RPC port 6123 and asked on its REST port 8081 whether its
+        #: TaskManager has registered, and that TaskManager told the same loopback as its address.
         for line in re.findall(r"^.*\$OWN\b.*$", runner, re.M):
             assert any(own_use in line for own_use in ("--workers", "--restapi", "/metrics",
-                                                       ":8889", "trogdor.conf")), \
+                                                       ":8889", "trogdor.conf", ":8081/",
+                                                       "/6123", "taskmanager.host")), \
                 "the loopback names a tool's own processes, never a server: %s" % line.strip()
         assert "localhost" not in code
         for target in ("SBL_TOOL_HTTP:-http://$BROKER_PRIV:8080/", "SBL_VALKEY_HOST:-$BROKER_PRIV",
@@ -728,10 +731,13 @@ class TestTheToolsBlock:
         else; the wrapper prefixes the tool's own process and nothing around it.
 
         Five invocations, not four: T2 runs the tool a third time at no offset as its control
-        (D23-1), and that one carries no wrapper at all, which is the whole point of it.
+        (D23-1), and that one carries no wrapper at all, which is the whole point of it. And a
+        sixth since freeze 33: YSB's reference is YSB itself at no delay (D36-3), in the
+        namespace, as T1's zero step runs it.
         """
         code = self.tools()
-        assert code.count("bash cloud/azure/tools_run.sh") == 5
+        assert code.count("bash cloud/azure/tools_run.sh") == 6
+        assert 'SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh ysb' in code
         assert 'SBL_TOOL_WRAP="$wrap"' in code
         assert 'WRAP="${SBL_TOOL_WRAP:-}"' in self.runner()
 
@@ -1855,8 +1861,8 @@ class TestEveryPinnedToolHasSomethingThatInstallsIt:
 
     def test_the_block_pins_the_ten_tools_the_plan_counts(self):
         """Eleven for the first block (ten runnable, Kafka's two bundled tools apart), the five
-        freeze 30 adds (D33-1), and the four freeze 32 adds (D35-1)."""
-        assert len(self._tools()) == 20
+        freeze 30 adds (D33-1), the four freeze 32 adds (D35-1), and YSB (D36-1)."""
+        assert len(self._tools()) == 21
 
     @pytest.mark.parametrize("tool", ["vegeta", "hey", "k6", "wrk2", "valkey-benchmark",
                                       "memtier_benchmark", "rdkafka_performance",

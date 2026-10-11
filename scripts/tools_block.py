@@ -109,6 +109,8 @@ TRIPS = {
     "strimzi-canary": "in one process",
     "trogdor": "across two processes",
     "stream-perftest": "across two processes",
+    # Freeze 33's YSB (D36-4): its generator stamps the events, its TaskManager the window.
+    "ysb": "across two processes",
 }
 
 _STEP = re.compile(r"t1-(.+)-step\.json$")

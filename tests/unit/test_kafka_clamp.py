@@ -8,6 +8,7 @@ tool's own elapsed nanoseconds, and an arrival line per record the observer read
 """
 import csv
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -162,3 +163,119 @@ class TestTornRows:
         got = json.loads(out.read_text("utf-8"))
         assert got["torn_rows"] == {"trace": 0, "arrivals": 1}
         assert got["paired"] == 4 and got["observed_ms"]["avg"] > 0
+
+
+def _k1(share, covers=True, traced=3000, paired=3000, late=True, torn=0):
+    """One run's k1.json as the judge writes it, with the share of early records given."""
+    got = {"traced": traced, "paired": paired, "missed_by_observer": traced - paired,
+           "early": int(share * paired), "early_share": share, "elapsed_covers_ack": covers,
+           "s_ms": {"p01": -0.2, "p50": 0.2, "p99": 0.7},
+           "tool_prints": {"avg": 1.7, "p50": 1, "p99": 3},
+           "observed_ms": {"avg": 1.0, "p50": 0.9, "p99": 2.1},
+           "torn_rows": {"trace": 0, "arrivals": torn}}
+    if late:
+        got["early_reported_late_by_ms"] = {"p50": 1.2, "p99": 2.7, "max": 3.2}
+    return got
+
+
+def _block(tmp_path, shares, skip=(), overrides=None):
+    """Six rounds of the four cells in tools.sh's folders, each cell's share from `shares`."""
+    for rnd in range(1, 7):
+        folder = tmp_path / ("tools_v35" if rnd == 1 else "tools_v35_round%d" % rnd)
+        for (load, first), share in shares.items():
+            if (rnd, load, first) in skip:
+                continue
+            run = folder / ("k1-l%s-first%s" % (load, first))
+            run.mkdir(parents=True, exist_ok=True)
+            extra = (overrides or {}).get((rnd, load, first), {})
+            (run / "k1.json").write_text(json.dumps(_k1(share, **extra)), encoding="utf-8")
+    return str(tmp_path)
+
+
+#: The pilot's shape: a few early idle, many at 88% load, none with go-first.
+PILOT = {("0", "no"): 0.026, ("0", "yes"): 0.006, ("88", "no"): 0.27, ("88", "yes"): 0.0}
+
+
+class TestTheBlock:
+    """K1 across its six rounds, judged as freeze 32 froze it (D35-7)."""
+
+    def test_every_round_and_cell_is_a_row_with_its_figures(self, tmp_path):
+        rows = kc.block_rows(_block(tmp_path, PILOT))
+        assert len(rows) == 24 and all(r["judged"] for r in rows)
+        first = rows[0]
+        assert (first["round"], first["load_pct"], first["go_first"]) == (1, "0", "no")
+        assert first["s_p50_ms"] == 0.2 and first["tool_p99_ms"] == 3 and first["late_max_ms"] == 3.2
+        assert first["observed_p99_ms"] == 2.1 and first["torn_rows"] == 0
+
+    def test_the_pilots_shape_holds_every_prediction(self, tmp_path):
+        found = kc.verdicts(kc.block_rows(_block(tmp_path, PILOT)))
+        assert {k: v["verdict"] for k, v in found.items()} == {
+            "K1-a": "holds", "K1-b": "holds", "K1-c": "holds", "K1-d": "holds"}
+        assert found["K1-b"]["held_in_rounds"] == [1, 2, 3, 4, 5, 6]
+
+    def test_one_round_against_a_prediction_fails_it(self, tmp_path):
+        """All six rounds or nothing: one round where load did not raise the share fails K1-c."""
+        root = _block(tmp_path, PILOT)
+        path = os.path.join(root, "tools_v35_round4", "k1-l0-firstno", "k1.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(_k1(0.5), fh)
+        found = kc.verdicts(kc.block_rows(root))
+        assert found["K1-c"]["verdict"] == "fails" and found["K1-c"]["failed_in_rounds"] == [4]
+        assert found["K1-b"]["verdict"] == "holds"
+
+    def test_a_run_the_observer_read_too_little_of_is_not_judged(self, tmp_path):
+        """Below 99% of the traced records, the run is reported and its round is not judged."""
+        root = _block(tmp_path, PILOT, overrides={(2, "88", "no"): {"paired": 2900}})
+        rows = kc.block_rows(root)
+        assert not [r for r in rows if (r["round"], r["load_pct"], r["go_first"]) == (2, "88", "no")][0]["judged"]
+        found = kc.verdicts(rows)
+        assert found["K1-b"]["verdict"] == "undecided" and found["K1-b"]["not_judged_in_rounds"] == [2]
+        assert found["K1-d"]["not_judged_in_rounds"] == [2]
+
+    def test_a_missing_run_is_a_row_that_says_so_and_leaves_its_round_unjudged(self, tmp_path):
+        root = _block(tmp_path, PILOT, skip={(6, "88", "yes")})
+        rows = kc.block_rows(root)
+        missing = [r for r in rows if (r["round"], r["load_pct"], r["go_first"]) == (6, "88", "yes")][0]
+        assert missing["traced"] == "" and missing["judged"] is False
+        found = kc.verdicts(rows)
+        assert found["K1-d"]["verdict"] == "undecided" and found["K1-a"]["runs"] == 23
+
+    def test_a_trace_that_does_not_cover_its_acknowledgment_fails_k1_a_and_is_not_judged(self, tmp_path):
+        root = _block(tmp_path, PILOT, overrides={(3, "0", "yes"): {"covers": False}})
+        rows = kc.block_rows(root)
+        assert kc.verdicts(rows)["K1-a"]["verdict"] == "fails"
+        assert sum(1 for r in rows if not r["judged"]) == 1
+
+    def test_no_run_at_all_fails_k1_a_and_leaves_the_rest_undecided(self, tmp_path):
+        found = kc.verdicts(kc.block_rows(str(tmp_path)))
+        assert found["K1-a"] == {"verdict": "fails", "runs": 0}
+        assert all(found[k]["verdict"] == "undecided" for k in ("K1-b", "K1-c", "K1-d"))
+
+    def test_a_run_with_no_early_record_has_no_lateness(self, tmp_path):
+        shares = dict(PILOT)
+        root = _block(tmp_path, shares, overrides={(1, "88", "yes"): {"late": False}})
+        row = [r for r in kc.block_rows(root) if (r["round"], r["load_pct"], r["go_first"]) == (1, "88", "yes")][0]
+        assert row["late_p50_ms"] == "" and row["judged"]
+
+    def test_a_run_written_without_its_torn_count_counts_none(self, tmp_path):
+        root = _block(tmp_path, PILOT)
+        path = os.path.join(root, "tools_v35", "k1-l0-firstno", "k1.json")
+        got = json.load(open(path, encoding="utf-8"))
+        del got["torn_rows"]
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(got, fh)
+        assert kc.block_rows(root)[0]["torn_rows"] == 0
+
+    def test_the_command_writes_the_table_and_the_verdicts(self, tmp_path, capsys):
+        root = _block(tmp_path / "runs", PILOT)
+        out, verdicts = tmp_path / "k1.csv", tmp_path / "k1_verdicts.json"
+        assert kc.main(["block", "--root", root, "--out", str(out), "--verdicts", str(verdicts)]) == 0
+        with out.open(encoding="utf-8") as fh:
+            assert len(list(csv.DictReader(fh))) == 24
+        assert json.loads(verdicts.read_text("utf-8"))["K1-d"]["verdict"] == "holds"
+        assert '"K1-a"' in capsys.readouterr().out
+
+    def test_the_command_on_a_folder_with_no_run_leaves_with_one(self, tmp_path):
+        out, verdicts = tmp_path / "k1.csv", tmp_path / "v.json"
+        assert kc.main(["block", "--root", str(tmp_path), "--out", str(out),
+                        "--verdicts", str(verdicts)]) == 1

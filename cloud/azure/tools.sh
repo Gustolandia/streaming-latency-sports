@@ -119,6 +119,7 @@ xinfra-monitor|git|043db6419d1638ea9f8f0b8262950fba576c2806
 strimzi-canary|git|f3812fb53f2344fe654875027ee8caab254316c2
 trogdor|kafka|3.7.1
 stream-perftest|jar|1.8.0
+ysb|git|d1aaf6bb28e97acb64625e125b447f495cf0776e
 '
 #: The last five are the tools the plan registered and version 15 left unrun (D15-6), run under
 #: freeze 30 (D33-1), each at the version the audit read (data/tools_audit/batch_01, 03, 04 and
@@ -138,6 +139,18 @@ STREAM_PERF_SHA256="e5208cffb30d802d96541ed15b21217096f732fa7a0098b4384814dd0755
 KAFKA39_VERSION="3.9.1"
 KAFKA39_SHA512="1ea204ba73411737a275429ca976d440f007ff0957b90b19be41dc5a4bae52617267769be9f0b5791714d0b3c4c760605bd426faea39edd90763585523fa2cfe"
 
+#: Freeze 33 (D36-1): the Yahoo Streaming Benchmark at its last commit, d1aaf6bb, run as its
+#: stream-bench.sh runs its Flink test, on what that script installs: Flink 1.11.0 for Scala 2.12
+#: from the Apache archive, checked against the publisher's SHA-512, and its generator built with
+#: Leiningen, which its README asks to have installed and names no version of -- 2.11.2 here, the
+#: script and its jar fingerprinted when this was written, since the release publishes signatures
+#: and no checksum.
+FLINK_VERSION="1.11.0"
+FLINK_SHA512="bef3487217f01d80bbc135cb3a29547fc86635c0b6602dd07eb5738ca2e2bfdf007f43cada781d411e9bf11fb729227b117bde446accd383cdd099e1688d9864"
+LEIN_VERSION="2.11.2"
+LEIN_SCRIPT_SHA256="f83e3de252cb09d301f18f1912acffa807b54c1c9a96772ae63847a946032bd4"
+LEIN_JAR_SHA256="7d31ae23ae769e927438b0cd55d15a93e7dabab09fd4fc15877979161e108774"
+
 #: What those five are built and run with, pinned like them and checked against the checksums
 #: their publishers give, because each is part of what produced the program whose behaviour the
 #: block reports. OMB needs a newer Maven than Ubuntu's 3.6.3 (its enforcer asks for 3.8.6), and
@@ -156,7 +169,7 @@ PULSAR_SHA512="8c0a63cc6421c8eb3c4a55b8895ca08a38a1c6771758251fc7a82edbc4c6a42bb
 #: System.currentTimeMillis() and os:system_time(millisecond) both.
 FAKEABLE="wrk2 valkey-benchmark memtier_benchmark rdkafka_performance kafka-end-to-end \
 kafka-producer-perf rabbitmq-perftest omb pulsar-perf emqtt-bench ycsb \
-xinfra-monitor trogdor stream-perftest"
+xinfra-monitor trogdor stream-perftest ysb"
 #: The tools it cannot: Go does not go through the C library for the clock.
 GO_TOOLS="vegeta hey k6 nats-latency nats-bench strimzi-canary"
 
@@ -451,6 +464,78 @@ get_stream_perftest () {
          return 1; }
 }
 
+#: Flink 1.11.0 from the Apache archive, with four task slots: YSB's job runs at a parallelism of
+#: its hosts times its cores, one by four in the configuration it ships, and Flink's own default of
+#: one slot would leave three of its tasks with nowhere to run.
+get_flink () {
+  local home="$WORK/flink-$FLINK_VERSION"
+  [ -x "$home/bin/flink" ] && { log "   Flink $FLINK_VERSION already here"; return 0; }
+  fetch_checked "https://archive.apache.org/dist/flink/flink-$FLINK_VERSION/flink-$FLINK_VERSION-bin-scala_2.12.tgz" \
+      flink.tgz 512 "$FLINK_SHA512" \
+    && mkdir -p "$home" && tar -xzf "$WORK/flink.tgz" -C "$home" --strip-components=1 \
+    || { log "   WARN: Flink $FLINK_VERSION did not download whole"; return 1; }
+  sed -i 's/^taskmanager.numberOfTaskSlots:.*/taskmanager.numberOfTaskSlots: 4/' "$home/conf/flink-conf.yaml"
+}
+
+#: Leiningen, the script and its jar, each against the fingerprint above.
+get_lein () {
+  local bin="$WORK/bin/lein" jar="$WORK/leiningen-$LEIN_VERSION-standalone.jar"
+  [ -x "$bin" ] && [ -s "$jar" ] && { log "   lein already here"; return 0; }
+  mkdir -p "$WORK/bin"
+  fetch_checked "https://raw.githubusercontent.com/technomancy/leiningen/$LEIN_VERSION/bin/lein" \
+      bin/lein 256 "$LEIN_SCRIPT_SHA256" \
+    && fetch_checked "https://github.com/technomancy/leiningen/releases/download/$LEIN_VERSION/leiningen-$LEIN_VERSION-standalone.jar" \
+      "leiningen-$LEIN_VERSION-standalone.jar" 256 "$LEIN_JAR_SHA256" \
+    && chmod 0755 "$bin" \
+    || { log "   WARN: Leiningen $LEIN_VERSION did not download whole"; rm -f "$bin" "$jar"; return 1; }
+}
+
+#: YSB at its last commit: its Flink job and the library it shares, built with the versions its
+#: stream-bench.sh passes to Maven, and its generator as a jar, built by Leiningen from its own
+#: project file -- the same code `lein run` would start, without Leiningen in each run's time.
+get_ysb () {
+  local src="$WORK/src/streaming-benchmarks"
+  ls "$src"/flink-benchmarks/target/flink-benchmarks-*.jar >/dev/null 2>&1 \
+    && ls "$src"/data/target/uberjar/setup-*-standalone.jar >/dev/null 2>&1 \
+    && { log "   YSB already built"; return 0; }
+  get_maven || return 1
+  get_lein || return 1
+  log "   building YSB at ${1:0:8}"
+  rm -rf "$src"; mkdir -p "$WORK/src"
+  ( git clone -q https://github.com/yahoo/streaming-benchmarks "$src" && cd "$src" \
+      && git checkout -q "$1" \
+      && JAVA_HOME="$JAVA11" "$WORK/apache-maven-$MAVEN_VERSION/bin/mvn" -B -q -pl flink-benchmarks -am package -DskipTests \
+           -Dflink.version=1.11.0 -Dkafka.version=2.4.1 -Dscala.binary.version=2.12 \
+           -Dscala.version=2.12.11 -Dstorm.version=2.2.0 -Dspark.version=3.0.0 -Dbeam.version=2.22.0 \
+      && cd data && JAVA_HOME="$JAVA11" LEIN_JAR="$WORK/leiningen-$LEIN_VERSION-standalone.jar" \
+           LEIN_HOME="$WORK/lein-home" "$WORK/bin/lein" uberjar ) > "$DIR/build_ysb.log" 2>&1 \
+    || { log "   WARN: YSB did not build; see $DIR/build_ysb.log"; return 1; }
+  ( cd "$src" && git rev-parse HEAD ) > "$DIR/commit_ysb.txt" 2>/dev/null
+}
+
+#: One tool's install alone, for a pair that will run nothing else -- a pilot's. On 11 October the
+#: second x86 pair had 30 MB free, most of its disk taken by the A2 sessions' kernel builds, and
+#: the whole install failed for want of room; this installs what the one tool needs and nothing
+#: else.
+install_for () {
+  local tool="${1:?which tool}"
+  log "== $tool alone, at the version the reading read"
+  sudo apt-get update -qq || stop "apt-get update failed"
+  sudo apt-get install -y -qq build-essential git unzip openjdk-11-jdk-headless faketime stress-ng \
+    || log "WARN: some packages were not available; the tool is checked below"
+  case "$tool" in
+    ysb)
+      get_kafka; get_flink; get_ysb d1aaf6bb28e97acb64625e125b447f495cf0776e
+      #: Checked on the spot: this writes no install record for have_tool to read.
+      ls "$WORK"/src/streaming-benchmarks/flink-benchmarks/target/flink-benchmarks-*.jar \
+         "$WORK"/src/streaming-benchmarks/data/target/uberjar/setup-*-standalone.jar \
+         "$WORK/flink-$FLINK_VERSION/bin/flink" >/dev/null 2>&1 \
+        || stop "YSB, its generator or Flink is not there; see $DIR/build_ysb.log" ;;
+    *) stop "$tool has no install of its own; run the whole install" ;;
+  esac
+  log "CAMPAIGN_COMPLETE: $tool installed alone"
+}
+
 install () {
   log "== the tools, at the versions the audit read"
   sudo apt-get update -qq || stop "apt-get update failed"
@@ -493,6 +578,9 @@ install () {
   get_xinfra 043db6419d1638ea9f8f0b8262950fba576c2806
   get_canary f3812fb53f2344fe654875027ee8caab254316c2
   get_stream_perftest
+  # Freeze 33's YSB (D36-1), with the Flink its Flink test runs on.
+  get_flink
+  get_ysb d1aaf6bb28e97acb64625e125b447f495cf0776e
   #: The client our own AMQP reference speaks through (scripts/amqp_reference.py). Pinned like
   #: the tools, and system-wide, because the reference runs as this user inside the receiver's
   #: namespace, where a user-local install is not on the path sudo gives it.
@@ -567,7 +655,8 @@ for tool, pattern in (("omb", "omb/lib/*benchmark-framework*.jar"),
                       ("xinfra-monitor", "src/kafka-monitor/build/libs/kafka-monitor-*.jar"),
                       ("strimzi-canary", "src/strimzi-canary/cmd/target/strimzi-canary"),
                       ("trogdor", "kafka_2.13-3.7.1/libs/trogdor-*.jar"),
-                      ("stream-perftest", "stream-perf-test.jar")):
+                      ("stream-perftest", "stream-perf-test.jar"),
+                      ("ysb", "src/streaming-benchmarks/flink-benchmarks/target/flink-benchmarks-*.jar")):
     hits = sorted(glob.glob(os.path.join(os.path.expanduser("~/tools"), pattern)))
     if not hits:
         found[tool] = {"present": False, "why": "nothing at ~/tools/%s" % pattern}
@@ -882,6 +971,25 @@ reference_for () {
     #: canary's against the Kafka 3.9.1 broker it runs against (D35-5).
     xinfra-monitor|trogdor) backend=kafka ;;
     strimzi-canary) backend=kafka; bootstrap="${SBL_KAFKA39:-$BROKER_PRIV:19094}" ;;
+    #: Freeze 33 (D36-3): no client of ours computes a window's latency, so YSB's reference is
+    #: YSB itself, run once more at no added delay, and its trips are every window it wrote, less
+    #: the window, sign kept -- what it wrote, not what its notebook kept, since at its default load
+    #: a quarter of its windows come out below zero on one clock. T2 takes its offsets and its
+    #: predictions from them exactly as it takes them from a client's trips.
+    ysb)
+      log "   YSB itself, once more at no delay, for the reference: no client of ours times a window"
+      SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh ysb "$out/reference_ysb" \
+        > "$out/reference.log" 2>&1
+      python3 -c 'import json, sys
+sys.path.insert(0, "scripts")
+import tool_readings
+r = tool_readings.read_tool("ysb", open(sys.argv[1], encoding="utf-8").read())
+if not r.get("written_ms"):
+    raise SystemExit("YSB wrote no window to take a reference from")
+json.dump({"source": "ysb itself", "trips_ms": r["written_ms"]}, open(sys.argv[2], "w"))' \
+        "$out/reference.log" "$out/reference_trips.json" \
+        || { log "   WARN: the YSB reference wrote no window; see $out/reference.log"; return 1; }
+      return 0 ;;
     #: Stream PerfTest's broker is the RabbitMQ PerfTest's, reached through its stream plugin; our
     #: AMQP client on the same path to the same broker is its reference, as it is PerfTest's.
     stream-perftest) client="amqp_reference.py --uri $RABBIT" ;;
@@ -1002,6 +1110,13 @@ server_answers () {
     rdkafka_performance|kafka-end-to-end|kafka-producer-perf|omb|xinfra-monitor|trogdor)
       timeout 5 bash -c "echo > /dev/tcp/$host/19092" 2>/dev/null \
         || { echo "nothing listens for Kafka at $host:19092"; return 1; } ;;
+    ysb)
+      #: YSB's generator speaks Kafka 0.8.2's protocol, which Kafka 4 removed and 3.9.1 still
+      #: speaks, so it uses the canary's broker (D36-2); and it keeps its windows in Redis.
+      timeout 5 bash -c "echo > /dev/tcp/$host/19094" 2>/dev/null \
+        || { echo "nothing listens for Kafka 3.9.1 at $host:19094"; return 1; }
+      timeout 5 bash -c "echo > /dev/tcp/$host/6379" 2>/dev/null \
+        || { echo "nothing listens for Redis at $host:6379"; return 1; } ;;
     strimzi-canary)
       #: The Kafka 3.9.1 broker brokers_here starts for the canary alone (D35-5).
       timeout 5 bash -c "echo > /dev/tcp/$host/19094" 2>/dev/null \
@@ -1506,6 +1621,7 @@ reference () {
 case "${1:-}" in
   brokers) brokers ;;
   install) install ;;
+  install-for) install_for "${2:-}" ;;
   reference) reference "${2:-}" ;;
   k1) k1 ;;
   t1) t1 "${2:-}" ;;

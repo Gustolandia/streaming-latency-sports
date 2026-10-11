@@ -613,6 +613,11 @@ TROGDOR_CONSUME = "# trogdor's consume task"
 TROGDOR_PRODUCE = "# trogdor's produce task"
 STREAM_CONSUMER = "# the stream consumer instance"
 STREAM_METRICS = "# the stream consumer's /metrics, read once the producer had finished"
+YSB_UPDATED = "# the generator's updated.txt"
+YSB_SEEN = "# the generator's seen.txt"
+#: The Yahoo Streaming Benchmark's window, which its notebook subtracts (Benchmark_combined.ipynb,
+#: `window_size_ms = 10000`) and its common component divides event times by (time_divisor).
+YSB_WINDOW_MS = 10000
 
 #: A number as Java or Prometheus prints a double: digits, a point, an exponent.
 _DOUBLE = r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?"
@@ -778,6 +783,54 @@ def read_stream_perftest(text):
                     per_second=[[sec, eaten, p50, p99] for sec, eaten, p50, _, _, p99 in lines])
 
 
+def _linear_percentile(ordered, q):
+    """numpy's percentile at its default, linear interpolation between the order statistics, on
+    values already sorted: what the benchmark's own notebook calls."""
+    at = (len(ordered) - 1) * q / 100.0
+    low = int(at)
+    high = min(low + 1, len(ordered) - 1)
+    return ordered[low] + (ordered[high] - ordered[low]) * (at - low)
+
+
+def read_ysb(text):
+    """The Yahoo Streaming Benchmark at d1aaf6bb, read as the analysis it ships reads it.
+
+    Its generator's collection (`lein run -g`, core.clj:130-149) writes, for every campaign window
+    it finds in Redis, the window's last update less the window's start, in whole milliseconds, one
+    a line, into updated.txt -- the processor's wall clock at its last flush of the window less the
+    event time the generator wrote, so the ten-second window is inside every value. Its notebook
+    (pynotebooks/Benchmark_combined.ipynb, get_filtered_updated) keeps only the values at or above
+    the window and subtracts it, and reports numpy's average and percentiles of what is left:
+    a window whose latency after the window comes out below zero is dropped, uncounted.
+
+    The reading is that: the average, median, 99th percentile, minimum and maximum of the kept
+    windows, each in whole milliseconds, the count kept against the count written, and the kept
+    latencies themselves. Beside them, every written window's value less the window, sign kept:
+    at its default load a campaign's window holds about thirty views, its last some three hundred
+    milliseconds before the window's end on average, and a flush once a second can write the window
+    before it ends -- in the pilot of 11 October 301 of 1,200 windows came out below zero on one
+    clock, and its notebook dropped them. T2 takes those signed values as its reference where YSB
+    is its own (D36-3), so that its predictions start from what YSB wrote and not from what its
+    notebook kept."""
+    _, marked, rest = (text or "").partition(YSB_UPDATED)
+    updated_text = rest.partition(YSB_SEEN)[0]
+    written = [int(v) for v in re.findall(r"^\s*(-?\d+)\s*$", updated_text, re.M)]
+    kept = sorted(x - YSB_WINDOW_MS for x in written if x >= YSB_WINDOW_MS)
+    got, steps = {}, {}
+    if kept:
+        got["avg"] = sum(kept) / len(kept)
+        steps["avg"] = 1.0 / len(kept)
+        got["p50"] = float(_linear_percentile(kept, 50.0))
+        got["p99"] = float(_linear_percentile(kept, 99.0))
+        got["min"], got["max"] = float(kept[0]), float(kept[-1])
+        for key in ("p50", "p99", "min", "max"):
+            steps[key] = 1.0
+    return _reading("ysb", got, steps, kept=len(kept) if marked else None,
+                    received=len(written) if marked else None,
+                    below_window=sum(1 for x in written if x < YSB_WINDOW_MS) if marked else None,
+                    windows_ms=kept, written_ms=sorted(x - YSB_WINDOW_MS for x in written))
+
+
 #: Every tool this reads, by the name a campaign calls it.
 READERS = {
     "vegeta": read_vegeta,
@@ -803,6 +856,8 @@ READERS = {
     "strimzi-canary": read_strimzi_canary,
     "trogdor": read_trogdor,
     "stream-perftest": read_stream_perftest,
+    # Freeze 33's YSB (D36-4), read as the notebook it ships reads its windows.
+    "ysb": read_ysb,
 }
 
 

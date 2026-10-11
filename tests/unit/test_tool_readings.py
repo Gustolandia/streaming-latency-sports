@@ -1190,3 +1190,48 @@ class TestFreeze32sFourTools:
                      (2.0, {"reported_ms": {"avg": 3.0}})]
         for tool in ("xinfra-monitor", "strimzi-canary", "trogdor", "stream-perftest"):
             assert tr.slope_against_delay(staircase, tool)["crossings"] == 1
+
+
+def _ysb(written, seen=(5, 7)):
+    """YSB's two files as the runner prints them after its run: updated.txt, then seen.txt, one
+    integer a line, as its collection (core.clj:130-149) writes them."""
+    return (tr.YSB_UPDATED + "\n" + "".join("%d\n" % v for v in written)
+            + tr.YSB_SEEN + "\n" + "".join("%d\n" % v for v in seen))
+
+
+class TestFreeze33sYsb:
+    """The Yahoo Streaming Benchmark, read as the notebook it ships reads updated.txt."""
+
+    def test_it_keeps_the_windows_at_or_above_ten_seconds_and_subtracts_them(self):
+        got = tr.read_tool("ysb", _ysb([10000, 10400, 10950, 9800, 10210, 12000, -50]))
+        assert got["windows_ms"] == [0, 210, 400, 950, 2000]
+        assert got["kept"] == 5 and got["received"] == 7 and got["below_window"] == 2
+
+    def test_its_figures_are_numpys_on_what_it_kept(self):
+        """np.average 712.0, np.percentile 50 -> 400.0 and 99 -> 1958.0 on the same values."""
+        got = tr.read_tool("ysb", _ysb([10000, 10400, 10950, 9800, 10210, 12000, -50]))
+        assert got["reported_ms"] == {"avg": 712.0, "p50": 400.0, "p99": pytest.approx(1958.0),
+                                      "min": 0.0, "max": 2000.0}
+        assert got["steps_ms"]["avg"] == pytest.approx(0.2) and got["steps_ms"]["p99"] == 1.0
+
+    def test_a_window_exactly_at_its_length_is_kept_as_zero(self):
+        """Its filter is x >= window: it drops the negatives and keeps a zero."""
+        got = tr.read_tool("ysb", _ysb([10000, 9999]))
+        assert got["windows_ms"] == [0] and got["below_window"] == 1
+
+    def test_a_run_whose_every_window_came_out_short_has_no_figures(self):
+        got = tr.read_tool("ysb", _ysb([9500, 9990, -70646]))
+        assert got["reported_ms"] == {} and got["kept"] == 0 and got["received"] == 3
+
+    def test_a_run_that_wrote_no_file_counts_nothing_rather_than_zero(self):
+        got = tr.read_tool("ysb", "Flink job submitted\n")
+        assert got["kept"] is None and got["received"] is None and got["windows_ms"] == []
+
+    def test_its_seen_counts_are_not_read_as_latencies(self):
+        got = tr.read_tool("ysb", _ysb([10300], seen=(10500, 10600)))
+        assert got["windows_ms"] == [300] and got["received"] == 1
+
+    def test_every_written_window_is_kept_signed_for_ts_reference(self):
+        """What YSB wrote, less the window, sign kept: the reference T2 predicts from (D36-3)."""
+        got = tr.read_tool("ysb", _ysb([10000, 10400, 9700, 9300]))
+        assert got["written_ms"] == [-700, -300, 0, 400] and got["windows_ms"] == [0, 400]

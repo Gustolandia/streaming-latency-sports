@@ -44,6 +44,13 @@ KAFKA_HOME="${SBL_KAFKA_HOME:-$HOME/tools/kafka_2.13-3.7.1}"
 STREAM_PERF_JAR="${SBL_STREAM_PERF_JAR:-$HOME/tools/stream-perf-test.jar}"
 #: The Kafka 3.9.1 broker the canary runs against, since its client cannot commit to 4.x (D35-5).
 KAFKA39="${SBL_KAFKA39:-$BROKER_PRIV:19094}"
+#: Freeze 33's YSB (D36-1): where `tools.sh install` puts it and the Flink it runs on, and its own
+#: defaults for the load, 1,000 events a second (stream-bench.sh's LOAD); the test is two minutes
+#: of its windows of ten seconds where its script's default is four (its TEST_TIME).
+YSB_HOME="${SBL_YSB_HOME:-$HOME/tools/src/streaming-benchmarks}"
+FLINK_HOME="${SBL_FLINK_HOME:-$HOME/tools/flink-1.11.0}"
+YSB_LOAD="${SBL_YSB_LOAD:-1000}"
+YSB_TEST_TIME="${SBL_YSB_TEST_TIME:-120}"
 #: The one address here that is not across the pair. Two of these tools are made of processes
 #: that talk to one another -- OMB's coordinator to its two workers, emqtt-bench's subscriber
 #: serving its own metrics -- and they do it on the machine's loopback. It names the tool's own
@@ -452,6 +459,91 @@ XM
     echo "# the stream consumer's /metrics, read once the producer had finished"
     cat "$here/consumer_metrics.txt"
     stop_own ;;
+  ysb)
+    # The Yahoo Streaming Benchmark as its stream-bench.sh runs its Flink test (D36-1): a Flink
+    # cluster of one JobManager and one TaskManager, its job, its generator emitting ad events into
+    # Kafka at its default rate for the test's time, then the generator's own collection, from
+    # Redis, of each campaign window's last update into updated.txt. The TaskManager subtracts --
+    # its flusher writes System.currentTimeMillis() as a window's time_updated each second, and the
+    # window's start is the event time the generator wrote -- so the rest of the wrap reaches it
+    # alone. Its configuration is the one it ships but for where its servers are: the Kafka 3.9.1
+    # broker, because its generator speaks Kafka 0.8.2's protocol (D36-2), and the broker's Redis,
+    # which the generator's new setup clears first, as stream-bench.sh's does.
+    here="$(cd "$OUT" && pwd)"
+    #: Its generator writes to "ad-events" whatever its configuration says (core.clj:98 and :202),
+    #: so that is the topic, deleted and made again before each run so that no run's job reads
+    #: another's events: in the pilot of 11 October a topic named for the run stayed empty while
+    #: the generator filled one the broker made for it.
+    y_topic="ad-events"
+    y_jar=$(ls "$YSB_HOME"/data/target/uberjar/setup-*-standalone.jar 2>/dev/null | head -1)
+    mkdir -p "$here/flink-conf" "$here/flink-log"
+    cp "$FLINK_HOME/conf/"* "$here/flink-conf/"
+    #: The TaskManager is told its address. Left to find it, it connects to the JobManager or falls
+    #: back to resolving the machine's name, and in the receiver's namespace the machine's resolver
+    #: is out of reach: in the pilot of 11 October it gave up, and the job waited for slots that
+    #: never came while the generator ran for two minutes into a topic nobody read.
+    printf 'taskmanager.host: %s\n' "$OWN" >> "$here/flink-conf/flink-conf.yaml"
+    printf 'kafka.brokers:\n    - "%s"\nzookeeper.servers:\n    - "%s"\nkafka.port: 19094\nzookeeper.port: 2181\nredis.host: "%s"\nkafka.topic: "%s"\nkafka.partitions: 1\nprocess.hosts: 1\nprocess.cores: 4\n' \
+      "$BROKER_PRIV" "$BROKER_PRIV" "$BROKER_PRIV" "$y_topic" > "$here/benchmarkConf.yaml"
+    "$KAFKA_HOME/bin/kafka-topics.sh" --bootstrap-server "$KAFKA39" --delete --topic "$y_topic" \
+      > "$here/topic.txt" 2>&1
+    y_wait=0
+    while "$KAFKA_HOME/bin/kafka-topics.sh" --bootstrap-server "$KAFKA39" --list 2>/dev/null \
+          | grep -qx "$y_topic" && [ "$y_wait" -lt 30 ]; do
+      sleep 1; y_wait=$((y_wait + 1))
+    done
+    "$KAFKA_HOME/bin/kafka-topics.sh" --bootstrap-server "$KAFKA39" --create --topic "$y_topic" \
+      --partitions 1 --replication-factor 1 >> "$here/topic.txt" 2>&1
+    ( cd "$here" && "$JAVA11/bin/java" -Xmx8g -server -jar "$y_jar" -n \
+        --configPath "$here/benchmarkConf.yaml" ) > "$here/new_setup.txt" 2>&1
+    y_env=(env JAVA_HOME="$JAVA11" FLINK_CONF_DIR="$here/flink-conf" FLINK_LOG_DIR="$here/flink-log")
+    #: Its two JVMs carry this run's configuration folder on their command lines, and the pattern
+    #: is anchored at the JVM's own path, which no sudo or pkill command line begins with.
+    OWN_PATTERN="^[^ ]*/java .*--configDir $here/flink-conf"
+    $NS "${y_env[@]}" "$FLINK_HOME/bin/jobmanager.sh" start-foreground > "$here/jobmanager.txt" 2>&1 &
+    OWN_PIDS="$OWN_PIDS $!"
+    #: Each started once the one before it answers, up to a minute each.
+    y_wait=0
+    until $NS bash -c "echo > /dev/tcp/$OWN/6123" 2>/dev/null || [ "$y_wait" -ge 60 ]; do
+      sleep 1; y_wait=$((y_wait + 1))
+    done
+    $NS $REST "${y_env[@]}" "$FLINK_HOME/bin/taskmanager.sh" start-foreground \
+      > "$here/taskmanager.txt" 2>&1 &
+    OWN_PIDS="$OWN_PIDS $!"
+    y_wait=0
+    until $NS curl -s -m 2 "http://$OWN:8081/taskmanagers" 2>/dev/null | grep -q '"slotsNumber"' \
+          || [ "$y_wait" -ge 60 ]; do
+      sleep 1; y_wait=$((y_wait + 1))
+    done
+    $NS curl -s -m 2 "http://$OWN:8081/taskmanagers" > "$here/taskmanagers.json" 2>/dev/null
+    $NS "${y_env[@]}" "$FLINK_HOME/bin/flink" run -d \
+      "$YSB_HOME"/flink-benchmarks/target/flink-benchmarks-0.1.0.jar \
+      --confPath "$here/benchmarkConf.yaml" > "$here/submit.txt" 2>&1
+    sleep 10
+    #: As `lein run -r` would start it: the generator's own JVM options from its project file.
+    $NS "$JAVA11/bin/java" -Xmx8g -server -jar "$y_jar" -r -t "$YSB_LOAD" \
+      --configPath "$here/benchmarkConf.yaml" > "$here/load.txt" 2>&1 &
+    y_load=$!
+    sleep "$YSB_TEST_TIME"
+    sudo pkill -f -- "^[^ ]*/java -Xmx8g -server -jar $y_jar -r " 2>/dev/null
+    wait "$y_load" 2>/dev/null
+    #: stream-bench.sh collects as soon as the generator stops; five seconds let the windows the
+    #: last events fell into take their last update, a flush a second, before they are read.
+    sleep 5
+    ( cd "$here" && "$JAVA11/bin/java" -Xmx8g -server -jar "$y_jar" -g \
+        --configPath "$here/benchmarkConf.yaml" ) > "$here/get_stats.txt" 2>&1
+    $NS "${y_env[@]}" "$FLINK_HOME/bin/flink" list > "$here/jobs.txt" 2>&1
+    stop_own
+    sleep 2
+    sudo pkill -9 -f -- "^[^ ]*/java .*--configDir $here/flink-conf" 2>/dev/null
+    #: What T2 holds the count it kept against is the windows it wrote for its notebook to read,
+    #: not the events: its notebook counts windows.
+    grep -c . "$here/updated.txt" > "$OUT/asked_to_send.txt" 2>/dev/null
+    echo "# the generator's updated.txt"
+    cat "$here/updated.txt" 2>/dev/null
+    echo "# the generator's seen.txt"
+    cat "$here/seen.txt" 2>/dev/null
+    true ;;
   *)
     echo "no such tool here: $TOOL" >&2; exit 2 ;;
 esac

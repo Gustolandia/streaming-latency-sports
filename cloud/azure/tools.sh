@@ -1680,12 +1680,17 @@ k1 () {
 #: wall clock steps back between them, as it did in one RabbitMQ Stream PerfTest during a cluster's
 #: rolling restart (its issue 418). T2's constant offset moves both readings together and cannot
 #: make one. S1 runs the tool once as it is, the control, and once while scripts/clock_stepper.py
-#: steps this machine's wall clock back by S1_STEP_MS once every S1_PERIOD_S seconds, chrony
-#: stopped, until the tool ends; then measures the clock against the hypervisor's PTP clock, puts
-#: it forward by exactly the steps made, and starts chrony again. A monotonic clock does not move,
-#: so the tools that time with one are the controls. Every step is written down beside the run.
-S1_STEP_MS="${SBL_S1_STEP_MS:-50}"
-S1_PERIOD_S="${SBL_S1_PERIOD_S:-1}"
+#: steps this machine's wall clock back by S1_STEP_MS, at gaps drawn around S1_PERIOD_S seconds,
+#: chrony stopped, until the tool ends; then measures the clock against the hypervisor's PTP clock,
+#: puts it forward by what that measurement says the steps took, and starts chrony again. A
+#: monotonic clock does not move, so the tools that time with one are the controls. Every step is
+#: written down beside the run. Freeze 34 (D37-3): a step of 20 ms, longer than any of these tools'
+#: trips on the pair, except PerfKit's, whose trip to the managed queue is some 20 ms and whose
+#: step is 50; and gaps drawn from a seed, because the pilot's steps, once a second, met two tools
+#: that send every 20 ms at the same moment of their cycle every time, between two messages.
+S1_STEP_MS="${SBL_S1_STEP_MS:-20}"
+S1_STEP_MS_PKB="${SBL_S1_STEP_MS_PKB:-50}"
+S1_PERIOD_S="${SBL_S1_PERIOD_S:-0.2}"
 s1 () {
   local tool="${1:?which tool}"
   have_tool "$tool"
@@ -1694,9 +1699,13 @@ s1 () {
   machine_is_quiet \
     || stop "S1 steps this machine's clock, and a campaign is running here; every process would see the steps"
   needs_namespace
-  log "== S1 $tool: the wall clock steps back $S1_STEP_MS ms every $S1_PERIOD_S s while it runs"
+  local step="$S1_STEP_MS"
+  if [ "$tool" = pkb ]; then step="$S1_STEP_MS_PKB"; fi
+  log "== S1 $tool: the wall clock steps back $step ms about every $S1_PERIOD_S s while it runs"
   local control="$DIR/s1-$tool-control" run="$DIR/s1-$tool-stepped"
   mkdir -p "$control" "$run"
+  #: Both runs carry it, so whatever a tool is told to write down for S1 it writes in both.
+  export SBL_S1=1
   SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh "$tool" "$control" > "$control/tool.txt" 2>&1
   python3 scripts/tool_readings.py read --tool "$tool" --file "$control/tool.txt" \
     --out "$control/reading.json" >/dev/null 2>&1 \
@@ -1706,8 +1715,9 @@ s1 () {
   trap 'sudo systemctl start chrony >/dev/null 2>&1' EXIT
   sudo python3 scripts/clock_step.py measure > "$run/clock_before.json" 2>&1
   #: Long enough for any tool here; it is stopped when the tool ends, every step already written.
-  sudo python3 scripts/clock_stepper.py --step-ms "$S1_STEP_MS" --period-s "$S1_PERIOD_S" \
-    --seconds 900 --pattern back --log "$run/steps.csv" > "$run/stepper.txt" 2>&1 &
+  sudo python3 scripts/clock_stepper.py --step-ms "$step" --period-s "$S1_PERIOD_S" \
+    --seconds 900 --pattern back --seed "$(od -An -N4 -tu4 /dev/urandom | tr -d ' ')" \
+    --log "$run/steps.csv" > "$run/stepper.txt" 2>&1 &
   SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh "$tool" "$run" > "$run/tool.txt" 2>&1
   #: Anchored at the interpreter, which neither sudo's nor pkill's own command line begins with.
   sudo pkill -f -- '^python3 scripts/clock_stepper.py' 2>/dev/null
@@ -1718,9 +1728,21 @@ s1 () {
 rows = list(csv.DictReader(open(sys.argv[1], encoding="utf-8")))
 print("%.3f" % (sum(int(r["step_ns"]) for r in rows if r["direction"] == "back") / 1e6))' \
     "$run/steps.csv" 2>/dev/null)
-  if [ -n "$made" ] && [ "$made" != "0.000" ]; then
-    sudo python3 scripts/clock_step.py shift --ms="$made" --out "$run/clock_put_back.json" \
-      > /dev/null 2>&1 || log "   WARN: the clock could not be put forward by $made ms; chrony will pull it"
+  #: Put forward by what the PTP clock says the steps took, not by the steps asked: each set
+  #: lands a few microseconds late, and over the pilot's 509 steps that left the clock 5 ms behind.
+  #: The steps asked stand in only where a measurement is missing.
+  local back
+  back=$(python3 - "$run/clock_before.json" "$run/clock_after_steps.json" 2>/dev/null <<'PY'
+import sys
+def last(path):
+    return float([line for line in open(path) if line.strip()][-1])
+print("%.3f" % (last(sys.argv[1]) - last(sys.argv[2])))
+PY
+)
+  [ -n "$back" ] || back="$made"
+  if [ -n "$back" ] && [ "$back" != "0.000" ]; then
+    sudo python3 scripts/clock_step.py shift --ms="$back" --out "$run/clock_put_back.json" \
+      > /dev/null 2>&1 || log "   WARN: the clock could not be put forward by $back ms; chrony will pull it"
   fi
   sudo systemctl start chrony >/dev/null 2>&1
   trap - EXIT
@@ -1728,7 +1750,8 @@ print("%.3f" % (sum(int(r["step_ns"]) for r in rows if r["direction"] == "back")
   python3 scripts/tool_readings.py read --tool "$tool" --file "$run/tool.txt" \
     --out "$run/reading.json" >/dev/null 2>&1 \
     || log "   the stepped run reported no latency at all"
-  log "   stepped back ${made:-0} ms in all, and put forward by as much"
+  unset SBL_S1
+  log "   stepped back ${made:-0} ms in all, and put forward by ${back:-0} ms, as the PTP clock measured"
   log "CAMPAIGN_COMPLETE: S1 $tool; its runs are under $DIR"
 }
 

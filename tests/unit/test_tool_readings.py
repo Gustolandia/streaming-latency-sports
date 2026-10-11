@@ -1304,3 +1304,27 @@ class TestFreeze34sTools:
     def test_a_canary_run_with_no_shipped_reader_output_has_no_such_average(self):
         got = tr.read_tool("strimzi-canary", CANARY)
         assert got["shipped_reader_avg"] is None and got["logged_negative"] == 0
+
+
+class TestFreeze34sStepTest:
+    """S1's one new reading: Xinfra Monitor's console under S1 carries kafka-clients' debug line
+    for each value its percentiles pin to their floor (Percentiles.java:119-122 at 2.8.2)."""
+
+    PINNED = ("[2026-10-11 13:00:01,123] DEBUG Received value {} which is less than min recordable"
+              " value 0.0, will be pinned to the min value"
+              " (org.apache.kafka.common.metrics.stats.Percentiles)\n")
+
+    def test_each_value_pinned_to_the_floor_is_kept_beside_the_figures(self):
+        got = tr.read_tool("xinfra-monitor",
+                           XINFRA + self.PINNED.format("-18.0") + self.PINNED.format("-19.0"))
+        assert got["pinned_below_ms"] == [-18.0, -19.0]
+        assert got["reported_ms"]["p99"] == pytest.approx(2.998800479808077), \
+            "the values it pinned do not move the percentile it prints"
+
+    def test_a_run_without_the_line_pinned_nothing_it_said(self):
+        assert tr.read_tool("xinfra-monitor", XINFRA)["pinned_below_ms"] == []
+
+    def test_a_value_above_its_ceiling_is_not_read_as_one_below_its_floor(self):
+        above = ("DEBUG Received value 6000.0 which is greater than max recordable value 5000.0,"
+                 " will be pinned to the max value\n")
+        assert tr.read_tool("xinfra-monitor", XINFRA + above)["pinned_below_ms"] == []

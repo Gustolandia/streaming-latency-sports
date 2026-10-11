@@ -61,6 +61,26 @@ class TestTheSchedule:
         with pytest.raises(ValueError):
             cs.schedule(pattern, period, seconds)
 
+    def test_drawn_gaps_lie_between_half_a_period_and_one_and_a_half(self):
+        """Freeze 34's steps: a fifth of a second apart on average, at no fixed point of a
+        twenty-millisecond send cycle, and never at or after the end."""
+        steps = cs.schedule("back", 0.2, 60.0, seed=7)
+        times = [0.0] + [at for at, _ in steps]
+        gaps = [b - a for a, b in zip(times, times[1:])]
+        assert all(0.1 <= g <= 0.3 for g in gaps) and all(d == -1 for _, d in steps)
+        assert 0.18 < sum(gaps) / len(gaps) < 0.22 and steps[-1][0] < 60.0
+        assert len({round((at * 1000) % 20, 3) for at, _ in steps}) > 200
+
+    def test_a_seed_gives_the_same_steps_again_and_another_seed_others(self):
+        assert cs.schedule("back", 0.2, 5.0, seed=11) == cs.schedule("back", 0.2, 5.0, seed=11)
+        assert cs.schedule("back", 0.2, 5.0, seed=11) != cs.schedule("back", 0.2, 5.0, seed=12)
+
+    def test_drawn_gaps_are_for_back_steps_only(self):
+        """An alternate run's forward step is placed by its period; drawn gaps would let it fall
+        after the next back step."""
+        with pytest.raises(ValueError, match="back steps only"):
+            cs.schedule("alternate", 0.2, 5.0, seed=3)
+
 
 class TestTheSteps:
 
@@ -112,3 +132,11 @@ class TestTheSteps:
                         "--log", str(log)]) == 0
         assert list(csv.DictReader(log.open(encoding="utf-8"))) == []
         assert "made 0 steps of 20 ms, back; the wall clock is +0.000 ms" in capsys.readouterr().out
+
+    def test_a_seeded_command_says_its_seed_and_steps_at_the_drawn_times(self, tmp_path, capsys):
+        clock, log = FakeClock(), tmp_path / "steps.csv"
+        assert cs.main(["--step-ms", "20", "--period-s", "0.2", "--seconds", "2", "--seed", "5",
+                        "--log", str(log)], clock=clock.parts()) == 0
+        rows = list(csv.DictReader(log.open(encoding="utf-8")))
+        assert len(rows) == len(cs.schedule("back", 0.2, 2.0, seed=5)) > 0
+        assert "gaps drawn from seed 5" in capsys.readouterr().out

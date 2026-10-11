@@ -637,8 +637,20 @@ def read_xinfra_monitor(text):
     negative enters them as 0 (Percentiles.java at 2.8.2). Before its first record a mean prints as
     NaN and a maximum as -Infinity; neither is a measurement and neither is read. It gives no count
     of what it kept, only of what it consumed, which is kept beside the figures and not as `kept`:
-    it is paced by a timer and sends what it sends, not a number it was asked for."""
+    it is paced by a timer and sends what it sends, not a number it was asked for.
+
+    Under S1 (freeze 34) its console also carries the line kafka-clients writes, at debug level,
+    for each value below its percentiles' floor that it pins to the floor (Percentiles.java:119-122
+    at 2.8.2):
+
+        [2026-10-11 ...] DEBUG Received value -18.0 which is less than min recordable value 0.0,
+        will be pinned to the min value (org.apache.kafka.common.metrics.stats.Percentiles)
+
+    Each such value is kept, as `pinned_below_ms`, beside the figures it never shows in: the only
+    count anywhere of what its percentiles hid."""
     got, steps = {}, {}
+    pinned = [float(v) for v in re.findall(
+        r"Received value (%s) which is less than min recordable value" % _DOUBLE, text or "")]
     for key, metric in (("avg", "records-delay-ms-avg"), ("p99", "records-delay-ms-99th"),
                         ("max", "records-delay-ms-max")):
         match = _last(text, r"consume-service:%s=(%s)\s*$" % (re.escape(metric), _DOUBLE))
@@ -653,7 +665,8 @@ def read_xinfra_monitor(text):
             steps[key] = 1.0
     consumed = _last(text, r"consume-service:records-consumed-total=(%s)\s*$" % _DOUBLE)
     return _reading("xinfra-monitor", got, steps,
-                    received=int(float(consumed.group(1))) if consumed else None)
+                    received=int(float(consumed.group(1))) if consumed else None,
+                    pinned_below_ms=pinned)
 
 
 def read_strimzi_canary(text):

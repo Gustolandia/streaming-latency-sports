@@ -30,22 +30,39 @@ anything that would correct the clock under it (chrony) and starts it again afte
 """
 import argparse
 import csv
+import random
 import sys
 import time
 
 FIELDS = ("i", "asked_mono_ns", "wall_before_ns", "wall_after_ns", "direction", "step_ns")
 
 
-def schedule(pattern, period_s, seconds):
+def schedule(pattern, period_s, seconds, seed=None):
     """When each step is asked for, in seconds from the start, and which way it goes.
 
     `back` steps once a period; `alternate` adds a forward step half a period after each back
     step. No step is asked for at or after the end, and an `alternate` run never ends on a back
-    step, so the clock it leaves is the clock it found."""
+    step, so the clock it leaves is the clock it found.
+
+    With a seed, the gaps between `back` steps are drawn evenly between half a period and one and
+    a half, from that seed, so the steps fall at no fixed point of a tool's own cycle. A tool that
+    sends on a timer whose period divides the stepper's meets every evenly spaced step at the same
+    moment of its cycle: in the pilot of 11 October the canary and Stream PerfTest, sending every
+    20 ms, met each of the stepper's once-a-second steps between two messages, and no step caught
+    one."""
     if pattern not in ("back", "alternate"):
         raise ValueError("pattern is back or alternate, not %r" % pattern)
     if period_s <= 0 or seconds <= 0:
         raise ValueError("the period and the duration must be above zero")
+    if seed is not None:
+        if pattern != "back":
+            raise ValueError("drawn gaps are for back steps only")
+        rng, steps, at = random.Random(seed), [], 0.0
+        while True:
+            at += period_s * (0.5 + rng.random())
+            if at >= seconds:
+                return steps
+            steps.append((at, -1))
     steps, k = [], 0
     while (k + 1) * period_s < seconds:
         at = (k + 1) * period_s
@@ -84,9 +101,13 @@ def main(argv=None, clock=None):
     ap.add_argument("--period-s", type=float, required=True)
     ap.add_argument("--seconds", type=float, required=True)
     ap.add_argument("--pattern", choices=("back", "alternate"), default="back")
+    ap.add_argument("--seed", type=int, default=None,
+                    help="draw the gaps between back steps from this seed (see schedule())")
     ap.add_argument("--log", required=True, help="where each step is written down")
     args = ap.parse_args(argv)
-    steps = schedule(args.pattern, args.period_s, args.seconds)
+    steps = schedule(args.pattern, args.period_s, args.seconds, args.seed)
+    if args.seed is not None:
+        print("gaps drawn from seed %d" % args.seed)
     step_ns = int(round(args.step_ms * 1e6))
     if clock is None:
         #: The machine's clocks: only Linux, and only root, can set the wall clock.

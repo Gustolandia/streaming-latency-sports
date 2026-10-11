@@ -345,8 +345,22 @@ XM
     #: Anchored at the JVM's own path, which no sudo or pkill command line begins with: an
     #: unanchored pattern can match the command that sends it.
     OWN_PATTERN="^[^ ]*/java .*xinfra.*$here/xm.properties"
-    ( cd "$XINFRA_HOME" && $WRAP env JAVA_HOME="$JAVA11" bin/xinfra-monitor-start.sh \
-        "$here/xm.properties" ) &
+    #: S1 (freeze 34, D37-4): a value below its percentiles' floor is pinned to the floor, and
+    #: kafka-clients says so only at debug level (Percentiles.java:119-122 at 2.8.2). Its own
+    #: logging configuration, with that one logger at debug, writing to the console and nowhere
+    #: else, makes the line part of what is read. Its parent, org.apache.kafka, writes to a file
+    #: every run shares and passes nothing up, so a logger that inherited it put the pilot's 67
+    #: lines in that file and none on the console.
+    xm_log4j=""
+    if [ -n "${SBL_S1:-}" ]; then
+      cp "$XINFRA_HOME/config/log4j2.properties" "$here/log4j2.properties"
+      printf '%s\n' "" "logger.pinned.name = org.apache.kafka.common.metrics.stats.Percentiles" \
+        "logger.pinned.level = debug" "logger.pinned.additivity = false" \
+        "logger.pinned.appenderRef.console.ref = STDOUT" >> "$here/log4j2.properties"
+      xm_log4j="-Dlog4j.configurationFile=$here/log4j2.properties"
+    fi
+    ( cd "$XINFRA_HOME" && $WRAP env JAVA_HOME="$JAVA11" KAFKA_LOG4J_OPTS="$xm_log4j" \
+        bin/xinfra-monitor-start.sh "$here/xm.properties" ) &
     OWN_PIDS="$OWN_PIDS $!"
     sleep $((SECONDS_TO_RUN + 40))
     stop_own

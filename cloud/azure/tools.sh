@@ -122,6 +122,10 @@ stream-perftest|jar|1.8.0
 ysb|git|d1aaf6bb28e97acb64625e125b447f495cf0776e
 pkb|git|e5fd49d7d0f83621ae6fddeaa74ed3a0a02081e3
 stream-perftest-one|jar|1.8.0
+mqtt-benchmark|git|f46efba1a710a117c80d0ba94281e0a99e7b96a4
+sarama-producer-perf|git|36f7a14ebb0ff3ab6f5137963241568247c9e360
+sbk|git|39af60da882d865524510dea86df6412549c31a6
+kgo-repeater|git|6567f2f5a16388a13b71296c60a0260534e19216
 '
 #: The last five are the tools the plan registered and version 15 left unrun (D15-6), run under
 #: freeze 30 (D33-1), each at the version the audit read (data/tools_audit/batch_01, 03, 04 and
@@ -159,6 +163,14 @@ LEIN_JAR_SHA256="7d31ae23ae769e927438b0cd55d15a93e7dabab09fd4fc15877979161e10877
 #: 11 October 2026 that the driver's Python 3.10 can run, so that the run can be made again.
 PKB_PIP="azure-servicebus==7.15.0 absl-py==2.5.1 numpy==2.2.6"
 
+#: Freeze 35 (D38-1): the four the second October reading found runnable on the servers already
+#: here (data/tools_audit/batch_11.json), each at the commit it read. SBK builds only on Java 25 --
+#: its build compares the Java it runs on with that and stops (gradle/java.gradle:81-88) -- with
+#: the Gradle its wrapper pins and checks itself. The JDK is Eclipse Temurin's, checked against the
+#: SHA-256 Adoptium publishes beside it, the value its API also gave on 11 October 2026.
+JDK25_VERSION="25.0.4.1+1"
+JDK25_SHA256="dbb698396d478e7fa2b1e50f4103324b2a99b90569ee27c33f2261f9215cf41e"
+
 #: What those five are built and run with, pinned like them and checked against the checksums
 #: their publishers give, because each is part of what produced the program whose behaviour the
 #: block reports. OMB needs a newer Maven than Ubuntu's 3.6.3 (its enforcer asks for 3.8.6), and
@@ -177,9 +189,12 @@ PULSAR_SHA512="8c0a63cc6421c8eb3c4a55b8895ca08a38a1c6771758251fc7a82edbc4c6a42bb
 #: System.currentTimeMillis() and os:system_time(millisecond) both.
 FAKEABLE="wrk2 valkey-benchmark memtier_benchmark rdkafka_performance kafka-end-to-end \
 kafka-producer-perf rabbitmq-perftest omb pulsar-perf emqtt-bench ycsb \
-xinfra-monitor trogdor stream-perftest ysb pkb stream-perftest-one"
-#: The tools it cannot: Go does not go through the C library for the clock.
-GO_TOOLS="vegeta hey k6 nats-latency nats-bench strimzi-canary"
+xinfra-monitor trogdor stream-perftest ysb pkb stream-perftest-one sbk"
+#: The tools it cannot: Go does not go through the C library for the clock. kgo-repeater's
+#: producing repeater runs on the broker, so stepping this machine's clock moves its consumer's
+#: alone (D38-2).
+GO_TOOLS="vegeta hey k6 nats-latency nats-bench strimzi-canary mqtt-benchmark \
+sarama-producer-perf kgo-repeater"
 
 #: The Go toolchain the three Go tools are built with. Ubuntu 22.04 ships Go 1.18 and k6 needs
 #: newer, so it is fetched rather than apt-installed -- and pinned, because the compiler is part
@@ -558,6 +573,79 @@ get_pkb () {
     > "$DIR/pkb_packages.txt"
 }
 
+#: Freeze 35's four (D38-1), each cloned at the commit the reading read and built as its own
+#: repository builds it. Go fetches the toolchain a module asks for (go.mod's go and toolchain
+#: lines) when it is newer than the one here, so the compiler that built each is written down
+#: beside its commit, from inside its own module.
+go_source_build () {  # name, repository, commit, binary, then the build command
+  local name="$1" repo="$2" commit="$3" binary="$4" src="$WORK/src/$1"; shift 4
+  have "$binary" && { log "   $binary already here"; return 0; }
+  get_go || return 1
+  rm -rf "$src"; mkdir -p "$WORK/src"
+  ( git clone -q "$repo" "$src" && cd "$src" && git checkout -q "$commit" && "$@" ) \
+      > "$DIR/build_$name.log" 2>&1 \
+    || { log "   WARN: $name did not build; see $DIR/build_$name.log"; return 1; }
+  ( cd "$src" && git rev-parse HEAD && go version ) > "$DIR/commit_$name.txt" 2>/dev/null
+  sudo install -m 0755 "$src/$binary" /usr/local/bin/ \
+    || { log "   WARN: $name built but could not be installed"; return 1; }
+}
+
+get_mqtt_benchmark () {
+  go_source_build mqtt-benchmark https://github.com/krylovsk/mqtt-benchmark "$1" mqtt-benchmark \
+    env CGO_ENABLED=0 go build -o mqtt-benchmark .
+}
+
+get_sarama_perf () {
+  go_source_build sarama https://github.com/IBM/sarama "$1" kafka-producer-performance \
+    env CGO_ENABLED=0 go build -o kafka-producer-performance ./tools/kafka-producer-performance
+}
+
+#: kgo-repeater's producing repeater runs on the broker (D38-2): the same static binary, copied
+#: there and checked by its own fingerprint, so the two ends of its subtraction are one build.
+get_kgo_repeater () {
+  go_source_build kgo-verifier https://github.com/redpanda-data/kgo-verifier "$1" kgo-repeater \
+    env CGO_ENABLED=0 go build -o kgo-repeater cmd/kgo-repeater/main.go || return 1
+  local key="${SSH_KEY:-$HOME/.ssh/azure_sbl}" mine theirs
+  scp -q -i "$key" -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+      /usr/local/bin/kgo-repeater "ubuntu@$BROKER_PRIV:/tmp/kgo-repeater" \
+    && ssh -n -i "$key" -o BatchMode=yes "ubuntu@$BROKER_PRIV" \
+      "sudo install -m 0755 /tmp/kgo-repeater /usr/local/bin/ && rm -f /tmp/kgo-repeater" \
+    || { log "   WARN: kgo-repeater could not be put on the broker"; return 1; }
+  mine=$(sha256sum /usr/local/bin/kgo-repeater | cut -d' ' -f1)
+  theirs=$(ssh -n -i "$key" -o BatchMode=yes "ubuntu@$BROKER_PRIV" \
+    "sha256sum /usr/local/bin/kgo-repeater" | cut -d' ' -f1)
+  [ -n "$mine" ] && [ "$mine" = "$theirs" ] \
+    || { log "   WARN: the broker's kgo-repeater is not the build made here"; return 1; }
+  echo "$mine" > "$DIR/sha256_kgo_repeater.txt"
+}
+
+get_jdk25 () {
+  [ -x "$WORK/jdk-25/bin/java" ] && return 0
+  local file="OpenJDK25U-jdk_x64_linux_hotspot_${JDK25_VERSION/+/_}.tar.gz"
+  log "   fetching Temurin $JDK25_VERSION"
+  fetch_checked "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-${JDK25_VERSION/+/%2B}/$file" \
+      jdk25.tgz 256 "$JDK25_SHA256" \
+    || { log "   WARN: Temurin $JDK25_VERSION could not be fetched, or did not match its checksum"; return 1; }
+  rm -rf "$WORK/jdk-25" && mkdir -p "$WORK/jdk-25" \
+    && tar -xzf "$WORK/jdk25.tgz" -C "$WORK/jdk-25" --strip-components=1
+}
+
+#: SBK as its README builds it (./gradlew :installDist), on Java 25, from a clone that fetches each
+#: file only when the commit needs it: the repository carries years of images.
+get_sbk () {
+  local src="$WORK/src/SBK"
+  [ -x "$src/build/install/sbk/bin/sbk" ] && { log "   SBK already built"; return 0; }
+  get_jdk25 || return 1
+  rm -rf "$src"; mkdir -p "$WORK/src"
+  ( git clone -q --filter=blob:none https://github.com/kmgowda/SBK "$src" && cd "$src" \
+      && git checkout -q "$1" \
+      && JAVA_HOME="$WORK/jdk-25" SBK_JAVA_HOME="$WORK/jdk-25" ./gradlew --no-daemon -q :installDist ) \
+      > "$DIR/build_sbk.log" 2>&1 \
+    || { log "   WARN: SBK did not build; see $DIR/build_sbk.log"; return 1; }
+  ( cd "$src" && git rev-parse HEAD && "$WORK/jdk-25/bin/java" -version 2>&1 | head -1 ) \
+    > "$DIR/commit_sbk.txt" 2>/dev/null
+}
+
 install_for () {
   local tool="${1:?which tool}"
   log "== $tool alone, at the version the reading read"
@@ -576,6 +664,20 @@ install_for () {
       get_pkb e5fd49d7d0f83621ae6fddeaa74ed3a0a02081e3
       [ -f "$WORK/pkb-vm/azure_benchmark.py" ] \
         || stop "PerfKit's messaging client is not laid out; see $DIR/build_pkb.log" ;;
+    mqtt-benchmark)
+      get_mqtt_benchmark f46efba1a710a117c80d0ba94281e0a99e7b96a4 \
+        || stop "mqtt-benchmark is not here; see $DIR/build_mqtt-benchmark.log" ;;
+    sarama-producer-perf)
+      get_kafka
+      get_sarama_perf 36f7a14ebb0ff3ab6f5137963241568247c9e360 \
+        || stop "Sarama's kafka-producer-performance is not here; see $DIR/build_sarama.log" ;;
+    sbk)
+      get_sbk 39af60da882d865524510dea86df6412549c31a6 \
+        || stop "SBK is not built; see $DIR/build_sbk.log" ;;
+    kgo-repeater)
+      get_kafka
+      get_kgo_repeater 6567f2f5a16388a13b71296c60a0260534e19216 \
+        || stop "kgo-repeater is not here and on the broker; see $DIR/build_kgo-verifier.log" ;;
     *) stop "$tool has no install of its own; run the whole install" ;;
   esac
   log "CAMPAIGN_COMPLETE: $tool installed alone"
@@ -1017,6 +1119,10 @@ reference_for () {
     #: canary's against the Kafka 3.9.1 broker it runs against (D35-5).
     xinfra-monitor|trogdor) backend=kafka ;;
     strimzi-canary) backend=kafka; bootstrap="${SBL_KAFKA39:-$BROKER_PRIV:19094}" ;;
+    #: Freeze 35 (D38-3): the three Kafka tools against the same client of ours, Sarama's tool on
+    #: the 3.9.1 broker it speaks to; mqtt-benchmark against our MQTT client below.
+    sarama-producer-perf) backend=kafka; bootstrap="${SBL_KAFKA39:-$BROKER_PRIV:19094}" ;;
+    sbk|kgo-repeater) backend=kafka ;;
     #: Freeze 33 (D36-3): no client of ours computes a window's latency, so YSB's reference is
     #: YSB itself, run once more at no added delay, and its trips are every window it wrote, less
     #: the window, sign kept -- what it wrote, not what its notebook kept, since at its default load
@@ -1065,6 +1171,9 @@ json.dump({"source": "ysb itself", "trips_ms": r["written_ms"]}, open(sys.argv[2
     #: Freeze 30's two new protocols, each with a client of ours written before any of their
     #: tools' runs: MQTT by hand like NATS, and Pulsar through its own client library.
     emqtt-bench) client="mqtt_reference.py --host $BROKER_PRIV --port 1883" ;;
+    #: mqtt-benchmark times publish to acknowledgment, our client publish to delivery: both cross
+    #: the delay once, to the same broker, which is what T2 takes its offsets from (D38-3).
+    mqtt-benchmark) client="mqtt_reference.py --host $BROKER_PRIV --port 1883" ;;
     pulsar-perf) client="pulsar_reference.py --url pulsar://$BROKER_PRIV:6650" ;;
     *) log "   no client of ours speaks $tool's protocol, so no reference is taken"; return 1 ;;
   esac
@@ -1168,9 +1277,18 @@ server_answers () {
         && printf 'PING\r\n' >&3 && head -c 5 <&3" 2>/dev/null | tr -d '\r\n')
       [ "$got" = "+PONG" ] \
         || { echo "Redis at ${VALKEY_HOST:-$host}:6379 answered '$got' to PING"; return 1; } ;;
-    rdkafka_performance|kafka-end-to-end|kafka-producer-perf|omb|xinfra-monitor|trogdor)
+    rdkafka_performance|kafka-end-to-end|kafka-producer-perf|omb|xinfra-monitor|trogdor|sbk)
       timeout 5 bash -c "echo > /dev/tcp/$host/19092" 2>/dev/null \
         || { echo "nothing listens for Kafka at $host:19092"; return 1; } ;;
+    kgo-repeater)
+      #: Its producing repeater runs on the broker, so the broker needs the same build (D38-2).
+      timeout 5 bash -c "echo > /dev/tcp/$host/19092" 2>/dev/null \
+        || { echo "nothing listens for Kafka at $host:19092"; return 1; }
+      got=$(timeout 20 ssh -n -i "${SSH_KEY:-$HOME/.ssh/azure_sbl}" -o BatchMode=yes \
+        -o ConnectTimeout=10 "ubuntu@$host" "sha256sum /usr/local/bin/kgo-repeater" 2>/dev/null \
+        | cut -d' ' -f1)
+      [ -n "$got" ] && [ "$got" = "$(sha256sum /usr/local/bin/kgo-repeater 2>/dev/null | cut -d' ' -f1)" ] \
+        || { echo "the broker has no kgo-repeater of this build (got '$got')"; return 1; } ;;
     pkb)
       #: Freeze 34: PerfKit's broker is the Azure Service Bus namespace made for it, reached over
       #: AMQP's TLS port; its name is the part of the connection string this may say aloud.
@@ -1186,8 +1304,9 @@ server_answers () {
         || { echo "nothing listens for Kafka 3.9.1 at $host:19094"; return 1; }
       timeout 5 bash -c "echo > /dev/tcp/$host/6379" 2>/dev/null \
         || { echo "nothing listens for Redis at $host:6379"; return 1; } ;;
-    strimzi-canary)
-      #: The Kafka 3.9.1 broker brokers_here starts for the canary alone (D35-5).
+    strimzi-canary|sarama-producer-perf)
+      #: The Kafka 3.9.1 broker brokers_here starts for the canary (D35-5), which Sarama's tool
+      #: also needs: its assumed version, 0.8.2.0, speaks protocol versions Kafka 4 removed.
       timeout 5 bash -c "echo > /dev/tcp/$host/19094" 2>/dev/null \
         || { echo "nothing listens for Kafka 3.9.1 at $host:19094"; return 1; } ;;
     stream-perftest|stream-perftest-one)
@@ -1203,7 +1322,7 @@ server_answers () {
         || { echo "Pulsar at $host:8090 named its clusters as '$got'"; return 1; }
       timeout 5 bash -c "echo > /dev/tcp/$host/6650" 2>/dev/null \
         || { echo "nothing listens for Pulsar's protocol at $host:6650"; return 1; } ;;
-    emqtt-bench)
+    emqtt-bench|mqtt-benchmark)
       #: An MQTT CONNECT, and the CONNACK that lets a client in: 20 02 00 00.
       got=$(timeout 5 bash -c "exec 3<>/dev/tcp/$host/1883 \
         && printf '\x10\x15\x00\x04MQTT\x04\x02\x00\x0a\x00\x09sbl-check' >&3 \

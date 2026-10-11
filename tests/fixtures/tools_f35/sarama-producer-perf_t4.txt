@@ -1,0 +1,13 @@
+250 records sent, 50.3 records/sec (0.02 MiB/sec ingress, 0.03 MiB/sec egress), 5.2 ms avg latency, 7.6 ms stddev, 2.0 ms 50th, 7.0 ms 75th, 29.0 ms 95th, 29.0 ms 99th, 29.0 ms 99.9th, 0 total req. in flight
+500 records sent, 55.6 records/sec (0.03 MiB/sec ingress, 0.03 MiB/sec egress), 3.6 ms avg latency, 6.0 ms stddev, 2.0 ms 50th, 3.0 ms 75th, 25.4 ms 95th, 29.0 ms 99th, 29.0 ms 99.9th, 0 total req. in flight
+750 records sent, 53.6 records/sec (0.03 MiB/sec ingress, 0.03 MiB/sec egress), 2.9 ms avg latency, 5.1 ms stddev, 1.0 ms 50th, 2.0 ms 75th, 16.4 ms 95th, 29.0 ms 99th, 29.0 ms 99.9th, 0 total req. in flight
+1000 records sent, 52.6 records/sec (0.03 MiB/sec ingress, 0.03 MiB/sec egress), 2.5 ms avg latency, 4.5 ms stddev, 1.0 ms 50th, 2.0 ms 75th, 10.6 ms 95th, 29.0 ms 99th, 29.0 ms 99.9th, 0 total req. in flight
+1250 records sent, 50.1 records/sec (0.02 MiB/sec ingress, 0.03 MiB/sec egress), 2.3 ms avg latency, 4.1 ms stddev, 1.0 ms 50th, 2.0 ms 75th, 9.6 ms 95th, 29.0 ms 99th, 29.0 ms 99.9th, 0 total req. in flight
+1500 records sent, 50.0 records/sec (0.02 MiB/sec ingress, 0.03 MiB/sec egress), 2.1 ms avg latency, 3.8 ms stddev, 1.0 ms 50th, 2.0 ms 75th, 8.2 ms 95th, 29.0 ms 99th, 29.0 ms 99.9th, 0 total req. in flight
+1750 records sent, 50.0 records/sec (0.02 MiB/sec ingress, 0.03 MiB/sec egress), 2.0 ms avg latency, 3.6 ms stddev, 1.0 ms 50th, 2.0 ms 75th, 6.2 ms 95th, 29.0 ms 99th, 29.0 ms 99.9th, 0 total req. in flight
+2000 records sent, 51.3 records/sec (0.03 MiB/sec ingress, 0.03 MiB/sec egress), 1.9 ms avg latency, 3.3 ms stddev, 1.0 ms 50th, 2.0 ms 75th, 4.6 ms 95th, 29.0 ms 99th, 29.0 ms 99.9th, 0 total req. in flight
+2250 records sent, 50.0 records/sec (0.02 MiB/sec ingress, 0.03 MiB/sec egress), 1.8 ms avg latency, 3.2 ms stddev, 1.0 ms 50th, 2.0 ms 75th, 3.6 ms 95th, 29.0 ms 99th, 29.0 ms 99.9th, 0 total req. in flight
+2500 records sent, 50.0 records/sec (0.02 MiB/sec ingress, 0.03 MiB/sec egress), 1.7 ms avg latency, 3.0 ms stddev, 1.0 ms 50th, 2.0 ms 75th, 3.0 ms 95th, 28.3 ms 99th, 29.0 ms 99.9th, 0 total req. in flight
+2750 records sent, 50.9 records/sec (0.02 MiB/sec ingress, 0.03 MiB/sec egress), 1.7 ms avg latency, 2.9 ms stddev, 1.0 ms 50th, 1.5 ms 75th, 3.0 ms 95th, 26.5 ms 99th, 29.0 ms 99.9th, 0 total req. in flight
+3000 records sent, 50.8 records/sec (0.02 MiB/sec ingress, 0.03 MiB/sec egress), 1.7 ms avg latency, 2.8 ms stddev, 1.0 ms 50th, 1.0 ms 75th, 3.0 ms 95th, 24.7 ms 99th, 29.0 ms 99.9th, 0 total req. in flight
+3000 records sent, 50.0 records/sec (0.02 MiB/sec ingress, 0.03 MiB/sec egress), 1.7 ms avg latency, 2.8 ms stddev, 1.0 ms 50th, 1.0 ms 75th, 3.0 ms 95th, 24.7 ms 99th, 29.0 ms 99.9th, 0 total req. in flight

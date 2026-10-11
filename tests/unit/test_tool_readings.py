@@ -1328,3 +1328,190 @@ class TestFreeze34sStepTest:
         above = ("DEBUG Received value 6000.0 which is greater than max recordable value 5000.0,"
                  " will be pinned to the max value\n")
         assert tr.read_tool("xinfra-monitor", XINFRA + above)["pinned_below_ms"] == []
+
+
+def _mqttb(runs, failures=0):
+    """mqtt-benchmark's JSON results, as main.go marshals and indents them with tabs: one run per
+    client and the totals, with the field names of its RunResults and TotalResults."""
+    import json
+    doc = {"runs": [{"id": i, "successes": n, "failures": f, "run_time": 60.0,
+                     "msg_time_min": lo, "msg_time_max": hi, "msg_time_mean": mean,
+                     "msg_time_std": 0.2, "msgs_per_sec": 1.0}
+                    for i, (n, f, lo, hi, mean) in enumerate(runs)],
+           "totals": {"ratio": 1.0, "successes": sum(r[0] for r in runs),
+                      "failures": failures or sum(r[1] for r in runs), "total_run_time": 61.0,
+                      "avg_run_time": 60.0, "msg_time_min": min(r[2] for r in runs),
+                      "msg_time_max": max(r[3] for r in runs),
+                      "msg_time_mean_avg": sum(r[4] for r in runs) / len(runs),
+                      "msg_time_mean_std": 0.0, "total_msgs_per_sec": 50.0,
+                      "avg_msgs_per_sec": 1.0}}
+    return json.dumps(doc, indent="\t")
+
+
+SARAMA = ("{n} records sent, 50.0 records/sec (0.02 MiB/sec ingress, 0.03 MiB/sec egress), "
+          "{avg} ms avg latency, 0.5 ms stddev, {p50} ms 50th, 1.0 ms 75th, 1.0 ms 95th, "
+          "{p99} ms 99th, 3.0 ms 99.9th, 0 total req. in flight\n")
+
+
+def _sbk_total(records=3000, invalid=0, unit="ms", avg="0.6", low="0", high="12",
+               p50="1", p99="2"):
+    """SBK's total line as its console logger printed it in the pilot of 11 October: the time,
+    Total and its prefix, its writers and readers, its request and timeout counts, then perl's
+    results from the run's seconds on, every percentile of its default list, 5th to 99.99th, in
+    its own name for the unit it was given."""
+    names = ("5 10 15 20 25 30 35 40 45 50 55 60 65 70 75 80 85 90 92.5 95 97.5 99 99.25 99.5 "
+             "99.75 99.9 99.95 99.99").split()
+    values = {"50": p50, "99": p99}
+    pct = ", ".join("%7s %s %sth" % (values.get(n, "0"), unit, n) for n in names)
+    return ("2026-10-11 16:39:28, Total Kafka Write_Reading     0 writers,     0 readers,      "
+            "1 max writers,     1 max readers,          0.0 write request MB,                0 write"
+            " request records,         0.0 write request records/sec,     0.00 write request MB/sec,"
+            "         0.0 read request MB,                 0 read request records,         0.0 read"
+            " request records/sec,     0.00 read request MB/sec,     0.00 write response pending MB,"
+            "             0 write response pending records,      0.00 read response pending MB,   "
+            "          0 read response pending records,      0.00 write read request pending MB,  "
+            "           0 write read request pending records,              0 write timeout events,"
+            "     0.00 write timeout events/sec,             0 read timeout events,     0.00 read "
+            "timeout events/sec,      60 seconds,         1.5 MB, %16d records,        50.0 "
+            "records/sec,     0.02 MB/sec, %8s %s avg latency, %7s %s min latency, %7s %s max "
+            "latency; %8d invalid latencies; Discarded Latencies:       0 lower,        0 higher; "
+            "SLC-1:   0, SLC-2:   0; Latency Percentiles: %s\n"
+            % (records, avg, unit, low, unit, high, unit, invalid, pct))
+
+
+def _kgo(*workers):
+    """kgo-repeater B's /status: the marker line the run prints, then the JSON list its handler
+    writes indented, one entry per worker with its counts and its latencies in microseconds."""
+    import json
+    return (tr.KGO_STATUS + "\n" + json.dumps(
+        [{"topics": ["sbl-kgo-1"], "produced": 0, "consumed": consumed, "enqueued": consumed,
+          "errors": 0, "latency": {"ack": {"p50": 0, "p90": 0, "p99": 0},
+                                   "e2e": {"p50": p50, "p90": p90, "p99": p99}}}
+         for consumed, p50, p90, p99 in workers], indent="  ") + "\n")
+
+
+class TestFreeze35sFourTools:
+    """mqtt-benchmark, Sarama's kafka-producer-performance, SBK and kgo-repeater, each read where
+    its source says it reports (freeze 35, D38-2)."""
+
+    def test_mqtt_benchmark_weights_each_clients_mean_by_what_it_sent(self):
+        got = tr.read_tool("mqtt-benchmark", _mqttb([(60, 0, 0.41, 1.9, 0.6), (30, 0, 0.38, 2.4, 0.9)]))
+        assert got["reported_ms"]["avg"] == pytest.approx(0.7)
+        assert (got["reported_ms"]["min"], got["reported_ms"]["max"]) == (0.38, 2.4)
+        assert got["kept"] == 90 and got["received"] == 90 and got["step_ms"] == 1e-6
+
+    def test_mqtt_benchmark_counts_its_failures_as_sent_and_not_kept(self):
+        got = tr.read_tool("mqtt-benchmark", _mqttb([(59, 1, 0.4, 1.0, 0.5)]))
+        assert got["kept"] == 59 and got["received"] == 60
+
+    def test_mqtt_benchmark_reads_its_document_past_log_lines_and_braces_that_are_not_it(self):
+        text = ("2026/10/11 18:00:00 CLIENT 3 Error sending message: {broker gone}\n"
+                '{"runs": []}\n' + _mqttb([(60, 0, 0.4, 1.0, 0.5)]))
+        assert tr.read_tool("mqtt-benchmark", text)["reported_ms"]["avg"] == 0.5
+
+    def test_mqtt_benchmark_whose_clients_all_failed_has_no_figures(self):
+        got = tr.read_tool("mqtt-benchmark", _mqttb([(0, 60, 0.0, 0.0, 0.0)]))
+        assert got["reported_ms"] == {} and got["kept"] == 0 and got["received"] == 60
+
+    def test_mqtt_benchmark_without_its_document_reads_nothing(self):
+        got = tr.read_tool("mqtt-benchmark", "2026/10/11 CLIENT 0 had error connecting\n")
+        assert got["reported_ms"] == {} and got["kept"] is None
+
+    def test_sarama_reads_its_last_line_whole_milliseconds_and_all(self):
+        text = (SARAMA.format(n=250, avg="0.9", p50="1.0", p99="4.0")
+                + SARAMA.format(n=3000, avg="0.4", p50="0.0", p99="2.0"))
+        got = tr.read_tool("sarama-producer-perf", text)
+        assert got["reported_ms"]["p50"] == 0.0 and got["reported_ms"]["avg"] == 0.4
+        assert got["reported_ms"]["p999"] == 3.0 and got["step_ms"] == 1.0
+        assert got["records"] == 3000 and got["stddev_ms"] == 0.5 and got["kept"] is None
+
+    def test_sarama_without_its_line_reads_nothing(self):
+        got = tr.read_tool("sarama-producer-perf", "ERROR: Failed to create producer: EOF\n")
+        assert got["reported_ms"] == {} and "records" not in got
+
+    def test_sbk_reads_its_total_line_and_counts_what_it_called_invalid(self):
+        text = (_sbk_total(records=2990, invalid=0).replace(", Total ", ", ")
+                + _sbk_total(records=3000, invalid=17, low="0", p50="1", p99="3"))
+        got = tr.read_tool("sbk", text)
+        assert got["reported_ms"] == {"avg": 0.6, "min": 0.0, "max": 12.0, "p50": 1.0,
+                                      "p90": 0.0, "p99": 3.0, "p999": 0.0}
+        assert got["invalid"] == 17 and got["received"] == 3000 and got["kept"] is None
+        assert got["steps_ms"]["p50"] == 1.0 and got["unit"] == "ms"
+
+    def test_sbk_in_microseconds_is_read_in_milliseconds(self):
+        got = tr.read_tool("sbk", _sbk_total(unit="mcs", avg="612.5", p50="600"))
+        assert got["reported_ms"]["p50"] == pytest.approx(0.6)
+        assert got["reported_ms"]["avg"] == pytest.approx(0.6125)
+        assert got["steps_ms"]["p50"] == pytest.approx(0.001)
+
+    def test_sbk_in_a_unit_it_does_not_know_keeps_its_counts_and_no_figures(self):
+        got = tr.read_tool("sbk", _sbk_total(unit="FORTNIGHTS", invalid=2))
+        assert got["reported_ms"] == {} and got["invalid"] == 2
+
+    def test_sbk_without_its_total_line_reads_nothing(self):
+        got = tr.read_tool("sbk", _sbk_total().replace(", Total ", ", "))
+        assert got["reported_ms"] == {} and "invalid" not in got
+
+    def test_kgo_repeater_reads_its_one_workers_end_to_end_latency_sign_and_all(self):
+        got = tr.read_tool("kgo-repeater", _kgo((2998, -2190.0, -1980, -1500.5)))
+        assert got["reported_ms"] == {"p50": -2.19, "p90": -1.98, "p99": -1.5005}
+        assert got["received"] == 2998 and got["workers"] == 1 and got["kept"] is None
+
+    def test_kgo_repeater_with_two_consuming_workers_reports_no_percentile_for_them(self):
+        got = tr.read_tool("kgo-repeater", _kgo((10, 800, 900, 1000), (12, 810, 905, 990)))
+        assert got["reported_ms"] == {} and got["received"] == 22 and got["workers"] == 2
+
+    def test_kgo_repeater_that_consumed_nothing_reports_nothing(self):
+        got = tr.read_tool("kgo-repeater", _kgo((0, 0, 0, 0)))
+        assert got["reported_ms"] == {} and got["received"] is None
+
+    def test_kgo_repeater_without_a_status_or_with_a_torn_one_reads_nothing(self):
+        assert tr.read_tool("kgo-repeater", "curl: (7) Failed to connect\n")["reported_ms"] == {}
+        assert tr.read_tool("kgo-repeater", tr.KGO_STATUS + "\n[{\"consumed\": 3")["reported_ms"] == {}
+        assert tr.read_tool("kgo-repeater", tr.KGO_STATUS + "\n404 page not found\n")["workers"] == 0
+
+    def test_kgo_repeater_without_a_figure_where_one_should_be_skips_it(self):
+        text = _kgo((50, 800, 900, 1000)).replace('"p99": 1000', '"p99": null')
+        assert set(tr.read_tool("kgo-repeater", text)["reported_ms"]) == {"p50", "p90"}
+
+
+F35 = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fixtures", "tools_f35")
+
+
+def _ran(name):
+    with open(os.path.join(F35, name), encoding="utf-8") as fh:
+        return fh.read()
+
+
+class TestFreeze35sToolsAsTheyRan:
+    """The four as they printed in the pilot of 11 October, on the first x86 pair: whole outputs,
+    but SBK's, kept to its result lines and the shutdown that follows its total. A made-up world
+    can drop what a real run prints, so each reader is held to what the tool itself wrote."""
+
+    def test_mqtt_benchmark_fifty_clients_of_sixty_each(self):
+        got = tr.read_tool("mqtt-benchmark", _ran("mqtt-benchmark_t4.txt"))
+        assert got["reported_ms"]["avg"] == pytest.approx(0.6628642210000001)
+        assert got["reported_ms"]["min"] == pytest.approx(0.5140859999999999)
+        assert got["reported_ms"]["max"] == pytest.approx(1.06618)
+        assert got["kept"] == got["received"] == 3000
+
+    def test_sarama_whole_milliseconds_its_first_requests_in_its_tail(self):
+        got = tr.read_tool("sarama-producer-perf", _ran("sarama-producer-perf_t4.txt"))
+        assert got["reported_ms"] == {"avg": 1.7, "p50": 1.0, "p75": 1.0, "p95": 3.0, "p99": 24.7,
+                                      "p999": 29.0}
+        assert got["records"] == 3000
+
+    def test_kgo_repeater_at_no_offset_and_with_its_clock_five_milliseconds_early(self):
+        plain = tr.read_tool("kgo-repeater", _ran("kgo-repeater_t4.txt"))
+        early = tr.read_tool("kgo-repeater", _ran("kgo-repeater_clock_5ms_early.txt"))
+        assert plain["reported_ms"] == {"p50": 1.1105, "p90": 1.4305, "p99": 2.38025}
+        assert early["reported_ms"] == {"p50": -3.966, "p90": -3.6205, "p99": -2.38225}
+        assert (plain["received"], early["received"]) == (2905, 2904)
+
+    def test_sbk_paced_and_under_the_steps(self):
+        plain = tr.read_tool("sbk", _ran("sbk_t4.txt"))
+        stepped = tr.read_tool("sbk", _ran("sbk_s1_stepped.txt"))
+        assert plain["reported_ms"] == {"avg": 6.6, "min": 2.0, "max": 167.0, "p50": 5.0,
+                                        "p90": 12.0, "p99": 17.0, "p999": 167.0}
+        assert (plain["invalid"], plain["received"]) == (0, 3000)
+        assert (stepped["invalid"], stepped["received"], stepped["reported_ms"]["min"]) == (58, 2992, 0.0)

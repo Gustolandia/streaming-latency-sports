@@ -23,8 +23,17 @@ one's source, what they would say:
   kafka-end-to-end      times with a monotonic clock, the control: its median and 99th
                         percentile within one printed step of its control's
 
-and that none of them would say it in its control. A stepped run is judged only if its steps were
-made and the clock was put back (S1-a); each prediction holds if it holds in every round.
+and that none of them would say it in its control. Freeze 35 (D38-5) added three, each run with
+--tools and folded beside the five:
+
+  sbk                   counts them: "invalid latencies" at least one, its control's none
+  mqtt-benchmark        never meets one, its clock monotonic: its minimum above zero in both runs,
+                        and its mean within a millisecond of its control's
+  sarama-producer-perf  never meets one, its clock monotonic: its median and 99th percentile
+                        within one printed step of its control's, as Kafka's own tool's
+
+A stepped run is judged only if its steps were made and the clock was put back (S1-a); each
+prediction holds if it holds in every round.
 
     python3 scripts/s1_block.py --root runs/azure/collected/matched/v37_<stamp>/x/runs/azure \\
         --out docs/results/tools/s1.csv --verdicts docs/results/tools/s1_verdicts.json
@@ -38,6 +47,11 @@ import sys
 #: What each tool's stepped run is predicted to show and its control not to (D37-4), by the
 #: number this reads from the run's reading: a count of values below zero it reports or logs.
 TOOLS = ("pkb", "strimzi-canary", "stream-perftest-one", "xinfra-monitor", "kafka-end-to-end")
+#: Freeze 35's three (D38-5).
+TOOLS_V38 = ("sbk", "mqtt-benchmark", "sarama-producer-perf")
+#: The tools on a monotonic clock, judged by their figures staying where their control's were,
+#: within one printed step (D37-4, D38-5).
+STEADY = ("kafka-end-to-end", "sarama-producer-perf")
 
 #: How far, in ms, the put-back clock may sit from the hypervisor's PTP clock (S1-a), and how far
 #: one step may land from the step asked for.
@@ -45,7 +59,7 @@ CLOCK_BACK_MS = 5.0
 STEP_SLACK_MS = 5.0
 
 FIELDS = ("round", "tool", "run", "steps", "stepped_back_ms", "clock_after_ms", "instrument_ok",
-          "below_zero", "p50", "p99", "kept", "received")
+          "below_zero", "p50", "p99", "kept", "received", "avg", "min")
 
 
 def _load(path):
@@ -102,6 +116,8 @@ def below_zero(tool, reading):
     if tool == "xinfra-monitor":
         pinned = reading.get("pinned_below_ms")
         return None if pinned is None else len(pinned)
+    if tool == "sbk":
+        return reading.get("invalid")
     return None
 
 
@@ -112,7 +128,8 @@ def run_row(rnd, tool, folder, run):
            "clock_after_ms": "", "instrument_ok": "", "below_zero": "",
            "p50": figures.get("p50", ""), "p99": figures.get("p99", ""),
            "kept": "" if reading.get("kept") is None else reading["kept"],
-           "received": "" if reading.get("received") is None else reading["received"]}
+           "received": "" if reading.get("received") is None else reading["received"],
+           "avg": figures.get("avg", ""), "min": figures.get("min", "")}
     found = below_zero(tool, reading)
     if found is not None:
         row["below_zero"] = found
@@ -126,10 +143,10 @@ def run_row(rnd, tool, folder, run):
     return row
 
 
-def block_rows(root, rounds):
+def block_rows(root, rounds, tools=TOOLS):
     rows = []
     for rnd, folder in rounds:
-        for tool in TOOLS:
+        for tool in tools:
             for run in ("control", "stepped"):
                 path = os.path.join(root, folder, "s1-%s-%s" % (tool, run))
                 if os.path.isdir(path):
@@ -141,25 +158,32 @@ def _num(value):
     return None if value in ("", None) else float(value)
 
 
-def judge(rows, rounds):
-    """Each prediction of D37-4, round by round, as K1's are judged (kafka_clamp.verdicts): it
-    holds or fails only where every round was judged, holding if it held in all of them, and is
-    otherwise undecided, with the rounds that were not."""
+def judge(rows, rounds, tools=TOOLS):
+    """Each prediction of D37-4 and D38-5, round by round, as K1's are judged
+    (kafka_clamp.verdicts): it holds or fails only where every round was judged, holding if it
+    held in all of them, and is otherwise undecided, with the rounds that were not."""
     by = {(r["round"], r["tool"], r["run"]): r for r in rows}
     found = {}
-    for tool in TOOLS:
+    for tool in tools:
         held, failed, unjudged = [], [], []
         for rnd in rounds:
             control, stepped = by.get((rnd, tool, "control")), by.get((rnd, tool, "stepped"))
             if not control or not stepped or stepped["instrument_ok"] is not True:
                 unjudged.append(rnd)
                 continue
-            if tool == "kafka-end-to-end":
+            if tool in STEADY:
                 pairs = [(_num(stepped[f]), _num(control[f])) for f in ("p50", "p99")]
                 if any(a is None or b is None for a, b in pairs):
                     unjudged.append(rnd)
                     continue
                 ok = all(abs(a - b) <= 1.0 for a, b in pairs)
+            elif tool == "mqtt-benchmark":
+                lows = (_num(stepped["min"]), _num(control["min"]))
+                means = (_num(stepped["avg"]), _num(control["avg"]))
+                if None in lows or None in means:
+                    unjudged.append(rnd)
+                    continue
+                ok = min(lows) > 0 and abs(means[0] - means[1]) <= 1.0
             else:
                 if stepped["below_zero"] == "" or control["below_zero"] == "":
                     unjudged.append(rnd)
@@ -177,11 +201,18 @@ def main(argv=None):
     ap.add_argument("--root", required=True, help="the block's runs/azure folder")
     ap.add_argument("--rounds", default="1:tools_v37,2:tools_v37_round2,3:tools_v37_round3,"
                     "4:tools_v37_round4", help="round:folder, comma-separated")
+    ap.add_argument("--tools", default=",".join(TOOLS),
+                    help="the block's tools, comma-separated: freeze 34's five unless named")
     ap.add_argument("--out", required=True)
     ap.add_argument("--verdicts", required=True)
     args = ap.parse_args(argv)
     rounds = [tuple(part.split(":", 1)) for part in args.rounds.split(",")]
-    rows = block_rows(args.root, rounds)
+    tools = tuple(args.tools.split(","))
+    unknown = sorted(set(tools) - set(TOOLS + TOOLS_V38))
+    if unknown:
+        print("no S1 prediction for %s" % ", ".join(unknown))
+        return 2
+    rows = block_rows(args.root, rounds, tools)
     if not rows:
         print("no S1 runs under %s" % args.root)
         return 1
@@ -191,7 +222,7 @@ def main(argv=None):
         w = csv.DictWriter(fh, fieldnames=FIELDS, lineterminator="\n")
         w.writeheader()
         w.writerows(rows)
-    verdicts = judge(rows, [rnd for rnd, _ in rounds])
+    verdicts = judge(rows, [rnd for rnd, _ in rounds], tools)
     with open(args.verdicts, "w", encoding="utf-8", newline="\n") as fh:
         json.dump(verdicts, fh, indent=2, sort_keys=True)
         fh.write("\n")

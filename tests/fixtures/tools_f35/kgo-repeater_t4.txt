@@ -1,0 +1,24 @@
+# kgo-repeater B's /status, read at the end of the run
+[
+  {
+    "topics": [
+      "sbl-kgo-1791736630132146116"
+    ],
+    "produced": 0,
+    "consumed": 2905,
+    "enqueued": 11376,
+    "errors": 0,
+    "latency": {
+      "ack": {
+        "p50": 0,
+        "p90": 0,
+        "p99": 0
+      },
+      "e2e": {
+        "p50": 1110.5,
+        "p90": 1430.5,
+        "p99": 2380.25
+      }
+    }
+  }
+]

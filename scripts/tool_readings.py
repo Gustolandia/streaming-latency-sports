@@ -896,6 +896,143 @@ def read_pkb(text):
                     failures=failures, samples_ms=samples)
 
 
+def read_mqtt_benchmark(text):
+    """mqtt-benchmark at f46efba1, run with -format json, which prints one JSON document once its
+    clients are done (main.go:180-194):
+
+        {"runs": [{"id": 0, "successes": 60, "failures": 0, "msg_time_min": 0.41,
+                   "msg_time_max": 1.9, "msg_time_mean": 0.62, ...}, ...],
+         "totals": {"successes": 3000, "failures": 0, "msg_time_min": 0.38,
+                    "msg_time_max": 2.4, "msg_time_mean_avg": 0.63, ...}}
+
+    Each client times publish to its acknowledgment in one goroutine, m.Delivered.Sub(m.Sent) on
+    Go's monotonic clock, in milliseconds as a float (client.go:110, 120, 57), and it prints no
+    percentile. Its minimum and maximum are read from its totals, and its average as the mean of
+    every message, from each client's mean weighted by its successes. The count it kept is its
+    successes, of the successes and failures it was asked to send."""
+    text = text or ""
+    found, start = None, text.find("{")
+    while start != -1:
+        try:
+            found, _ = json.JSONDecoder().raw_decode(text[start:])
+        except ValueError:
+            found = None
+        if isinstance(found, dict) and isinstance(found.get("totals"), dict):
+            break
+        found, start = None, text.find("{", start + 1)
+    got, steps = {}, {}
+    if not found:
+        return _reading("mqtt-benchmark", got, steps)
+    totals = found["totals"]
+    runs = [r for r in found.get("runs") or [] if r.get("successes")]
+    if runs:
+        done = sum(int(r["successes"]) for r in runs)
+        got["avg"] = sum(float(r["msg_time_mean"]) * int(r["successes"]) for r in runs) / done
+        got["min"], got["max"] = float(totals["msg_time_min"]), float(totals["msg_time_max"])
+        steps.update(avg=1e-6, min=1e-6, max=1e-6)
+    kept = int(totals.get("successes") or 0)
+    return _reading("mqtt-benchmark", got, steps, kept=kept,
+                    received=kept + int(totals.get("failures") or 0))
+
+
+#: The line Sarama's tool prints every five seconds and once more as it ends (main.go:440-451).
+SARAMA_LINE = (r"(\d+) records sent, .*? (-?\d+(?:\.\d+)?) ms avg latency, (-?\d+(?:\.\d+)?) ms "
+               r"stddev, (-?\d+(?:\.\d+)?) ms 50th, (-?\d+(?:\.\d+)?) ms 75th, (-?\d+(?:\.\d+)?) ms "
+               r"95th, (-?\d+(?:\.\d+)?) ms 99th, (-?\d+(?:\.\d+)?) ms 99\.9th")
+
+
+def read_sarama_producer_perf(text):
+    """IBM Sarama's kafka-producer-performance at 36f7a14e: the last of its metrics lines, the one it
+    prints as it ends. Its latency is Sarama's request-latency-in-ms: every request on every broker
+    connection, produce and metadata alike, each time.Since its write on Go's monotonic clock and
+    truncated to whole milliseconds before it enters a 1,028-sample reservoir (broker.go:1371,
+    1983-1984). Its percentiles interpolate between those whole numbers, so the step any one
+    latency can take is a millisecond whatever decimals the line prints. The records it counts are
+    messages acknowledged, not latencies: it keeps none per message, so no count of them is read."""
+    match = _last(text, SARAMA_LINE)
+    got, steps = {}, {}
+    if not match:
+        return _reading("sarama-producer-perf", got, steps)
+    for key, group in (("avg", 2), ("p50", 4), ("p75", 5), ("p95", 6), ("p99", 7), ("p999", 8)):
+        got[key] = float(match.group(group))
+        steps[key] = 1.0
+    return _reading("sarama-producer-perf", got, steps, records=int(match.group(1)),
+                    stddev_ms=float(match.group(3)))
+
+
+#: SBK's total line, in the time unit it was given, ms by default. Its console logger
+#: begins it "<time>, Total <prefix>", then its writers and readers, and ends it with what perl's
+#: ResultsLogger.appendResultString writes, from the run's seconds on (AbstractSystemLogger
+#: printTotal, AbstractRWLogger.appendResultString); "N seconds, X MB, N records" is where that
+#: part begins, and nothing before it prints a count straight before "records,".
+SBK_TOTAL = (r"\bTotal\b.*?\d+ seconds, +-?[\d.]+ MB, +(\d+) records, .*? (-?\d+(?:\.\d+)?) (\w+) "
+             r"avg latency, +(-?\d+) \w+ min latency, +(-?\d+) \w+ max latency; +(\d+) invalid "
+             r"latencies; Discarded Latencies: *(\d+) lower, +(\d+) higher;.*?Latency Percentiles: "
+             r"(.*)$")
+#: Its own names for its time units, which its line prints (its -time option takes the same).
+SBK_UNITS = {"ms": "ms", "mcs": "us", "ns": "ns"}
+SBK_PERCENTILES = {"50": "p50", "90": "p90", "99": "p99", "99.9": "p999"}
+
+
+def read_sbk(text):
+    """SBK 10.8 at 39af60da, its Kafka driver in Write_Reading, writer and reader in one process: its
+    total line. Its reader takes the stamp in the first record of each poll and subtracts it from
+    its own clock (KafkaReader.recordReadTime), System.currentTimeMillis() in its default unit.
+    LatencyRecorder.record() keeps a value below zero out of its minimum, maximum, mean and
+    percentiles and counts it as invalid (LatencyRecorder.java:125-126), and the count is printed.
+
+    Its records are every record its reader polled in the run's time, the invalid ones among them,
+    so they are carried as what it received and not held as a count kept against the count sent;
+    the invalid count is carried beside them, with the values it discarded as out of range, which
+    stay in its mean and extremes and leave its percentiles."""
+    match = _last(text, SBK_TOTAL)
+    got, steps = {}, {}
+    if not match:
+        return _reading("sbk", got, steps)
+    unit = SBK_UNITS.get(match.group(3))
+    if unit:
+        _put(got, steps, "avg", match.group(2), unit)
+        _put(got, steps, "min", match.group(4), unit)
+        _put(got, steps, "max", match.group(5), unit)
+        for value, name in re.findall(r"(-?\d+) \w+ ([\d.]+)th", match.group(9)):
+            if name in SBK_PERCENTILES:
+                got[SBK_PERCENTILES[name]] = as_ms(float(value), unit)
+                steps[SBK_PERCENTILES[name]] = as_ms(1.0, unit)
+    return _reading("sbk", got, steps, received=int(match.group(1)), invalid=int(match.group(6)),
+                    discarded_lower=int(match.group(7)), discarded_higher=int(match.group(8)),
+                    unit=unit)
+
+
+KGO_STATUS = "# kgo-repeater B's /status, read at the end of the run"
+
+
+def read_kgo_repeater(text):
+    """Redpanda's kgo-repeater at 6567f2f5, the repeater B that consumes and never produces: its
+    /status, a list with one entry per worker, each with its counts and its latencies' p50, p90 and
+    p99 in microseconds (worker.go:18-30, repeater_worker.go WorkerStatus). The end-to-end latency
+    is B's time.Now().UnixMicro() less the stamp A wrote with its own wall clock, kept in a
+    1,024-sample reservoir with no test of its sign (repeater_worker.go:258-261). It prints no
+    minimum, no mean and no count of latencies; the messages its one worker consumed since its
+    reset are carried as what it received."""
+    status = text.split(KGO_STATUS, 1)[1] if KGO_STATUS in (text or "") else ""
+    workers, start = [], status.find("[")
+    if start != -1:
+        try:
+            workers, _ = json.JSONDecoder().raw_decode(status[start:])
+        except ValueError:
+            workers = []
+    workers = [w for w in workers if isinstance(w, dict) and (w.get("consumed") or 0) > 0]
+    got, steps = {}, {}
+    if len(workers) == 1:
+        e2e = (workers[0].get("latency") or {}).get("e2e") or {}
+        for key in ("p50", "p90", "p99"):
+            if isinstance(e2e.get(key), (int, float)):
+                got[key] = float(e2e[key]) / 1000.0
+                steps[key] = 1e-3
+    return _reading("kgo-repeater", got, steps,
+                    received=sum(int(w["consumed"]) for w in workers) or None, workers=len(workers))
+
+
 #: Every tool this reads, by the name a campaign calls it.
 READERS = {
     "vegeta": read_vegeta,
@@ -927,6 +1064,11 @@ READERS = {
     "pkb": read_pkb,
     # Freeze 34's S1: Stream PerfTest as one instance, its default, read as its two instances are.
     "stream-perftest-one": lambda text: dict(read_stream_perftest(text), tool="stream-perftest-one"),
+    # Freeze 35's four (D38-2), each read where its own source says it reports.
+    "mqtt-benchmark": read_mqtt_benchmark,
+    "sarama-producer-perf": read_sarama_producer_perf,
+    "sbk": read_sbk,
+    "kgo-repeater": read_kgo_repeater,
 }
 
 

@@ -207,3 +207,89 @@ class TestMain:
         assert sb.main(["--root", str(tmp_path), "--out", str(out),
                         "--verdicts", str(verdicts)]) == 1
         assert not out.exists() and "no S1 runs" in capsys.readouterr().out
+
+
+#: Freeze 35's three (D38-5), quiet and stepped, shaped as their readers leave them: SBK with its
+#: invalid count, mqtt-benchmark with no percentile but its mean and minimum, and Sarama's tool
+#: with its whole-millisecond median and 99th percentile.
+QUIET_V38 = {
+    "sbk": {"invalid": 0, "received": 2998, "reported_ms": {"p50": 1.0, "p99": 2.0, "avg": 0.6}},
+    "mqtt-benchmark": {"kept": 3000, "received": 3000,
+                       "reported_ms": {"avg": 0.62, "min": 0.38, "max": 2.4}},
+    "sarama-producer-perf": {"reported_ms": {"p50": 0.0, "p99": 2.0, "avg": 0.4}},
+}
+STEPPED_V38 = {
+    "sbk": {"invalid": 14, "received": 3001, "reported_ms": {"p50": 1.0, "p99": 2.0, "avg": 0.6}},
+    "mqtt-benchmark": {"kept": 3000, "received": 3000,
+                       "reported_ms": {"avg": 0.66, "min": 0.36, "max": 3.1}},
+    "sarama-producer-perf": {"reported_ms": {"p50": 0.0, "p99": 3.0, "avg": 0.4}},
+}
+
+
+def _block_v38(root, stepped=None, quiet=None, rounds=("1", "2")):
+    for rnd in rounds:
+        folder = "tools_v38" if rnd == "1" else "tools_v38_round%s" % rnd
+        for tool in sb.TOOLS_V38:
+            _run(root, folder, tool, "control", (quiet or QUIET_V38)[tool])
+            _run(root, folder, tool, "stepped", (stepped or STEPPED_V38)[tool])
+
+
+ROUNDS_V38 = [("1", "tools_v38"), ("2", "tools_v38_round2")]
+
+
+class TestFreeze35sThree:
+    def test_sbk_shows_the_values_it_called_invalid(self):
+        assert sb.below_zero("sbk", STEPPED_V38["sbk"]) == 14
+        assert sb.below_zero("mqtt-benchmark", STEPPED_V38["mqtt-benchmark"]) is None
+
+    def test_their_rows_carry_the_mean_and_the_minimum(self, tmp_path):
+        _block_v38(tmp_path)
+        rows = sb.block_rows(str(tmp_path), ROUNDS_V38[:1], sb.TOOLS_V38)
+        mqttb = next(r for r in rows if r["tool"] == "mqtt-benchmark" and r["run"] == "stepped")
+        assert (mqttb["avg"], mqttb["min"], mqttb["p50"]) == (0.66, 0.36, "")
+
+    def test_every_prediction_holds_where_every_round_shows_it(self, tmp_path):
+        _block_v38(tmp_path)
+        rows = sb.block_rows(str(tmp_path), ROUNDS_V38, sb.TOOLS_V38)
+        found = sb.judge(rows, ["1", "2"], sb.TOOLS_V38)
+        assert {t: v["verdict"] for t, v in found.items()} == {
+            "sbk": "holds", "mqtt-benchmark": "holds", "sarama-producer-perf": "holds"}
+
+    @pytest.mark.parametrize("tool, figures", [
+        ("mqtt-benchmark", {"avg": 0.62, "min": -0.5, "max": 2.4}),
+        ("mqtt-benchmark", {"avg": 1.9, "min": 0.38, "max": 9.0}),
+        ("sarama-producer-perf", {"p50": 2.0, "p99": 3.0, "avg": 0.4})])
+    def test_a_monotonic_tool_that_moved_fails(self, tmp_path, tool, figures):
+        stepped = dict(STEPPED_V38, **{tool: dict(STEPPED_V38[tool], reported_ms=figures)})
+        _block_v38(tmp_path, stepped=stepped)
+        rows = sb.block_rows(str(tmp_path), ROUNDS_V38, sb.TOOLS_V38)
+        assert sb.judge(rows, ["1", "2"], sb.TOOLS_V38)[tool]["verdict"] == "fails"
+
+    def test_mqtt_benchmark_without_its_mean_is_not_judged(self, tmp_path):
+        stepped = dict(STEPPED_V38, **{"mqtt-benchmark": {"reported_ms": {"min": 0.4}}})
+        _block_v38(tmp_path, stepped=stepped)
+        rows = sb.block_rows(str(tmp_path), ROUNDS_V38, sb.TOOLS_V38)
+        got = sb.judge(rows, ["1", "2"], sb.TOOLS_V38)["mqtt-benchmark"]
+        assert got["verdict"] == "undecided" and got["not_judged_in_rounds"] == ["1", "2"]
+
+    def test_sbk_counting_in_its_control_too_fails(self, tmp_path):
+        quiet = dict(QUIET_V38, sbk=dict(QUIET_V38["sbk"], invalid=2))
+        _block_v38(tmp_path, quiet=quiet)
+        rows = sb.block_rows(str(tmp_path), ROUNDS_V38, sb.TOOLS_V38)
+        assert sb.judge(rows, ["1", "2"], sb.TOOLS_V38)["sbk"]["verdict"] == "fails"
+
+    def test_main_judges_the_tools_it_is_given(self, tmp_path, capsys):
+        _block_v38(tmp_path / "azure")
+        out, verdicts = tmp_path / "o" / "s1.csv", tmp_path / "o" / "v.json"
+        assert sb.main(["--root", str(tmp_path / "azure"), "--rounds",
+                        "1:tools_v38,2:tools_v38_round2", "--tools", ",".join(sb.TOOLS_V38),
+                        "--out", str(out), "--verdicts", str(verdicts)]) == 0
+        assert sorted(json.loads(verdicts.read_text(encoding="utf-8"))) == sorted(sb.TOOLS_V38)
+        with out.open(encoding="utf-8", newline="") as fh:
+            assert tuple(csv.DictReader(fh).fieldnames) == sb.FIELDS
+
+    def test_main_refuses_a_tool_it_has_no_prediction_for(self, tmp_path, capsys):
+        assert sb.main(["--root", str(tmp_path), "--tools", "sbk,kgo-repeater",
+                        "--out", str(tmp_path / "s.csv"), "--verdicts", str(tmp_path / "v.json")]) == 2
+        assert "no S1 prediction for kgo-repeater" in capsys.readouterr().out
+        assert not (tmp_path / "s.csv").exists()

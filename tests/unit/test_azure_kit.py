@@ -658,10 +658,11 @@ class TestTheToolsBlock:
         #: loopback, and whose coordinator the client asks on its port 8889; freeze 33, YSB's Flink
         #: JobManager, waited for on its RPC port 6123 and asked on its REST port 8081 whether its
         #: TaskManager has registered, and that TaskManager told the same loopback as its address.
+        #: Freeze 35 adds kgo-repeater's consuming repeater, reset and read on its control port 7884.
         for line in re.findall(r"^.*\$OWN\b.*$", runner, re.M):
             assert any(own_use in line for own_use in ("--workers", "--restapi", "/metrics",
                                                        ":8889", "trogdor.conf", ":8081/",
-                                                       "/6123", "taskmanager.host")), \
+                                                       "/6123", "taskmanager.host", ":7884/")), \
                 "the loopback names a tool's own processes, never a server: %s" % line.strip()
         assert "localhost" not in code
         for target in ("SBL_TOOL_HTTP:-http://$BROKER_PRIV:8080/", "SBL_VALKEY_HOST:-$BROKER_PRIV",
@@ -951,7 +952,11 @@ class TestT2ForcedNegatives:
         under it would be a run with no offset at all. D15-1 says what to do instead: move the
         machine's own clock and put it back. Until 25 September this script only refused."""
         code = self.tools()
-        assert 'GO_TOOLS="vegeta hey k6 nats-latency nats-bench strimzi-canary"' in code
+        listed = re.search(r'^GO_TOOLS="([^"]*)"', code, re.M).group(1).replace("\\\n", " ")
+        #: Freeze 35 adds three: mqtt-benchmark, Sarama's tool and kgo-repeater (D38-2).
+        assert listed.split() == ["vegeta", "hey", "k6", "nats-latency", "nats-bench",
+                                  "strimzi-canary", "mqtt-benchmark", "sarama-producer-perf",
+                                  "kgo-repeater"]
         t2 = code.split("\nt2 () {", 1)[1].split("\n}\n", 1)[0]
         assert "how=clock" in t2 and "step_clock" in t2
         go = t2.split('*" $tool "*)', 1)[1].split(";;", 1)[0]
@@ -1867,10 +1872,10 @@ class TestEveryPinnedToolHasSomethingThatInstallsIt:
 
     def test_the_block_pins_the_ten_tools_the_plan_counts(self):
         """Eleven for the first block (ten runnable, Kafka's two bundled tools apart), the five
-        freeze 30 adds (D33-1), the four freeze 32 adds (D35-1), YSB (D36-1), and freeze 34's
+        freeze 30 adds (D33-1), the four freeze 32 adds (D35-1), YSB (D36-1), freeze 34's
         PerfKit and Stream PerfTest as one instance, which shares its jar with the two-instance
-        runs but is its own way of running it."""
-        assert len(self._tools()) == 23
+        runs but is its own way of running it, and freeze 35's four (D38-1)."""
+        assert len(self._tools()) == 27
 
     @pytest.mark.parametrize("tool", ["vegeta", "hey", "k6", "wrk2", "valkey-benchmark",
                                       "memtier_benchmark", "rdkafka_performance",

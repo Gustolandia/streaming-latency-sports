@@ -56,6 +56,11 @@ YSB_TEST_TIME="${SBL_YSB_TEST_TIME:-120}"
 PKB_VM="${SBL_PKB_VM:-$HOME/tools/pkb-vm}"
 PKB_MESSAGES="${SBL_PKB_MESSAGES:-100}"
 PKB_SIZE="${SBL_PKB_SIZE:-10}"
+#: Freeze 35's four (D38-2): SBK where `tools.sh install-for sbk` builds it, on the Java 25 its
+#: build requires; the three Go tools are on the path, kgo-repeater on the broker too.
+SBK_HOME="${SBL_SBK_HOME:-$HOME/tools/src/SBK}"
+JAVA25="${SBL_JAVA25:-$HOME/tools/jdk-25}"
+SSH_KEY="${SSH_KEY:-$HOME/.ssh/azure_sbl}"
 #: The one address here that is not across the pair. Two of these tools are made of processes
 #: that talk to one another -- OMB's coordinator to its two workers, emqtt-bench's subscriber
 #: serving its own metrics -- and they do it on the machine's loopback. It names the tool's own
@@ -106,7 +111,7 @@ mkdir -p "$OUT"
 #: every run after it, and nothing noticed. On the driver every process of these names is one of
 #: the tools -- the broker is the other machine -- so any found is stopped first and written down
 #: beside the run, with its command line.
-leftover=$(pgrep -a -f '^([^ ]*/)?(java|beam\.smp|strimzi-canary|vegeta|hey|k6|nats|wrk|memtier_benchmark|valkey-benchmark|rdkafka_performance)( |$)' 2>/dev/null)
+leftover=$(pgrep -a -f '^([^ ]*/)?(java|beam\.smp|strimzi-canary|vegeta|hey|k6|nats|wrk|memtier_benchmark|valkey-benchmark|rdkafka_performance|mqtt-benchmark|kafka-producer-performance|kgo-repeater)( |$)' 2>/dev/null)
 if [ -n "$leftover" ]; then
   echo "$leftover" > "$OUT/leftovers.txt"
   echo "$leftover" | awk '{print $1}' | xargs -r sudo kill -9 2>/dev/null
@@ -613,6 +618,70 @@ XM
     echo "# the generator's seen.txt"
     cat "$here/seen.txt" 2>/dev/null
     true ;;
+  mqtt-benchmark)
+    # mqtt-benchmark at f46efba1 (D38-2). Its model is many clients, each publishing once a
+    # second -- its interval between a client's messages is in whole seconds -- so the block's
+    # rate is RATE clients, each sending the block's minute of messages, started across one
+    # second. One process: each client times publish to acknowledgment (QoS 1, its default) in one
+    # goroutine on Go's monotonic clock, and its results come out as one JSON document.
+    $WRAP mqtt-benchmark -broker "tcp://$MQTT_HOST:1883" -topic "sbl/mqttb/$(date -u +%s%N)" \
+      -clients "$RATE" -count "$SECONDS_TO_RUN" -size 512 -qos 1 -message-interval 1 \
+      -ramp-up-time 1 -format json -quiet ;;
+  sarama-producer-perf)
+    # Sarama's kafka-producer-performance at 36f7a14e (D38-2), on its own defaults but the load:
+    # an asynchronous producer, acknowledgment from the leader, and its assumed Kafka version,
+    # 0.8.2.0, which is why it speaks to the 3.9.1 broker; 512-byte messages, RATE a second, which
+    # it sends together at each second's tick; a topic of one partition made for the run.
+    s_topic="sbl-sarama-$(date -u +%s%N)"
+    "$KAFKA_HOME/bin/kafka-topics.sh" --bootstrap-server "$KAFKA39" --create --topic "$s_topic" \
+      --partitions 1 --replication-factor 1 > "$OUT/topic.txt" 2>&1
+    $WRAP kafka-producer-performance -brokers "$KAFKA39" -topic "$s_topic" \
+      -message-load $((RATE * SECONDS_TO_RUN)) -message-size 512 -throughput "$RATE" ;;
+  sbk)
+    # SBK 10.8 at 39af60da (D38-2): its Kafka driver with one writer and one reader in one
+    # process, Write_Reading, the one mode in which it times a message end to end -- a reader on
+    # its own times its poll (KafkaReader.recordRead). RATE records a second for the block's
+    # length: with -seconds given and its throughput left at its default, -1, -records is each
+    # writer's rate (SbkParameters: throughput < 0 and seconds set). Its help reads a throughput of
+    # 0 as "writes 'records'", and in the pilot of 11 October 0 lifted the limit instead: 256,280
+    # records a second, every latency the queue's. Its default time unit, whole milliseconds of
+    # the wall clock. The topic, of one partition, is made before it starts, as for the other
+    # tools: made by SBK itself, its writer met the topic before the broker served it. One JVM, so
+    # the whole wrap is on it.
+    b_topic="sbl-sbk-$(date -u +%s%N)"
+    "$KAFKA_HOME/bin/kafka-topics.sh" --bootstrap-server "$KAFKA" --create --topic "$b_topic" \
+      --partitions 1 --replication-factor 1 > "$OUT/topic.txt" 2>&1
+    $WRAP env JAVA_HOME="$JAVA25" "$SBK_HOME/build/install/sbk/bin/sbk" -class kafka \
+      -broker "$KAFKA" -topic "$b_topic" -writers 1 -readers 1 -size 512 -records "$RATE" \
+      -seconds "$SECONDS_TO_RUN" ;;
+  kgo-repeater)
+    # Redpanda's kgo-repeater at 6567f2f5 (D38-2): two repeaters, each run as its README runs one,
+    # on two machines. A, on the broker, produces about RATE messages a second of 512 bytes and
+    # echoes what it consumes, stamping every send with the broker's wall clock. B, here, in remote
+    # mode in a group of its own, is never activated: it consumes everything A sends and subtracts
+    # A's stamp from its own wall clock. The wrap -- the namespace, go-first, or this machine's
+    # stepped clock -- is on B, the process that subtracts. B's figures are reset once A has run
+    # ten seconds, and read from its /status after the block's minute, before either stops.
+    k_topic="sbl-kgo-$(date -u +%s%N)"
+    "$KAFKA_HOME/bin/kafka-topics.sh" --bootstrap-server "$KAFKA" --create --topic "$k_topic" \
+      --partitions 1 --replication-factor 1 > "$OUT/topic.txt" 2>&1
+    k_ssh=(ssh -n -i "$SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new "ubuntu@$BROKER_PRIV")
+    OWN_PATTERN="kgo-repeater .*-topic $k_topic"
+    $NS $REST kgo-repeater -brokers "$KAFKA" -topic "$k_topic" -group "b-$k_topic" -workers 1 \
+      -payload-size 512 -remote -remote-port 7884 > "$OUT/repeater_b.txt" 2>&1 &
+    OWN_PIDS="$OWN_PIDS $!"
+    sleep 5
+    "${k_ssh[@]}" "nohup kgo-repeater -brokers $KAFKA -topic $k_topic -group a-$k_topic -workers 1 \
+      -payload-size 512 -rate-limit-bps $((RATE * 512)) > /tmp/$k_topic.txt 2>&1 < /dev/null &"
+    sleep 10
+    $NS curl -s -m 5 "http://$OWN:7884/reset" > /dev/null
+    sleep "$SECONDS_TO_RUN"
+    echo "# kgo-repeater B's /status, read at the end of the run"
+    $NS curl -s -m 5 "http://$OWN:7884/status"
+    echo
+    "${k_ssh[@]}" "pkill -f -- 'kgo-repeater .*-topic $k_topic'; sleep 2; cat /tmp/$k_topic.txt; rm -f /tmp/$k_topic.txt" \
+      > "$OUT/repeater_a.txt" 2>&1
+    stop_own ;;
   *)
     echo "no such tool here: $TOOL" >&2; exit 2 ;;
 esac

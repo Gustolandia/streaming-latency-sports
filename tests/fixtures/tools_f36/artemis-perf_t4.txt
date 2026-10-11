@@ -1,0 +1,469 @@
+# artemis perf consumer's console
+Connection brokerURL = tcp://10.2.1.21:61616
+
+--- warmup false 
+--- received:         0 msg/sec 
+--- transfer time:   mean:      0.00 us - 50.00%:      0.00 us - 90.00%:      0.00 us - 99.00%:      0.00 us - 99.90%:      0.00 us - 99.99%:      0.00 us - max:         0.00 us
+
+--- warmup false 
+--- received:         0 msg/sec 
+--- transfer time:   mean:      0.00 us - 50.00%:      0.00 us - 90.00%:      0.00 us - 99.00%:      0.00 us - 99.90%:      0.00 us - 99.99%:      0.00 us - max:         0.00 us
+
+--- warmup false 
+--- received:         0 msg/sec 
+--- transfer time:   mean:      0.00 us - 50.00%:      0.00 us - 90.00%:      0.00 us - 99.00%:      0.00 us - 99.90%:      0.00 us - 99.99%:      0.00 us - max:         0.00 us
+
+--- warmup false 
+--- received:         0 msg/sec 
+--- transfer time:   mean:      0.00 us - 50.00%:      0.00 us - 90.00%:      0.00 us - 99.00%:      0.00 us - 99.90%:      0.00 us - 99.99%:      0.00 us - max:         0.00 us
+
+--- warmup false 
+--- received:         6 msg/sec 
+--- transfer time:   mean:   6094.86 us - 50.00%:   2479.00 us - 90.00%:  24447.00 us - 99.00%:  24447.00 us - 99.90%:  24447.00 us - 99.99%:  24447.00 us - max:     24447.00 us
+
+--- warmup false 
+--- received:        50 msg/sec 
+--- transfer time:   mean:   2271.37 us - 50.00%:   2207.00 us - 90.00%:   2671.00 us - 99.00%:   3215.00 us - 99.90%:   3215.00 us - 99.99%:   3215.00 us - max:      3215.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   2000.08 us - 50.00%:   1935.00 us - 90.00%:   2271.00 us - 99.00%:   3583.00 us - 99.90%:   3583.00 us - 99.99%:   3583.00 us - max:      3583.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1977.84 us - 50.00%:   1911.00 us - 90.00%:   2287.00 us - 99.00%:   3023.00 us - 99.90%:   3023.00 us - 99.99%:   3023.00 us - max:      3023.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1757.20 us - 50.00%:   1695.00 us - 90.00%:   1975.00 us - 99.00%:   3231.00 us - 99.90%:   3231.00 us - 99.99%:   3231.00 us - max:      3231.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1912.08 us - 50.00%:   1695.00 us - 90.00%:   2863.00 us - 99.00%:   3647.00 us - 99.90%:   3647.00 us - 99.99%:   3647.00 us - max:      3647.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1538.48 us - 50.00%:   1479.00 us - 90.00%:   1687.00 us - 99.00%:   3103.00 us - 99.90%:   3103.00 us - 99.99%:   3103.00 us - max:      3103.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1546.64 us - 50.00%:   1503.00 us - 90.00%:   1719.00 us - 99.00%:   2143.00 us - 99.90%:   2143.00 us - 99.99%:   2143.00 us - max:      2143.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1498.16 us - 50.00%:   1439.00 us - 90.00%:   1679.00 us - 99.00%:   2255.00 us - 99.90%:   2255.00 us - 99.99%:   2255.00 us - max:      2255.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1357.76 us - 50.00%:   1319.00 us - 90.00%:   1503.00 us - 99.00%:   1927.00 us - 99.90%:   1927.00 us - 99.99%:   1927.00 us - max:      1927.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1376.64 us - 50.00%:   1335.00 us - 90.00%:   1559.00 us - 99.00%:   1919.00 us - 99.90%:   1919.00 us - 99.99%:   1919.00 us - max:      1919.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1436.00 us - 50.00%:   1319.00 us - 90.00%:   1639.00 us - 99.00%:   2911.00 us - 99.90%:   2911.00 us - 99.99%:   2911.00 us - max:      2911.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1363.44 us - 50.00%:   1303.00 us - 90.00%:   1535.00 us - 99.00%:   2111.00 us - 99.90%:   2111.00 us - 99.99%:   2111.00 us - max:      2111.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1453.68 us - 50.00%:   1335.00 us - 90.00%:   1615.00 us - 99.00%:   3855.00 us - 99.90%:   3855.00 us - 99.99%:   3855.00 us - max:      3855.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1593.20 us - 50.00%:   1551.00 us - 90.00%:   1735.00 us - 99.00%:   2783.00 us - 99.90%:   2783.00 us - 99.99%:   2783.00 us - max:      2783.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1358.56 us - 50.00%:   1351.00 us - 90.00%:   1503.00 us - 99.00%:   1719.00 us - 99.90%:   1719.00 us - 99.99%:   1719.00 us - max:      1719.00 us
+
+--- warmup false 
+--- received:        50 msg/sec 
+--- transfer time:   mean:   1250.12 us - 50.00%:   1231.00 us - 90.00%:   1359.00 us - 99.00%:   1679.00 us - 99.90%:   1679.00 us - 99.99%:   1679.00 us - max:      1679.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1227.68 us - 50.00%:   1175.00 us - 90.00%:   1423.00 us - 99.00%:   1583.00 us - 99.90%:   1583.00 us - 99.99%:   1583.00 us - max:      1583.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1342.32 us - 50.00%:   1287.00 us - 90.00%:   1543.00 us - 99.00%:   3023.00 us - 99.90%:   3023.00 us - 99.99%:   3023.00 us - max:      3023.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1279.68 us - 50.00%:   1271.00 us - 90.00%:   1351.00 us - 99.00%:   1511.00 us - 99.90%:   1511.00 us - 99.99%:   1511.00 us - max:      1511.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1252.32 us - 50.00%:   1255.00 us - 90.00%:   1351.00 us - 99.00%:   1447.00 us - 99.90%:   1447.00 us - 99.99%:   1447.00 us - max:      1447.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1270.24 us - 50.00%:   1231.00 us - 90.00%:   1391.00 us - 99.00%:   1935.00 us - 99.90%:   1935.00 us - 99.99%:   1935.00 us - max:      1935.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1248.24 us - 50.00%:   1207.00 us - 90.00%:   1327.00 us - 99.00%:   2367.00 us - 99.90%:   2367.00 us - 99.99%:   2367.00 us - max:      2367.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1218.32 us - 50.00%:   1175.00 us - 90.00%:   1271.00 us - 99.00%:   2799.00 us - 99.90%:   2799.00 us - 99.99%:   2799.00 us - max:      2799.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1105.80 us - 50.00%:   1079.00 us - 90.00%:   1223.00 us - 99.00%:   1527.00 us - 99.90%:   1527.00 us - 99.99%:   1527.00 us - max:      1527.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1132.60 us - 50.00%:   1095.00 us - 90.00%:   1215.00 us - 99.00%:   2207.00 us - 99.90%:   2207.00 us - 99.99%:   2207.00 us - max:      2207.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1250.40 us - 50.00%:   1207.00 us - 90.00%:   1439.00 us - 99.00%:   1807.00 us - 99.90%:   1807.00 us - 99.99%:   1807.00 us - max:      1807.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1227.84 us - 50.00%:   1207.00 us - 90.00%:   1359.00 us - 99.00%:   1863.00 us - 99.90%:   1863.00 us - 99.99%:   1863.00 us - max:      1863.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1118.72 us - 50.00%:   1087.00 us - 90.00%:   1199.00 us - 99.00%:   1807.00 us - 99.90%:   1807.00 us - 99.99%:   1807.00 us - max:      1807.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1079.40 us - 50.00%:   1071.00 us - 90.00%:   1183.00 us - 99.00%:   1279.00 us - 99.90%:   1279.00 us - 99.99%:   1279.00 us - max:      1279.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1047.72 us - 50.00%:   1039.00 us - 90.00%:   1095.00 us - 99.00%:   1183.00 us - 99.90%:   1183.00 us - 99.99%:   1183.00 us - max:      1183.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1091.60 us - 50.00%:   1071.00 us - 90.00%:   1151.00 us - 99.00%:   1887.00 us - 99.90%:   1887.00 us - 99.99%:   1887.00 us - max:      1887.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1092.16 us - 50.00%:   1087.00 us - 90.00%:   1167.00 us - 99.00%:   1343.00 us - 99.90%:   1343.00 us - 99.99%:   1343.00 us - max:      1343.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1172.16 us - 50.00%:   1175.00 us - 90.00%:   1255.00 us - 99.00%:   1367.00 us - 99.90%:   1367.00 us - 99.99%:   1367.00 us - max:      1367.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1109.92 us - 50.00%:   1095.00 us - 90.00%:   1199.00 us - 99.00%:   1583.00 us - 99.90%:   1583.00 us - 99.99%:   1583.00 us - max:      1583.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1133.28 us - 50.00%:   1111.00 us - 90.00%:   1279.00 us - 99.00%:   1591.00 us - 99.90%:   1591.00 us - 99.99%:   1591.00 us - max:      1591.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1237.40 us - 50.00%:   1215.00 us - 90.00%:   1351.00 us - 99.00%:   1791.00 us - 99.90%:   1791.00 us - 99.99%:   1791.00 us - max:      1791.00 us
+
+--- warmup false 
+--- received:        50 msg/sec 
+--- transfer time:   mean:   1244.90 us - 50.00%:   1191.00 us - 90.00%:   1335.00 us - 99.00%:   2879.00 us - 99.90%:   2879.00 us - 99.99%:   2879.00 us - max:      2879.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1165.52 us - 50.00%:   1159.00 us - 90.00%:   1279.00 us - 99.00%:   1463.00 us - 99.90%:   1463.00 us - 99.99%:   1463.00 us - max:      1463.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1188.64 us - 50.00%:   1183.00 us - 90.00%:   1279.00 us - 99.00%:   1311.00 us - 99.90%:   1311.00 us - 99.99%:   1311.00 us - max:      1311.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1235.04 us - 50.00%:   1247.00 us - 90.00%:   1351.00 us - 99.00%:   1423.00 us - 99.90%:   1423.00 us - 99.99%:   1423.00 us - max:      1423.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1184.16 us - 50.00%:   1167.00 us - 90.00%:   1311.00 us - 99.00%:   1415.00 us - 99.90%:   1415.00 us - 99.99%:   1415.00 us - max:      1415.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1138.04 us - 50.00%:   1127.00 us - 90.00%:   1231.00 us - 99.00%:   1407.00 us - 99.90%:   1407.00 us - 99.99%:   1407.00 us - max:      1407.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1104.48 us - 50.00%:   1103.00 us - 90.00%:   1183.00 us - 99.00%:   1223.00 us - 99.90%:   1223.00 us - 99.99%:   1223.00 us - max:      1223.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1131.84 us - 50.00%:   1119.00 us - 90.00%:   1239.00 us - 99.00%:   1343.00 us - 99.90%:   1343.00 us - 99.99%:   1343.00 us - max:      1343.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1143.80 us - 50.00%:   1135.00 us - 90.00%:   1247.00 us - 99.00%:   1471.00 us - 99.90%:   1471.00 us - 99.99%:   1471.00 us - max:      1471.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1197.12 us - 50.00%:   1207.00 us - 90.00%:   1287.00 us - 99.00%:   1327.00 us - 99.90%:   1327.00 us - 99.99%:   1327.00 us - max:      1327.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1147.04 us - 50.00%:   1143.00 us - 90.00%:   1239.00 us - 99.00%:   1295.00 us - 99.90%:   1295.00 us - 99.99%:   1295.00 us - max:      1295.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1259.52 us - 50.00%:   1247.00 us - 90.00%:   1431.00 us - 99.00%:   1871.00 us - 99.90%:   1871.00 us - 99.99%:   1871.00 us - max:      1871.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1152.52 us - 50.00%:   1143.00 us - 90.00%:   1279.00 us - 99.00%:   1335.00 us - 99.90%:   1335.00 us - 99.99%:   1335.00 us - max:      1335.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1190.40 us - 50.00%:   1191.00 us - 90.00%:   1303.00 us - 99.00%:   1383.00 us - 99.90%:   1383.00 us - 99.99%:   1383.00 us - max:      1383.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1232.80 us - 50.00%:   1199.00 us - 90.00%:   1335.00 us - 99.00%:   2831.00 us - 99.90%:   2831.00 us - 99.99%:   2831.00 us - max:      2831.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1279.20 us - 50.00%:   1167.00 us - 90.00%:   1391.00 us - 99.00%:   2943.00 us - 99.90%:   2943.00 us - 99.99%:   2943.00 us - max:      2943.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1161.04 us - 50.00%:   1103.00 us - 90.00%:   1279.00 us - 99.00%:   1999.00 us - 99.90%:   1999.00 us - 99.99%:   1999.00 us - max:      1999.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1138.68 us - 50.00%:   1111.00 us - 90.00%:   1279.00 us - 99.00%:   1751.00 us - 99.90%:   1751.00 us - 99.99%:   1751.00 us - max:      1751.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1191.52 us - 50.00%:   1167.00 us - 90.00%:   1335.00 us - 99.00%:   1703.00 us - 99.90%:   1703.00 us - 99.99%:   1703.00 us - max:      1703.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1110.08 us - 50.00%:   1087.00 us - 90.00%:   1223.00 us - 99.00%:   1815.00 us - 99.90%:   1815.00 us - 99.99%:   1815.00 us - max:      1815.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1045.92 us - 50.00%:   1007.00 us - 90.00%:   1159.00 us - 99.00%:   1719.00 us - 99.90%:   1719.00 us - 99.99%:   1719.00 us - max:      1719.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:    984.80 us - 50.00%:    979.00 us - 90.00%:   1007.00 us - 99.00%:   1087.00 us - 99.90%:   1087.00 us - 99.99%:   1087.00 us - max:      1087.00 us
+
+--- warmup false 
+--- received:        49 msg/sec 
+--- transfer time:   mean:   1034.96 us - 50.00%:   1023.00 us - 90.00%:   1119.00 us - 99.00%:   1199.00 us - 99.90%:   1199.00 us - 99.99%:   1199.00 us - max:      1199.00 us
+
+--- warmup false 
+--- received:        39 msg/sec 
+--- transfer time:   mean:   1032.40 us - 50.00%:   1015.00 us - 90.00%:   1127.00 us - 99.00%:   1239.00 us - 99.90%:   1239.00 us - 99.99%:   1239.00 us - max:      1239.00 us
+
+--- warmup false 
+--- received:         0 msg/sec 
+--- transfer time:   mean:      0.00 us - 50.00%:      0.00 us - 90.00%:      0.00 us - 99.00%:      0.00 us - 99.90%:      0.00 us - 99.99%:      0.00 us - max:         0.00 us
+
+--- warmup false 
+--- received:         0 msg/sec 
+--- transfer time:   mean:      0.00 us - 50.00%:      0.00 us - 90.00%:      0.00 us - 99.00%:      0.00 us - 99.90%:      0.00 us - 99.99%:      0.00 us - max:         0.00 us
+
+--- warmup false 
+--- received:         0 msg/sec 
+--- transfer time:   mean:      0.00 us - 50.00%:      0.00 us - 90.00%:      0.00 us - 99.00%:      0.00 us - 99.90%:      0.00 us - 99.99%:      0.00 us - max:         0.00 us
+
+--- warmup false 
+--- received:         0 msg/sec 
+--- transfer time:   mean:      0.00 us - 50.00%:      0.00 us - 90.00%:      0.00 us - 99.00%:      0.00 us - 99.90%:      0.00 us - 99.99%:      0.00 us - max:         0.00 us
+
+--- warmup false 
+--- received:         0 msg/sec 
+--- transfer time:   mean:      0.00 us - 50.00%:      0.00 us - 90.00%:      0.00 us - 99.00%:      0.00 us - 99.90%:      0.00 us - 99.99%:      0.00 us - max:         0.00 us
+
+--- warmup false 
+--- received:         0 msg/sec 
+--- transfer time:   mean:      0.00 us - 50.00%:      0.00 us - 90.00%:      0.00 us - 99.00%:      0.00 us - 99.90%:      0.00 us - 99.99%:      0.00 us - max:         0.00 us
+
+--- warmup false 
+--- received:         0 msg/sec 
+--- transfer time:   mean:      0.00 us - 50.00%:      0.00 us - 90.00%:      0.00 us - 99.00%:      0.00 us - 99.90%:      0.00 us - 99.99%:      0.00 us - max:         0.00 us
+
+--- warmup false 
+--- received:         0 msg/sec 
+--- transfer time:   mean:      0.00 us - 50.00%:      0.00 us - 90.00%:      0.00 us - 99.00%:      0.00 us - 99.90%:      0.00 us - 99.99%:      0.00 us - max:         0.00 us
+
+--- warmup false 
+--- received:         0 msg/sec 
+--- transfer time:   mean:      0.00 us - 50.00%:      0.00 us - 90.00%:      0.00 us - 99.00%:      0.00 us - 99.90%:      0.00 us - 99.99%:      0.00 us - max:         0.00 us
+
+--- warmup false 
+--- received:         0 msg/sec 
+--- transfer time:   mean:      0.00 us - 50.00%:      0.00 us - 90.00%:      0.00 us - 99.00%:      0.00 us - 99.90%:      0.00 us - 99.99%:      0.00 us - max:         0.00 us
+
+--- warmup false 
+--- received:         0 msg/sec 
+--- transfer time:   mean:      0.00 us - 50.00%:      0.00 us - 90.00%:      0.00 us - 99.00%:      0.00 us - 99.90%:      0.00 us - 99.99%:      0.00 us - max:         0.00 us
+
+--- warmup false 
+--- received:         0 msg/sec 
+--- transfer time:   mean:      0.00 us - 50.00%:      0.00 us - 90.00%:      0.00 us - 99.00%:      0.00 us - 99.90%:      0.00 us - 99.99%:      0.00 us - max:         0.00 us
+
+--- warmup false 
+--- received:         0 msg/sec 
+--- transfer time:   mean:      0.00 us - 50.00%:      0.00 us - 90.00%:      0.00 us - 99.00%:      0.00 us - 99.90%:      0.00 us - 99.99%:      0.00 us - max:         0.00 us
+
+--- warmup false 
+--- received:         0 msg/sec 
+--- transfer time:   mean:      0.00 us - 50.00%:      0.00 us - 90.00%:      0.00 us - 99.00%:      0.00 us - 99.90%:      0.00 us - 99.99%:      0.00 us - max:         0.00 us
+
+--- SUMMARY
+--- result:              success
+--- total received:         3000 
+--- aggregated transfer time:   mean:   1296.09 us - 50.00%:   1199.00 us - 90.00%:   1655.00 us - 99.00%:   2639.00 us - 99.90%:   3647.00 us - 99.99%:  24447.00 us - max:     24447.00 us
+# artemis perf consumer's JSON
+[
+{"sampleType":"interval","warmup":false,"time":1791744063213,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791744064232,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791744065234,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791744066235,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791744067236,"received":6,"transferTime":{"mean":"6094.86","50":2479,"90":24447,"99":24447,"99.9":24447,"99.99":24447,"max":24447,"count":7}},
+{"sampleType":"interval","warmup":false,"time":1791744068238,"received":50,"transferTime":{"mean":"2271.37","50":2207,"90":2671,"99":3215,"99.9":3215,"99.99":3215,"max":3215,"count":51}},
+{"sampleType":"interval","warmup":false,"time":1791744069240,"received":49,"transferTime":{"mean":"2000.08","50":1935,"90":2271,"99":3583,"99.9":3583,"99.99":3583,"max":3583,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744070242,"received":49,"transferTime":{"mean":"1977.84","50":1911,"90":2287,"99":3023,"99.9":3023,"99.99":3023,"max":3023,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744071243,"received":49,"transferTime":{"mean":"1757.20","50":1695,"90":1975,"99":3231,"99.9":3231,"99.99":3231,"max":3231,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744072245,"received":49,"transferTime":{"mean":"1912.08","50":1695,"90":2863,"99":3647,"99.9":3647,"99.99":3647,"max":3647,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744073246,"received":49,"transferTime":{"mean":"1538.48","50":1479,"90":1687,"99":3103,"99.9":3103,"99.99":3103,"max":3103,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744074247,"received":49,"transferTime":{"mean":"1546.64","50":1503,"90":1719,"99":2143,"99.9":2143,"99.99":2143,"max":2143,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744075248,"received":49,"transferTime":{"mean":"1498.16","50":1439,"90":1679,"99":2255,"99.9":2255,"99.99":2255,"max":2255,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744076250,"received":49,"transferTime":{"mean":"1357.76","50":1319,"90":1503,"99":1927,"99.9":1927,"99.99":1927,"max":1927,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744077251,"received":49,"transferTime":{"mean":"1376.64","50":1335,"90":1559,"99":1919,"99.9":1919,"99.99":1919,"max":1919,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744078252,"received":49,"transferTime":{"mean":"1436.00","50":1319,"90":1639,"99":2911,"99.9":2911,"99.99":2911,"max":2911,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744079253,"received":49,"transferTime":{"mean":"1363.44","50":1303,"90":1535,"99":2111,"99.9":2111,"99.99":2111,"max":2111,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744080254,"received":49,"transferTime":{"mean":"1453.68","50":1335,"90":1615,"99":3855,"99.9":3855,"99.99":3855,"max":3855,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744081255,"received":49,"transferTime":{"mean":"1593.20","50":1551,"90":1735,"99":2783,"99.9":2783,"99.99":2783,"max":2783,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744082257,"received":49,"transferTime":{"mean":"1358.56","50":1351,"90":1503,"99":1719,"99.9":1719,"99.99":1719,"max":1719,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744083258,"received":50,"transferTime":{"mean":"1250.12","50":1231,"90":1359,"99":1679,"99.9":1679,"99.99":1679,"max":1679,"count":51}},
+{"sampleType":"interval","warmup":false,"time":1791744084259,"received":49,"transferTime":{"mean":"1227.68","50":1175,"90":1423,"99":1583,"99.9":1583,"99.99":1583,"max":1583,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744085260,"received":49,"transferTime":{"mean":"1342.32","50":1287,"90":1543,"99":3023,"99.9":3023,"99.99":3023,"max":3023,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744086261,"received":49,"transferTime":{"mean":"1279.68","50":1271,"90":1351,"99":1511,"99.9":1511,"99.99":1511,"max":1511,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744087262,"received":49,"transferTime":{"mean":"1252.32","50":1255,"90":1351,"99":1447,"99.9":1447,"99.99":1447,"max":1447,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744088263,"received":49,"transferTime":{"mean":"1270.24","50":1231,"90":1391,"99":1935,"99.9":1935,"99.99":1935,"max":1935,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744089264,"received":49,"transferTime":{"mean":"1248.24","50":1207,"90":1327,"99":2367,"99.9":2367,"99.99":2367,"max":2367,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744090265,"received":49,"transferTime":{"mean":"1218.32","50":1175,"90":1271,"99":2799,"99.9":2799,"99.99":2799,"max":2799,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744091265,"received":49,"transferTime":{"mean":"1105.80","50":1079,"90":1223,"99":1527,"99.9":1527,"99.99":1527,"max":1527,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744092266,"received":49,"transferTime":{"mean":"1132.60","50":1095,"90":1215,"99":2207,"99.9":2207,"99.99":2207,"max":2207,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744093267,"received":49,"transferTime":{"mean":"1250.40","50":1207,"90":1439,"99":1807,"99.9":1807,"99.99":1807,"max":1807,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744094268,"received":49,"transferTime":{"mean":"1227.84","50":1207,"90":1359,"99":1863,"99.9":1863,"99.99":1863,"max":1863,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744095269,"received":49,"transferTime":{"mean":"1118.72","50":1087,"90":1199,"99":1807,"99.9":1807,"99.99":1807,"max":1807,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744096270,"received":49,"transferTime":{"mean":"1079.40","50":1071,"90":1183,"99":1279,"99.9":1279,"99.99":1279,"max":1279,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744097271,"received":49,"transferTime":{"mean":"1047.72","50":1039,"90":1095,"99":1183,"99.9":1183,"99.99":1183,"max":1183,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744098272,"received":49,"transferTime":{"mean":"1091.60","50":1071,"90":1151,"99":1887,"99.9":1887,"99.99":1887,"max":1887,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744099273,"received":49,"transferTime":{"mean":"1092.16","50":1087,"90":1167,"99":1343,"99.9":1343,"99.99":1343,"max":1343,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744100274,"received":49,"transferTime":{"mean":"1172.16","50":1175,"90":1255,"99":1367,"99.9":1367,"99.99":1367,"max":1367,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744101274,"received":49,"transferTime":{"mean":"1109.92","50":1095,"90":1199,"99":1583,"99.9":1583,"99.99":1583,"max":1583,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744102275,"received":49,"transferTime":{"mean":"1133.28","50":1111,"90":1279,"99":1591,"99.9":1591,"99.99":1591,"max":1591,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744103276,"received":49,"transferTime":{"mean":"1237.40","50":1215,"90":1351,"99":1791,"99.9":1791,"99.99":1791,"max":1791,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744104277,"received":50,"transferTime":{"mean":"1244.90","50":1191,"90":1335,"99":2879,"99.9":2879,"99.99":2879,"max":2879,"count":51}},
+{"sampleType":"interval","warmup":false,"time":1791744105278,"received":49,"transferTime":{"mean":"1165.52","50":1159,"90":1279,"99":1463,"99.9":1463,"99.99":1463,"max":1463,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744106278,"received":49,"transferTime":{"mean":"1188.64","50":1183,"90":1279,"99":1311,"99.9":1311,"99.99":1311,"max":1311,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744107279,"received":49,"transferTime":{"mean":"1235.04","50":1247,"90":1351,"99":1423,"99.9":1423,"99.99":1423,"max":1423,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744108280,"received":49,"transferTime":{"mean":"1184.16","50":1167,"90":1311,"99":1415,"99.9":1415,"99.99":1415,"max":1415,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744109280,"received":49,"transferTime":{"mean":"1138.04","50":1127,"90":1231,"99":1407,"99.9":1407,"99.99":1407,"max":1407,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744110281,"received":49,"transferTime":{"mean":"1104.48","50":1103,"90":1183,"99":1223,"99.9":1223,"99.99":1223,"max":1223,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744111282,"received":49,"transferTime":{"mean":"1131.84","50":1119,"90":1239,"99":1343,"99.9":1343,"99.99":1343,"max":1343,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744112283,"received":49,"transferTime":{"mean":"1143.80","50":1135,"90":1247,"99":1471,"99.9":1471,"99.99":1471,"max":1471,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744113283,"received":49,"transferTime":{"mean":"1197.12","50":1207,"90":1287,"99":1327,"99.9":1327,"99.99":1327,"max":1327,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744114284,"received":49,"transferTime":{"mean":"1147.04","50":1143,"90":1239,"99":1295,"99.9":1295,"99.99":1295,"max":1295,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744115285,"received":49,"transferTime":{"mean":"1259.52","50":1247,"90":1431,"99":1871,"99.9":1871,"99.99":1871,"max":1871,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744116286,"received":49,"transferTime":{"mean":"1152.52","50":1143,"90":1279,"99":1335,"99.9":1335,"99.99":1335,"max":1335,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744117286,"received":49,"transferTime":{"mean":"1190.40","50":1191,"90":1303,"99":1383,"99.9":1383,"99.99":1383,"max":1383,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744118287,"received":49,"transferTime":{"mean":"1232.80","50":1199,"90":1335,"99":2831,"99.9":2831,"99.99":2831,"max":2831,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744119288,"received":49,"transferTime":{"mean":"1279.20","50":1167,"90":1391,"99":2943,"99.9":2943,"99.99":2943,"max":2943,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744120289,"received":49,"transferTime":{"mean":"1161.04","50":1103,"90":1279,"99":1999,"99.9":1999,"99.99":1999,"max":1999,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744121289,"received":49,"transferTime":{"mean":"1138.68","50":1111,"90":1279,"99":1751,"99.9":1751,"99.99":1751,"max":1751,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744122290,"received":49,"transferTime":{"mean":"1191.52","50":1167,"90":1335,"99":1703,"99.9":1703,"99.99":1703,"max":1703,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744123291,"received":49,"transferTime":{"mean":"1110.08","50":1087,"90":1223,"99":1815,"99.9":1815,"99.99":1815,"max":1815,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744124292,"received":49,"transferTime":{"mean":"1045.92","50":1007,"90":1159,"99":1719,"99.9":1719,"99.99":1719,"max":1719,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744125292,"received":49,"transferTime":{"mean":"984.80","50":979,"90":1007,"99":1087,"99.9":1087,"99.99":1087,"max":1087,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744126293,"received":49,"transferTime":{"mean":"1034.96","50":1023,"90":1119,"99":1199,"99.9":1199,"99.99":1199,"max":1199,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744127294,"received":39,"transferTime":{"mean":"1032.40","50":1015,"90":1127,"99":1239,"99.9":1239,"99.99":1239,"max":1239,"count":40}},
+{"sampleType":"interval","warmup":false,"time":1791744128295,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791744129296,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791744130296,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791744131297,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791744132298,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791744133299,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791744134300,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791744135300,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791744136301,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791744137302,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791744138302,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791744139303,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791744140304,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791744141304,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"summary","time":1791744142312,"result":"success","totalReceived":3000,"totalTransferTime":{"mean":"1296.09","50":1199,"90":1655,"99":2639,"99.9":3647,"99.99":24447,"max":24447,"count":3000}}
+]
+# artemis perf producer's JSON
+[
+{"sampleType":"interval","warmup":false,"time":1791744068097,"sent":50,"delayed":0,"completed":49,"delaySendTime":{"mean":"137.27","50":137,"90":156,"99":189,"99.9":189,"99.99":189,"max":189,"count":51},"sendTime":{"mean":"2200.96","50":1927,"90":2607,"99":14527,"99.9":14527,"99.99":14527,"max":14527,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744069113,"sent":49,"delayed":0,"completed":50,"delaySendTime":{"mean":"130.40","50":128,"90":149,"99":153,"99.9":153,"99.99":153,"max":153,"count":50},"sendTime":{"mean":"1730.20","50":1615,"90":2175,"99":3359,"99.9":3359,"99.99":3359,"max":3359,"count":51}},
+{"sampleType":"interval","warmup":false,"time":1791744070114,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"121.00","50":121,"90":140,"99":184,"99.9":184,"99.99":184,"max":184,"count":50},"sendTime":{"mean":"1555.44","50":1519,"90":1831,"99":2191,"99.9":2191,"99.99":2191,"max":2191,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744071116,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"116.26","50":117,"90":126,"99":141,"99.9":141,"99.99":141,"max":141,"count":50},"sendTime":{"mean":"1427.52","50":1351,"90":1639,"99":2927,"99.9":2927,"99.99":2927,"max":2927,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744072117,"sent":50,"delayed":0,"completed":49,"delaySendTime":{"mean":"117.76","50":117,"90":127,"99":143,"99.9":143,"99.99":143,"max":143,"count":51},"sendTime":{"mean":"1505.36","50":1375,"90":1823,"99":3599,"99.9":3599,"99.99":3599,"max":3599,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744073117,"sent":49,"delayed":0,"completed":50,"delaySendTime":{"mean":"106.48","50":107,"90":121,"99":147,"99.9":147,"99.99":147,"max":147,"count":50},"sendTime":{"mean":"1314.90","50":1167,"90":1495,"99":3071,"99.9":3071,"99.99":3071,"max":3071,"count":51}},
+{"sampleType":"interval","warmup":false,"time":1791744074118,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"106.34","50":106,"90":111,"99":129,"99.9":129,"99.99":129,"max":129,"count":50},"sendTime":{"mean":"1217.28","50":1183,"90":1359,"99":1599,"99.9":1599,"99.99":1599,"max":1599,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744075119,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"104.90","50":105,"90":111,"99":128,"99.9":128,"99.99":128,"max":128,"count":50},"sendTime":{"mean":"1257.76","50":1167,"90":1599,"99":2511,"99.9":2511,"99.99":2511,"max":2511,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744076120,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"105.22","50":106,"90":113,"99":123,"99.9":123,"99.99":123,"max":123,"count":50},"sendTime":{"mean":"1084.24","50":1055,"90":1183,"99":1663,"99.9":1663,"99.99":1663,"max":1663,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744077121,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"106.60","50":106,"90":112,"99":118,"99.9":118,"99.99":118,"max":118,"count":50},"sendTime":{"mean":"1115.92","50":1055,"90":1295,"99":1607,"99.9":1607,"99.99":1607,"max":1607,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744078122,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"107.42","50":107,"90":115,"99":117,"99.9":117,"99.99":117,"max":117,"count":50},"sendTime":{"mean":"1170.48","50":1047,"90":1583,"99":2623,"99.9":2623,"99.99":2623,"max":2623,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744079123,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"109.66","50":107,"90":114,"99":168,"99.9":168,"99.99":168,"max":168,"count":50},"sendTime":{"mean":"1101.40","50":1023,"90":1255,"99":2047,"99.9":2047,"99.99":2047,"max":2047,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744080123,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"109.44","50":107,"90":121,"99":166,"99.9":166,"99.99":166,"max":166,"count":50},"sendTime":{"mean":"1137.96","50":1007,"90":1263,"99":3503,"99.9":3503,"99.99":3503,"max":3503,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744081124,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"145.18","50":144,"90":167,"99":173,"99.9":173,"99.99":173,"max":173,"count":50},"sendTime":{"mean":"1199.56","50":1191,"90":1335,"99":1479,"99.9":1479,"99.99":1479,"max":1479,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744082125,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"116.60","50":110,"90":143,"99":165,"99.9":165,"99.99":165,"max":165,"count":50},"sendTime":{"mean":"1089.28","50":1055,"90":1311,"99":2543,"99.9":2543,"99.99":2543,"max":2543,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744083125,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"108.82","50":107,"90":117,"99":129,"99.9":129,"99.99":129,"max":129,"count":50},"sendTime":{"mean":"1005.48","50":971,"90":1119,"99":1543,"99.9":1543,"99.99":1543,"max":1543,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744084126,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"105.52","50":105,"90":112,"99":136,"99.9":136,"99.99":136,"max":136,"count":50},"sendTime":{"mean":"939.32","50":903,"90":1023,"99":1207,"99.9":1207,"99.99":1207,"max":1207,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744085127,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"110.10","50":108,"90":126,"99":158,"99.9":158,"99.99":158,"max":158,"count":50},"sendTime":{"mean":"1045.64","50":995,"90":1239,"99":2031,"99.9":2031,"99.99":2031,"max":2031,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744086128,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"100.24","50":101,"90":120,"99":149,"99.9":149,"99.99":149,"max":149,"count":50},"sendTime":{"mean":"1053.24","50":1019,"90":1095,"99":2767,"99.9":2767,"99.99":2767,"max":2767,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744087128,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"107.18","50":106,"90":118,"99":127,"99.9":127,"99.99":127,"max":127,"count":50},"sendTime":{"mean":"998.28","50":975,"90":1095,"99":1167,"99.9":1167,"99.99":1167,"max":1167,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744088129,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"112.46","50":111,"90":121,"99":154,"99.9":154,"99.99":154,"max":154,"count":50},"sendTime":{"mean":"1018.44","50":995,"90":1119,"99":1903,"99.9":1903,"99.99":1903,"max":1903,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744089130,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"110.46","50":112,"90":136,"99":152,"99.9":152,"99.99":152,"max":152,"count":50},"sendTime":{"mean":"981.12","50":935,"90":1039,"99":2111,"99.9":2111,"99.99":2111,"max":2111,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744090130,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"115.58","50":113,"90":124,"99":166,"99.9":166,"99.99":166,"max":166,"count":50},"sendTime":{"mean":"997.52","50":967,"90":1055,"99":2607,"99.9":2607,"99.99":2607,"max":2607,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744091131,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"100.04","50":99,"90":107,"99":126,"99.9":126,"99.99":126,"max":126,"count":50},"sendTime":{"mean":"891.56","50":887,"90":987,"99":1111,"99.9":1111,"99.99":1111,"max":1111,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744092132,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"98.90","50":99,"90":105,"99":126,"99.9":126,"99.99":126,"max":126,"count":50},"sendTime":{"mean":"878.48","50":855,"90":959,"99":1535,"99.9":1535,"99.99":1535,"max":1535,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744093132,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"102.94","50":102,"90":115,"99":130,"99.9":130,"99.99":130,"max":130,"count":50},"sendTime":{"mean":"1021.96","50":1007,"90":1207,"99":1567,"99.9":1567,"99.99":1567,"max":1567,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744094133,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"100.62","50":99,"90":108,"99":153,"99.9":153,"99.99":153,"max":153,"count":50},"sendTime":{"mean":"1006.76","50":963,"90":1151,"99":1855,"99.9":1855,"99.99":1855,"max":1855,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744095133,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"101.28","50":100,"90":108,"99":132,"99.9":132,"99.99":132,"max":132,"count":50},"sendTime":{"mean":"893.00","50":867,"90":959,"99":1575,"99.9":1575,"99.99":1575,"max":1575,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744096134,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"100.70","50":98,"90":111,"99":125,"99.9":125,"99.99":125,"max":125,"count":50},"sendTime":{"mean":"883.52","50":859,"90":935,"99":1975,"99.9":1975,"99.99":1975,"max":1975,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744097135,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"97.38","50":98,"90":102,"99":105,"99.9":105,"99.99":105,"max":105,"count":50},"sendTime":{"mean":"819.60","50":815,"90":867,"99":915,"99.9":915,"99.99":915,"max":915,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744098135,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"93.66","50":97,"90":103,"99":107,"99.9":107,"99.99":107,"max":107,"count":50},"sendTime":{"mean":"883.44","50":843,"90":939,"99":1871,"99.9":1871,"99.99":1871,"max":1871,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744099136,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"103.98","50":103,"90":112,"99":128,"99.9":128,"99.99":128,"max":128,"count":50},"sendTime":{"mean":"853.92","50":863,"90":919,"99":971,"99.9":971,"99.99":971,"max":971,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744100136,"sent":50,"delayed":0,"completed":49,"delaySendTime":{"mean":"112.39","50":109,"90":124,"99":156,"99.9":156,"99.99":156,"max":156,"count":51},"sendTime":{"mean":"970.72","50":915,"90":1007,"99":2495,"99.9":2495,"99.99":2495,"max":2495,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744101137,"sent":49,"delayed":0,"completed":50,"delaySendTime":{"mean":"105.86","50":103,"90":117,"99":135,"99.9":135,"99.99":135,"max":135,"count":50},"sendTime":{"mean":"883.84","50":883,"90":955,"99":1047,"99.9":1047,"99.99":1047,"max":1047,"count":51}},
+{"sampleType":"interval","warmup":false,"time":1791744102137,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"94.76","50":97,"90":108,"99":126,"99.9":126,"99.99":126,"max":126,"count":50},"sendTime":{"mean":"869.84","50":863,"90":999,"99":1143,"99.9":1143,"99.99":1143,"max":1143,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744103138,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"99.18","50":100,"90":113,"99":123,"99.9":123,"99.99":123,"max":123,"count":50},"sendTime":{"mean":"1063.64","50":975,"90":1223,"99":2527,"99.9":2527,"99.99":2527,"max":2527,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744104138,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"98.32","50":95,"90":110,"99":144,"99.9":144,"99.99":144,"max":144,"count":50},"sendTime":{"mean":"973.12","50":939,"90":1095,"99":1903,"99.9":1903,"99.99":1903,"max":1903,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744105139,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"94.08","50":95,"90":109,"99":129,"99.9":129,"99.99":129,"max":129,"count":50},"sendTime":{"mean":"879.00","50":883,"90":971,"99":1111,"99.9":1111,"99.99":1111,"max":1111,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744106139,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"98.46","50":98,"90":108,"99":115,"99.9":115,"99.99":115,"max":115,"count":50},"sendTime":{"mean":"951.36","50":939,"90":1015,"99":1047,"99.9":1047,"99.99":1047,"max":1047,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744107139,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"99.34","50":97,"90":111,"99":119,"99.9":119,"99.99":119,"max":119,"count":50},"sendTime":{"mean":"969.00","50":951,"90":1071,"99":1167,"99.9":1167,"99.99":1167,"max":1167,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744108140,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"101.04","50":100,"90":114,"99":131,"99.9":131,"99.99":131,"max":131,"count":50},"sendTime":{"mean":"958.44","50":927,"90":1055,"99":1487,"99.9":1487,"99.99":1487,"max":1487,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744109140,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"95.88","50":95,"90":109,"99":125,"99.9":125,"99.99":125,"max":125,"count":50},"sendTime":{"mean":"885.64","50":891,"90":959,"99":1031,"99.9":1031,"99.99":1031,"max":1031,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744110141,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"100.26","50":98,"90":110,"99":120,"99.9":120,"99.99":120,"max":120,"count":50},"sendTime":{"mean":"854.76","50":859,"90":919,"99":1119,"99.9":1119,"99.99":1119,"max":1119,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744111141,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"99.72","50":95,"90":110,"99":138,"99.9":138,"99.99":138,"max":138,"count":50},"sendTime":{"mean":"885.88","50":891,"90":947,"99":1055,"99.9":1055,"99.99":1055,"max":1055,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744112142,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"96.18","50":94,"90":107,"99":118,"99.9":118,"99.99":118,"max":118,"count":50},"sendTime":{"mean":"867.04","50":871,"90":951,"99":1003,"99.9":1003,"99.99":1003,"max":1003,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744113143,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"98.58","50":96,"90":109,"99":128,"99.9":128,"99.99":128,"max":128,"count":50},"sendTime":{"mean":"932.36","50":927,"90":1011,"99":1215,"99.9":1215,"99.99":1215,"max":1215,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744114143,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"93.42","50":94,"90":101,"99":111,"99.9":111,"99.99":111,"max":111,"count":50},"sendTime":{"mean":"913.76","50":923,"90":991,"99":1047,"99.9":1047,"99.99":1047,"max":1047,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744115143,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"105.24","50":101,"90":128,"99":141,"99.9":141,"99.99":141,"max":141,"count":50},"sendTime":{"mean":"944.84","50":903,"90":1095,"99":1551,"99.9":1551,"99.99":1551,"max":1551,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744116144,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"110.20","50":108,"90":130,"99":146,"99.9":146,"99.99":146,"max":146,"count":50},"sendTime":{"mean":"943.56","50":919,"90":1063,"99":1167,"99.9":1167,"99.99":1167,"max":1167,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744117144,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"101.18","50":98,"90":119,"99":129,"99.9":129,"99.99":129,"max":129,"count":50},"sendTime":{"mean":"935.04","50":931,"90":1031,"99":1103,"99.9":1103,"99.99":1103,"max":1103,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744118145,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"94.42","50":96,"90":109,"99":118,"99.9":118,"99.99":118,"max":118,"count":50},"sendTime":{"mean":"913.76","50":923,"90":995,"99":1111,"99.9":1111,"99.99":1111,"max":1111,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744119145,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"92.60","50":93,"90":101,"99":113,"99.9":113,"99.99":113,"max":113,"count":50},"sendTime":{"mean":"1062.88","50":955,"90":1183,"99":2639,"99.9":2639,"99.99":2639,"max":2639,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744120146,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"90.00","50":93,"90":101,"99":113,"99.9":113,"99.99":113,"max":113,"count":50},"sendTime":{"mean":"906.96","50":879,"90":1031,"99":1727,"99.9":1727,"99.99":1727,"max":1727,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744121146,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"99.24","50":99,"90":115,"99":123,"99.9":123,"99.99":123,"max":123,"count":50},"sendTime":{"mean":"943.04","50":891,"90":1011,"99":2495,"99.9":2495,"99.99":2495,"max":2495,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744122147,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"105.22","50":103,"90":121,"99":133,"99.9":133,"99.99":133,"max":133,"count":50},"sendTime":{"mean":"913.12","50":903,"90":1003,"99":1303,"99.9":1303,"99.99":1303,"max":1303,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744123148,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"99.52","50":98,"90":106,"99":114,"99.9":114,"99.99":114,"max":114,"count":50},"sendTime":{"mean":"885.16","50":863,"90":979,"99":1527,"99.9":1527,"99.99":1527,"max":1527,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744124148,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"96.94","50":95,"90":105,"99":118,"99.9":118,"99.99":118,"max":118,"count":50},"sendTime":{"mean":"822.36","50":803,"90":895,"99":1431,"99.9":1431,"99.99":1431,"max":1431,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744125149,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"92.38","50":92,"90":98,"99":107,"99.9":107,"99.99":107,"max":107,"count":50},"sendTime":{"mean":"758.08","50":755,"90":783,"99":823,"99.9":823,"99.99":823,"max":823,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791744126149,"sent":49,"delayed":0,"completed":49,"delaySendTime":{"mean":"96.00","50":94,"90":100,"99":139,"99.9":139,"99.99":139,"max":139,"count":50},"sendTime":{"mean":"810.24","50":807,"90":887,"99":931,"99.9":931,"99.99":931,"max":931,"count":50}},
+{"sampleType":"summary","time":1791744127151,"result":"success","totalSent":3000,"totalBlocked":0,"totalCompleted":3000,"totalDelaySendTime":{"mean":"104.62","50":102,"90":123,"99":155,"99.9":170,"99.99":189,"max":189,"count":3000},"totalSendTime":{"mean":"1030.17","50":935,"90":1343,"99":2479,"99.9":3359,"99.99":14527,"max":14527,"count":3000}}
+]

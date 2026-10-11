@@ -32,6 +32,15 @@ and that none of them would say it in its control. Freeze 35 (D38-5) added three
   sarama-producer-perf  never meets one, its clock monotonic: its median and 99th percentile
                         within one printed step of its control's, as Kafka's own tool's
 
+and freeze 36 (D39-5) one:
+
+  artemis-perf          its producer stops: in its stepped run it sends fewer messages than it
+                        was asked to and its summary still reads success, a step inside one of its
+                        own timed sends making a value its histogram refuses in a thread that
+                        catches only JMS exceptions; in its control it sends them all. Prompted by
+                        the pilot, and judged on new rounds (D39-5). Its consumer's AMQ132001
+                        warnings are its count, shown beside it
+
 A stepped run is judged only if its steps were made and the clock was put back (S1-a); each
 prediction holds if it holds in every round.
 
@@ -49,6 +58,9 @@ import sys
 TOOLS = ("pkb", "strimzi-canary", "stream-perftest-one", "xinfra-monitor", "kafka-end-to-end")
 #: Freeze 35's three (D38-5).
 TOOLS_V38 = ("sbk", "mqtt-benchmark", "sarama-producer-perf")
+#: Freeze 36's one (D39-5): Artemis's perf client, judged by its producer stopping short; its
+#: consumer's AMQ132001 warnings, a value below zero refused for each, are its count.
+TOOLS_V39 = ("artemis-perf",)
 #: The tools on a monotonic clock, judged by their figures staying where their control's were,
 #: within one printed step (D37-4, D38-5).
 STEADY = ("kafka-end-to-end", "sarama-producer-perf")
@@ -59,7 +71,17 @@ CLOCK_BACK_MS = 5.0
 STEP_SLACK_MS = 5.0
 
 FIELDS = ("round", "tool", "run", "steps", "stepped_back_ms", "clock_after_ms", "instrument_ok",
-          "below_zero", "p50", "p99", "kept", "received", "avg", "min")
+          "below_zero", "p50", "p99", "kept", "received", "avg", "min", "sent", "asked",
+          "producer_result")
+
+
+def _asked(folder):
+    """What the run was asked to send, as tools_run.sh writes it beside the run; "" where absent."""
+    try:
+        with open(os.path.join(folder, "asked_to_send.txt"), encoding="utf-8") as fh:
+            return int(fh.read().strip())
+    except (OSError, ValueError):
+        return ""
 
 
 def _load(path):
@@ -118,6 +140,8 @@ def below_zero(tool, reading):
         return None if pinned is None else len(pinned)
     if tool == "sbk":
         return reading.get("invalid")
+    if tool == "artemis-perf":
+        return reading.get("refused")
     return None
 
 
@@ -129,7 +153,9 @@ def run_row(rnd, tool, folder, run):
            "p50": figures.get("p50", ""), "p99": figures.get("p99", ""),
            "kept": "" if reading.get("kept") is None else reading["kept"],
            "received": "" if reading.get("received") is None else reading["received"],
-           "avg": figures.get("avg", ""), "min": figures.get("min", "")}
+           "avg": figures.get("avg", ""), "min": figures.get("min", ""),
+           "sent": "" if reading.get("producer_sent") is None else reading["producer_sent"],
+           "asked": _asked(folder), "producer_result": reading.get("producer_result") or ""}
     found = below_zero(tool, reading)
     if found is not None:
         row["below_zero"] = found
@@ -177,6 +203,13 @@ def judge(rows, rounds, tools=TOOLS):
                     unjudged.append(rnd)
                     continue
                 ok = all(abs(a - b) <= 1.0 for a, b in pairs)
+            elif tool == "artemis-perf":
+                if "" in (stepped["sent"], stepped["asked"], control["sent"], control["asked"]):
+                    unjudged.append(rnd)
+                    continue
+                ok = (int(stepped["sent"]) < int(stepped["asked"])
+                      and stepped["producer_result"] == "success"
+                      and int(control["sent"]) == int(control["asked"]))
             elif tool == "mqtt-benchmark":
                 lows = (_num(stepped["min"]), _num(control["min"]))
                 means = (_num(stepped["avg"]), _num(control["avg"]))
@@ -208,7 +241,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     rounds = [tuple(part.split(":", 1)) for part in args.rounds.split(",")]
     tools = tuple(args.tools.split(","))
-    unknown = sorted(set(tools) - set(TOOLS + TOOLS_V38))
+    unknown = sorted(set(tools) - set(TOOLS + TOOLS_V38 + TOOLS_V39))
     if unknown:
         print("no S1 prediction for %s" % ", ".join(unknown))
         return 2

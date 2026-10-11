@@ -61,6 +61,10 @@ PKB_SIZE="${SBL_PKB_SIZE:-10}"
 SBK_HOME="${SBL_SBK_HOME:-$HOME/tools/src/SBK}"
 JAVA25="${SBL_JAVA25:-$HOME/tools/jdk-25}"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/azure_sbl}"
+#: Freeze 36's three (D39-2): the clients, where `tools.sh install-for` unpacks their releases.
+ARTEMIS_CLIENT="${SBL_ARTEMIS_CLIENT:-$HOME/tools/artemis-client}"
+ROCKETMQ_HOME="${SBL_ROCKETMQ_HOME:-$(ls -d "$HOME"/tools/rocketmq-all-5.5.1* 2>/dev/null | head -1)}"
+BOOKKEEPER_HOME="${SBL_BOOKKEEPER_HOME:-$(ls -d "$HOME"/tools/bookkeeper-all-4.18.1* 2>/dev/null | head -1)}"
 #: The one address here that is not across the pair. Two of these tools are made of processes
 #: that talk to one another -- OMB's coordinator to its two workers, emqtt-bench's subscriber
 #: serving its own metrics -- and they do it on the machine's loopback. It names the tool's own
@@ -682,6 +686,89 @@ XM
     "${k_ssh[@]}" "pkill -f -- 'kgo-repeater .*-topic $k_topic'; sleep 2; cat /tmp/$k_topic.txt; rm -f /tmp/$k_topic.txt" \
       > "$OUT/repeater_a.txt" 2>&1
     stop_own ;;
+  artemis-perf)
+    # Artemis 2.57.0's perf client (D39-2), its producer and its consumer as the separate processes
+    # its documentation runs them as, from an instance's own bin/artemis, against the broker's
+    # Artemis on 61616: the consumer first, then the producer with 512-byte messages at RATE a
+    # second, the block's count, non-persistent as by default, with the confirmation window its
+    # documentation gives. The consumer stamps its receipt with its own clock and subtracts the
+    # producer's, so the rest of the wrap is on it alone. Its queue is purged first, so that no
+    # message an earlier run rolled back is delivered into this one.
+    here="$(cd "$OUT" && pwd)"
+    a_url="tcp://$BROKER_PRIV:61616"
+    env JAVA_HOME="$JAVA17" "$ARTEMIS_CLIENT/bin/artemis" queue purge --name TEST --url "$a_url" \
+      --user sbl --password sbl --silent > "$here/purge.txt" 2>&1
+    OWN_PATTERN="perf consumer .*$here/consumer.json"
+    $NS $REST env JAVA_HOME="$JAVA17" "$ARTEMIS_CLIENT/bin/artemis" perf consumer --url "$a_url" \
+      --duration $((SECONDS_TO_RUN + 20)) --show-latency --json "$here/consumer.json" \
+      --hdr "$here/consumer.hdr" queue://TEST > "$here/consumer.txt" 2>&1 &
+    a_consumer=$!
+    OWN_PIDS="$OWN_PIDS $a_consumer"
+    sleep 5
+    #: Stopped by `timeout` twenty seconds past the block's minute if it has not stopped itself. In
+    #: the pilots of 11 October, under S1's steps, its producer stopped sending after ten messages,
+    #: printed no error, and waited for the rest of its count: its own --duration did not end it,
+    #: and the run's limit stopped the shell around it but left the JVM running. `timeout` signals
+    #: the JVM itself.
+    timeout -k 10 $((SECONDS_TO_RUN + 20)) env JAVA_HOME="$JAVA17" "$ARTEMIS_CLIENT/bin/artemis" \
+      perf producer --url "$a_url?confirmationWindowSize=20000" --message-size 512 --rate "$RATE" \
+      --message-count $((RATE * SECONDS_TO_RUN)) --json "$here/producer.json" queue://TEST \
+      > "$here/producer.txt" 2>&1
+    wait "$a_consumer" 2>/dev/null
+    stop_own
+    echo "# artemis perf consumer's console"
+    cat "$here/consumer.txt"
+    echo "# artemis perf consumer's JSON"
+    cat "$here/consumer.json" 2>/dev/null
+    echo
+    echo "# artemis perf producer's JSON"
+    cat "$here/producer.json" 2>/dev/null
+    echo ;;
+  rocketmq-benchmark)
+    # RocketMQ 5.5.1's benchmark (D39-2): its Consumer and its Producer, two JVMs, launched as its
+    # bin/tools.sh launches its example classes -- its benchmark scripts pass a Java 8 option that
+    # Java 17 refuses -- with that script's class path and heap. The Producer has no rate of its
+    # own: each of its threads sends and waits for the reply, so one thread runs at one message per
+    # round trip, and it stops at the block's count. The Consumer subtracts each message's born time,
+    # the producer's clock, from its own, so the rest of the wrap is on it alone; it prints every ten
+    # seconds and never ends, so it is read once its report after the last message is out.
+    here="$(cd "$OUT" && pwd)"
+    r_ns="$BROKER_PRIV:9876"
+    r_topic="sbl-rmq-$(date -u +%s%N)"
+    r_cp=".:$ROCKETMQ_HOME/conf:$ROCKETMQ_HOME/lib/*"
+    r_jopt="-server -Xms1g -Xmx1g -Xmn256m -XX:MetaspaceSize=128m -XX:MaxMetaspaceSize=128m"
+    env JAVA_HOME="$JAVA17" ROCKETMQ_HOME="$ROCKETMQ_HOME" sh "$ROCKETMQ_HOME/bin/mqadmin" updateTopic \
+      -n "$r_ns" -c DefaultCluster -t "$r_topic" -r 1 -w 1 > "$here/topic.txt" 2>&1
+    OWN_PATTERN="benchmark.Consumer .*-t $r_topic"
+    # shellcheck disable=SC2086
+    $NS $REST "$JAVA17/bin/java" $r_jopt -cp "$r_cp" org.apache.rocketmq.example.benchmark.Consumer \
+      -n "$r_ns" -t "$r_topic" -g "sbl-$r_topic" > "$here/consumer.txt" 2>&1 &
+    OWN_PIDS="$OWN_PIDS $!"
+    sleep 10
+    # shellcheck disable=SC2086
+    timeout 300 "$JAVA17/bin/java" $r_jopt -Dorg.apache.rocketmq.client.sendSmartMsg=true -cp "$r_cp" \
+      org.apache.rocketmq.example.benchmark.Producer -n "$r_ns" -t "$r_topic" -s 512 -w 1 \
+      -q $((RATE * SECONDS_TO_RUN)) > "$here/producer.txt" 2>&1
+    sleep 25
+    stop_own
+    echo "# rocketmq benchmark consumer's console"
+    cat "$here/consumer.txt"
+    echo "# rocketmq benchmark producer's console"
+    cat "$here/producer.txt" ;;
+  bookkeeper-benchmark)
+    # BookKeeper 4.18.1's benchmark (D39-2), `bin/benchmark writes`, one process, against the three
+    # bookies and the ZooKeeper `server36 up bookkeeper` starts: 512-byte entries, the ensemble and
+    # quorums of its defaults, no warm-up, for the block's length, and -throttle at RATE. That flag
+    # is its only way to set a rate: the client's limiter takes it as permits a second, and blocks
+    # inside the call the benchmark times (LedgerHandle.java:249-250, 1716-1718;
+    # BenchThroughputLatency.java:187-188). It dumps every latency it kept, which is read with its log.
+    here="$(cd "$OUT" && pwd)"
+    $WRAP env JAVA_HOME="$JAVA17" PATH="$JAVA17/bin:/usr/bin:/bin" BENCHMARK_EXTRA_OPTS="-Xms64m -Xmx256m" \
+      "$BOOKKEEPER_HOME/bin/benchmark" writes -zookeeper "$BROKER_PRIV:2181" -ensemble 3 -quorum 2 \
+      -ackQuorum 2 -entrysize 512 -throttle "$RATE" -time "$SECONDS_TO_RUN" -sendlimit 10000 \
+      -skipwarmup -latencyFile "$here/latencyDump.dat"
+    echo "# bookkeeper benchmark's latency dump"
+    cat "$here/latencyDump.dat" 2>/dev/null ;;
   *)
     echo "no such tool here: $TOOL" >&2; exit 2 ;;
 esac

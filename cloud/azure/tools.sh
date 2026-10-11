@@ -126,6 +126,9 @@ mqtt-benchmark|git|f46efba1a710a117c80d0ba94281e0a99e7b96a4
 sarama-producer-perf|git|36f7a14ebb0ff3ab6f5137963241568247c9e360
 sbk|git|39af60da882d865524510dea86df6412549c31a6
 kgo-repeater|git|6567f2f5a16388a13b71296c60a0260534e19216
+artemis-perf|tarball|2.57.0
+rocketmq-benchmark|tarball|5.5.1
+bookkeeper-benchmark|tarball|4.18.1
 '
 #: The last five are the tools the plan registered and version 15 left unrun (D15-6), run under
 #: freeze 30 (D33-1), each at the version the audit read (data/tools_audit/batch_01, 03, 04 and
@@ -171,6 +174,20 @@ PKB_PIP="azure-servicebus==7.15.0 absl-py==2.5.1 numpy==2.2.6"
 JDK25_VERSION="25.0.4.1+1"
 JDK25_SHA256="dbb698396d478e7fa2b1e50f4103324b2a99b90569ee27c33f2261f9215cf41e"
 
+#: Freeze 36 (D39-1): three tools of the second October reading whose brokers the testbed did not
+#: run, each from the binary release whose code the reading read -- Artemis 2.57.0, whose perf
+#: package is the same tree as on main at 50c178e5; RocketMQ 5.5.1, whose benchmark Producer and
+#: Consumer are the same blobs as on develop at 9ea2ccdc; BookKeeper 4.18.1, whose
+#: BenchThroughputLatency is the same blob as on master at 773a988d -- each checked against the
+#: SHA-512 the Apache archive publishes beside it, read again on 11 October 2026. The broker side of
+#: each runs on the broker machine, one at a time (`server36`), and the client side here.
+ARTEMIS_VERSION="2.57.0"
+ARTEMIS_SHA512="47d2193b4707bde8c856ee0f7ee623e87722559b8503aaef6ee015496499774a8c9b9492933cc0a52873e95dce73ff825222422996d2a8768a4936b015415e8c"
+ROCKETMQ_VERSION="5.5.1"
+ROCKETMQ_SHA512="21555d9bd79792ac89f246566f19f58e300784c59b96289fd0c74db14787861081fb60ebb95cf541bf20a3e508bf3b70feb9596ea3ba6dc5dc88fa6081f00577"
+BOOKKEEPER_VERSION="4.18.1"
+BOOKKEEPER_SHA512="26e0568b4e7fb5e22e78b3d0b5788cffbdfca3cbe7ea3364579872f18d4f95b498ae717cbd1bc965ce6d3fd02472f9f608f313b727302f0f83296dc9e33c75fb"
+
 #: What those five are built and run with, pinned like them and checked against the checksums
 #: their publishers give, because each is part of what produced the program whose behaviour the
 #: block reports. OMB needs a newer Maven than Ubuntu's 3.6.3 (its enforcer asks for 3.8.6), and
@@ -189,7 +206,8 @@ PULSAR_SHA512="8c0a63cc6421c8eb3c4a55b8895ca08a38a1c6771758251fc7a82edbc4c6a42bb
 #: System.currentTimeMillis() and os:system_time(millisecond) both.
 FAKEABLE="wrk2 valkey-benchmark memtier_benchmark rdkafka_performance kafka-end-to-end \
 kafka-producer-perf rabbitmq-perftest omb pulsar-perf emqtt-bench ycsb \
-xinfra-monitor trogdor stream-perftest ysb pkb stream-perftest-one sbk"
+xinfra-monitor trogdor stream-perftest ysb pkb stream-perftest-one sbk \
+artemis-perf rocketmq-benchmark bookkeeper-benchmark"
 #: The tools it cannot: Go does not go through the C library for the clock. kgo-repeater's
 #: producing repeater runs on the broker, so stepping this machine's clock moves its consumer's
 #: alone (D38-2).
@@ -646,6 +664,140 @@ get_sbk () {
     > "$DIR/commit_sbk.txt" 2>/dev/null
 }
 
+#: Freeze 36's three (D39-1): an Apache release archive, fetched once into $WORK, refused unless it
+#: matches its published SHA-512, and unpacked where its own top folder says. The folder it unpacked
+#: to is printed, so the caller learns it from the archive rather than from a guess.
+apache_release () {  # url, local file, sha512
+  local url="$1" file="$2" sum="$3" top
+  [ -s "$WORK/$file" ] && echo "$sum  $WORK/$file" | sha512sum -c - >/dev/null 2>&1 \
+    || fetch_checked "$url" "$file" 512 "$sum" \
+    || { log "   WARN: $url could not be fetched, or did not match its checksum"; return 1; }
+  case "$file" in
+    *.zip) top=$(unzip -Z1 "$WORK/$file" | head -1 | cut -d/ -f1)
+           [ -d "$WORK/$top" ] || unzip -q -o "$WORK/$file" -d "$WORK" ;;
+    *)     top=$(tar -tzf "$WORK/$file" | head -1 | cut -d/ -f1)
+           [ -d "$WORK/$top" ] || tar -xzf "$WORK/$file" -C "$WORK" ;;
+  esac
+  [ -n "$top" ] && [ -d "$WORK/$top" ] || { log "   WARN: $file did not unpack"; return 1; }
+  echo "$WORK/$top"
+}
+
+ARTEMIS_URL="https://archive.apache.org/dist/artemis/artemis/$ARTEMIS_VERSION/apache-artemis-$ARTEMIS_VERSION-bin.tar.gz"
+ROCKETMQ_URL="https://archive.apache.org/dist/rocketmq/$ROCKETMQ_VERSION/rocketmq-all-$ROCKETMQ_VERSION-bin-release.zip"
+BOOKKEEPER_URL="https://archive.apache.org/dist/bookkeeper/bookkeeper-$BOOKKEEPER_VERSION/bookkeeper-all-$BOOKKEEPER_VERSION-bin.tar.gz"
+
+#: Artemis's perf client runs from an instance's own bin/artemis, whose profile opens the JDK's
+#: internal clock to it so that it stamps microseconds; the distribution's script does not, and it
+#: then stamps whole milliseconds and says so on its console (PerfConsumerCommand.java:52-57). An
+#: instance is therefore made here, never started as a broker, only for that script.
+get_artemis_perf () {
+  local home inst="$WORK/artemis-client"
+  get_java17 || return 1
+  home=$(apache_release "$ARTEMIS_URL" artemis.tgz "$ARTEMIS_SHA512") || return 1
+  [ -x "$inst/bin/artemis" ] || JAVA_HOME="$JAVA17" "$home/bin/artemis" create "$inst" \
+      --host 127.0.0.1 --allow-anonymous --user sbl --password sbl --no-web --silent \
+      --no-amqp-acceptor --no-mqtt-acceptor --no-stomp-acceptor --no-hornetq-acceptor \
+      > "$DIR/build_artemis.log" 2>&1 \
+    || { log "   WARN: no Artemis client instance; see $DIR/build_artemis.log"; return 1; }
+  sha512sum "$WORK/artemis.tgz" > "$DIR/sha512_artemis.txt"
+}
+
+get_rocketmq_benchmark () {
+  get_java17 || return 1
+  apache_release "$ROCKETMQ_URL" rocketmq.zip "$ROCKETMQ_SHA512" > "$DIR/home_rocketmq.txt" || return 1
+  sha512sum "$WORK/rocketmq.zip" > "$DIR/sha512_rocketmq.txt"
+}
+
+get_bookkeeper_benchmark () {
+  get_java17 || return 1
+  apache_release "$BOOKKEEPER_URL" bookkeeper.tgz "$BOOKKEEPER_SHA512" > "$DIR/home_bookkeeper.txt" \
+    || return 1
+  sha512sum "$WORK/bookkeeper.tgz" > "$DIR/sha512_bookkeeper.txt"
+}
+
+#: The broker side of freeze 36's three, on the broker machine: each installed from the same archive
+#: and started alone, the others stopped, since the broker's memory holds one of them beside the
+#: servers already there. From anywhere else this asks the broker to do it, as `brokers` does.
+server36 () {  # up|down, artemis|rocketmq|bookkeeper
+  local how="${1:?up or down}" which="${2:?artemis, rocketmq or bookkeeper}"
+  if [ -n "${BROKER_PRIV:-}" ] && ! ip -o -4 addr show 2>/dev/null | grep -q " ${BROKER_PRIV}/"; then
+    remote_broker "cd sbl && BROKER_PRIV=$BROKER_PRIV bash cloud/azure/tools.sh server36 $how $which" \
+      || stop "the broker could not bring $which $how; see above"
+    log "CAMPAIGN_COMPLETE: $which $how on the broker"
+    return 0
+  fi
+  local j17="/usr/lib/jvm/java-17-openjdk-amd64" home
+  [ -x "$j17/bin/java" ] || sudo apt-get install -y -qq openjdk-17-jre-headless >/dev/null 2>&1
+  #: RocketMQ comes as a zip, and the broker had no unzip: in the pilot of 11 October its release
+  #: was fetched and checked and then could not be opened.
+  have unzip || sudo apt-get install -y -qq unzip >/dev/null 2>&1
+  mkdir -p "$WORK"
+  #: Whatever else of the three is running goes first, so that only the one asked for is up.
+  pkill -f -- '-Dartemis.instance=' 2>/dev/null
+  pkill -f -- 'org.apache.rocketmq.(broker.BrokerStartup|namesrv.NamesrvStartup)' 2>/dev/null
+  pkill -f -- 'org.apache.bookkeeper.util.LocalBookKeeper' 2>/dev/null
+  sleep 3
+  [ "$how" = down ] && { log "   $which and the others of freeze 36 stopped"; return 0; }
+  case "$which" in
+    artemis)
+      home=$(apache_release "$ARTEMIS_URL" artemis.tgz "$ARTEMIS_SHA512") || stop "no Artemis here"
+      local inst="$WORK/artemis-sbl"
+      #: Its main acceptor speaks core and AMQP on 61616; the separate AMQP, MQTT, STOMP and
+      #: HornetQ ports are left out, since RabbitMQ holds 5672 and Mosquitto 1883 here.
+      [ -d "$inst" ] || JAVA_HOME="$j17" "$home/bin/artemis" create "$inst" --host "$BROKER_PRIV" \
+          --default-port 61616 --no-amqp-acceptor --no-mqtt-acceptor --no-stomp-acceptor \
+          --no-hornetq-acceptor --allow-anonymous --user sbl --password sbl --queues TEST \
+          --no-web --silent > "$WORK/artemis-create.log" 2>&1 \
+        || stop "the Artemis instance could not be made; see $WORK/artemis-create.log"
+      sed -i 's/-Xmx2G/-Xmx1G/' "$inst/etc/artemis.profile" 2>/dev/null
+      #: Every broker is started with its whole command's output sent to its log, not only its last
+      #: program's: in the pilot of 11 October a backgrounded `cd && nohup ...` kept the ssh session's
+      #: output open for as long as BookKeeper ran, and the call that started it never returned.
+      ( exec env JAVA_HOME="$j17" nohup "$inst/bin/artemis" run ) > "$WORK/artemis-run.log" 2>&1 < /dev/null &
+      wait_port "$BROKER_PRIV" 61616 || stop "Artemis did not answer on 61616; see $WORK/artemis-run.log" ;;
+    rocketmq)
+      home=$(apache_release "$ROCKETMQ_URL" rocketmq.zip "$ROCKETMQ_SHA512") || stop "no RocketMQ here"
+      #: Its start scripts ask for 4 GB and 8 GB of heap and add JAVA_OPT_EXT last, so these win
+      #: (runserver.sh:104, runbroker.sh:109). The broker tells clients this machine's own address.
+      printf 'brokerClusterName=DefaultCluster\nbrokerName=broker-a\nbrokerId=0\nbrokerRole=ASYNC_MASTER\nflushDiskType=ASYNC_FLUSH\nbrokerIP1=%s\nnamesrvAddr=127.0.0.1:9876\nautoCreateTopicEnable=true\n' \
+        "$BROKER_PRIV" > "$home/conf/broker-sbl.conf"
+      ( cd "$home" && exec env JAVA_HOME="$j17" JAVA_OPT_EXT="-Xms512m -Xmx512m -Xmn256m" \
+          nohup sh bin/mqnamesrv ) > "$WORK/rocketmq-namesrv.log" 2>&1 < /dev/null &
+      wait_port 127.0.0.1 9876 || stop "RocketMQ's name server did not answer; see $WORK/rocketmq-namesrv.log"
+      ( cd "$home" && exec env JAVA_HOME="$j17" JAVA_OPT_EXT="-Xms1g -Xmx1g -XX:MaxDirectMemorySize=1g" \
+          nohup sh bin/mqbroker -n 127.0.0.1:9876 -c conf/broker-sbl.conf ) \
+          > "$WORK/rocketmq-broker.log" 2>&1 < /dev/null &
+      wait_port "$BROKER_PRIV" 10911 || stop "RocketMQ's broker did not answer; see $WORK/rocketmq-broker.log" ;;
+    bookkeeper)
+      home=$(apache_release "$BOOKKEEPER_URL" bookkeeper.tgz "$BOOKKEEPER_SHA512") || stop "no BookKeeper here"
+      cp "$home/conf/bk_server.conf" "$home/conf/sbl_bookie.conf"
+      echo "advertisedAddress=$BROKER_PRIV" >> "$home/conf/sbl_bookie.conf"
+      rm -rf /tmp/localbookies-config
+      ( cd "$home" && exec env JAVA_HOME="$j17" PATH="$j17/bin:$PATH" BOOKIE_CONF=conf/sbl_bookie.conf \
+          BOOKIE_MIN_HEAP_MEMORY=256m BOOKIE_MAX_HEAP_MEMORY=512m BOOKIE_MAX_DIRECT_MEMORY=512m \
+          nohup bin/bookkeeper localbookie 3 ) > "$WORK/bookkeeper-run.log" 2>&1 < /dev/null &
+      wait_port "$BROKER_PRIV" 2181 || stop "BookKeeper's ZooKeeper did not answer; see $WORK/bookkeeper-run.log"
+      local n=0
+      until [ "$(ls /tmp/localbookies-config 2>/dev/null | wc -l)" -ge 3 ] || [ "$n" -ge 60 ]; do
+        sleep 1; n=$((n + 1))
+      done
+      [ "$n" -lt 60 ] || stop "BookKeeper's three bookies did not start; see $WORK/bookkeeper-run.log" ;;
+    *) stop "server36 knows artemis, rocketmq and bookkeeper, not $which" ;;
+  esac
+  log "   $which up on $BROKER_PRIV"
+}
+
+wait_port () {  # host, port: up to two minutes for something to listen
+  local n=0
+  until timeout 2 bash -c "echo > /dev/tcp/$1/$2" 2>/dev/null; do
+    sleep 1; n=$((n + 1)); [ "$n" -ge 120 ] && return 1
+  done
+  #: Said outright: a loop's status is its body's last command's, and that was the test above,
+  #: false whenever the loop had waited at all. In the pilot of 11 October Artemis listened after
+  #: eight seconds, and this said it never had.
+  return 0
+}
+
 install_for () {
   local tool="${1:?which tool}"
   log "== $tool alone, at the version the reading read"
@@ -678,6 +830,12 @@ install_for () {
       get_kafka
       get_kgo_repeater 6567f2f5a16388a13b71296c60a0260534e19216 \
         || stop "kgo-repeater is not here and on the broker; see $DIR/build_kgo-verifier.log" ;;
+    artemis-perf)
+      get_artemis_perf || stop "Artemis's perf client is not here; see $DIR/build_artemis.log" ;;
+    rocketmq-benchmark)
+      get_rocketmq_benchmark || stop "RocketMQ's release is not here" ;;
+    bookkeeper-benchmark)
+      get_bookkeeper_benchmark || stop "BookKeeper's release is not here" ;;
     *) stop "$tool has no install of its own; run the whole install" ;;
   esac
   log "CAMPAIGN_COMPLETE: $tool installed alone"
@@ -1130,6 +1288,25 @@ reference_for () {
     #: predictions from them exactly as it takes them from a client's trips.
     #: Freeze 34: PerfKit's reference is PerfKit itself at no offset, every message it timed: its
     #: broker is a managed service no client of ours was written for, and it prints every sample.
+    #: Freeze 36 (D39-3): no client of ours speaks Artemis's core protocol, RocketMQ's or
+    #: BookKeeper's, so each tool is its own reference, once more at no offset, as PerfKit and
+    #: YSB are (D36-3, D37-1): BookKeeper's every latency from the dump it writes; Artemis's
+    #: transfer-time median and RocketMQ's B2C average, the finest each prints of every message.
+    artemis-perf|rocketmq-benchmark|bookkeeper-benchmark)
+      log "   $tool itself, once more, for the reference: no client of ours speaks its protocol"
+      SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh "$tool" "$out/reference_tool" \
+        > "$out/reference.log" 2>&1
+      python3 -c 'import json, sys
+sys.path.insert(0, "scripts")
+import tool_readings
+r = tool_readings.read_tool(sys.argv[3], open(sys.argv[1], encoding="utf-8").read())
+trips = r.get("samples_ms") or [v for v in (r["reported_ms"].get("p50"), r["reported_ms"].get("avg")) if v is not None][:1]
+if not trips:
+    raise SystemExit("%s timed nothing to take a reference from" % sys.argv[3])
+json.dump({"source": "%s itself" % sys.argv[3], "trips_ms": trips}, open(sys.argv[2], "w"))' \
+        "$out/reference.log" "$out/reference_trips.json" "$tool" \
+        || { log "   WARN: the $tool reference timed nothing; see $out/reference.log"; return 1; }
+      return 0 ;;
     pkb)
       log "   PerfKit itself, once more, for the reference: no client of ours speaks to its broker"
       bash cloud/azure/tools_run.sh pkb "$out/reference_pkb" > "$out/reference.log" 2>&1
@@ -1322,6 +1499,19 @@ server_answers () {
         || { echo "Pulsar at $host:8090 named its clusters as '$got'"; return 1; }
       timeout 5 bash -c "echo > /dev/tcp/$host/6650" 2>/dev/null \
         || { echo "nothing listens for Pulsar's protocol at $host:6650"; return 1; } ;;
+    artemis-perf)
+      #: Freeze 36 (D39-2): the Artemis instance `server36 up artemis` starts, on its one port.
+      timeout 5 bash -c "echo > /dev/tcp/$host/61616" 2>/dev/null \
+        || { echo "nothing listens for Artemis at $host:61616"; return 1; } ;;
+    rocketmq-benchmark)
+      timeout 5 bash -c "echo > /dev/tcp/$host/9876" 2>/dev/null \
+        && timeout 5 bash -c "echo > /dev/tcp/$host/10911" 2>/dev/null \
+        || { echo "RocketMQ's name server or broker does not answer at $host:9876/10911"; return 1; } ;;
+    bookkeeper-benchmark)
+      #: Its bookies listen on ports chosen at random, so the ZooKeeper they register with is
+      #: what is asked; `server36 up bookkeeper` waited for all three to register.
+      timeout 5 bash -c "echo > /dev/tcp/$host/2181" 2>/dev/null \
+        || { echo "BookKeeper's ZooKeeper does not answer at $host:2181"; return 1; } ;;
     emqtt-bench|mqtt-benchmark)
       #: An MQTT CONNECT, and the CONNACK that lets a client in: 20 02 00 00.
       got=$(timeout 5 bash -c "exec 3<>/dev/tcp/$host/1883 \
@@ -1906,6 +2096,7 @@ reference () {
 
 case "${1:-}" in
   brokers) brokers ;;
+  server36) server36 "${2:-}" "${3:-}" ;;
   install) install ;;
   install-for) install_for "${2:-}" ;;
   reference) reference "${2:-}" ;;

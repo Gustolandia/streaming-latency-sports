@@ -1475,6 +1475,153 @@ class TestFreeze35sFourTools:
         assert set(tr.read_tool("kgo-repeater", text)["reported_ms"]) == {"p50", "p90"}
 
 
+def _artemis(summary, warnings=0, intervals=1, array=True, producer=None):
+    """Artemis's perf consumer as the run prints it: its console, with an AMQ132001 warning for each
+    value it refused, then its --json file, interval objects and the summary joined by ",\\n", and
+    then, where given, the producer's --json file with its own summary."""
+    import json
+    console = ["Connection brokerURL = tcp://10.2.1.21:61616"]
+    console += ["2026-10-11 18:00:01,000 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001:"
+                " Unhandled exception thrown from onMessage"] * warnings
+    objects = [json.dumps({"sampleType": "interval", "warmup": False, "time": i,
+                           "transferTime": {"mean": "600.00", "50": 600, "count": 50}})
+               for i in range(intervals)]
+    if summary is not None:
+        objects.append(json.dumps(dict({"sampleType": "summary", "time": 99}, **summary)))
+    body = ",\n".join(objects)
+    tail = ""
+    if producer is not None:
+        tail = (tr.ARTEMIS_PRODUCER_JSON + "\n" + json.dumps(
+            {"sampleType": "interval", "time": 1, "sent": 50}) + ",\n"
+            + json.dumps(dict({"sampleType": "summary", "time": 99}, **producer)) + "\n")
+    return (tr.ARTEMIS_CONSOLE + "\n" + "\n".join(console) + "\n" + tr.ARTEMIS_JSON + "\n"
+            + ("[" + body + "]" if array else body) + "\n" + tail)
+
+
+TRANSFER = {"mean": "612.10", "50": 600, "90": 700, "99": 900, "99.9": 1200, "99.99": 1500,
+            "max": 1800, "count": 2990}
+
+
+def _rocket(*reports, sent=3000):
+    """RocketMQ's Consumer reports (Consumer.java:115), each (TPS, AVG(B2C), MAX(B2C)), and the
+    Producer's last line (Producer.java:393)."""
+    lines = []
+    for tps, avg, top in reports:
+        shown = "%7.3f" % avg if avg == avg else "    NaN"
+        lines.append("Current Time: 2026-10-11 18:00:10,000 | Consume TPS: %d | AVG(B2C) RT(ms): %s"
+                     " | AVG(S2C) RT(ms): %s | MAX(B2C) RT(ms): %d | MAX(S2C) RT(ms): %d | Consume "
+                     "Fail: 0" % (tps, shown, shown, top, top))
+    if sent is not None:
+        lines.append("[Complete] Send Total: %d | Send TPS: 1200 | Max RT(ms): 9 | Average RT(ms):"
+                     "   0.800 | Send Failed: 0 | Response Failed: 0" % sent)
+    return "\n".join(lines) + "\n"
+
+
+def _bookkeeper(latencies_ns, p95="20.9", p99="21.5", completions=None, sent=None):
+    """BookKeeper's benchmark as the run prints it: its log lines, slog's attributes in braces,
+    then its dump file, "<ns>\\t<ms>ms" a line."""
+    log = []
+    if sent is not None:
+        log.append("2026-10-11T18:01:00,000 - INFO  - [main:BenchThroughputLatency@193] - Sent {sent=%d}"
+                   % sent)
+    if completions is not None:
+        log.append("2026-10-11T18:01:01,000 - INFO  - [main:BenchThroughputLatency@218] - Benchmark "
+                   "complete {completions=%d, durationMs=60000, opsPerSec=50}" % completions)
+    if p99 is not None:
+        log.append("x - INFO - [main] - 99th percentile latency {latency=%s}" % p99)
+    if p95 is not None:
+        log.append("x - INFO - [main] - 95th percentile latency {latency=%s}" % p95)
+    dump = "".join("%d\t%dms\n" % (n, n // 1000000) for n in latencies_ns)
+    return "\n".join(log) + "\n" + tr.BOOKKEEPER_DUMP + "\n" + dump
+
+
+class TestFreeze36sThreeTools:
+    """Artemis's perf consumer, RocketMQ's benchmark Consumer and BookKeeper's benchmark, each read
+    where its source says it reports (freeze 36, D39-2)."""
+
+    def test_artemis_reads_its_summary_and_counts_its_refusals(self):
+        text = _artemis({"result": "success", "totalReceived": 3010, "totalTransferTime": TRANSFER},
+                        warnings=10)
+        got = tr.read_tool("artemis-perf", text)
+        assert got["reported_ms"] == {"avg": pytest.approx(0.6121), "p50": 0.6, "p90": 0.7,
+                                      "p99": 0.9, "p999": 1.2, "max": 1.8}
+        assert (got["kept"], got["received"], got["refused"], got["result"]) == (2990, 3010, 10, "success")
+
+    def test_artemis_reads_what_its_producer_sent_apart_from_its_consumers_summary(self):
+        text = _artemis({"result": "success", "totalReceived": 10, "totalTransferTime": TRANSFER},
+                        producer={"result": "success", "totalSent": 10, "totalCompleted": 10})
+        got = tr.read_tool("artemis-perf", text)
+        assert (got["producer_sent"], got["producer_result"]) == (10, "success")
+        assert got["received"] == 10 and got["kept"] == 2990, "the consumer's summary, not the producer's"
+        bare = tr.read_tool("artemis-perf", _artemis(None, producer={"result": "success", "totalSent": 7}))
+        assert bare["producer_sent"] == 7 and bare["reported_ms"] == {}
+        assert tr.read_tool("artemis-perf", _artemis(None))["producer_sent"] is None
+
+    def test_a_producer_stopped_before_its_summary_is_counted_from_its_intervals(self):
+        """As in the pilot: eleven sent in its first second, none after, and no summary written."""
+        import json
+        stalled = (tr.ARTEMIS_PRODUCER_JSON + "\n"
+                   + ",\n".join(json.dumps({"sampleType": "interval", "time": i, "sent": n})
+                                for i, n in enumerate([11, 0, 0, 0])) + "\n")
+        got = tr.read_tool("artemis-perf", _artemis(None) + stalled)
+        assert (got["producer_sent"], got["producer_sent_from"]) == (11, "intervals")
+        no_count = _artemis(None, producer={"result": "success"})
+        got = tr.read_tool("artemis-perf", no_count)
+        assert (got["producer_sent"], got["producer_sent_from"]) == (50, "intervals")
+
+    def test_artemis_whose_histogram_counted_nothing_reports_no_figure(self):
+        empty = dict(TRANSFER, count=0, mean="0.00", **{"50": 0, "max": 0})
+        got = tr.read_tool("artemis-perf", _artemis({"result": "success", "totalReceived": 30000,
+                                                     "totalTransferTime": empty}, warnings=3))
+        assert got["reported_ms"] == {} and got["kept"] == 0 and got["received"] == 30000
+
+    def test_artemis_without_an_array_or_a_summary_still_reads_what_is_there(self):
+        text = _artemis({"result": "fail", "totalReceived": 5, "totalTransferTime": TRANSFER},
+                        array=False)
+        assert tr.read_tool("artemis-perf", text)["result"] == "fail"
+        got = tr.read_tool("artemis-perf", _artemis(None, warnings=2))
+        assert got["reported_ms"] == {} and got["refused"] == 2 and got["kept"] is None
+
+    def test_artemis_passes_braces_that_are_not_json(self):
+        text = _artemis({"result": "success", "totalReceived": 1,
+                         "totalTransferTime": {"mean": "5.00", "count": 1}}).replace(
+                             tr.ARTEMIS_JSON + "\n", tr.ARTEMIS_JSON + "\n{torn\n")
+        got = tr.read_tool("artemis-perf", text)
+        assert got["reported_ms"] == {"avg": 0.005} and got["kept"] == 1
+
+    def test_artemis_with_nothing_printed_reads_nothing(self):
+        got = tr.read_tool("artemis-perf", "Exception in thread main\n")
+        assert got["reported_ms"] == {} and got["refused"] == 0
+
+    def test_rocketmq_weights_its_reports_by_their_rate_and_keeps_their_largest_maximum(self):
+        nan = float("nan")
+        got = tr.read_tool("rocketmq-benchmark", _rocket((0, nan, 0), (300, 1.2, 9), (100, 2.0, 12)))
+        assert got["reported_ms"] == {"avg": pytest.approx(1.4), "max": 12.0}
+        assert got["reports"] == 2 and got["sent"] == 3000
+        assert got["report_rows"] == [[300, 1.2, 9], [100, 2.0, 12]]
+        assert got["s2c_avg_ms"] == pytest.approx(1.6) and got["consume_fail"] == 0
+
+    def test_rocketmq_below_zero_on_average_with_a_maximum_of_zero(self):
+        got = tr.read_tool("rocketmq-benchmark", _rocket((300, -2.1, 0)))
+        assert got["reported_ms"] == {"avg": -2.1, "max": 0.0}
+
+    def test_rocketmq_with_no_traffic_reads_nothing(self):
+        got = tr.read_tool("rocketmq-benchmark", _rocket((0, float("nan"), 0), sent=None))
+        assert got["reported_ms"] == {} and got["sent"] is None and got["s2c_avg_ms"] is None
+
+    def test_bookkeeper_reads_its_dump_and_its_printed_percentiles(self):
+        got = tr.read_tool("bookkeeper-benchmark", _bookkeeper([20100000, 20900000, 21500000],
+                                                               completions=3, sent=3))
+        assert got["reported_ms"] == {"p50": 20.9, "avg": pytest.approx(20.8333333),
+                                      "min": 20.1, "max": 21.5, "p95": 20.9, "p99": 21.5}
+        assert got["completions"] == 3 and got["sent"] == 3 and len(got["samples_ms"]) == 3
+
+    def test_bookkeeper_without_its_dump_keeps_only_what_it_printed(self):
+        got = tr.read_tool("bookkeeper-benchmark", _bookkeeper([], p95=None, p99="0.0"))
+        assert got["reported_ms"] == {"p99": 0.0} and got["samples_ms"] == []
+        assert got["completions"] is None and got["sent"] is None
+
+
 F35 = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fixtures", "tools_f35")
 
 
@@ -1515,3 +1662,47 @@ class TestFreeze35sToolsAsTheyRan:
                                         "p90": 12.0, "p99": 17.0, "p999": 167.0}
         assert (plain["invalid"], plain["received"]) == (0, 3000)
         assert (stepped["invalid"], stepped["received"], stepped["reported_ms"]["min"]) == (58, 2992, 0.0)
+
+
+F36 = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fixtures", "tools_f36")
+
+
+def _ran36(name):
+    with open(os.path.join(F36, name), encoding="utf-8") as fh:
+        return fh.read()
+
+
+class TestFreeze36sToolsAsTheyRan:
+    """The three as they printed in the pilots of 11 October on the second x86 pair. Whole outputs,
+    but RocketMQ's without its logging library's lines about its own configuration, and the run with
+    Artemis's consumer 5 ms behind, kept to its first 20 of 8,132 AMQ132001 warnings."""
+
+    def test_artemis_at_no_offset(self):
+        got = tr.read_tool("artemis-perf", _ran36("artemis-perf_t4.txt"))
+        assert got["reported_ms"]["p50"] == pytest.approx(1.199)
+        assert got["reported_ms"]["max"] == pytest.approx(24.447)
+        assert (got["kept"], got["received"], got["refused"], got["producer_sent"]) == (3000, 3000, 0, 3000)
+
+    def test_artemis_with_its_consumers_clock_five_milliseconds_behind(self):
+        got = tr.read_tool("artemis-perf", _ran36("artemis-perf_consumer_5ms_behind.txt"))
+        assert (got["kept"], got["received"], got["result"]) == (3000, 11132, "success")
+        assert got["refused"] == 20 and got["reported_ms"]["p50"] == pytest.approx(1.407)
+
+    def test_artemis_whose_producer_stopped_under_the_steps(self):
+        got = tr.read_tool("artemis-perf", _ran36("artemis-perf_s1_stepped.txt"))
+        assert (got["producer_sent"], got["producer_sent_from"], got["producer_result"]) == (6, "summary", "success")
+        assert got["received"] == 6
+
+    def test_rocketmq_at_no_offset_and_with_its_consumers_clock_behind(self):
+        plain = tr.read_tool("rocketmq-benchmark", _ran36("rocketmq-benchmark_t4.txt"))
+        behind = tr.read_tool("rocketmq-benchmark", _ran36("rocketmq-benchmark_consumer_5ms_behind.txt"))
+        assert plain["reported_ms"] == {"avg": 1.789, "max": 111.0} and plain["sent"] == 3000
+        assert behind["reported_ms"] == {"avg": -3.09, "max": 11.0}
+        assert behind["report_rows"] == [[294, -3.09, 11]]
+
+    def test_bookkeeper_every_latency_carries_its_throttles_wait(self):
+        got = tr.read_tool("bookkeeper-benchmark", _ran36("bookkeeper-benchmark_t4.txt"))
+        assert got["reported_ms"]["min"] == pytest.approx(22.3485, abs=1e-4)
+        assert got["reported_ms"]["p50"] == pytest.approx(25.2338, abs=1e-4)
+        assert (got["reported_ms"]["p95"], got["reported_ms"]["p99"]) == (pytest.approx(28.3125), pytest.approx(36.4701))
+        assert (got["completions"], got["sent"], len(got["samples_ms"])) == (3001, 3002, 3001)

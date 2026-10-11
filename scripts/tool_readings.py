@@ -1033,6 +1033,139 @@ def read_kgo_repeater(text):
                     received=sum(int(w["consumed"]) for w in workers) or None, workers=len(workers))
 
 
+ARTEMIS_CONSOLE = "# artemis perf consumer's console"
+ARTEMIS_JSON = "# artemis perf consumer's JSON"
+ARTEMIS_PRODUCER_JSON = "# artemis perf producer's JSON"
+
+
+def _artemis_objects(part):
+    """The JSON objects Artemis's perf client wrote to a file, in order, skipping what is torn."""
+    found, start = [], part.find("{")
+    while start != -1:
+        try:
+            one, end = json.JSONDecoder().raw_decode(part[start:])
+        except ValueError:
+            start = part.find("{", start + 1)
+            continue
+        found.append(one)  # a value that begins with "{" decodes to an object
+        start = part.find("{", start + end)
+    return found
+
+
+def _artemis_summary(part):
+    """The last "summary" object among them, or None."""
+    return next((o for o in reversed(_artemis_objects(part)) if o.get("sampleType") == "summary"), None)
+
+
+def _artemis_sent(part):
+    """How many the producer sent: its summary's count, or, where it was stopped before writing one,
+    the sum of its one-second intervals' send rates, which approaches the count; and which it was."""
+    summary = _artemis_summary(part)
+    if summary is not None and summary.get("totalSent") is not None:
+        return summary["totalSent"], "summary"
+    rates = [o["sent"] for o in _artemis_objects(part)
+             if o.get("sampleType") == "interval" and isinstance(o.get("sent"), (int, float))]
+    return (int(sum(rates)), "intervals") if rates else (None, None)
+
+
+def read_artemis_perf(text):
+    """Artemis 2.57.0's perf consumer: the summary object its --json file ends with
+    (LiveStatistics.appendJsonSummarySampleOnFile), its transfer-time percentiles in microseconds,
+    each the consumer's clock less the stamp the producer put in the message's "time" property
+    (RecordingMessageListener.java:85-88). A value below zero makes HdrHistogram 2.2.2 throw before
+    it counts anything, so the histogram's count is the latencies it kept, against the messages it
+    received, which counts every redelivery of a message rolled back after that throw; each throw
+    leaves an AMQ132001 warning on the console, which is counted beside them. Its figures are read
+    only where its histogram counted something: an empty histogram prints zeros that time nothing.
+    The producer's own summary gives how many it sent (freeze 36's pilot: under S1's steps it
+    stopped after ten, and said success)."""
+    text = text or ""
+    producer_part = text.split(ARTEMIS_PRODUCER_JSON, 1)[1] if ARTEMIS_PRODUCER_JSON in text else ""
+    json_part = text.split(ARTEMIS_JSON, 1)[1].split(ARTEMIS_PRODUCER_JSON, 1)[0] if ARTEMIS_JSON in text else ""
+    console = text.split(ARTEMIS_CONSOLE, 1)[1].split(ARTEMIS_JSON, 1)[0] if ARTEMIS_CONSOLE in text else ""
+    summary = _artemis_summary(json_part)
+    produced = _artemis_summary(producer_part) or {}
+    sent, sent_from = _artemis_sent(producer_part)
+    got, steps = {}, {}
+    extra = {"producer_sent": sent, "producer_sent_from": sent_from,
+             "producer_result": produced.get("result")}
+    if summary is None:
+        return _reading("artemis-perf", got, steps, refused=console.count("AMQ132001"), **extra)
+    transfer = summary.get("totalTransferTime") or {}
+    kept = int(transfer.get("count") or 0)
+    if kept:
+        for key, field in (("avg", "mean"), ("p50", "50"), ("p90", "90"), ("p99", "99"),
+                           ("p999", "99.9"), ("max", "max")):
+            if field in transfer:
+                got[key] = float(transfer[field]) / 1000.0
+                steps[key] = 1e-3
+    return _reading("artemis-perf", got, steps, kept=kept,
+                    received=summary.get("totalReceived"), result=summary.get("result"),
+                    refused=console.count("AMQ132001"), **extra)
+
+
+ROCKETMQ_CONSUMER = (r"Consume TPS: (\d+) \| AVG\(B2C\) RT\(ms\): +(-?[\d.]+|NaN) \| AVG\(S2C\) "
+                     r"RT\(ms\): +(-?[\d.]+|NaN) \| MAX\(B2C\) RT\(ms\): (-?\d+) \| MAX\(S2C\) "
+                     r"RT\(ms\): (-?\d+) \| Consume Fail: (\d+)")
+
+
+def read_rocketmq_benchmark(text):
+    """RocketMQ 5.5.1's benchmark Consumer: its report every ten seconds (Consumer.java:115). Its
+    B2C is the consumer's System.currentTimeMillis() less the message's born time, the producer's
+    clock, in whole milliseconds; each is added to a total, so its average keeps a value below zero,
+    and its maximum starts at 0 and rises only past it, reset at each report, so it cannot show one.
+    Read over the reports in which messages arrived: the average weighted by each report's rate, the
+    largest maximum; S2C, against the broker's clock, beside them. The Producer's last count is the
+    messages it sent."""
+    rows = [m for m in re.finditer(ROCKETMQ_CONSUMER, text or "")
+            if int(m.group(1)) > 0 and m.group(2) != "NaN"]
+    got, steps = {}, {}
+    if rows:
+        weight = sum(int(m.group(1)) for m in rows)
+        got["avg"] = sum(float(m.group(2)) * int(m.group(1)) for m in rows) / weight
+        got["max"] = float(max(int(m.group(4)) for m in rows))
+        steps.update(avg=1e-3, max=1.0)
+    sent = _last(text, r"\[Complete\] Send Total: (\d+)")
+    s2c = [float(m.group(3)) for m in rows]
+    return _reading("rocketmq-benchmark", got, steps, reports=len(rows),
+                    report_rows=[[int(m.group(1)), float(m.group(2)), int(m.group(4))] for m in rows],
+                    sent=int(sent.group(1)) if sent else None,
+                    s2c_avg_ms=sum(s2c) / len(s2c) if s2c else None,
+                    consume_fail=sum(int(m.group(6)) for m in rows))
+
+
+BOOKKEEPER_DUMP = "# bookkeeper benchmark's latency dump"
+
+
+def read_bookkeeper_benchmark(text):
+    """BookKeeper 4.18.1's `bin/benchmark writes`: the latencies its dump file holds, one line each,
+    "<nanoseconds>\\t<milliseconds>ms", sorted, each System.nanoTime() at completion less the
+    nanoTime taken just before asyncAddEntry (BenchThroughputLatency.java:187-188, 239, 429-433). It
+    keeps only values above zero (:397-410), which is also how it leaves out a failed add, and its
+    log prints the 95th and 99th percentiles of those, in milliseconds (:438-439, :445-451). Its
+    median, mean, minimum and maximum are read from the dump; its percentiles as it printed them."""
+    text = text or ""
+    dump = text.split(BOOKKEEPER_DUMP, 1)[1] if BOOKKEEPER_DUMP in text else ""
+    samples = [int(m.group(1)) / 1e6 for m in re.finditer(r"^(-?\d+)\t-?\d+ms$", dump, re.M)]
+    got, steps = {}, {}
+    if samples:
+        ordered = sorted(samples)
+        got["p50"] = _linear_percentile(ordered, 50)
+        got["avg"] = sum(samples) / len(samples)
+        got["min"], got["max"] = ordered[0], ordered[-1]
+        steps.update(p50=1e-6, avg=1e-6, min=1e-6, max=1e-6)
+    for name in ("95", "99"):
+        printed = _last(text, r"%sth percentile latency.*?latency=(-?[\d.]+(?:[eE][+-]?\d+)?)" % name)
+        if printed:
+            got["p%s" % name] = float(printed.group(1))
+            steps["p%s" % name] = 1e-6
+    done = _last(text, r"Benchmark complete.*?completions=(\d+)")
+    sent = _last(text, r"\bSent\b.*?sent=(\d+)")
+    return _reading("bookkeeper-benchmark", got, steps, samples_ms=samples,
+                    completions=int(done.group(1)) if done else None,
+                    sent=int(sent.group(1)) if sent else None)
+
+
 #: Every tool this reads, by the name a campaign calls it.
 READERS = {
     "vegeta": read_vegeta,
@@ -1069,6 +1202,10 @@ READERS = {
     "sarama-producer-perf": read_sarama_producer_perf,
     "sbk": read_sbk,
     "kgo-repeater": read_kgo_repeater,
+    # Freeze 36's three (D39-2), each read where its own source says it reports.
+    "artemis-perf": read_artemis_perf,
+    "rocketmq-benchmark": read_rocketmq_benchmark,
+    "bookkeeper-benchmark": read_bookkeeper_benchmark,
 }
 
 

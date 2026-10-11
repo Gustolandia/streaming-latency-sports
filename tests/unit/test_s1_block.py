@@ -293,3 +293,48 @@ class TestFreeze35sThree:
                         "--out", str(tmp_path / "s.csv"), "--verdicts", str(tmp_path / "v.json")]) == 2
         assert "no S1 prediction for kgo-repeater" in capsys.readouterr().out
         assert not (tmp_path / "s.csv").exists()
+
+
+class TestFreeze36sOne:
+    """Artemis's perf client under S1: its producer stops short and still says success (prompted by
+    the pilot, D39-5); its consumer's refusals are shown beside it."""
+
+    @staticmethod
+    def _pair(root, folder, stepped_sent, control_sent=3000, result="success"):
+        for run, sent in (("control", control_sent), ("stepped", stepped_sent)):
+            path = _run(root, folder, "artemis-perf", run,
+                        {"refused": 0 if run == "control" else 2, "received": sent,
+                         "producer_sent": sent, "producer_result": result})
+            (path / "asked_to_send.txt").write_text("3000\n", encoding="utf-8")
+
+    def test_artemis_perf_shows_the_values_it_refused(self):
+        assert sb.below_zero("artemis-perf", {"refused": 4, "received": 3004}) == 4
+
+    def test_it_holds_where_the_producer_stopped_short_and_said_success(self, tmp_path):
+        self._pair(tmp_path, "tools_v39", 10)
+        self._pair(tmp_path, "tools_v39_round2", 1244)
+        rounds = [("1", "tools_v39"), ("2", "tools_v39_round2")]
+        rows = sb.block_rows(str(tmp_path), rounds, sb.TOOLS_V39)
+        assert (rows[1]["sent"], rows[1]["asked"], rows[1]["producer_result"]) == (10, 3000, "success")
+        assert sb.judge(rows, ["1", "2"], sb.TOOLS_V39)["artemis-perf"]["verdict"] == "holds"
+
+    @pytest.mark.parametrize("stepped, control, result", [
+        (3000, 3000, "success"), (10, 2999, "success"), (10, 3000, "fail")])
+    def test_a_producer_that_kept_going_or_a_control_that_stopped_fails(self, tmp_path, stepped,
+                                                                         control, result):
+        self._pair(tmp_path, "tools_v39", stepped, control, result)
+        rows = sb.block_rows(str(tmp_path), [("1", "tools_v39")], sb.TOOLS_V39)
+        assert sb.judge(rows, ["1"], sb.TOOLS_V39)["artemis-perf"]["verdict"] == "fails"
+
+    def test_a_run_without_its_producers_count_is_not_judged(self, tmp_path):
+        _run(tmp_path, "tools_v39", "artemis-perf", "control", {"refused": 0})
+        _run(tmp_path, "tools_v39", "artemis-perf", "stepped", {"refused": 2})
+        rows = sb.block_rows(str(tmp_path), [("1", "tools_v39")], sb.TOOLS_V39)
+        assert rows[0]["asked"] == "" and rows[0]["sent"] == ""
+        assert sb.judge(rows, ["1"], sb.TOOLS_V39)["artemis-perf"]["verdict"] == "undecided"
+
+    def test_main_accepts_it_by_name(self, tmp_path, capsys):
+        self._pair(tmp_path, "tools_v39", 10)
+        assert sb.main(["--root", str(tmp_path), "--rounds", "1:tools_v39", "--tools", "artemis-perf",
+                        "--out", str(tmp_path / "s.csv"), "--verdicts", str(tmp_path / "v.json")]) == 0
+        assert "artemis-perf         holds" in capsys.readouterr().out

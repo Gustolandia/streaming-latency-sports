@@ -1,0 +1,13 @@
+# rocketmq benchmark consumer's console
+topic: sbl-rmq-1791743890448743242, threadCount 20, group: sbl-sbl-rmq-1791743890448743242, suffix: false, filterType: null, expression: null, msgTraceEnable: false, aclEnable: false, reportInterval: 10000
+
+Consumer Started.
+Current Time: 2026-10-11 18:38:24,331 | Consume TPS: 0 | AVG(B2C) RT(ms):     NaN | AVG(S2C) RT(ms):     NaN | MAX(B2C) RT(ms): 0 | MAX(S2C) RT(ms): 0 | Consume Fail: 0
+Current Time: 2026-10-11 18:38:34,331 | Consume TPS: 313 | AVG(B2C) RT(ms):   1.789 | AVG(S2C) RT(ms):   1.348 | MAX(B2C) RT(ms): 111 | MAX(S2C) RT(ms): 94 | Consume Fail: 0
+Current Time: 2026-10-11 18:38:44,331 | Consume TPS: 0 | AVG(B2C) RT(ms):     NaN | AVG(S2C) RT(ms):     NaN | MAX(B2C) RT(ms): 0 | MAX(S2C) RT(ms): 0 | Consume Fail: 0
+Current Time: 2026-10-11 18:38:54,331 | Consume TPS: 0 | AVG(B2C) RT(ms):     NaN | AVG(S2C) RT(ms):     NaN | MAX(B2C) RT(ms): 0 | MAX(S2C) RT(ms): 0 | Consume Fail: 0
+# rocketmq benchmark producer's console
+
+topic: sbl-rmq-1791743890448743242, threadCount: 1, messageSize: 512, keyEnable: false, propertySize: 0, tagCount: 0, traceEnable: false, aclEnable: false, messageQuantity: 3000, delayEnable: false, delayLevel: 1, asyncEnable: false
+ compressEnable: false, reportInterval: 10000
+[Complete] Send Total: 3000 | Send TPS: 831 | Max RT(ms): 178 | Average RT(ms):   1.203 | Send Failed: 0 | Response Failed: 0

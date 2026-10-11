@@ -1,0 +1,104 @@
+# artemis perf consumer's console
+2026-10-11 18:09:34,641 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+2026-10-11 18:09:34,658 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+2026-10-11 18:09:34,661 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+2026-10-11 18:09:34,678 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+2026-10-11 18:09:34,699 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+2026-10-11 18:09:34,718 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+2026-10-11 18:09:34,721 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+2026-10-11 18:09:34,738 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+2026-10-11 18:09:34,741 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+2026-10-11 18:09:34,758 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+2026-10-11 18:09:34,778 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+2026-10-11 18:09:34,798 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+2026-10-11 18:09:34,818 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+2026-10-11 18:09:34,838 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+2026-10-11 18:09:34,857 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+2026-10-11 18:09:34,860 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+2026-10-11 18:09:34,877 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+2026-10-11 18:09:34,880 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+2026-10-11 18:09:34,898 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+2026-10-11 18:09:34,900 WARN  [org.apache.activemq.artemis.jms.client] AMQ132001: Unhandled exception thrown from onMessage
+# artemis perf consumer's JSON
+[
+{"sampleType":"interval","warmup":false,"time":1791742170645,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791742171661,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791742172662,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791742173663,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791742174664,"received":4,"transferTime":{"mean":"11592.00","50":7103,"90":16127,"99":16127,"99.9":16127,"99.99":16127,"max":16127,"count":2}},
+{"sampleType":"interval","warmup":false,"time":1791742175667,"received":139,"transferTime":{"mean":"1572.20","50":1463,"90":2303,"99":4351,"99.9":4351,"99.99":4351,"max":4351,"count":51}},
+{"sampleType":"interval","warmup":false,"time":1791742176669,"received":149,"transferTime":{"mean":"895.68","50":767,"90":1367,"99":1999,"99.9":1999,"99.99":1999,"max":1999,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742177670,"received":146,"transferTime":{"mean":"648.76","50":611,"90":947,"99":1991,"99.9":1991,"99.99":1991,"max":1991,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742178671,"received":146,"transferTime":{"mean":"609.32","50":527,"90":863,"99":1887,"99.9":1887,"99.99":1887,"max":1887,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742179673,"received":148,"transferTime":{"mean":"515.18","50":375,"90":819,"99":2239,"99.9":2239,"99.99":2239,"max":2239,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742180674,"received":148,"transferTime":{"mean":"415.28","50":299,"90":639,"99":2175,"99.9":2175,"99.99":2175,"max":2175,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742181675,"received":148,"transferTime":{"mean":"282.34","50":231,"90":423,"99":1503,"99.9":1503,"99.99":1503,"max":1503,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742182676,"received":149,"transferTime":{"mean":"301.06","50":265,"90":407,"99":943,"99.9":943,"99.99":943,"max":943,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742183677,"received":148,"transferTime":{"mean":"312.74","50":188,"90":433,"99":1839,"99.9":1839,"99.99":1839,"max":1839,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742184678,"received":152,"transferTime":{"mean":"275.22","50":206,"90":451,"99":1839,"99.9":1839,"99.99":1839,"max":1839,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742185679,"received":159,"transferTime":{"mean":"527.50","50":189,"90":1807,"99":1919,"99.9":1919,"99.99":1919,"max":1919,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742186680,"received":162,"transferTime":{"mean":"645.02","50":237,"90":1799,"99":1879,"99.9":1879,"99.99":1879,"max":1879,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742187681,"received":158,"transferTime":{"mean":"664.88","50":200,"90":1823,"99":4159,"99.9":4159,"99.99":4159,"max":4159,"count":51}},
+{"sampleType":"interval","warmup":false,"time":1791742188682,"received":171,"transferTime":{"mean":"900.82","50":347,"90":1799,"99":1831,"99.9":1831,"99.99":1831,"max":1831,"count":49}},
+{"sampleType":"interval","warmup":false,"time":1791742189683,"received":187,"transferTime":{"mean":"1527.02","50":1687,"90":1815,"99":2159,"99.9":2159,"99.99":2159,"max":2159,"count":51}},
+{"sampleType":"interval","warmup":false,"time":1791742190684,"received":183,"transferTime":{"mean":"1338.10","50":1663,"90":1807,"99":3375,"99.9":3375,"99.99":3375,"max":3375,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742191685,"received":192,"transferTime":{"mean":"1617.42","50":1615,"90":1823,"99":4191,"99.9":4191,"99.99":4191,"max":4191,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742192686,"received":193,"transferTime":{"mean":"1540.12","50":1631,"90":1767,"99":1807,"99.9":1807,"99.99":1807,"max":1807,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742193687,"received":196,"transferTime":{"mean":"1612.74","50":1599,"90":1703,"99":5311,"99.9":5311,"99.99":5311,"max":5311,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742194688,"received":194,"transferTime":{"mean":"1482.74","50":1567,"90":1639,"99":1823,"99.9":1823,"99.99":1823,"max":1823,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742195688,"received":189,"transferTime":{"mean":"1442.90","50":1655,"90":1783,"99":3167,"99.9":3167,"99.99":3167,"max":3167,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742196689,"received":194,"transferTime":{"mean":"1507.20","50":1583,"90":1767,"99":2143,"99.9":2143,"99.99":2143,"max":2143,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742197690,"received":196,"transferTime":{"mean":"1556.20","50":1591,"90":1679,"99":2927,"99.9":2927,"99.99":2927,"max":2927,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742198691,"received":192,"transferTime":{"mean":"1390.14","50":1543,"90":1663,"99":1735,"99.9":1735,"99.99":1735,"max":1735,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742199692,"received":198,"transferTime":{"mean":"1561.06","50":1583,"90":1671,"99":1775,"99.9":1775,"99.99":1775,"max":1775,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742200693,"received":193,"transferTime":{"mean":"1501.48","50":1599,"90":1703,"99":2127,"99.9":2127,"99.99":2127,"max":2127,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742201694,"received":195,"transferTime":{"mean":"1527.28","50":1615,"90":1759,"99":1791,"99.9":1791,"99.99":1791,"max":1791,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742202694,"received":193,"transferTime":{"mean":"1491.58","50":1543,"90":1671,"99":1799,"99.9":1799,"99.99":1799,"max":1799,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742203695,"received":197,"transferTime":{"mean":"1563.18","50":1623,"90":1687,"99":1743,"99.9":1743,"99.99":1743,"max":1743,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742204696,"received":193,"transferTime":{"mean":"1474.52","50":1615,"90":1759,"99":3199,"99.9":3199,"99.99":3199,"max":3199,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742205697,"received":198,"transferTime":{"mean":"1574.04","50":1583,"90":1727,"99":1887,"99.9":1887,"99.99":1887,"max":1887,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742206698,"received":196,"transferTime":{"mean":"1455.86","50":1543,"90":1679,"99":1775,"99.9":1775,"99.99":1775,"max":1775,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742207698,"received":196,"transferTime":{"mean":"1450.02","50":1471,"90":1591,"99":2847,"99.9":2847,"99.99":2847,"max":2847,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742208699,"received":198,"transferTime":{"mean":"1565.58","50":1527,"90":1639,"99":3871,"99.9":3871,"99.99":3871,"max":3871,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742209700,"received":194,"transferTime":{"mean":"1381.28","50":1463,"90":1623,"99":1839,"99.9":1839,"99.99":1839,"max":1839,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742210701,"received":199,"transferTime":{"mean":"1464.24","50":1503,"90":1663,"99":1759,"99.9":1759,"99.99":1759,"max":1759,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742211701,"received":198,"transferTime":{"mean":"1484.98","50":1487,"90":1647,"99":1967,"99.9":1967,"99.99":1967,"max":1967,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742212702,"received":198,"transferTime":{"mean":"1476.96","50":1479,"90":1639,"99":1951,"99.9":1951,"99.99":1951,"max":1951,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742213703,"received":197,"transferTime":{"mean":"1448.51","50":1431,"90":1623,"99":1791,"99.9":1791,"99.99":1791,"max":1791,"count":51}},
+{"sampleType":"interval","warmup":false,"time":1791742214704,"received":191,"transferTime":{"mean":"1316.58","50":1399,"90":1647,"99":2039,"99.9":2039,"99.99":2039,"max":2039,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742215704,"received":194,"transferTime":{"mean":"1383.94","50":1407,"90":1599,"99":2351,"99.9":2351,"99.99":2351,"max":2351,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742216705,"received":195,"transferTime":{"mean":"1460.46","50":1431,"90":1727,"99":3215,"99.9":3215,"99.99":3215,"max":3215,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742217706,"received":197,"transferTime":{"mean":"1393.06","50":1415,"90":1607,"99":1735,"99.9":1735,"99.99":1735,"max":1735,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742218706,"received":197,"transferTime":{"mean":"1364.26","50":1359,"90":1479,"99":2175,"99.9":2175,"99.99":2175,"max":2175,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742219707,"received":193,"transferTime":{"mean":"1291.18","50":1359,"90":1503,"99":1975,"99.9":1975,"99.99":1975,"max":1975,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742220708,"received":198,"transferTime":{"mean":"1371.16","50":1375,"90":1503,"99":1639,"99.9":1639,"99.99":1639,"max":1639,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742221708,"received":189,"transferTime":{"mean":"1227.88","50":1391,"90":1503,"99":1607,"99.9":1607,"99.99":1607,"max":1607,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742222709,"received":193,"transferTime":{"mean":"1348.52","50":1431,"90":1551,"99":2191,"99.9":2191,"99.99":2191,"max":2191,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742223710,"received":195,"transferTime":{"mean":"1407.56","50":1391,"90":1647,"99":1759,"99.9":1759,"99.99":1759,"max":1759,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742224710,"received":189,"transferTime":{"mean":"1313.58","50":1383,"90":1631,"99":2383,"99.9":2383,"99.99":2383,"max":2383,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742225711,"received":198,"transferTime":{"mean":"1315.78","50":1335,"90":1407,"99":1607,"99.9":1607,"99.99":1607,"max":1607,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742226712,"received":195,"transferTime":{"mean":"1310.52","50":1351,"90":1447,"99":1631,"99.9":1631,"99.99":1631,"max":1631,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742227712,"received":197,"transferTime":{"mean":"1295.04","50":1287,"90":1495,"99":1655,"99.9":1655,"99.99":1655,"max":1655,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742228713,"received":199,"transferTime":{"mean":"1316.32","50":1327,"90":1367,"99":1607,"99.9":1607,"99.99":1607,"max":1607,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742229714,"received":197,"transferTime":{"mean":"1303.62","50":1327,"90":1399,"99":1623,"99.9":1623,"99.99":1623,"max":1623,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742230714,"received":196,"transferTime":{"mean":"1284.36","50":1319,"90":1439,"99":1767,"99.9":1767,"99.99":1767,"max":1767,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742231715,"received":198,"transferTime":{"mean":"1366.24","50":1367,"90":1455,"99":1735,"99.9":1735,"99.99":1735,"max":1735,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742232716,"received":199,"transferTime":{"mean":"1309.76","50":1295,"90":1383,"99":1735,"99.9":1735,"99.99":1735,"max":1735,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742233717,"received":198,"transferTime":{"mean":"1327.88","50":1335,"90":1383,"99":1719,"99.9":1719,"99.99":1719,"max":1719,"count":50}},
+{"sampleType":"interval","warmup":false,"time":1791742234717,"received":177,"transferTime":{"mean":"1305.76","50":1343,"90":1495,"99":1583,"99.9":1583,"99.99":1583,"max":1583,"count":45}},
+{"sampleType":"interval","warmup":false,"time":1791742235718,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791742236719,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791742237720,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791742238721,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791742239721,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791742240722,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791742241723,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791742242724,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791742243724,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791742244725,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791742245726,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791742246726,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791742247727,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"interval","warmup":false,"time":1791742248728,"received":0,"transferTime":{"mean":"0.00","50":0,"90":0,"99":0,"99.9":0,"99.99":0,"max":0,"count":0}},
+{"sampleType":"summary","time":1791742249734,"result":"success","totalReceived":11132,"totalTransferTime":{"mean":"1240.57","50":1407,"90":1695,"99":2175,"99.9":4351,"99.99":16127,"max":16127,"count":3000}}
+]

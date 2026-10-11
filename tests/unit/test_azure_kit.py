@@ -737,10 +737,13 @@ class TestTheToolsBlock:
         namespace, as T1's zero step runs it. And four more since freeze 34: PerfKit's T1, its zero
         step alone, and its reference, PerfKit itself, both unwrapped since its broker is a managed
         service T1 cannot reach; and S1's control and its stepped run, both in the namespace and
-        neither otherwise wrapped, since what differs between them is the machine's clock.
+        neither otherwise wrapped, since what differs between them is the machine's clock. And one
+        more since freeze 36: the reference of each of its three, the tool itself at no offset, in
+        the namespace as T1's zero step runs it (D39-3).
         """
         code = self.tools()
-        assert code.count("bash cloud/azure/tools_run.sh") == 10
+        assert code.count("bash cloud/azure/tools_run.sh") == 11
+        assert 'SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh "$tool" "$out/reference_tool"' in code
         assert 'SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh ysb' in code
         assert 'bash cloud/azure/tools_run.sh pkb "$out/reference_pkb"' in code
         assert code.count('SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh "$tool" "$control"') == 1
@@ -1874,8 +1877,9 @@ class TestEveryPinnedToolHasSomethingThatInstallsIt:
         """Eleven for the first block (ten runnable, Kafka's two bundled tools apart), the five
         freeze 30 adds (D33-1), the four freeze 32 adds (D35-1), YSB (D36-1), freeze 34's
         PerfKit and Stream PerfTest as one instance, which shares its jar with the two-instance
-        runs but is its own way of running it, and freeze 35's four (D38-1)."""
-        assert len(self._tools()) == 27
+        runs but is its own way of running it, freeze 35's four (D38-1), and freeze 36's three
+        (D39-1)."""
+        assert len(self._tools()) == 30
 
     @pytest.mark.parametrize("tool", ["vegeta", "hey", "k6", "wrk2", "valkey-benchmark",
                                       "memtier_benchmark", "rdkafka_performance",

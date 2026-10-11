@@ -19,6 +19,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 import tool_negatives as tn  # noqa: E402
 import tools_block as tb  # noqa: E402
 
+#: The four tools freeze 32 registered, with how each keeps time, before their block ran (D35-2).
+#: Their runs are not in the committed tables until that block is folded, when this goes.
+FREEZE_32_UNFOLDED = {"xinfra-monitor", "strimzi-canary", "trogdor", "stream-perftest"}
+
 #: The five columns freeze 31's re-judging adds to a T2 row.
 REJUDGED = ("sent", "kept", "verdict_31", "clocks", "clocks_why")
 
@@ -395,12 +399,14 @@ class TestMain:
         assert len({r["tool"] for r in t1}) == 16 and len({r["round"] for r in t1}) == 4
         assert len(t1) == 64 and len(t2) == 128
         #: Every tool in the tables has the interval the plan read for it before any run, and
-        #: every tool the plan read was run.
-        assert {r["tool"] for r in t1} == set(tb.TRIPS)
+        #: every tool the plan read was run -- but the four freeze 32 read before their block ran
+        #: (D35-2), which this line names until that block is folded into the tables.
+        assert {r["tool"] for r in t1} | FREEZE_32_UNFOLDED == set(tb.TRIPS)
+        assert not FREEZE_32_UNFOLDED & {r["tool"] for r in t1}
         assert all(r["clocks"] in ("one", "two", "undecided") and r["verdict_31"] for r in t2)
         #: T3: every tool, every round, idle and loaded, each with and without go-first.
         with (repo / "docs" / "results" / "tools" / "tools_t3.csv").open(encoding="utf-8") as fh:
             t3 = list(csv.DictReader(fh))
-        assert len(t3) == 256 and {r["tool"] for r in t3} == set(tb.TRIPS)
+        assert len(t3) == 256 and {r["tool"] for r in t3} | FREEZE_32_UNFOLDED == set(tb.TRIPS)
         assert {(r["load_pct"], r["go_first"]) for r in t3} == {
             ("0", "no"), ("0", "yes"), ("88", "no"), ("88", "yes")}

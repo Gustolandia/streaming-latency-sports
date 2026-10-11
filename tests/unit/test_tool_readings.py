@@ -946,3 +946,247 @@ class TestHdrHistogramCounts:
                      (2.0, {"reported_ms": {"avg": 3.0}})]
         for tool in ("omb", "pulsar-perf", "emqtt-bench", "ycsb", "nats-bench"):
             assert tr.slope_against_delay(staircase, tool)["crossings"] == 1
+
+
+#: Xinfra Monitor's reporter from the pilot of 11 October (runs/azure/collected/matched/pilot_v35,
+#: t4-xinfra-monitor): its report before the first record, its first report after it, and its last
+#: report of the run, each as the tool printed it.
+XINFRA = (
+    "[2026-10-11 01:51:55,458] INFO ==============================================================\n"
+    "kmf.services:name=single-cluster-monitor,type=consume-service:records-delay-ms-avg=NaN\n"
+    "kmf.services:name=single-cluster-monitor,type=consume-service:records-delay-ms-max=NaN\n"
+    "kmf.services:name=single-cluster-monitor,type=consume-service:records-delay-ms-99th=NaN\n"
+    "kmf.services:name=single-cluster-monitor,type=consume-service:records-delay-ms-999th=NaN\n"
+    "kmf.services:name=single-cluster-monitor,type=consume-service:records-consumed-total=0.0\n"
+    " (com.linkedin.xinfra.monitor.services.DefaultMetricsReporterService)\n"
+    "[2026-10-11 01:51:56,458] INFO ==============================================================\n"
+    "kmf.services:name=single-cluster-monitor,type=consume-service:records-delay-ms-avg=4.3125\n"
+    "kmf.services:name=single-cluster-monitor,type=consume-service:records-delay-ms-max=20.0\n"
+    "kmf.services:name=single-cluster-monitor,type=consume-service:records-delay-ms-99th=19.99200319872051\n"
+    "kmf.services:name=single-cluster-monitor,type=consume-service:records-delay-ms-999th=19.99200319872051\n"
+    "kmf.services:name=single-cluster-monitor,type=consume-service:records-consumed-total=16.0\n"
+    " (com.linkedin.xinfra.monitor.services.DefaultMetricsReporterService)\n"
+    "[2026-10-11 01:53:41,458] INFO ==============================================================\n"
+    "kmf.services:name=single-cluster-monitor,type=consume-service:records-delay-ms-avg=1.2757158006362672\n"
+    "kmf.services:name=single-cluster-monitor,type=consume-service:records-delay-ms-max=4.0\n"
+    "kmf.services:name=single-cluster-monitor,type=consume-service:records-delay-ms-99th=2.998800479808077\n"
+    "kmf.services:name=single-cluster-monitor,type=consume-service:records-delay-ms-999th=3.9984006397441023\n"
+    "kmf.services:name=single-cluster-monitor,type=consume-service:records-consumed-total=4944.0\n"
+    " (com.linkedin.xinfra.monitor.services.DefaultMetricsReporterService)\n")
+
+#: Strimzi Canary against the Kafka 3.9.1 broker in the second pilot (pilot_v35b,
+#: t4-strimzi-canary): the two lines of its /metrics the reader takes, among a few it does not, and
+#: its log's first three lines; the last four log lines are in the same shape with other durations.
+CANARY = (
+    "# the canary's /metrics, read at the end of the run\n"
+    "# HELP strimzi_canary_records_consumed_latency Records end-to-end latency in milliseconds\n"
+    "# TYPE strimzi_canary_records_consumed_latency histogram\n"
+    'strimzi_canary_records_consumed_latency_bucket{clientid="sbl-canary-1791684753",'
+    'partition="0",le="5"} 3352\n'
+    'strimzi_canary_records_consumed_latency_sum{clientid="sbl-canary-1791684753",partition="0"} 4432\n'
+    'strimzi_canary_records_consumed_latency_count{clientid="sbl-canary-1791684753",partition="0"} 3360\n'
+    'strimzi_canary_records_produced_latency_sum{clientid="sbl-canary-1791684753",partition="0"} 3061\n'
+    "# the canary's log\n"
+    "I1011 02:12:36.391796   18864 consumer.go:276] Message received: value={ProducerID:sbl-canary-"
+    "1791684753, MessageID:1, Timestamp:1791684756242}, partition=0, offset=0, duration=149 ms\n"
+    "I1011 02:12:36.391832   18864 consumer.go:276] Message received: value={ProducerID:sbl-canary-"
+    "1791684753, MessageID:2, Timestamp:1791684756298}, partition=0, offset=1, duration=93 ms\n"
+    "I1011 02:12:36.391841   18864 consumer.go:276] Message received: value={ProducerID:sbl-canary-"
+    "1791684753, MessageID:3, Timestamp:1791684756320}, partition=0, offset=2, duration=71 ms\n"
+    + "".join("I1011 02:12:37.%06d   18864 consumer.go:276] Message received: value={ProducerID:"
+              "sbl-canary-1791684753, MessageID:%d, Timestamp:%d}, partition=0, offset=%d, "
+              "duration=%d ms\n" % (100000 + i, 4 + i, 1791684757000 + 20 * i, 3 + i, d)
+              for i, d in enumerate((1, 1, 2, 0))))
+
+#: Trogdor in the second pilot (pilot_v35b, t4-trogdor), the consume task's status once it ended.
+TROGDOR = """# trogdor's consume task
+Task consume of type org.apache.kafka.trogdor.workload.ConsumeBenchSpec is DONE. FINISHED at 2026-10-11T02:15:30.592Z after 1m30s
+Status: {
+  "consumer.consume-0" : {
+    "assignedPartitions" : [ "sbl-trogdor-1791684823-0" ],
+    "totalMessagesReceived" : 3000,
+    "totalBytesReceived" : 1548000,
+    "averageMessageSizeBytes" : 516,
+    "averageLatencyMs" : 112.18567,
+    "p50LatencyMs" : 100,
+    "p95LatencyMs" : 101,
+    "p99LatencyMs" : 101,
+    "recordProcessorStatus" : {
+      "averageLatencyMs" : 2.1416667,
+      "p50LatencyMs" : 2,
+      "p95LatencyMs" : 3,
+      "p99LatencyMs" : 3
+    }
+  }
+}
+
+# trogdor's produce task
+Task produce of type org.apache.kafka.trogdor.workload.ProduceBenchSpec is DONE. FINISHED at 2026-10-11T02:15:07.632Z after 1m1s
+Status: {
+  "totalSent" : 3000,
+  "averageLatencyMs" : 1.5553334,
+  "p50LatencyMs" : 2,
+  "p95LatencyMs" : 2,
+  "p99LatencyMs" : 2,
+  "transactionsCommitted" : 0
+}
+"""
+
+
+def _stream_lines(first, last, eaten, figures):
+    return "".join("%d, published 0 msg/s, confirmed 0 msg/s, consumed %d msg/s, latency "
+                   "median/75th/95th/99th %s ms, chunk size 1\n" % (s, eaten, figures)
+                   for s in range(first, last + 1))
+
+
+#: Stream PerfTest's consumer instance in the third pilot (pilot_v35c, t4-stream-perftest): ten
+#: seconds before the producer started, consuming nothing and printing zeros, then a line a second
+#: as it printed them; the producer's own lines come before the runner's line and are not read.
+STREAM = ("53, published 50 msg/s, confirmed 50 msg/s, consumed 0 msg/s, latency "
+          "median/75th/95th/99th 0/0/0/0 ms, chunk size 0\n"
+          + "# the stream consumer instance\n"
+          + _stream_lines(1, 10, 0, "0/0/0/0")
+          + _stream_lines(11, 12, 50, "2/2/2/2")
+          + _stream_lines(13, 61, 50, "1/2/2/2")
+          + _stream_lines(62, 62, 50, "1/2/2/5")
+          + _stream_lines(63, 70, 50, "1/1/2/2"))
+
+
+def _stream_metrics(count, total_s, eaten):
+    return ("# the stream consumer's /metrics, read once the producer had finished\n"
+            "# HELP rabbitmq_stream_latency_seconds message latency\n"
+            "# TYPE rabbitmq_stream_latency_seconds summary\n"
+            'rabbitmq_stream_latency_seconds{quantile="0.5",} 0.001\n'
+            "rabbitmq_stream_latency_seconds_count %s\n"
+            "rabbitmq_stream_latency_seconds_sum %s\n"
+            "rabbitmq_stream_consumed_total %s\n" % (count, total_s, eaten))
+
+
+class TestFreeze32sFourTools:
+    """The four message tools of the reading of 10 and 11 October, read from what each printed in
+    the pilots of 11 October. Each reading keeps the step its own record puts under its figures."""
+
+    def test_xinfra_reads_the_runs_last_minute_and_not_its_first_report(self):
+        got = tr.read_tool("xinfra-monitor", XINFRA)
+        assert got["reported_ms"] == {"avg": pytest.approx(1.2757158006362672), "max": 4.0,
+                                      "p99": pytest.approx(2.998800479808077)}
+        assert got["received"] == 4944 and got["kept"] is None
+
+    def test_xinfra_steps_its_percentile_by_its_bucket_and_not_by_its_digits(self):
+        """2.998800479808077 is the bucket of 3 ms at the width of 5,000 over 5,002 ms."""
+        steps = tr.read_tool("xinfra-monitor", XINFRA)["steps_ms"]
+        assert steps["p99"] == steps["max"] == 1.0
+        assert steps["avg"] < 1e-9, "the average keeps the step of the digits it prints"
+
+    def test_xinfra_before_its_first_record_reads_nothing(self):
+        got = tr.read_tool("xinfra-monitor", XINFRA.split("[2026-10-11 01:51:56,458]")[0])
+        assert got["reported_ms"] == {} and got["steps_ms"] == {} and got["received"] == 0
+
+    def test_xinfra_that_printed_no_report_counts_nothing(self):
+        got = tr.read_tool("xinfra-monitor", "[2026-10-11 01:51:52,264] INFO Creating AdminClient.\n")
+        assert got["reported_ms"] == {} and got["received"] is None
+
+    def test_the_canary_takes_its_average_from_its_histogram(self):
+        got = tr.read_tool("strimzi-canary", CANARY)
+        assert got["reported_ms"]["avg"] == pytest.approx(4432 / 3360)
+        assert got["steps_ms"]["avg"] == pytest.approx(1 / 3360), \
+            "a sum of whole milliseconds over its count"
+        assert got["histogram_count"] == 3360
+
+    def test_the_canary_reads_its_percentiles_from_its_log_line_by_line(self):
+        got = tr.read_tool("strimzi-canary", CANARY)
+        assert got["logged"] == 7
+        assert {k: got["reported_ms"][k] for k in ("min", "p50", "p99", "max")} == \
+            {"min": 0.0, "p50": 2.0, "p99": 149.0, "max": 149.0}
+        assert got["steps_ms"]["p50"] == got["steps_ms"]["min"] == 1.0
+
+    def test_the_canary_reads_a_negative_duration_its_own_reader_skips(self):
+        """tools/canary_latencies.py matches [0-9]+, which cannot match a minus sign."""
+        text = CANARY.replace("duration=0 ms", "duration=-2 ms")
+        assert tr.read_tool("strimzi-canary", text)["reported_ms"]["min"] == -2.0
+
+    def test_a_canary_histogram_that_counted_nothing_gives_no_average(self):
+        text = CANARY.replace('partition="0"} 3360', 'partition="0"} 0')
+        got = tr.read_tool("strimzi-canary", text)
+        assert "avg" not in got["reported_ms"] and got["histogram_count"] == 0
+
+    def test_a_canary_with_metrics_and_no_log_has_its_average_alone(self):
+        got = tr.read_tool("strimzi-canary", CANARY.split(tr.CANARY_LOG)[0])
+        assert set(got["reported_ms"]) == {"avg"} and got["logged"] == 0
+
+    def test_trogdor_reads_its_record_processor_and_not_consume_benchs_own_figures(self):
+        """ConsumeBench's 112 ms is the wait between its batches, not a message's latency."""
+        got = tr.read_tool("trogdor", TROGDOR)
+        assert got["reported_ms"] == {"avg": pytest.approx(2.1416667), "p50": 2.0, "p99": 3.0}
+        assert got["received"] == 3000
+        assert got["steps_ms"]["p50"] == 1.0
+
+    def test_trogdor_reads_the_zeros_it_puts_its_negatives_at(self):
+        """With its consuming agent's clock 5 ms behind, in the second pilot."""
+        text = (TROGDOR.replace('"averageLatencyMs" : 2.1416667', '"averageLatencyMs" : 0.044333335')
+                .replace('"p50LatencyMs" : 2,\n      "p95LatencyMs" : 3,\n      "p99LatencyMs" : 3',
+                         '"p50LatencyMs" : 0,\n      "p95LatencyMs" : 0,\n      "p99LatencyMs" : 0'))
+        got = tr.read_tool("trogdor", text)
+        assert got["reported_ms"] == {"avg": pytest.approx(0.044333335), "p50": 0.0, "p99": 0.0}
+
+    def test_trogdor_asked_before_its_task_ended_reads_nothing(self):
+        """As in the first pilot: ConsumeBench reports its status only once its task has ended."""
+        text = ("# trogdor's consume task\nTask consume of type org.apache.kafka.trogdor.workload."
+                "ConsumeBenchSpec is RUNNING. Started 2026-10-11T01:55:09.093Z; will stop after "
+                "2m\nStatus: null\n\n" + TROGDOR.split("\n\n", 1)[1])
+        got = tr.read_tool("trogdor", text)
+        assert got["reported_ms"] == {} and got["received"] is None
+
+    def test_stream_perftest_reads_the_consumer_and_leaves_out_its_idle_and_warm_up(self):
+        """The ten seconds before the producer began print zeros, and are not seconds it timed."""
+        got = tr.read_tool("stream-perftest", STREAM)
+        assert got["reported_ms"] == {"p50": 1.0, "p99": 2.0}
+        assert got["seconds"] == 70 and got["per_second"][10] == [11, 50, 2, 2]
+        assert got["kept"] is None and got["received"] is None
+
+    def test_stream_perftest_reads_its_average_and_what_it_kept_off_its_metrics(self):
+        got = tr.read_tool("stream-perftest", STREAM + _stream_metrics("3000.0", "4.21", "3000.0"))
+        assert got["reported_ms"]["avg"] == pytest.approx(4210 / 3000)
+        assert got["steps_ms"]["avg"] == pytest.approx(1 / 3000)
+        assert got["kept"] == got["received"] == 3000
+        assert got["reported_ms"]["p50"] == 1.0
+
+    def test_stream_perftest_that_kept_fewer_than_it_consumed_has_no_empty_second_read(self):
+        """A second of four zeros may be a second it emptied; with fewer kept, it is not read."""
+        text = (STREAM.replace(_stream_lines(13, 61, 50, "1/2/2/2"),
+                               _stream_lines(13, 40, 50, "0/0/0/0") + _stream_lines(41, 61, 50, "3/4/4/4"))
+                + _stream_metrics("1450.0", "4.93", "3000.0"))
+        got = tr.read_tool("stream-perftest", text)
+        assert got["kept"] == 1450 and got["received"] == 3000
+        assert got["reported_ms"]["p50"] == 3.0, "the zeros of the emptied seconds are left out"
+
+    def test_stream_perftest_that_kept_every_value_reads_a_zero_second_as_zeros(self):
+        """Where nothing was dropped, four zeros can only be latencies of 0 ms."""
+        text = (STREAM.replace(_stream_lines(13, 61, 50, "1/2/2/2"), _stream_lines(13, 61, 50, "0/0/0/0"))
+                + _stream_metrics("3000.0", "0.0", "3000.0"))
+        got = tr.read_tool("stream-perftest", text)
+        assert got["reported_ms"] == {"avg": 0.0, "p50": 0.0, "p99": 0.0}
+
+    def test_stream_perftest_that_kept_nothing_has_no_figures(self):
+        """As in the third pilot, its consumer's clock 5 ms behind: zeros every second, none kept."""
+        text = ("# the stream consumer instance\n" + _stream_lines(1, 10, 0, "0/0/0/0")
+                + _stream_lines(11, 70, 50, "0/0/0/0") + _stream_metrics("0.0", "0.0", "3000.0"))
+        got = tr.read_tool("stream-perftest", text)
+        assert got["reported_ms"] == {} and got["kept"] == 0 and got["received"] == 3000
+
+    def test_stream_perftest_with_a_count_and_no_consumed_total_judges_no_second_emptied(self):
+        text = STREAM + _stream_metrics("3000.0", "4.21", "x").replace(
+            "rabbitmq_stream_consumed_total x\n", "")
+        got = tr.read_tool("stream-perftest", text)
+        assert got["received"] is None and got["reported_ms"]["p50"] == 1.0
+
+    def test_stream_perftest_without_the_runners_line_reads_the_whole_output(self):
+        got = tr.read_tool("stream-perftest", STREAM.split("# the stream consumer instance\n")[1])
+        assert got["reported_ms"] == {"p50": 1.0, "p99": 2.0}
+
+    def test_each_of_the_four_crosses_the_delayed_direction_once(self):
+        """D35-2: a record delivered to the process that subtracts."""
+        staircase = [(0.0, {"reported_ms": {"avg": 1.0}}), (1.0, {"reported_ms": {"avg": 2.0}}),
+                     (2.0, {"reported_ms": {"avg": 3.0}})]
+        for tool in ("xinfra-monitor", "strimzi-canary", "trogdor", "stream-perftest"):
+            assert tr.slope_against_delay(staircase, tool)["crossings"] == 1

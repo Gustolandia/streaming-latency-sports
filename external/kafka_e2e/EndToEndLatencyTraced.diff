@@ -1,0 +1,95 @@
+--- EndToEndLatency.java (Kafka 3.7.1, tag 3.7.1 = commit e2494e6f, tools/src/main/java/org/apache/kafka/tools/)
++++ EndToEndLatencyTraced.java (this folder)
+@@ -15,7 +15,7 @@
+  * limitations under the License.
+  */
+ 
+-package org.apache.kafka.tools;
++package sbl.k1;
+ 
+ import org.apache.kafka.clients.CommonClientConfigs;
+ import org.apache.kafka.clients.admin.Admin;
+@@ -26,11 +26,14 @@
+ import org.apache.kafka.clients.producer.KafkaProducer;
+ import org.apache.kafka.clients.producer.ProducerConfig;
+ import org.apache.kafka.clients.producer.ProducerRecord;
++import org.apache.kafka.clients.producer.RecordMetadata;
+ import org.apache.kafka.common.TopicPartition;
+ import org.apache.kafka.common.utils.Exit;
+ import org.apache.kafka.common.utils.Utils;
+ 
+ import java.io.IOException;
++import java.io.PrintWriter;
++import java.time.Instant;
+ import java.nio.charset.StandardCharsets;
+ import java.time.Duration;
+ import java.util.Arrays;
+@@ -53,7 +56,7 @@
+  *
+  * <p> e.g. [localhost:9092 test 10000 1 20] </p>
+  */
+-public class EndToEndLatency {
++public class EndToEndLatencyTraced {
+     private final static long POLL_TIMEOUT_MS = 60000;
+     private final static short DEFAULT_REPLICATION_FACTOR = 1;
+     private final static int DEFAULT_NUM_PARTITIONS = 1;
+@@ -66,9 +69,6 @@
+         try {
+             execute(args);
+             return 0;
+-        } catch (TerseException e) {
+-            System.err.println(e.getMessage());
+-            return 1;
+         } catch (Throwable e) {
+             System.err.println(e.getMessage());
+             System.err.println(Utils.stackTrace(e));
+@@ -79,7 +79,7 @@
+     // Visible for testing
+     static void execute(String... args) throws Exception {
+         if (args.length != 5 && args.length != 6) {
+-            throw new TerseException("USAGE: java " + EndToEndLatency.class.getName()
++            throw new IllegalArgumentException("USAGE: java " + EndToEndLatencyTraced.class.getName()
+                     + " broker_list topic num_messages producer_acks message_size_bytes [optional] properties_file");
+         }
+ 
+@@ -95,7 +95,9 @@
+         }
+ 
+         try (KafkaConsumer<byte[], byte[]> consumer = createKafkaConsumer(propertiesFile, brokers);
+-             KafkaProducer<byte[], byte[]> producer = createKafkaProducer(propertiesFile, brokers, acks)) {
++             KafkaProducer<byte[], byte[]> producer = createKafkaProducer(propertiesFile, brokers, acks);
++             PrintWriter trace = new PrintWriter(System.getProperty("sbl.k1.trace", "e2e_trace.csv"), "UTF-8")) {
++            trace.println("i,partition,offset,begin_us,ack_us,poll_us,elapsed_ns");
+ 
+             if (!consumer.listTopics().containsKey(topic)) {
+                 createTopic(propertiesFile, brokers, topic);
+@@ -108,10 +110,15 @@
+             for (int i = 0; i < numMessages; i++) {
+                 byte[] message = randomBytesOfLen(random, messageSizeBytes);
+                 long begin = System.nanoTime();
++                long beginUs = wallMicros();
+                 //Send message (of random bytes) synchronously then immediately poll for it
+-                producer.send(new ProducerRecord<>(topic, message)).get();
++                RecordMetadata acked = producer.send(new ProducerRecord<>(topic, message)).get();
++                long ackUs = wallMicros();
+                 ConsumerRecords<byte[], byte[]> records = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
+                 long elapsed = System.nanoTime() - begin;
++                long pollUs = wallMicros();
++                trace.println(i + "," + acked.partition() + "," + acked.offset() + "," + beginUs + ","
++                        + ackUs + "," + pollUs + "," + elapsed);
+ 
+                 validate(consumer, message, records);
+ 
+@@ -127,6 +134,12 @@
+         }
+     }
+ 
++    /** The wall clock in microseconds: the clock the arrival observer reads, on the same host. */
++    static long wallMicros() {
++        Instant now = Instant.now();
++        return now.getEpochSecond() * 1_000_000L + now.getNano() / 1_000;
++    }
++
+     // Visible for testing
+     static void validate(KafkaConsumer<byte[], byte[]> consumer, byte[] message, ConsumerRecords<byte[], byte[]> records) {
+         if (records.isEmpty()) {

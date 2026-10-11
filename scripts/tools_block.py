@@ -103,6 +103,12 @@ TRIPS = {
     "emqtt-bench": "across two processes",
     "ycsb": "round trip",
     "nats-bench": "round trip",
+    # Freeze 32's four, as its addendum read their invocations before any of their runs (D35-2,
+    # D35-3); Stream PerfTest as the producer and consumer it is run as (D35-4).
+    "xinfra-monitor": "in one process",
+    "strimzi-canary": "in one process",
+    "trogdor": "across two processes",
+    "stream-perftest": "across two processes",
 }
 
 _STEP = re.compile(r"t1-(.+)-step\.json$")

@@ -38,6 +38,12 @@ EMQTT_BENCH="${SBL_EMQTT_BENCH:-$HOME/tools/emqtt-bench/emqtt_bench}"
 OTP_BIN="${SBL_OTP_BIN:-$HOME/tools/otp/bin}"
 JAVA17="${SBL_JAVA17:-/usr/lib/jvm/java-17-openjdk-amd64}"
 JAVA11="${SBL_JAVA11:-/usr/lib/jvm/java-11-openjdk-amd64}"
+#: Freeze 32's four (D35-1): where `tools.sh install` puts them. Trogdor is the Kafka release's.
+XINFRA_HOME="${SBL_XINFRA_HOME:-$HOME/tools/src/kafka-monitor}"
+KAFKA_HOME="${SBL_KAFKA_HOME:-$HOME/tools/kafka_2.13-3.7.1}"
+STREAM_PERF_JAR="${SBL_STREAM_PERF_JAR:-$HOME/tools/stream-perf-test.jar}"
+#: The Kafka 3.9.1 broker the canary runs against, since its client cannot commit to 4.x (D35-5).
+KAFKA39="${SBL_KAFKA39:-$BROKER_PRIV:19094}"
 #: The one address here that is not across the pair. Two of these tools are made of processes
 #: that talk to one another -- OMB's coordinator to its two workers, emqtt-bench's subscriber
 #: serving its own metrics -- and they do it on the machine's loopback. It names the tool's own
@@ -83,6 +89,18 @@ if [ -z "${SBL_TOOL_GUARDED:-}" ]; then
 fi
 
 mkdir -p "$OUT"
+#: Nothing an earlier run left behind runs beside this one. In the pilot of 11 October Xinfra
+#: Monitor outlived its run by twenty minutes, sending and timing fifty messages a second through
+#: every run after it, and nothing noticed. On the driver every process of these names is one of
+#: the tools -- the broker is the other machine -- so any found is stopped first and written down
+#: beside the run, with its command line.
+leftover=$(pgrep -a -f '^([^ ]*/)?(java|beam\.smp|strimzi-canary|vegeta|hey|k6|nats|wrk|memtier_benchmark|valkey-benchmark|rdkafka_performance)( |$)' 2>/dev/null)
+if [ -n "$leftover" ]; then
+  echo "$leftover" > "$OUT/leftovers.txt"
+  echo "$leftover" | awk '{print $1}' | xargs -r sudo kill -9 2>/dev/null
+  echo "stopped $(echo "$leftover" | wc -l) process(es) an earlier run left; see $OUT/leftovers.txt" >&2
+  sleep 1
+fi
 #: How many this run asks the tool to send, written beside it: T2 holds the tool's own count
 #: against this. It held it against the number of trips in our reference -- another run, of
 #: another client -- and on 25 September wrk2, which counted all 3,001 it sent, read as short.
@@ -268,6 +286,171 @@ JS
     sleep 3
     $WRAP nats bench service request sbl.bench --server "$NATS" --clients 1 --size 512 \
       --throughput "$RATE" --duration "${SECONDS_TO_RUN}s" --no-progress
+    stop_own ;;
+  xinfra-monitor)
+    # Xinfra Monitor as its README runs it: one JVM holding a single-cluster monitor, which
+    # produces to and consumes from a topic of its own, and the reporter that logs the consume
+    # service's metrics once a second. Its configuration requires a ZooKeeper address that no code
+    # at this commit contacts (D35-3), and a single broker gives its topic one partition. A 20 ms
+    # pause between sends, each waiting for its acknowledgment as the monitor does by default,
+    # puts it near the block's rate; its latency metrics are a rolling minute, so it runs for the
+    # block's length and long enough before it for that minute to be all steady state.
+    xm_topic="sbl-xinfra-$(date +%s)"
+    cat > "$OUT/xm.properties" <<XM
+{
+  "single-cluster-monitor": {
+    "class.name": "com.linkedin.xinfra.monitor.apps.SingleClusterMonitor",
+    "topic": "$xm_topic",
+    "zookeeper.connect": "unused:2181",
+    "bootstrap.servers": "$KAFKA",
+    "produce.record.delay.ms": 20,
+    "produce.record.size.byte": 512,
+    "topic-management.topicManagementEnabled": true,
+    "topic-management.topicCreationEnabled": true,
+    "topic-management.replicationFactor": 1,
+    "topic-management.partitionsToBrokersRatio": 1.0,
+    "topic-management.topicReassignPartitionAndElectLeaderEnabled": false
+  },
+  "reporter-service": {
+    "class.name": "com.linkedin.xinfra.monitor.services.DefaultMetricsReporterService",
+    "report.interval.sec": 1,
+    "report.metrics.list": [
+      "kmf.services:type=consume-service,name=*:records-delay-ms-avg",
+      "kmf.services:type=consume-service,name=*:records-delay-ms-max",
+      "kmf.services:type=consume-service,name=*:records-delay-ms-99th",
+      "kmf.services:type=consume-service,name=*:records-delay-ms-999th",
+      "kmf.services:type=consume-service,name=*:records-consumed-total"
+    ]
+  }
+}
+XM
+    here="$(cd "$OUT" && pwd)"
+    #: Stopped by a pattern only this run's JVM carries, as the tools made of several processes
+    #: are. In the pilot of 11 October it ran under `timeout`, which stopped sudo and not the JVM
+    #: inside the namespace: the monitor ran on for twenty minutes, through every later run, into
+    #: this run's file. Its console is what is read; the log directory it also writes is shared
+    #: by every run and would carry the others' lines.
+    #: Anchored at the JVM's own path, which no sudo or pkill command line begins with: an
+    #: unanchored pattern can match the command that sends it.
+    OWN_PATTERN="^[^ ]*/java .*xinfra.*$here/xm.properties"
+    ( cd "$XINFRA_HOME" && $WRAP env JAVA_HOME="$JAVA11" bin/xinfra-monitor-start.sh \
+        "$here/xm.properties" ) &
+    OWN_PIDS="$OWN_PIDS $!"
+    sleep $((SECONDS_TO_RUN + 40))
+    stop_own
+    sleep 2
+    sudo pkill -9 -f -- "^[^ ]*/java .*xinfra.*$here/xm.properties" 2>/dev/null
+    true ;;
+  strimzi-canary)
+    # Strimzi Canary standalone, configured as its README configures it, against the Kafka 3.9.1
+    # broker its client can still commit offsets to (D35-5): one process, a producer
+    # and a consumer on a topic of its own, which a single broker gives one partition. It sends one
+    # message per partition per reconcile tick, so a 20 ms tick is the block's rate; it is told the
+    # cluster has one broker, so it does not ask for a reassignment every tick, and to log each
+    # message's duration. Its histogram lives in the process, so /metrics is read before it stops.
+    c_id="sbl-canary-$(date +%s)"
+    $NS env KAFKA_BOOTSTRAP_SERVERS="$KAFKA39" TOPIC="$c_id" CONSUMER_GROUP_ID="$c_id" \
+      CLIENT_ID="$c_id" RECONCILE_INTERVAL_MS=20 EXPECTED_CLUSTER_SIZE=1 \
+      CONNECTION_CHECK_INTERVAL_MS=600000 VERBOSITY_LOG_LEVEL=1 \
+      $REST strimzi-canary > "$OUT/canary.log" 2>&1 &
+    OWN_PIDS="$OWN_PIDS $!"
+    sleep $((SECONDS_TO_RUN + 10))
+    echo "# the canary's /metrics, read at the end of the run"
+    $NS curl -s -m 5 "http://$OWN:8080/metrics"
+    c_pids=$(pgrep -x strimzi-canary)
+    [ -n "$c_pids" ] && sudo kill $c_pids 2>/dev/null
+    stop_own
+    echo "# the canary's log"
+    cat "$OUT/canary.log" ;;
+  trogdor)
+    # Kafka's Trogdor from the 3.7.1 release, as its README runs it: a coordinator and agents,
+    # given workloads as JSON specs. ProduceBench on one agent writes its wall clock into each
+    # record (the timestampConstant payload), and ConsumeBench on another, with its timestamp
+    # record processor, subtracts its own: two processes, as Trogdor's agents are meant to be, so
+    # the rest of the wrap -- go-first or a moved clock -- reaches the agent that subtracts alone.
+    here="$(cd "$OUT" && pwd)"
+    t_topic="sbl-trogdor-$(date +%s)"
+    #: ConsumeBench reports its status only once its task has ended, not while it runs: in the
+    #: pilot of 11 October it was asked at ninety seconds of a two-minute task and said "null".
+    #: So its task ends at a fixed time, thirty seconds after the producer's minute would, and is
+    #: asked only after that; the producer stops at its count, the block's minute of messages.
+    t_consume_ms=$(( (SECONDS_TO_RUN + 30) * 1000 ))
+    t_produce_ms=$(( (SECONDS_TO_RUN + 20) * 1000 ))
+    printf '{"_comment":"sbl","platform":"org.apache.kafka.trogdor.basic.BasicPlatform","nodes":{"node0":{"hostname":"%s","trogdor.agent.port":8888,"trogdor.coordinator.port":8889},"node1":{"hostname":"%s","trogdor.agent.port":8890}}}\n' \
+      "$OWN" "$OWN" > "$here/trogdor.conf"
+    printf '{"class":"org.apache.kafka.trogdor.workload.ProduceBenchSpec","startMs":0,"durationMs":%s,"producerNode":"node0","bootstrapServers":"%s","targetMessagesPerSec":%s,"maxMessages":%s,"valueGenerator":{"type":"timestampConstant","size":512},"activeTopics":{"%s":{"numPartitions":1,"replicationFactor":1}},"inactiveTopics":{}}\n' \
+      "$t_produce_ms" "$KAFKA" "$RATE" $((RATE * SECONDS_TO_RUN)) "$t_topic" > "$here/produce.json"
+    printf '{"class":"org.apache.kafka.trogdor.workload.ConsumeBenchSpec","startMs":0,"durationMs":%s,"consumerNode":"node1","bootstrapServers":"%s","maxMessages":%s,"activeTopics":["%s"],"recordProcessor":{"type":"timestamp","histogramMaxMs":10000,"histogramMinMs":0,"histogramStepMs":1}}\n' \
+      "$t_consume_ms" "$KAFKA" $((RATE * SECONDS_TO_RUN)) "$t_topic" > "$here/consume.json"
+    "$KAFKA_HOME/bin/kafka-topics.sh" --bootstrap-server "$KAFKA" --create --topic "$t_topic" \
+      --partitions 1 --replication-factor 1 > "$here/topic.txt" 2>&1
+    OWN_PATTERN="trogdor\\.(coordinator|agent)\\..* -c $here/trogdor.conf"
+    $NS "$KAFKA_HOME/bin/trogdor.sh" coordinator -n node0 -c "$here/trogdor.conf" \
+      > "$here/coordinator.txt" 2>&1 &
+    OWN_PIDS="$OWN_PIDS $!"
+    $NS "$KAFKA_HOME/bin/trogdor.sh" agent -n node0 -c "$here/trogdor.conf" \
+      > "$here/agent_producer.txt" 2>&1 &
+    OWN_PIDS="$OWN_PIDS $!"
+    $NS $REST "$KAFKA_HOME/bin/trogdor.sh" agent -n node1 -c "$here/trogdor.conf" \
+      > "$here/agent_consumer.txt" 2>&1 &
+    OWN_PIDS="$OWN_PIDS $!"
+    sleep 15
+    $NS "$KAFKA_HOME/bin/trogdor.sh" client createTask -t "$OWN:8889" -i consume \
+      --spec "$here/consume.json" > "$here/create_consume.txt" 2>&1
+    sleep 5
+    $NS "$KAFKA_HOME/bin/trogdor.sh" client createTask -t "$OWN:8889" -i produce \
+      --spec "$here/produce.json" > "$here/create_produce.txt" 2>&1
+    # The consume task was made five seconds before the produce task, so it has ended by now.
+    sleep $((SECONDS_TO_RUN + 26))
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+      $NS "$KAFKA_HOME/bin/trogdor.sh" client showTask -t "$OWN:8889" -i consume \
+        | grep -q " is DONE" && break
+      sleep 3
+    done
+    echo "# trogdor's consume task"
+    $NS "$KAFKA_HOME/bin/trogdor.sh" client showTask -t "$OWN:8889" -i consume --show-status
+    echo "# trogdor's produce task"
+    $NS "$KAFKA_HOME/bin/trogdor.sh" client showTask -t "$OWN:8889" -i produce --show-status
+    stop_own ;;
+  stream-perftest)
+    # RabbitMQ Stream PerfTest in the arrangement its source stamps each message for, the wall
+    # clock "for interoperability with other tools and also across different processes"
+    # (StreamPerfTest.java:1315-1316 at 1.8.0): a consumer-only instance and a producer-only one,
+    # which its options allow (--producers 0, --consumers 0). The consumer subtracts, so it is the
+    # instance wrapped, and it is started first on a stream of its own; the producer sends at the
+    # block's rate and size for the block's minute, and the consumer stops fifteen seconds after
+    # it, deleting the stream. Each prints the last second's figures once a second; only the
+    # consumer's lines hold a latency, and only they are written where the reader reads (D35-4).
+    # The broker's RabbitMQ is 3.9, older than the leader locator the tool asks for by default --
+    # "balanced (RabbitMQ 3.10)", its own help says -- so both instances ask for client-local, the
+    # only other value its option accepts at 1.8.0 (its help lists four), which on a single node
+    # places the stream where balanced would.
+    here="$(cd "$OUT" && pwd)"
+    s_name="sbl-stream-$(date +%s)"
+    s_args=(--uris "rabbitmq-stream://guest:guest@$BROKER_PRIV:5552" --streams "$s_name"
+            --leader-locator client-local)
+    #: The consumer also serves its metrics (--prometheus, a documented option), read once the
+    #: producer has finished: its latency timer's count is the one record of how many latencies it
+    #: kept. Its line a second prints 0/0/0/0 for a second in which it kept none, and in the pilot
+    #: of 11 October, with its clock 5 ms behind, it printed that for every second while it
+    #: consumed fifty messages a second and dropped every one.
+    $NS $REST env JAVA_HOME="$JAVA11" "$JAVA11/bin/java" -jar "$STREAM_PERF_JAR" "${s_args[@]}" \
+      --producers 0 --consumers 1 --time $((SECONDS_TO_RUN + 25)) --delete-streams --prometheus \
+      > "$here/consumer.txt" 2>&1 &
+    s_consumer=$!
+    OWN_PIDS="$OWN_PIDS $s_consumer"
+    OWN_PATTERN="stream-perf-test\\.jar .*$s_name"
+    sleep 10
+    $NS env JAVA_HOME="$JAVA11" "$JAVA11/bin/java" -jar "$STREAM_PERF_JAR" "${s_args[@]}" \
+      --producers 1 --consumers 0 --rate "$RATE" --size 512 --time "$SECONDS_TO_RUN" \
+      > "$here/producer.txt" 2>&1
+    sleep 5
+    $NS curl -s -m 5 "http://$OWN:8080/metrics" > "$here/consumer_metrics.txt" 2>/dev/null
+    wait "$s_consumer" 2>/dev/null
+    echo "# the stream consumer instance"
+    cat "$here/consumer.txt"
+    echo "# the stream consumer's /metrics, read once the producer had finished"
+    cat "$here/consumer_metrics.txt"
     stop_own ;;
   *)
     echo "no such tool here: $TOOL" >&2; exit 2 ;;

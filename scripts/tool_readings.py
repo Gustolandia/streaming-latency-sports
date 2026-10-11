@@ -606,6 +606,178 @@ def read_nats_bench(text):
     return _reading("nats-bench", got, steps)
 
 
+#: The lines the runner writes between a tool's console and what it reads off the tool after it.
+CANARY_METRICS = "# the canary's /metrics, read at the end of the run"
+CANARY_LOG = "# the canary's log"
+TROGDOR_CONSUME = "# trogdor's consume task"
+TROGDOR_PRODUCE = "# trogdor's produce task"
+STREAM_CONSUMER = "# the stream consumer instance"
+STREAM_METRICS = "# the stream consumer's /metrics, read once the producer had finished"
+
+#: A number as Java or Prometheus prints a double: digits, a point, an exponent.
+_DOUBLE = r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?"
+
+
+def read_xinfra_monitor(text):
+    """Xinfra Monitor at release 2.5.16, whose reporter logs each metric it is given once a second
+    as `mbean:attribute=value`:
+
+        kmf.services:name=single-cluster-monitor,type=consume-service:records-delay-ms-avg=3.25
+
+    Its latency metrics are a rolling minute (ConsumeService.java:94), so the last line of each is
+    the run's last minute, and that is what is read. The average is a mean of whole milliseconds,
+    the consume service's System.currentTimeMillis() less the produce service's. The percentiles
+    come from one-millisecond buckets whose floor is zero, in the kafka-clients its build pins, so a
+    negative enters them as 0 (Percentiles.java at 2.8.2). Before its first record a mean prints as
+    NaN and a maximum as -Infinity; neither is a measurement and neither is read. It gives no count
+    of what it kept, only of what it consumed, which is kept beside the figures and not as `kept`:
+    it is paced by a timer and sends what it sends, not a number it was asked for."""
+    got, steps = {}, {}
+    for key, metric in (("avg", "records-delay-ms-avg"), ("p99", "records-delay-ms-99th"),
+                        ("max", "records-delay-ms-max")):
+        match = _last(text, r"consume-service:%s=(%s)\s*$" % (re.escape(metric), _DOUBLE))
+        if match:
+            _put(got, steps, key, match.group(1), "ms")
+    #: Its percentiles are one-millisecond buckets and its maximum a whole millisecond, whatever
+    #: digits Java prints them with: in the pilot of 11 October its 99th came out as
+    #: 2.998800479808077, the bucket of 3 ms at the width of 5,000 ms over its 5,002 buckets. The
+    #: average keeps the step of the digits it prints, as the OpenMessaging Benchmark's does.
+    for key in ("p99", "max"):
+        if key in steps:
+            steps[key] = 1.0
+    consumed = _last(text, r"consume-service:records-consumed-total=(%s)\s*$" % _DOUBLE)
+    return _reading("xinfra-monitor", got, steps,
+                    received=int(float(consumed.group(1))) if consumed else None)
+
+
+def read_strimzi_canary(text):
+    """Strimzi Canary at f3812fb5, which records its end-to-end latency, in whole milliseconds, in
+    two places:
+
+      * a Prometheus histogram, read off /metrics before the canary stopped,
+
+            strimzi_canary_records_consumed_latency_sum{clientid="c",partition="0"} 2861
+            strimzi_canary_records_consumed_latency_count{clientid="c",partition="0"} 2950
+
+        whose sum over its count is its average, the only figure its metrics give finer than their
+        5 ms buckets;
+      * its log at verbosity 1, a line per message,
+
+            consumer.go:276] Message received: value={...}, partition=0, offset=41, duration=3 ms
+
+        from which the median, the 99th percentile, the minimum and the maximum are read, minus
+        signs included: the reader it ships cannot read one (tools/canary_latencies.py:19). A
+        percentile is the value at n times q in the sorted durations.
+
+    It sends a message per partition per tick, and Go drops a tick that comes while the last is
+    still running, so it gives no count of what it was asked to send; the count its histogram
+    holds is kept beside the figures, not as `kept`."""
+    _, _, rest = (text or "").partition(CANARY_METRICS)
+    metrics, _, log = rest.partition(CANARY_LOG)
+    got, steps = {}, {}
+    total = _find(metrics, r"^strimzi_canary_records_consumed_latency_sum\{[^}]*\}\s+(%s)\s*$"
+                  % _DOUBLE)
+    count = _find(metrics, r"^strimzi_canary_records_consumed_latency_count\{[^}]*\}\s+(%s)\s*$"
+                  % _DOUBLE)
+    if total is not None and count is not None and float(count) > 0:
+        got["avg"] = float(total) / float(count)
+        steps["avg"] = 1.0 / float(count)
+    durations = sorted(int(d) for d in re.findall(r"Message received:.*?duration=(-?\d+) ms", log))
+    if durations:
+        for key, at in (("p50", 0.5), ("p99", 0.99)):
+            got[key] = float(durations[min(len(durations) - 1, int(len(durations) * at))])
+            steps[key] = 1.0
+        got["min"], got["max"] = float(durations[0]), float(durations[-1])
+        steps["min"] = steps["max"] = 1.0
+    return _reading("strimzi-canary", got, steps,
+                    histogram_count=int(float(count)) if count is not None else None,
+                    logged=len(durations))
+
+
+def read_trogdor(text):
+    """Kafka's Trogdor at release 3.7.1: the consume task's status as its coordinator reports it,
+    in which the timestamp record processor gives the end-to-end latency,
+
+        "recordProcessorStatus" : { "averageLatencyMs" : 2.41, "p50LatencyMs" : 2,
+                                    "p95LatencyMs" : 3, "p99LatencyMs" : 5 }
+
+    ProduceBench's wall clock, written into each record, subtracted from the consuming agent's, a
+    negative put at the histogram's floor (TimestampRecordProcessor.java:88-89). The average is a
+    float and the percentiles whole milliseconds. ConsumeBench's own figures beside it time the
+    wait between batches, not a message, and are not read; nor is the produce task's, the publish
+    latency, which is the other span."""
+    consume, _, produce = (text or "").partition(TROGDOR_CONSUME)[2].partition(TROGDOR_PRODUCE)
+    block = _find(consume, r'"recordProcessorStatus"\s*:\s*\{([^}]*)\}') or ""
+    got, steps = {}, {}
+    for key, field in (("avg", "averageLatencyMs"), ("p50", "p50LatencyMs"),
+                       ("p99", "p99LatencyMs")):
+        _put(got, steps, key, _find(block, r'"%s"\s*:\s*(%s)' % (field, _DOUBLE)), "ms")
+    received = _find(consume, r'"totalMessagesReceived"\s*:\s*(\d+)')
+    return _reading("trogdor", got, steps, received=int(received) if received else None)
+
+
+def read_stream_perftest(text):
+    """RabbitMQ Stream PerfTest at release 1.8.0, which prints a line a second,
+
+        13, published 0 msg/s, confirmed 0 msg/s, consumed 50 msg/s, latency
+            median/75th/95th/99th 1/2/2/2 ms, chunk size 1
+
+    each holding the last second's percentiles in whole milliseconds
+    (DefaultPrintWriterMetricsFormatter.java:62), and at the end only a 95th of about its last
+    second (BaseMetricsFormatter.java:111). Its median and 99th percentile are therefore read from
+    its own lines a second: the median of their medians and the median of their 99th percentiles,
+    over the seconds in which it consumed anything, the first five of those left out as its
+    warm-up, every line's figures kept beside them.
+
+    It runs as two instances (D35-4), and only the consumer's lines hold a latency; the runner
+    writes them after a line of its own, and where that line is there, nothing before it is read.
+
+    The consumer's /metrics, read once the producer has finished, give its latency timer's total
+    count and sum, cumulative over the run (DefaultPerformanceMetrics.java:95-101):
+
+        rabbitmq_stream_latency_seconds_count 3000.0
+        rabbitmq_stream_latency_seconds_sum 4.21
+        rabbitmq_stream_consumed_total 3000.0
+
+    The count is how many latencies it kept -- it records one only at or above zero (:318-327) --
+    and the sum over it, in seconds of whole milliseconds, its average. A second in which it kept
+    none prints 0/0/0/0: in the pilot of 11 October, with its consumer's clock 5 ms behind, every
+    second did, while it consumed fifty messages a second. So where the count shows it kept fewer
+    than it consumed, a line of four zeros is a second it may have emptied, and is not read as a
+    measurement; where it kept nothing, there are no figures at all."""
+    _, marked, rest = (text or "").partition(STREAM_CONSUMER)
+    consumer, _, metrics = (rest if marked else (text or "")).partition(STREAM_METRICS)
+    lines = [(int(sec), int(eaten), int(p50), int(p75), int(p95), int(p99))
+             for sec, eaten, p50, p75, p95, p99 in re.findall(
+                 r"^\s*(\d+), published .*?consumed (\d+) msg/s, latency median/75th/95th/99th"
+                 r" (-?\d+)/(-?\d+)/(-?\d+)/(-?\d+) ms", consumer, re.M)]
+    count = _find(metrics, r"^rabbitmq_stream_latency_seconds_count(?:\{[^}]*\})?\s+(%s)\s*$"
+                  % _DOUBLE)
+    total = _find(metrics, r"^rabbitmq_stream_latency_seconds_sum(?:\{[^}]*\})?\s+(%s)\s*$"
+                  % _DOUBLE)
+    eaten_total = _find(metrics, r"^rabbitmq_stream_consumed_total(?:\{[^}]*\})?\s+(%s)\s*$"
+                        % _DOUBLE)
+    kept = int(float(count)) if count is not None else None
+    received = int(float(eaten_total)) if eaten_total is not None else None
+    got, steps = {}, {}
+    if kept and total is not None:
+        got["avg"] = float(total) * 1000.0 / kept
+        steps["avg"] = 1.0 / kept
+    emptied = kept is not None and (kept == 0 or (received is not None and kept < received))
+    steady = [line for line in lines if line[1] > 0][5:]
+    if emptied:
+        steady = [line for line in steady if any(line[2:])]
+    if steady and kept != 0:
+        medians = sorted(line[2] for line in steady)
+        nines = sorted(line[5] for line in steady)
+        got["p50"] = float(medians[len(medians) // 2])
+        got["p99"] = float(nines[len(nines) // 2])
+        steps["p50"] = steps["p99"] = 1.0
+    return _reading("stream-perftest", got, steps, kept=kept, received=received,
+                    seconds=len(lines),
+                    per_second=[[sec, eaten, p50, p99] for sec, eaten, p50, _, _, p99 in lines])
+
+
 #: Every tool this reads, by the name a campaign calls it.
 READERS = {
     "vegeta": read_vegeta,
@@ -625,6 +797,12 @@ READERS = {
     "emqtt-bench": read_emqtt_bench,
     "ycsb": read_ycsb,
     "nats-bench": read_nats_bench,
+    # Freeze 32's four (D35-1): two Kafka monitors, Kafka's own Trogdor, and RabbitMQ's tool for
+    # its streams, each read where its own documentation says it reports.
+    "xinfra-monitor": read_xinfra_monitor,
+    "strimzi-canary": read_strimzi_canary,
+    "trogdor": read_trogdor,
+    "stream-perftest": read_stream_perftest,
 }
 
 

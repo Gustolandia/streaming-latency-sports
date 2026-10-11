@@ -115,6 +115,10 @@ pulsar-perf|tarball|4.2.4
 emqtt-bench|git|cb86b18848da17cae1024e1d06f7e43f8f6691a1
 ycsb|git|66302f301b13f60d4bcb2f29f478586bb1d6f2e0
 nats-bench|go|cc0a8e3224d564b134a92f6f2c2081452f885549
+xinfra-monitor|git|043db6419d1638ea9f8f0b8262950fba576c2806
+strimzi-canary|git|f3812fb53f2344fe654875027ee8caab254316c2
+trogdor|kafka|3.7.1
+stream-perftest|jar|1.8.0
 '
 #: The last five are the tools the plan registered and version 15 left unrun (D15-6), run under
 #: freeze 30 (D33-1), each at the version the audit read (data/tools_audit/batch_01, 03, 04 and
@@ -122,6 +126,17 @@ nats-bench|go|cc0a8e3224d564b134a92f6f2c2081452f885549
 #: latency only when it is at or above zero exactly as the audited master does
 #: (PerformanceConsumer.java:277-283 there, PerformanceConsumerBase.java:544-551 on master).
 #: nats-bench is the same build of the NATS CLI as nats-latency; it is another of its commands.
+
+#: Freeze 32's four (D35-1), each at the version the October reading read
+#: (data/tools_audit/batch_10.json): Xinfra Monitor at release 2.5.16, Strimzi Canary at its last
+#: commit (the repository is archived), Trogdor as the Kafka 3.7.1 release ships it -- the build
+#: get_kafka installs, whose Trogdor the reading checked line for line against trunk -- and
+#: RabbitMQ Stream PerfTest at release 1.8.0, checked against the publisher's own checksum.
+STREAM_PERF_VERSION="1.8.0"
+STREAM_PERF_SHA256="e5208cffb30d802d96541ed15b21217096f732fa7a0098b4384814dd07557321"
+#: The Kafka the canary runs against (D35-5), from the Apache archive, checked like Pulsar.
+KAFKA39_VERSION="3.9.1"
+KAFKA39_SHA512="1ea204ba73411737a275429ca976d440f007ff0957b90b19be41dc5a4bae52617267769be9f0b5791714d0b3c4c760605bd426faea39edd90763585523fa2cfe"
 
 #: What those five are built and run with, pinned like them and checked against the checksums
 #: their publishers give, because each is part of what produced the program whose behaviour the
@@ -140,9 +155,10 @@ PULSAR_SHA512="8c0a63cc6421c8eb3c4a55b8895ca08a38a1c6771758251fc7a82edbc4c6a42bb
 #: and the Erlang VM do: in the pilot of 9 October a five-second offset reached
 #: System.currentTimeMillis() and os:system_time(millisecond) both.
 FAKEABLE="wrk2 valkey-benchmark memtier_benchmark rdkafka_performance kafka-end-to-end \
-kafka-producer-perf rabbitmq-perftest omb pulsar-perf emqtt-bench ycsb"
+kafka-producer-perf rabbitmq-perftest omb pulsar-perf emqtt-bench ycsb \
+xinfra-monitor trogdor stream-perftest"
 #: The tools it cannot: Go does not go through the C library for the clock.
-GO_TOOLS="vegeta hey k6 nats-latency nats-bench"
+GO_TOOLS="vegeta hey k6 nats-latency nats-bench strimzi-canary"
 
 #: The Go toolchain the three Go tools are built with. Ubuntu 22.04 ships Go 1.18 and k6 needs
 #: newer, so it is fetched rather than apt-installed -- and pinned, because the compiler is part
@@ -388,6 +404,53 @@ get_ycsb () {
   ( cd "$src" && git rev-parse HEAD ) > "$DIR/commit_ycsb.txt" 2>/dev/null
 }
 
+#: Xinfra Monitor at release 2.5.16, built as its README says, by its own Gradle wrapper. The
+#: wrapper is Gradle 5.2.1, which runs on Java 11 and no later, and its version plugin reads the
+#: repository's tags, so the clone is whole.
+get_xinfra () {
+  local src="$WORK/src/kafka-monitor"
+  ls "$src"/build/libs/kafka-monitor-*.jar >/dev/null 2>&1 \
+    && { log "   Xinfra Monitor already built"; return 0; }
+  log "   building Xinfra Monitor at ${1:0:8}"
+  rm -rf "$src"; mkdir -p "$WORK/src"
+  #: In a subshell, as get_ycsb builds: $DIR is relative to the checkout, and a `cd` in this shell
+  #: left the commit file pointing nowhere in the pilot of 11 October.
+  ( git clone -q https://github.com/linkedin/kafka-monitor "$src" \
+      && cd "$src" && git checkout -q "$1" \
+      && JAVA_HOME="$JAVA11" ./gradlew --no-daemon -q jar ) > "$DIR/build_xinfra.log" 2>&1 \
+    || { log "   WARN: Xinfra Monitor did not build; see $DIR/build_xinfra.log"; return 1; }
+  ( cd "$src" && git rev-parse HEAD ) > "$DIR/commit_xinfra.txt" 2>/dev/null
+}
+
+#: Strimzi Canary at its last commit, with the Go installed for the Go tools above (its go.mod
+#: asks for 1.22.2). Its release ships no binary, only Kubernetes files, so it is built as its
+#: Makefile builds it.
+get_canary () {
+  have strimzi-canary && { log "   strimzi-canary already here"; return 0; }
+  get_go || return 1
+  local src="$WORK/src/strimzi-canary"
+  rm -rf "$src"; mkdir -p "$WORK/src"
+  ( git clone -q https://github.com/strimzi/strimzi-canary "$src" && cd "$src" \
+      && git checkout -q "$1" \
+      && CGO_ENABLED=0 go build -a -installsuffix cgo -o cmd/target/strimzi-canary cmd/main.go ) \
+      > "$DIR/build_canary.log" 2>&1 \
+    || { log "   WARN: strimzi-canary did not build; see $DIR/build_canary.log"; return 1; }
+  ( cd "$src" && git rev-parse HEAD ) > "$DIR/commit_canary.txt" 2>/dev/null
+  sudo install -m 0755 "$src/cmd/target/strimzi-canary" /usr/local/bin/ \
+    || log "   WARN: strimzi-canary built but could not be installed"
+}
+
+#: RabbitMQ Stream PerfTest's release jar, which is the artefact its documentation installs.
+get_stream_perftest () {
+  local jar="$WORK/stream-perf-test.jar"
+  [ -s "$jar" ] && { log "   stream-perf-test already here"; return 0; }
+  fetch_checked \
+    "https://github.com/rabbitmq/rabbitmq-stream-perf-test/releases/download/v$STREAM_PERF_VERSION/stream-perf-test-$STREAM_PERF_VERSION.jar" \
+    "$jar" 256 "$STREAM_PERF_SHA256" \
+    || { log "   WARN: stream-perf-test $STREAM_PERF_VERSION did not download whole"; rm -f "$jar"
+         return 1; }
+}
+
 install () {
   log "== the tools, at the versions the audit read"
   sudo apt-get update -qq || stop "apt-get update failed"
@@ -426,6 +489,10 @@ install () {
   get_pulsar
   get_emqtt_bench cb86b18848da17cae1024e1d06f7e43f8f6691a1
   get_ycsb 66302f301b13f60d4bcb2f29f478586bb1d6f2e0
+  # Freeze 32's four (D35-1). Trogdor needs nothing more: it is in the Kafka get_kafka unpacked.
+  get_xinfra 043db6419d1638ea9f8f0b8262950fba576c2806
+  get_canary f3812fb53f2344fe654875027ee8caab254316c2
+  get_stream_perftest
   #: The client our own AMQP reference speaks through (scripts/amqp_reference.py). Pinned like
   #: the tools, and system-wide, because the reference runs as this user inside the receiver's
   #: namespace, where a user-local install is not on the path sudo gives it.
@@ -496,7 +563,11 @@ import glob
 for tool, pattern in (("omb", "omb/lib/*benchmark-framework*.jar"),
                       ("pulsar-perf", "pulsar/lib/*pulsar-testclient*.jar"),
                       ("emqtt-bench", "emqtt-bench/emqtt_bench"),
-                      ("ycsb", "ycsb/lib/core-*.jar")):
+                      ("ycsb", "ycsb/lib/core-*.jar"),
+                      ("xinfra-monitor", "src/kafka-monitor/build/libs/kafka-monitor-*.jar"),
+                      ("strimzi-canary", "src/strimzi-canary/cmd/target/strimzi-canary"),
+                      ("trogdor", "kafka_2.13-3.7.1/libs/trogdor-*.jar"),
+                      ("stream-perftest", "stream-perf-test.jar")):
     hits = sorted(glob.glob(os.path.join(os.path.expanduser("~/tools"), pattern)))
     if not hits:
         found[tool] = {"present": False, "why": "nothing at ~/tools/%s" % pattern}
@@ -543,7 +614,7 @@ brokers () {
       || stop "setting the servers up on the broker failed; see above"
     local bad=0 tool why
     for tool in wrk2 valkey-benchmark rdkafka_performance rabbitmq-perftest nats-latency \
-                pulsar-perf emqtt-bench; do
+                pulsar-perf emqtt-bench stream-perftest strimzi-canary; do
       if why=$(server_answers "$tool"); then
         log "   from here, $tool's server answers it"
       else
@@ -610,6 +681,13 @@ brokers_here () {
   #: The directory is where RabbitMQ looks for extra configuration and it does not ship it.
   sudo mkdir -p /etc/rabbitmq/conf.d
   printf 'loopback_users = none\n' | sudo tee /etc/rabbitmq/conf.d/10-sbl.conf >/dev/null
+  #: Freeze 32: RabbitMQ's stream plugin, which Stream PerfTest speaks to on 5552. A stream
+  #: client is told which node to connect to, and by default that is the node's own hostname,
+  #: which the driver cannot resolve; so the broker advertises its private address instead.
+  printf 'stream.listeners.tcp.1 = 5552\nstream.advertised_host = %s\n' "$BROKER_PRIV" \
+    | sudo tee /etc/rabbitmq/conf.d/20-sbl-stream.conf >/dev/null
+  sudo rabbitmq-plugins enable --offline rabbitmq_stream >/dev/null 2>&1 \
+    || log "WARN: RabbitMQ's stream plugin could not be enabled; stream-perftest is checked below"
   sudo systemctl enable --now nginx rabbitmq-server >/dev/null 2>&1
   sudo systemctl restart rabbitmq-server >/dev/null 2>&1
   sudo systemctl reload nginx >/dev/null 2>&1
@@ -656,6 +734,45 @@ brokers_here () {
     sudo systemctl enable --now sbl-pulsar >/dev/null 2>&1
   fi
 
+  #: Freeze 32 (D35-5): a Kafka 3.9.1 broker for Strimzi Canary alone, beside the study's 4.1.1.
+  #: The canary's last commit pins Sarama 1.38.1, which commits offsets with OffsetCommit version
+  #: 1, and Kafka 4.0 removed it: in the pilot of 11 October the 4.1.1 broker closed the canary's
+  #: connection at every commit, once a second, and each reconnection held its consumer 2.1 s, so
+  #: the latency it reported was its reconnections. 3.9 is the last Kafka that still speaks
+  #: version 1, the newest the canary's client could ever use. Installed natively from the release
+  #: archive, as Pulsar is and as this block's servers are, and set as cloud/brokers.sh sets the
+  #: study's broker but for its ports: one node in KRaft mode, a gigabyte of heap, one partition and
+  #: one replica, no initial rebalance delay, and the same retention caps.
+  local k39="$HOME/tools/kafka_2.13-$KAFKA39_VERSION"
+  if [ ! -x "$k39/bin/kafka-server-start.sh" ]; then
+    fetch_checked "https://archive.apache.org/dist/kafka/$KAFKA39_VERSION/kafka_2.13-$KAFKA39_VERSION.tgz" \
+        kafka39.tgz 512 "$KAFKA39_SHA512" \
+      && mkdir -p "$k39" && tar -xzf "$WORK/kafka39.tgz" -C "$k39" --strip-components=1 \
+      || log "WARN: Kafka $KAFKA39_VERSION did not download whole; it is checked below"
+  fi
+  if [ -x "$k39/bin/kafka-server-start.sh" ]; then
+    printf '%s\n' "process.roles=broker,controller" "node.id=1" \
+      "controller.quorum.voters=1@localhost:29094" \
+      "listeners=PLAINTEXT://0.0.0.0:19094,CONTROLLER://localhost:29094" \
+      "advertised.listeners=PLAINTEXT://$BROKER_PRIV:19094" \
+      "listener.security.protocol.map=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT" \
+      "inter.broker.listener.name=PLAINTEXT" "controller.listener.names=CONTROLLER" \
+      "log.dirs=$HOME/kafka39-logs" "num.partitions=1" "default.replication.factor=1" \
+      "offsets.topic.replication.factor=1" "transaction.state.log.replication.factor=1" \
+      "transaction.state.log.min.isr=1" "group.initial.rebalance.delay.ms=0" \
+      "auto.create.topics.enable=true" "log.retention.ms=900000" \
+      "log.retention.bytes=2147483648" "log.segment.bytes=268435456" \
+      > "$k39/config/sbl-kraft.properties"
+    [ -f "$HOME/kafka39-logs/meta.properties" ] \
+      || JAVA_HOME="$JAVA17" "$k39/bin/kafka-storage.sh" format -c "$k39/config/sbl-kraft.properties" \
+           -t "$(JAVA_HOME="$JAVA17" "$k39/bin/kafka-storage.sh" random-uuid)" >/dev/null 2>&1
+    printf '[Unit]\nDescription=Kafka %s for Strimzi Canary in the tools block\nAfter=network.target\n\n[Service]\nUser=%s\nEnvironment=JAVA_HOME=%s\nEnvironment="KAFKA_HEAP_OPTS=-Xms1G -Xmx1G"\nExecStart=%s/bin/kafka-server-start.sh %s/config/sbl-kraft.properties\nRestart=always\n\n[Install]\nWantedBy=multi-user.target\n' \
+      "$KAFKA39_VERSION" "$(id -un)" "$JAVA17" "$k39" "$k39" \
+      | sudo tee /etc/systemd/system/sbl-kafka39.service >/dev/null
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now sbl-kafka39 >/dev/null 2>&1
+  fi
+
   # What is actually answering, which is the only thing a campaign can rely on -- but asked for
   # up to fifteen seconds rather than once. These servers are started a few lines above and a
   # cold one is not listening by the time the next statement runs: on 22 September nats-server
@@ -664,7 +781,7 @@ brokers_here () {
   # bookie and a metadata store before its broker, and took about forty seconds in the pilot.
   local bad=0
   for pair in "nginx 8080 http" "rabbitmq-server 5672 amqp" "nats-server 4222 nats" \
-              "mosquitto 1883 mqtt" "pulsar 6650 pulsar 120"; do
+              "mosquitto 1883 mqtt" "pulsar 6650 pulsar 120" "kafka-3.9.1 19094 kafka 90"; do
     set -- $pair
     local waited=0 patience="${4:-15}"
     while ! (echo > "/dev/tcp/127.0.0.1/$2") 2>/dev/null && [ "$waited" -lt "$patience" ]; do
@@ -757,10 +874,17 @@ release_delay () {
 #: staircase either side of it was sound, and T2 refused to start for want of the file this
 #: writes -- which is the refusal working.
 reference_for () {
-  local tool="$1" out="$2" backend id plan speedup me client=""
+  local tool="$1" out="$2" backend id plan speedup me client="" bootstrap="$KAFKA_BOOTSTRAP"
   case "$tool" in
     valkey-benchmark|memtier_benchmark|ycsb) backend=redis ;;
     rdkafka_performance|kafka-end-to-end|kafka-producer-perf|omb) backend=kafka ;;
+    #: Freeze 32's Kafka monitors and Trogdor are timed against the same client of ours, the
+    #: canary's against the Kafka 3.9.1 broker it runs against (D35-5).
+    xinfra-monitor|trogdor) backend=kafka ;;
+    strimzi-canary) backend=kafka; bootstrap="${SBL_KAFKA39:-$BROKER_PRIV:19094}" ;;
+    #: Stream PerfTest's broker is the RabbitMQ PerfTest's, reached through its stream plugin; our
+    #: AMQP client on the same path to the same broker is its reference, as it is PerfTest's.
+    stream-perftest) client="amqp_reference.py --uri $RABBIT" ;;
     #: Our own clients for the protocols the study's program does not speak, written on
     #: 25 September because seven of the eleven tools had no reference at all, and T2 takes its
     #: offsets and its predictions from one. Each is timed the way its tools time, from inside the
@@ -796,7 +920,7 @@ reference_for () {
   if [ "$backend" = kafka ]; then
     SBL_CONSUMER_WRAP="$NETNS sudo -u $me" \
       timeout -k 30 900 bash scripts/run_kafka_trial.sh "$id" "$plan" \
-        "$speedup" "${DURATION:-130}" -BOOTSTRAP "$KAFKA_BOOTSTRAP" \
+        "$speedup" "${DURATION:-130}" -BOOTSTRAP "$bootstrap" \
         -PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA" -IDLE_SECONDS 15 \
         > "$out/reference.log" 2>&1
   else
@@ -875,9 +999,18 @@ server_answers () {
         && printf 'PING\r\n' >&3 && head -c 5 <&3" 2>/dev/null | tr -d '\r\n')
       [ "$got" = "+PONG" ] \
         || { echo "Redis at ${VALKEY_HOST:-$host}:6379 answered '$got' to PING"; return 1; } ;;
-    rdkafka_performance|kafka-end-to-end|kafka-producer-perf|omb)
+    rdkafka_performance|kafka-end-to-end|kafka-producer-perf|omb|xinfra-monitor|trogdor)
       timeout 5 bash -c "echo > /dev/tcp/$host/19092" 2>/dev/null \
         || { echo "nothing listens for Kafka at $host:19092"; return 1; } ;;
+    strimzi-canary)
+      #: The Kafka 3.9.1 broker brokers_here starts for the canary alone (D35-5).
+      timeout 5 bash -c "echo > /dev/tcp/$host/19094" 2>/dev/null \
+        || { echo "nothing listens for Kafka 3.9.1 at $host:19094"; return 1; } ;;
+    stream-perftest)
+      #: RabbitMQ's stream plugin listens on 5552 once brokers_here has enabled it; the advertised
+      #: host it gives clients is the broker's own private address, set beside it.
+      timeout 5 bash -c "echo > /dev/tcp/$host/5552" 2>/dev/null \
+        || { echo "nothing listens for RabbitMQ streams at $host:5552"; return 1; } ;;
     pulsar-perf)
       #: A broker that knows its cluster, asked on its web port. An open 6650 is a JVM that has
       #: bound a socket, which Pulsar does before its broker can take a topic.
@@ -1270,6 +1403,76 @@ print("   its own step: %s ms" % r["step_ms"])' "$DIR/$run/reading.json"
   log "CAMPAIGN_COMPLETE: T4 $tool; see $DIR/$run/reading.json"
 }
 
+#: K1 (freeze 32): Kafka's own end-to-end tool against an independent arrival observer.
+#:
+#: Kafka's EndToEndLatency sends each record, waits for the acknowledgment and only then polls for
+#: it, so a record a consumer could already read is timed no earlier than its acknowledgment. K1
+#: runs a copy of the 3.7.1 tool changed only to write down, per record, its offset and the
+#: instants it began, got its acknowledgment and finished polling (external/kafka_e2e), beside an
+#: observer that writes down when each offset became readable to it, on the same host and wall
+#: clock. The observer runs at real-time priority in every cell, so its own lateness is as small
+#: as this machine allows; the tool runs idle and at 88% load, without and with go-first, as T3
+#: runs every tool. Invoked as the tools block invoked the tool: 3,000 records, acks=1, 512 bytes.
+k1 () {
+  needs_namespace
+  not_run_yet K1 kafka-e2e-traced "k1-*/e2e_trace.csv"
+  local home="$WORK/kafka_2.13-${KAFKA_VERSION:-3.7.1}" kafka="${SBL_KAFKA:-$BROKER_PRIV:19092}"
+  [ -x "$home/bin/kafka-topics.sh" ] || stop "K1 runs Kafka $home's own tool; install it first"
+  local classes="$DIR/k1-classes" cp
+  mkdir -p "$classes"
+  javac -cp "$home/libs/*" -d "$classes" external/kafka_e2e/EndToEndLatencyTraced.java \
+    external/kafka_e2e/ArrivalObserver.java > "$DIR/k1-javac.log" 2>&1 \
+    || stop "the traced tool did not compile against Kafka $home; see $DIR/k1-javac.log"
+  cp="$classes:$home/libs/*"
+  log "== K1: Kafka's end-to-end tool against an arrival observer, round $ROUND"
+  for load in 0 88; do
+    for first in no yes; do
+      local run="$DIR/k1-l$load-first$first" topic="sbl-k1-r$ROUND-l$load-$first-$(date +%s)"
+      mkdir -p "$run"
+      "$home/bin/kafka-topics.sh" --bootstrap-server "$kafka" --create --topic "$topic" \
+        --partitions 1 --replication-factor 1 > "$run/topic.txt" 2>&1 \
+        || { log "   the topic $topic could not be made; cell skipped, see $run/topic.txt"; continue; }
+      local stress=""
+      if [ "$load" != 0 ]; then
+        stress-ng --cpu "$(nproc)" --cpu-load "$load" --timeout 600s >/dev/null 2>&1 &
+        stress=$!
+        sleep 5
+      fi
+      #: The observer stops by itself once it has read the 3,000 records the tool sends.
+      $NETNS chrt -f 80 java -cp "$cp" sbl.k1.ArrivalObserver "$kafka" "$topic" 600 \
+        "$run/arrivals.csv" 3000 > "$run/observer.txt" 2>&1 &
+      local watcher=$! waited=0
+      until grep -q "observer ready" "$run/observer.txt" 2>/dev/null || [ "$waited" -ge 60 ]; do
+        sleep 1; waited=$((waited + 1))
+      done
+      local wrap="$NETNS"
+      [ "$first" = yes ] && wrap="$NETNS chrt -f 80"
+      $wrap java -cp "$cp" -Dsbl.k1.trace="$run/e2e_trace.csv" sbl.k1.EndToEndLatencyTraced \
+        "$kafka" "$topic" 3000 1 512 > "$run/tool.txt" 2>&1
+      echo "$?" > "$run/exit_code.txt"
+      #: The observer runs as root inside the namespace, so the pid this shell holds is sudo's. It
+      #: is found by a pattern anchored at java, which neither sudo's nor pgrep's own command line
+      #: can match: an unanchored pattern once matched the shell that sent it. It is given ten
+      #: seconds to finish by itself and stopped only after them, with whatever it has written out.
+      local pids left=10
+      while pgrep -f "^java .*sbl\.k1\.ArrivalObserver .*$topic" >/dev/null && [ "$left" -gt 0 ]; do
+        sleep 1; left=$((left - 1))
+      done
+      pids=$(pgrep -f "^java .*sbl\.k1\.ArrivalObserver .*$topic")
+      [ -n "$pids" ] && { sudo kill $pids 2>/dev/null
+                          log "   the observer had not read all 3,000 records; stopped"; }
+      wait "$watcher" 2>/dev/null
+      [ -n "$stress" ] && { kill -9 "$stress" 2>/dev/null; wait "$stress" 2>/dev/null
+                            pkill -9 -x stress-ng 2>/dev/null; }
+      python3 scripts/kafka_clamp.py judge --trace "$run/e2e_trace.csv" \
+        --arrivals "$run/arrivals.csv" --out "$run/k1.json" > /dev/null 2>&1 \
+        || log "   nothing paired in $run; kept as that"
+      log "   load $load%, go-first $first done"
+    done
+  done
+  log "CAMPAIGN_COMPLETE: K1; its runs are under $DIR"
+}
+
 #: The reference on its own, for a staircase that already ran without one.
 #:
 #: T1 takes it at the zero step and T2 will not start without it. When the reference was calling
@@ -1304,6 +1507,7 @@ case "${1:-}" in
   brokers) brokers ;;
   install) install ;;
   reference) reference "${2:-}" ;;
+  k1) k1 ;;
   t1) t1 "${2:-}" ;;
   t2) t2 "${2:-}" ;;
   t3) t3 "${2:-}" ;;

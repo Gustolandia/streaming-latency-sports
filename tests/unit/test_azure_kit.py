@@ -654,8 +654,11 @@ class TestTheToolsBlock:
         own = 'OWN="${SBL_TOOL_OWN:-127.0.0.1}"'
         assert code.count(own) == 1
         assert "127.0.0.1" not in code.replace(own, ""), "no target is the machine the tool runs on"
+        #: Freeze 32 adds Trogdor's agents and coordinator, which its node file places on the
+        #: loopback, and whose coordinator the client asks on its port 8889.
         for line in re.findall(r"^.*\$OWN\b.*$", runner, re.M):
-            assert any(own_use in line for own_use in ("--workers", "--restapi", "/metrics")), \
+            assert any(own_use in line for own_use in ("--workers", "--restapi", "/metrics",
+                                                       ":8889", "trogdor.conf")), \
                 "the loopback names a tool's own processes, never a server: %s" % line.strip()
         assert "localhost" not in code
         for target in ("SBL_TOOL_HTTP:-http://$BROKER_PRIV:8080/", "SBL_VALKEY_HOST:-$BROKER_PRIV",
@@ -936,7 +939,7 @@ class TestT2ForcedNegatives:
         under it would be a run with no offset at all. D15-1 says what to do instead: move the
         machine's own clock and put it back. Until 25 September this script only refused."""
         code = self.tools()
-        assert 'GO_TOOLS="vegeta hey k6 nats-latency nats-bench"' in code
+        assert 'GO_TOOLS="vegeta hey k6 nats-latency nats-bench strimzi-canary"' in code
         t2 = code.split("\nt2 () {", 1)[1].split("\n}\n", 1)[0]
         assert "how=clock" in t2 and "step_clock" in t2
         go = t2.split('*" $tool "*)', 1)[1].split(";;", 1)[0]
@@ -1851,9 +1854,9 @@ class TestEveryPinnedToolHasSomethingThatInstallsIt:
         return [line.split("|")[0] for line in table.strip().splitlines() if line.strip()]
 
     def test_the_block_pins_the_ten_tools_the_plan_counts(self):
-        """Eleven for the first block (ten runnable, Kafka's two bundled tools apart), and the
-        five freeze 30 adds (D33-1)."""
-        assert len(self._tools()) == 16
+        """Eleven for the first block (ten runnable, Kafka's two bundled tools apart), the five
+        freeze 30 adds (D33-1), and the four freeze 32 adds (D35-1)."""
+        assert len(self._tools()) == 20
 
     @pytest.mark.parametrize("tool", ["vegeta", "hey", "k6", "wrk2", "valkey-benchmark",
                                       "memtier_benchmark", "rdkafka_performance",

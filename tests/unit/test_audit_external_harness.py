@@ -353,6 +353,52 @@ class TestPatternsAddedForNonJvmSources:
     def test_a_range_test_on_two_different_values_is_not_a_filter(self):
         assert "positive_only_filter" not in classify("if (n > 0 && len < max) {")
 
+    # The six tools read on 11 Oct 2026 (data/tools_audit/batch_10.json), each line as its source has it.
+
+    def test_a_python_receive_minus_publish_is_cross_process(self):
+        assert "cross_process_latency" in classify("receive_timestamp - published_timestamp")
+
+    def test_a_clojure_time_minus_time_is_cross_process(self):
+        line = "[seen (- (Long/parseLong time_updated) (Long/parseLong window-time))]"
+        assert "cross_process_latency" in classify(line)
+
+    def test_a_clojure_subtraction_of_other_things_is_not(self):
+        assert "cross_process_latency" not in classify("(- (count xs) (count ys))")
+
+    def test_a_list_kept_only_where_it_reaches_what_is_subtracted_is_a_filter(self):
+        line = "filtered_times = [x - window_size_ms for x in update_times if x >= window_size_ms]"
+        assert "nonnegative_filter" in classify(line)
+
+    def test_a_list_kept_on_some_other_test_is_not(self):
+        assert "nonnegative_filter" not in classify("ys = [x - a for x in xs if x >= b]")
+
+    def test_a_parser_that_cannot_read_a_minus_sign_is_a_filter(self):
+        line = 'e2e_pattern = re.compile(".*?consumer.go:\\d+\\]\\sMessage\\sreceived.*duration=([0-9]+)\\sms")'
+        assert "nonnegative_filter" in classify(line)
+
+    def test_a_parser_that_reads_the_sign_is_not(self):
+        assert "nonnegative_filter" not in classify('re.compile("duration=(-?[0-9]+) ms")')
+
+    def test_a_floor_of_zero_on_a_latency_minus_an_offset_is_a_substitution(self):
+        line = "histogram.add(Long.max(0L, (latency - histogramMinMs) / histogramStepMs));"
+        assert "silent_suppression" in classify(line)
+
+    def test_a_value_pinned_to_a_recorders_floor_is_a_substitution(self):
+        assert "silent_suppression" in classify("boundedValue = min;")
+
+    def test_tracking_a_minimum_is_not(self):
+        assert "silent_suppression" not in classify("min = value;")
+
+    def test_a_recorder_that_throws_on_a_negative_is_a_refusal(self):
+        line = 'throw new RuntimeException("invalid negative value.");'
+        assert "library_refusal" in classify(line)
+
+    def test_a_throw_about_something_else_is_not(self):
+        assert "library_refusal" not in classify('throw new RuntimeException("closed");')
+
+    def test_floor_division_of_nanoseconds_to_milliseconds_keeps_a_coarser_value(self):
+        assert "quantized_retention" in classify("return ns // 1_000_000")
+
     def test_a_discard_metric_named_for_samples_counts_as_a_counter(self):
         # Rezolus names the noun it counts "samples", not "count".
         assert has_discard_counter_line('name = "scheduler_discarded_samples",')

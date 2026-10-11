@@ -58,10 +58,10 @@
 >    on our eight-CPU hosts, sets the timescale. Real-time priority cut the rate 7–80× at
 >    unchanged utilization, two placements of one load at the same utilization differ 2.07×, a
 >    longer path lowers the rate 4.1×, and a kernel trace predicts the rate with nothing fitted.
-> 3. **The industry-wide audit.** Eleven tools read at source and sixteen run: of the eight
->    message tools read, seven cut a latency at or below zero out of a figure they report without
->    counting it, and Kafka's own end-to-end tool never measures one, since it polls only after
->    each acknowledgment. Twelve of the sixteen run take both timestamps in one process, so they
+> 3. **The industry-wide audit.** Seventeen tools read at source and sixteen run: of the 14
+>    message tools read, twelve cut a latency at or below zero out of a figure they report without
+>    counting it, Kafka's own end-to-end tool never measures one, since it polls only after each
+>    acknowledgment, and PerfKit Benchmarker's keeps it, floored to whole milliseconds. Twelve of the sixteen run take both timestamps in one process, so they
 >    cannot measure a one-way latency, and on a machine 88% busy every tool's 99th percentile
 >    rose by 1.4–5.0 ms while its median barely moved. A positivity filter on
 >    a millisecond clock printed a median of exactly 1.0 or 2.0 ms in 71 of 75 settings, computed

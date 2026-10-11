@@ -1080,10 +1080,12 @@ on the harness above.
 at source time messages, and \harnessMessageCutWord{} of those cut a value at or below zero out of
 a figure they report without counting it. One of the \harnessMessageCutWord{},
 \texttt{emqtt-bench}, keeps the value in its histogram and leaves it out of the average it prints.
-The remaining one, \kafka{}'s bundled pair, never measures it (the note on
-\texttt{EndToEndLatency} below). Counted by whether
-the sample itself is lost, \harnessSilentWord{} of all \harnessAuditedWord{} dispose of it,
-\texttt{fio} and \texttt{btt} among them. Every verdict traces to a line of source a reader can
+Of the remaining two, \kafka{}'s bundled pair never measures it (the note on
+\texttt{EndToEndLatency} below), and PerfKit Benchmarker's messaging benchmark keeps it, floored to
+whole milliseconds. Counted by whether the sample itself is lost, \harnessSilentWord{} of all
+\harnessAuditedWord{} dispose of it, \texttt{fio} and \texttt{btt} among them. Six of the tools,
+which the plan never listed, were read in October 2026 by the protocol of the earlier audit
+(\brk{data/tools_audit/batch_10.json}). Every verdict traces to a line of source a reader can
 check. Each row of the registry file,
 \brk{docs/results/external/harness_registry.csv}, carries one source line, the file and symbol it
 came from, the upstream URL and the date it was read. The class labels are not stored. They are
@@ -1091,9 +1093,9 @@ recomputed on every build and every test run by the classifier that read the Ope
 Benchmark a month before the other tools were audited (\brk{classify()} in
 \brk{scripts/audit_external_harness.py}), so a reader who disagrees with a verdict can check the
 line against the pattern that matched it. Its patterns were written against JVM sources and had to
-be extended before they could read an Erlang guard or clock call, or librdkafka's guard in C, and
-they see only what they recognize, so the registry's count of disposals is a lower bound for the
-field.
+be extended before they could read an Erlang guard or clock call, librdkafka's guard in C, or the
+spellings of the tools read in October, and they see only what they recognize, so the registry's
+count of disposals is a lower bound for the field.
 
 We call a tool's own conditional on the sign of an interval its \emph{guard}. A guard is a deletion
 only if what it guards is the sample itself, not a counter. Table~\ref{stab:tools} is the
@@ -1115,13 +1117,14 @@ The \harnessSilentWord{} silent disposals take \harnessDisposalClassesWord{} for
 what its comparison excludes and reports no count of what it removed. The test $>0$ deletes every
 sample that computes to exactly zero, while $\geq 0$ keeps those and drops only values below zero.
 The benchmark and librdkafka's \texttt{rdkafka\_performance} filter at $>0$.
-Apache Pulsar's performance client guards at $\geq 0$, so the zeros the benchmark deletes pile up
-visibly at zero. A substitution keeps the sample count, so any
-retention computed downstream reads $100\%$, which makes it harder to detect than a filter. A
-library refusal leaves the sample unrecorded because the tool never checks whether its library
-rejected it. Truncation is a separate loss: it keeps every sample but loses precision. The
-benchmark truncates before it filters, and \kafka{}'s bundled tools only truncate. The notes below
-carry what the table cannot.
+Apache Pulsar's performance client guards at $\geq 0$, as do RabbitMQ Stream PerfTest and the
+readers two other tools ship, so the zeros the benchmark deletes pile up visibly at zero. A
+substitution keeps the sample count, so any retention computed downstream reads $100\%$, which
+makes it harder to detect than a filter. A library refusal leaves the sample unrecorded because
+the tool never checks whether its library rejected it. Truncation is a separate loss: it keeps
+every sample but loses precision. The benchmark truncates before it filters, and \kafka{}'s
+bundled tools and PerfKit Benchmarker's messaging benchmark only truncate. The notes below carry
+what the table cannot.
 \begin{itemize}
 \item The OpenMessaging Benchmark appears twice because it treats its two spans differently. It
 times its \ombGuardedPath{} latency on a \ombGuardedClock{} clock and filters it, and times its
@@ -1172,6 +1175,34 @@ difference.
 \item Rezolus counts the samples its scheduler sampler discards, those whose two timestamps
 arrived out of order across CPUs, in a metric that names the cause. The counter was added on 12
 August 2026, and its other samplers have none.
+\item Xinfra Monitor records its end-to-end latency, with no test of its sign, into the metrics
+library its build pins, \texttt{kafka-clients} 2.8.2, whose percentile statistic has a floor of
+zero and pins a value below it to the floor: a negative latency enters its 99th and higher
+percentiles as zero, logged only at debug level, while its average keeps it. Its producer and
+consumer are two services of one process by default and can run as separate processes.
+\item Strimzi Canary observes each duration into a Prometheus histogram whose lowest bucket is
+5~ms, so a negative counts with the fastest messages and shows only as a lower sum. The script the
+repository ships to read its latency log matches durations with \texttt{[0-9]+}, which cannot read
+a minus sign, so it skips every negative.
+\item In \kafka{}'s Trogdor the end-to-end latency is the producing agent's wall clock, written
+into each record, subtracted from the consuming agent's, and recorded as \texttt{Long.max(0L,
+...)}, so every negative becomes the histogram's floor. Trogdor's histogram throws on a negative:
+a negative publish latency is lost inside ProduceBench's acknowledgment callback, and in
+ConsumeBench the exception aborts the task.
+\item RabbitMQ Stream PerfTest has kept only latencies at or above zero since 2 June 2026, release
+1.7.0, the fix for a user's report of a negative latency during a rolling restart. Before that the
+library it records into refused the value itself and said so once, in a warning.
+\item The Yahoo Streaming Benchmark's figure is per window: the processing job's clock at a
+window's last write minus the window's start, which comes from the generator's clock, on another
+host in the cluster the benchmark describes. The tool writes every value, but the notebook it
+ships keeps only windows whose figure reaches the window length, so a window whose latency comes
+out negative is dropped. A user reported values such as $-70{,}646$~ms in 2018, and the report is
+still open.
+\item PerfKit Benchmarker's messaging benchmark subtracts a publisher process's
+\texttt{time.time\_ns()} from a receiver process's on one machine and floor-divides the difference
+to whole milliseconds, so a trip under a millisecond reads zero; its mean and percentiles keep
+every value, sign and all. It measures managed services only: Google Pub/Sub, AWS SQS and Azure
+Service Bus.
 \item Two further tools we read are not in the count, because they do not make the measurement.
 SPECjms2007 defines Delivery Time and never reports it, and Redpanda's \texttt{rpk} ships no
 latency benchmark.

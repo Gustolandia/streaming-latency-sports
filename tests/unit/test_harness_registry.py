@@ -312,15 +312,21 @@ def test_the_round6_reaudit_headline_counts():
     above zero, `if (ts > 0 && ts < (1000000 * 60 * 5))`, prints a line for each value it
     drops and counts none of them: the strict guard, the benchmark's, and an eighth silent
     tool among eleven.
+
+    Later the same day the survey took in six tools the plan never listed, read by T5's protocol (data/tools_audit/batch_10.json): Xinfra Monitor and Kafka's Trogdor substitute, Trogdor's histogram also refuses, and RabbitMQ Stream PerfTest, the Yahoo Streaming Benchmark's notebook and Strimzi Canary's log reader guard at `>= 0`. PerfKit Benchmarker's messaging benchmark keeps every value. Seventeen tools, thirteen silent.
     """
     s = summary()
-    assert s["harnesses"] == 11
-    assert s["n_silent"] == 8
-    assert s["suppressors"] == ["RabbitMQ PerfTest", "blktrace btt", "fio"]
+    assert s["harnesses"] == 17
+    assert s["n_silent"] == 13
+    assert s["suppressors"] == ["Kafka Trogdor", "RabbitMQ PerfTest", "Xinfra Monitor",
+                                "blktrace btt", "fio"]
     assert s["counts_discards"] == ["Rezolus"]
     assert "emqtt-bench" not in s["silent"]
     assert s["filters"] == ["OpenMessaging Benchmark", "librdkafka rdkafka_performance"], \
         "the strict guard, `> 0`"
-    assert s["nonnegative_filters"] == ["Apache Pulsar perf"], "the weaker one, `>= 0`"
+    assert s["nonnegative_filters"] == ["Apache Pulsar perf", "RabbitMQ Stream PerfTest",
+                                        "Strimzi Canary", "Yahoo Streaming Benchmark"], \
+        "the weaker one, `>= 0`"
     assert "Apache Pulsar perf" in s["silent"], "a weaker guard is still a silent one"
-    assert s["library_refusals"] == ["NATS CLI", "wrk2"]
+    assert s["library_refusals"] == ["Kafka Trogdor", "NATS CLI", "wrk2"]
+    assert "PerfKit Benchmarker messaging" not in s["silent"], "it keeps every value, floored"

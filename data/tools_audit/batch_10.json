@@ -1,0 +1,536 @@
+{
+ "audited_utc": "2026-10-11",
+ "protocol": "freeze 04, Section 'Experiments for Mode 2', T5",
+ "terms": [
+  "negative latency",
+  "negative",
+  "clock skew",
+  "resolution",
+  "rounding",
+  "millisecond",
+  "nanosecond",
+  "latency 0"
+ ],
+ "tools": [
+  {
+   "tool": "Xinfra Monitor",
+   "repository": "https://github.com/linkedin/kafka-monitor",
+   "version_seen": "master at 043db6419d1638ea9f8f0b8262950fba576c2806, 2023-03-22, which is also release 2.5.16; its metrics library is kafka-clients 2.8.2 (build.gradle:36), read at apache/kafka tag 2.8.2",
+   "what_it_times": "send to receive of its own monitoring messages, end to end through the cluster: the produce service stamps each record with its wall clock and the consume service subtracts its own. SingleClusterMonitor runs both services in one JVM, so one wall clock; the service factories let a producer and a consumer run as separate processes or hosts, and the README describes pointing the two services at two clusters joined by MirrorMaker. Separately, a produce delay from send to acknowledgment is timed inside the producer",
+   "documentation": {
+    "clock_and_resolution": {
+     "finding": "Wall clock at millisecond resolution on both sides: System.currentTimeMillis() in the produce service, written into the record's JSON as its time field, and System.currentTimeMillis() in the consume service, which subtracts it. Neither side reads a monotonic clock, and nothing corrects for an offset between two processes' or hosts' clocks.",
+     "evidence": [
+      "src/main/java/com/linkedin/xinfra/monitor/services/ProduceService.java:240-241",
+      "src/main/java/com/linkedin/xinfra/monitor/common/Utils.java:215",
+      "src/main/java/com/linkedin/xinfra/monitor/services/ConsumeService.java:187-192"
+     ]
+    },
+    "odd_values": {
+     "finding": "The difference is recorded with no test of its sign into a Kafka metrics sensor carrying an average, a maximum and percentiles. The average keeps a negative value. The percentiles do not: kafka-clients' Percentiles is built with a floor of 0.0 and pins any value below it to that floor, logging it only at debug level, so a negative latency enters the 99th, 99.9th and 99.99th percentiles as 0 ms, uncounted. The tool's own comment says two extra buckets catch values below 0 and above the maximum; kafka-clients 2.8.2 has no such buckets. The only latency counter counts records later than the SLA.",
+     "evidence": [
+      "src/main/java/com/linkedin/xinfra/monitor/services/ConsumeService.java:192",
+      "src/main/java/com/linkedin/xinfra/monitor/services/metrics/ConsumeMetrics.java:65-75",
+      "kafka 2.8.2 clients/src/main/java/org/apache/kafka/common/metrics/stats/Percentiles.java:47-49",
+      "kafka 2.8.2 clients/src/main/java/org/apache/kafka/common/metrics/stats/Percentiles.java:113-126"
+     ]
+    },
+    "warnings": {
+     "finding": "none found. The README describes the end-to-end latency metrics and the two-cluster arrangement without any word on clocks, synchronisation or negative values.",
+     "evidence": [
+      "README.md:20",
+      "README.md:114"
+     ]
+    }
+   },
+   "plan_said": "not in the plan's table of tools: read on 11 Oct 2026 at the author's request, after the eleven and the five had run, so the plan made no prediction",
+   "audit_found": "cross-process capable, wall clock in milliseconds; negatives kept in the average and replaced by zero in the percentiles, uncounted",
+   "prediction": "none made",
+   "searches": [
+    {
+     "term": "negative latency",
+     "where": "github issues and pull requests (linkedin/kafka-monitor)",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "github issues and pull requests (linkedin/kafka-monitor)",
+     "hits": 5
+    },
+    {
+     "term": "clock skew",
+     "where": "github issues and pull requests (linkedin/kafka-monitor)",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "github issues and pull requests (linkedin/kafka-monitor)",
+     "hits": 2
+    },
+    {
+     "term": "rounding",
+     "where": "github issues and pull requests (linkedin/kafka-monitor)",
+     "hits": 0
+    },
+    {
+     "term": "millisecond",
+     "where": "github issues and pull requests (linkedin/kafka-monitor)",
+     "hits": 6
+    },
+    {
+     "term": "nanosecond",
+     "where": "github issues and pull requests (linkedin/kafka-monitor)",
+     "hits": 0
+    },
+    {
+     "term": "latency 0",
+     "where": "github issues and pull requests (linkedin/kafka-monitor)",
+     "hits": 6
+    }
+   ],
+   "reports": [
+    {
+     "title": "Inaccurate consume latency metrics against older brokers",
+     "url": "https://github.com/linkedin/kafka-monitor/issues/233",
+     "opened": "2020-04-03",
+     "outcome": "closed",
+     "why_relevant": "a client-library fetch delay showed up as an order-of-magnitude rise in the tool's 99th percentile and maximum end-to-end latency: an artefact of the measuring client, read as the cluster's latency"
+    }
+   ],
+   "checked_here": [
+    "ProduceService.java:240 `long currMs = System.currentTimeMillis();` and ConsumeService.java:187-192 `long currMs = System.currentTimeMillis(); long prevMs = ...; _sensors._recordsDelay.record(currMs - prevMs);`, read back at 043db641",
+    "Percentiles.java (kafka 2.8.2) `this(sizeInBytes, 0.0, max, bucketing, percentiles);` and `} else if (value < min) { ... boundedValue = min;`, read back at tag 2.8.2"
+   ],
+   "not_determined": [
+    "whether any production deployment runs the two services on separate hosts"
+   ]
+  },
+  {
+   "tool": "Strimzi Canary",
+   "repository": "https://github.com/strimzi/strimzi-canary",
+   "version_seen": "main at f3812fb53f2344fe654875027ee8caab254316c2, 2024-10-18 (repository archived); release 0.6.0 is commit e4afc22eaea59d4069834da5fb1b9c172907ec81 with the same latency code",
+   "what_it_times": "send to receive of its canary messages, end to end through the cluster, in one process with two Kafka clients: the producer stamps the message and a consumer goroutine subtracts. Both readings are one wall clock",
+   "documentation": {
+    "clock_and_resolution": {
+     "finding": "Wall clock cut to whole milliseconds on both sides: time.Now().UnixNano() / 1000000, which reads Go's wall clock and not its monotonic one, written into the message as its timestamp field and subtracted by the consumer from its own reading.",
+     "evidence": [
+      "internal/services/producer.go:157",
+      "internal/util/util.go:19",
+      "internal/services/consumer.go:273-275"
+     ]
+    },
+    "odd_values": {
+     "finding": "Recorded with no test of its sign into a Prometheus histogram whose lowest bucket is 5 ms by default, so a negative value is counted in the same bucket as a fast message and shows only as a lower sum. The log line at verbosity 1 prints each duration, sign included, but the tool the repository ships to read those lines, tools/canary_latencies.py, matches durations with the pattern [0-9]+, which cannot match a minus sign, so it skips every negative duration, uncounted.",
+     "evidence": [
+      "internal/services/consumer.go:283",
+      "internal/config/canary_config.go:63",
+      "internal/services/consumer.go:276",
+      "tools/canary_latencies.py:19"
+     ]
+    },
+    "warnings": {
+     "finding": "none found. The README documents the latency histograms and their buckets in milliseconds and says nothing about clocks or negative values.",
+     "evidence": [
+      "README.md:68-69",
+      "README.md:156"
+     ]
+    }
+   },
+   "plan_said": "not in the plan's table of tools: read on 11 Oct 2026 at the author's request, after the eleven and the five had run, so the plan made no prediction",
+   "audit_found": "one process, one wall clock, millisecond resolution; a negative is kept but binned with the fastest messages, and the bundled log reader drops it",
+   "prediction": "none made",
+   "searches": [
+    {
+     "term": "negative latency",
+     "where": "github issues and pull requests (strimzi/strimzi-canary)",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "github issues and pull requests (strimzi/strimzi-canary)",
+     "hits": 2
+    },
+    {
+     "term": "clock skew",
+     "where": "github issues and pull requests (strimzi/strimzi-canary)",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "github issues and pull requests (strimzi/strimzi-canary)",
+     "hits": 2
+    },
+    {
+     "term": "rounding",
+     "where": "github issues and pull requests (strimzi/strimzi-canary)",
+     "hits": 1
+    },
+    {
+     "term": "millisecond",
+     "where": "github issues and pull requests (strimzi/strimzi-canary)",
+     "hits": 8
+    },
+    {
+     "term": "nanosecond",
+     "where": "github issues and pull requests (strimzi/strimzi-canary)",
+     "hits": 3
+    },
+    {
+     "term": "latency 0",
+     "where": "github issues and pull requests (strimzi/strimzi-canary)",
+     "hits": 6
+    }
+   ],
+   "reports": [
+    {
+     "title": "Add script to calculate canary log latencies and quantiles",
+     "url": "https://github.com/strimzi/strimzi-canary/pull/103",
+     "opened": "2021-10-08",
+     "outcome": "merged",
+     "why_relevant": "the pull request that added the log reader whose pattern cannot read a negative duration"
+    }
+   ],
+   "checked_here": [
+    "producer.go:157, util.go:19 `return time.Now().UnixNano() / 1000000`, consumer.go:273-283 `duration := timestamp - cm.Timestamp ... Observe(float64(duration))`, read back at f3812fb5",
+    "canary_latencies.py:19 `duration=([0-9]+)\\sms`, read back at f3812fb5"
+   ],
+   "not_determined": []
+  },
+  {
+   "tool": "Kafka Trogdor workloads",
+   "repository": "https://github.com/apache/kafka (trogdor/)",
+   "version_seen": "trunk at 995cfcf99f7917403e030428c00b5c51808ddc61, 2026-09-18, and release 3.7.1 (tag 3.7.1, commit e2494e6f), the build the campaign installs; the lines below are the same in both at shifted numbers",
+   "what_it_times": "four things, by workload. ProduceBench times send to acknowledgment inside the producer. ConsumeBench times the wait between consecutive non-empty polls of one consumer, charged to every record of the batch, which is not a message's trip. ConsumeBench's timestamp record processor times end to end: ProduceBench's payload generator writes its wall clock into each record and the consumer, another agent and possibly another host, subtracts its own. RoundTripWorkload reports no latency at all",
+   "documentation": {
+    "clock_and_resolution": {
+     "finding": "Every reading is Time.SYSTEM.milliseconds(), System.currentTimeMillis(): the wall clock in whole milliseconds, so the end-to-end figure crosses two agents' clocks.",
+     "evidence": [
+      "trogdor/src/main/java/org/apache/kafka/trogdor/workload/TimestampConstantPayloadGenerator.java:73 (3.7.1)",
+      "trogdor/src/main/java/org/apache/kafka/trogdor/workload/TimestampRecordProcessor.java:95-101 (3.7.1)",
+      "trogdor/src/main/java/org/apache/kafka/trogdor/workload/ProduceBenchWorker.java:142-144 (3.7.1)"
+     ]
+    },
+    "odd_values": {
+     "finding": "Two dispositions. The timestamp record processor clamps: histogram.add(Long.max(0L, (latency - histogramMinMs) / histogramStepMs)) puts every negative end-to-end latency in the lowest bucket, reported as histogramMinMs, uncounted. Trogdor's Histogram itself refuses a negative with an exception, 'invalid negative value.': in ProduceBench the exception is thrown inside the send callback and only logged by the producer, so the sample is lost; in ConsumeBench it aborts the task.",
+     "evidence": [
+      "trogdor/src/main/java/org/apache/kafka/trogdor/workload/TimestampRecordProcessor.java:88-89 (3.7.1)",
+      "trogdor/src/main/java/org/apache/kafka/trogdor/workload/Histogram.java:47-48 (3.7.1)"
+     ]
+    },
+    "warnings": {
+     "finding": "none found. trogdor/README.md describes the latency each workload measures without any word on clocks.",
+     "evidence": [
+      "trogdor/README.md:138",
+      "trogdor/README.md:146"
+     ]
+    }
+   },
+   "plan_said": "not in the plan's table of tools: read on 11 Oct 2026 at the author's request, after the eleven and the five had run, so the plan made no prediction",
+   "audit_found": "end to end across agents on two wall clocks; negatives replaced by the histogram's floor, and refused with an exception elsewhere",
+   "prediction": "none made",
+   "searches": [
+    {
+     "term": "negative latency",
+     "where": "apache jira (KAFKA), issues mentioning trogdor",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "apache jira (KAFKA), issues mentioning trogdor",
+     "hits": 4
+    },
+    {
+     "term": "clock skew",
+     "where": "apache jira (KAFKA), issues mentioning trogdor",
+     "hits": 2
+    },
+    {
+     "term": "resolution",
+     "where": "apache jira (KAFKA), issues mentioning trogdor",
+     "hits": 1
+    },
+    {
+     "term": "rounding",
+     "where": "apache jira (KAFKA), issues mentioning trogdor",
+     "hits": 0
+    },
+    {
+     "term": "millisecond",
+     "where": "apache jira (KAFKA), issues mentioning trogdor",
+     "hits": 3
+    },
+    {
+     "term": "nanosecond",
+     "where": "apache jira (KAFKA), issues mentioning trogdor",
+     "hits": 0
+    },
+    {
+     "term": "latency 0",
+     "where": "apache jira (KAFKA), issues mentioning trogdor",
+     "hits": 0
+    }
+   ],
+   "reports": [],
+   "checked_here": [
+    "TimestampRecordProcessor.java `histogram.add(Long.max(0L, (latency - histogramMinMs) / histogramStepMs));` and `putHistogram(curTime - buffer.getLong());`, Histogram.java `if (value < 0) { throw new RuntimeException(\"invalid negative value.\");`, read back at both 995cfcf9 and 3.7.1"
+   ],
+   "not_determined": []
+  },
+  {
+   "tool": "RabbitMQ Stream PerfTest",
+   "repository": "https://github.com/rabbitmq/rabbitmq-stream-perf-test",
+   "version_seen": "release v1.8.0 at 92960d3202102d69e3e0c61eaadf249a01ed05dc, 2026-07-09; main at 626fde69c32d31b75261af3cb07175039c49a2e7 has the same latency code",
+   "what_it_times": "send to receive through a RabbitMQ stream: the producer writes its wall clock into the first eight bytes of each message and the consumer subtracts its own. By default both run in one JVM; either count can be zero, so a producer and a consumer can run as separate instances on separate hosts",
+   "documentation": {
+    "clock_and_resolution": {
+     "finding": "System.currentTimeMillis() on both sides, chosen, the source says, for interoperability across processes; whole milliseconds, printed as whole milliseconds.",
+     "evidence": [
+      "src/main/java/com/rabbitmq/stream/perf/StreamPerfTest.java:1320-1322",
+      "src/main/java/com/rabbitmq/stream/perf/StreamPerfTest.java:1426-1428"
+     ]
+    },
+    "odd_values": {
+     "finding": "Dropped silently: the metrics class records a latency only `if (latency >= 0)`, a guard added on 2 June 2026 (commit 88954b04, release 1.7.0) after issue #418 showed Micrometer refusing a negative latency of -105 ms during a rolling restart. Micrometer's Timer refuses negatives on its own too, logging the first at warning level and the rest at debug. Nothing counts the drops.",
+     "evidence": [
+      "src/main/java/com/rabbitmq/stream/perf/metrics/DefaultPerformanceMetrics.java:319",
+      "https://github.com/rabbitmq/rabbitmq-stream-perf-test/issues/418"
+     ]
+    },
+    "warnings": {
+     "finding": "none found. The documentation explains that each message carries a long used to compute the latency and how instances synchronise their start, and says nothing about clocks between instances.",
+     "evidence": [
+      "src/docs/asciidoc/common-usage.adoc:193",
+      "src/docs/asciidoc/advance-usage.adoc:223-255"
+     ]
+    }
+   },
+   "plan_said": "not in the plan's table of tools: read on 11 Oct 2026 at the author's request, after the eleven and the five had run, so the plan made no prediction",
+   "audit_found": "wall clock in milliseconds, one JVM by default, separable; negatives dropped silently since June 2026, in answer to a user's report of one",
+   "prediction": "none made",
+   "searches": [
+    {
+     "term": "negative latency",
+     "where": "github issues and pull requests (rabbitmq/rabbitmq-stream-perf-test)",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "github issues and pull requests (rabbitmq/rabbitmq-stream-perf-test)",
+     "hits": 14
+    },
+    {
+     "term": "clock skew",
+     "where": "github issues and pull requests (rabbitmq/rabbitmq-stream-perf-test)",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "github issues and pull requests (rabbitmq/rabbitmq-stream-perf-test)",
+     "hits": 4
+    },
+    {
+     "term": "rounding",
+     "where": "github issues and pull requests (rabbitmq/rabbitmq-stream-perf-test)",
+     "hits": 0
+    },
+    {
+     "term": "millisecond",
+     "where": "github issues and pull requests (rabbitmq/rabbitmq-stream-perf-test)",
+     "hits": 2
+    },
+    {
+     "term": "nanosecond",
+     "where": "github issues and pull requests (rabbitmq/rabbitmq-stream-perf-test)",
+     "hits": 0
+    },
+    {
+     "term": "latency 0",
+     "where": "github issues and pull requests (rabbitmq/rabbitmq-stream-perf-test)",
+     "hits": 0
+    }
+   ],
+   "reports": [
+    {
+     "title": "'amount' should not be negative but was",
+     "url": "https://github.com/rabbitmq/rabbitmq-stream-perf-test/issues/418",
+     "opened": "2026-05-29",
+     "outcome": "closed, fixed by dropping negatives",
+     "why_relevant": "a user saw a negative latency during a rolling restart; the fix stopped it being recorded rather than counting it"
+    }
+   ],
+   "checked_here": [
+    "StreamPerfTest.java:1320 `long creationTime = System.currentTimeMillis();` and :1428 `System.currentTimeMillis() - time, TimeUnit.MILLISECONDS);`, DefaultPerformanceMetrics.java:319 `if (latency >= 0) {`, read back at 92960d32"
+   ],
+   "not_determined": []
+  },
+  {
+   "tool": "Yahoo Streaming Benchmark",
+   "repository": "https://github.com/yahoo/streaming-benchmarks",
+   "version_seen": "master at d1aaf6bb28e97acb64625e125b447f495cf0776e, 2022-02-15",
+   "what_it_times": "per window, not per event: the processing job's wall clock at a window's last write to Redis minus the window's start, which comes from the event time the generator wrote. In the intended cluster nine of ten generators run on hosts other than the processor's, so the difference crosses machines' clocks",
+   "documentation": {
+    "clock_and_resolution": {
+     "finding": "Wall clocks in milliseconds: the generator's System/currentTimeMillis read once at start, from which each event's scheduled time is computed, and the processor's System.currentTimeMillis() at each one-second flush. The window is ten seconds, so the reported figure includes it.",
+     "evidence": [
+      "data/src/setup/core.clj:188-196",
+      "streaming-benchmark-common/src/main/java/benchmark/common/advertising/CampaignProcessorCommon.java:92",
+      "data/src/setup/core.clj:149"
+     ]
+    },
+    "odd_values": {
+     "finding": "The tool writes every difference to updated.txt with no test of its sign. The analysis notebook the repository ships keeps only values at or above the window length before subtracting it, so a window whose latency comes out negative is dropped, uncounted, and a second cell drops values of a second or less.",
+     "evidence": [
+      "data/src/setup/core.clj:149",
+      "pynotebooks/Benchmark_combined.ipynb (JSON lines 145, 187, 408)"
+     ]
+    },
+    "warnings": {
+     "finding": "none found; the README describes updated.txt as the latency from the last event to the Redis write, which the code does not compute.",
+     "evidence": [
+      "README.markdown:42"
+     ]
+    }
+   },
+   "plan_said": "not in the plan's table of tools: read on 11 Oct 2026 at the author's request, after the eleven and the five had run, so the plan made no prediction",
+   "audit_found": "a window latency across machines' wall clocks; the shipped notebook drops what comes out negative; users have reported negative results since 2018",
+   "prediction": "none made",
+   "searches": [
+    {
+     "term": "negative latency",
+     "where": "github issues and pull requests (yahoo/streaming-benchmarks)",
+     "hits": 1
+    },
+    {
+     "term": "negative",
+     "where": "github issues and pull requests (yahoo/streaming-benchmarks)",
+     "hits": 2
+    },
+    {
+     "term": "clock skew",
+     "where": "github issues and pull requests (yahoo/streaming-benchmarks)",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "github issues and pull requests (yahoo/streaming-benchmarks)",
+     "hits": 1
+    },
+    {
+     "term": "rounding",
+     "where": "github issues and pull requests (yahoo/streaming-benchmarks)",
+     "hits": 0
+    },
+    {
+     "term": "millisecond",
+     "where": "github issues and pull requests (yahoo/streaming-benchmarks)",
+     "hits": 0
+    },
+    {
+     "term": "nanosecond",
+     "where": "github issues and pull requests (yahoo/streaming-benchmarks)",
+     "hits": 0
+    },
+    {
+     "term": "latency 0",
+     "where": "github issues and pull requests (yahoo/streaming-benchmarks)",
+     "hits": 1
+    }
+   ],
+   "reports": [
+    {
+     "title": "negative updated results",
+     "url": "https://github.com/yahoo/streaming-benchmarks/issues/36",
+     "opened": "2018-03-22",
+     "outcome": "still open",
+     "why_relevant": "a user saw values such as -70646 ms in updated.txt; the replies attribute them to unsynchronised clocks across worker nodes"
+    }
+   ],
+   "checked_here": [
+    "core.clj:149 `[seen (- (Long/parseLong time_updated) (Long/parseLong window-time))]`, :188 `start-time-ns (* 1000000 (System/currentTimeMillis))`, CampaignProcessorCommon.java:92 `flush_jedis.hset(windowUUID, \"time_updated\", Long.toString(System.currentTimeMillis()));`, read back at d1aaf6bb"
+   ],
+   "not_determined": [
+    "the notebook's line numbers are JSON lines, as the reader reported them"
+   ]
+  },
+  {
+   "tool": "PerfKit Benchmarker messaging benchmark",
+   "repository": "https://github.com/GoogleCloudPlatform/PerfKitBenchmarker",
+   "version_seen": "master at e5fd49d7d0f83621ae6fddeaa74ed3a0a02081e3, 2026-10-09",
+   "what_it_times": "publish to pull for a managed queue service (Google Pub/Sub, AWS SQS or Azure Service Bus): a publisher process and a receiver process on one client VM each take a timestamp, and a third process subtracts them",
+   "documentation": {
+    "clock_and_resolution": {
+     "finding": "time.time_ns() in both processes, the wall clock, and the difference is floor-divided to whole milliseconds, so a sub-millisecond trip reads 0 and a negative keeps its sign. The publish timestamp is taken before the publish call, against a docstring that says just after.",
+     "evidence": [
+      "perfkitbenchmarker/scripts/messaging_service_scripts/common/e2e/publisher.py:67",
+      "perfkitbenchmarker/scripts/messaging_service_scripts/common/e2e/receiver.py:120",
+      "perfkitbenchmarker/scripts/messaging_service_scripts/common/e2e/latency_runner.py:28",
+      "perfkitbenchmarker/scripts/messaging_service_scripts/common/e2e/latency_runner.py:98-99"
+     ]
+    },
+    "odd_values": {
+     "finding": "Kept: the only condition drops a message with a missing timestamp, and the summary is numpy's mean and percentiles over every sample, which a negative enters as it is.",
+     "evidence": [
+      "perfkitbenchmarker/scripts/messaging_service_scripts/common/e2e/latency_runner.py:95-97",
+      "perfkitbenchmarker/scripts/messaging_service_scripts/common/runners.py:74-103"
+     ]
+    },
+    "warnings": {
+     "finding": "none found",
+     "evidence": [
+      "README.md"
+     ]
+    }
+   },
+   "plan_said": "not in the plan's table of tools: read on 11 Oct 2026 at the author's request, after the eleven and the five had run, so the plan made no prediction",
+   "audit_found": "two processes on one wall clock, floored to milliseconds; nothing removes a negative; managed services only",
+   "prediction": "none made",
+   "searches": [
+    {
+     "term": "negative latency",
+     "where": "github issues and pull requests (GoogleCloudPlatform/PerfKitBenchmarker)",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "github issues and pull requests (GoogleCloudPlatform/PerfKitBenchmarker)",
+     "hits": 5
+    },
+    {
+     "term": "clock skew",
+     "where": "github issues and pull requests (GoogleCloudPlatform/PerfKitBenchmarker)",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "github issues and pull requests (GoogleCloudPlatform/PerfKitBenchmarker)",
+     "hits": 16
+    },
+    {
+     "term": "rounding",
+     "where": "github issues and pull requests (GoogleCloudPlatform/PerfKitBenchmarker)",
+     "hits": 1
+    },
+    {
+     "term": "millisecond",
+     "where": "github issues and pull requests (GoogleCloudPlatform/PerfKitBenchmarker)",
+     "hits": 3
+    },
+    {
+     "term": "nanosecond",
+     "where": "github issues and pull requests (GoogleCloudPlatform/PerfKitBenchmarker)",
+     "hits": 2
+    },
+    {
+     "term": "latency 0",
+     "where": "github issues and pull requests (GoogleCloudPlatform/PerfKitBenchmarker)",
+     "hits": 16
+    }
+   ],
+   "reports": [],
+   "checked_here": [
+    "publisher.py:67 `publish_timestamp = time.time_ns()`, receiver.py:120 `pull_timestamp = time.time_ns()`, latency_runner.py:28 `return ns // 1_000_000` and :98-99, read back at e5fd49d7"
+   ],
+   "not_determined": []
+  }
+ ]
+}

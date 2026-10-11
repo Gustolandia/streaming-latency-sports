@@ -152,7 +152,9 @@ class TestR2TheTwoThresholdsAreDifferentThings:
         s = harness_registry.summary()
         # 11 Oct 2026: librdkafka's rdkafka_performance joined the strict class when it was read.
         assert s["filters"] == ["OpenMessaging Benchmark", "librdkafka rdkafka_performance"]
-        assert s["nonnegative_filters"] == ["Apache Pulsar perf"]
+        # 11 Oct 2026: three of the six tools read that day guard at `>= 0` as well.
+        assert s["nonnegative_filters"] == ["Apache Pulsar perf", "RabbitMQ Stream PerfTest",
+                                            "Strimzi Canary", "Yahoo Streaming Benchmark"]
         assert "Apache Pulsar perf" in s["silent"], "a weaker guard is still an uncounted one"
 
     def test_no_headline_count_moved(self):
@@ -164,10 +166,12 @@ class TestR2TheTwoThresholdsAreDifferentThings:
         table is recorded into a library that refuses a negative, with the error ignored. Seven,
         not five. The other three counts hold, and test_harness_registry records why the two
         were missed. 11 Oct 2026: librdkafka's rdkafka_performance, read into the registry,
-        made it eleven tools, eight silent and ten vendors; C was already among the languages."""
+        made it eleven tools, eight silent and ten vendors; C was already among the languages.
+        The six read later that day made it seventeen tools, thirteen silent, fourteen vendors
+        and seven languages, Clojure and Python the new ones."""
         import harness_registry
         s = harness_registry.summary()
-        assert (s["harnesses"], s["n_silent"], s["vendors"], s["languages"]) == (11, 8, 10, 5)
+        assert (s["harnesses"], s["n_silent"], s["vendors"], s["languages"]) == (17, 13, 14, 7)
 
     def test_a_threshold_is_not_a_new_response(self):
         from audit_external_harness import DISPOSAL_KINDS, DISPOSAL_RESPONSES

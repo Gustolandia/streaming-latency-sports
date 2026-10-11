@@ -446,6 +446,60 @@
                   producer records its own span unguarded. Accessed: Oct. 11, 2026}
 }
 
+@misc{xinfra_monitor,
+  author       = {{LinkedIn}},
+  title        = {Xinfra Monitor --- \texttt{ConsumeService.java}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/linkedin/kafka-monitor}. Accessed: Oct. 11, 2026},
+  annote       = {\url{https://github.com/linkedin/kafka-monitor}, read at commit 043db641, release 2.5.16; the latency is recorded unguarded into Kafka metrics whose percentiles pin a negative to zero. Accessed: Oct. 11, 2026}
+}
+
+@misc{strimzi_canary,
+  author       = {{Strimzi}},
+  title        = {Strimzi Canary --- \texttt{internal/services/consumer.go}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/strimzi/strimzi-canary}. Accessed: Oct. 11, 2026},
+  annote       = {\url{https://github.com/strimzi/strimzi-canary}, read at commit f3812fb5; a negative is binned with the fastest messages, and the bundled log reader cannot parse one. Accessed: Oct. 11, 2026}
+}
+
+@misc{kafka_trogdor,
+  author       = {{Apache Software Foundation}},
+  title        = {Apache \kafka{} Trogdor --- \texttt{TimestampRecordProcessor.java}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/apache/kafka}. Accessed: Oct. 11, 2026},
+  annote       = {\url{https://github.com/apache/kafka}, read in release 3.7.1 and at commit 995cfcf9; a negative end-to-end latency becomes the histogram's floor. Accessed: Oct. 11, 2026}
+}
+
+@misc{rabbitmq_stream_perftest,
+  author       = {{Broadcom}},
+  title        = {RabbitMQ Stream PerfTest --- \texttt{DefaultPerformanceMetrics.java}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/rabbitmq/rabbitmq-stream-perf-test}. Accessed: Oct. 11, 2026},
+  annote       = {\url{https://github.com/rabbitmq/rabbitmq-stream-perf-test}, read at release v1.8.0, commit 92960d32; the non-negativity guard dates from June 2026. Accessed: Oct. 11, 2026}
+}
+
+@misc{yahoo_streaming_benchmark,
+  author       = {{Yahoo}},
+  title        = {Yahoo Streaming Benchmark --- \texttt{data/src/setup/core.clj}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/yahoo/streaming-benchmarks}. Accessed: Oct. 11, 2026},
+  annote       = {\url{https://github.com/yahoo/streaming-benchmarks}, read at commit d1aaf6bb; the shipped notebook drops windows whose latency comes out negative. Accessed: Oct. 11, 2026}
+}
+
+@misc{pkb_messaging,
+  author       = {{Google}},
+  title        = {PerfKit Benchmarker --- \texttt{messaging\_service\_scripts}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/GoogleCloudPlatform/PerfKitBenchmarker}. Accessed: Oct. 11, 2026},
+  annote       = {\url{https://github.com/GoogleCloudPlatform/PerfKitBenchmarker}, read at commit e5fd49d7; the latency is floored to whole milliseconds and kept, sign and all. Accessed: Oct. 11, 2026}
+}
+
 @misc{indexdev2026brokers,
   author       = {{Index.dev}},
   title        = {{NATS} vs {Redis} vs {Kafka}: message broker comparison},

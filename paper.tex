@@ -109,7 +109,7 @@ the threads that read the clock ahead of every thread at the default \emph{norma
 it $\rtFactorLow$--$\rtFactorHigh\times$ on \kafka{} and $\rtRedisFactorLow$--$\rtRedisFactorHigh\times$ on \redis{} at unchanged load.
 \item \textbf{The industry-wide audit} (Section~\ref{sec:external}). Of the \harnessMessageWord{}
 message tools we read at source, \harnessMessageCutWord{} cut such values out of a figure they
-report, without counting them, and \kafka{}'s own never measures them.
+report, without counting them, \kafka{}'s own never measures them, and one keeps them.
 \toolsOneClockWordCap{} of the \toolsRunWord{} we ran take both timestamps in one process, so
 they never measure a \emph{one-way latency}, the time from one process to another. On a
 millisecond clock, a filter that keeps only latencies above zero, a \emph{positivity filter}, also
@@ -444,15 +444,27 @@ read, run \\
 as zero and is printed only when some value is above zero & read, run \\
 \raggedright librdkafka's \brk{rdkafka_performance} & 10~$\mu$s & Dropped unless above zero, with a
 printed line, uncounted; none reached zero in our runs & read, run \\
+\kafka{}'s Trogdor, end to end & 1~ms & Replaced by its histogram's floor, uncounted; that histogram
+throws on a negative, which loses a producer's sample & read \\
+Yahoo Streaming Benchmark & 1~ms & Kept in its output file; dropped by the notebook that
+analyses it, uncounted & read \\
+PerfKit Benchmarker, messaging & 1~ms & Kept, floored to whole milliseconds & read \\
 \midrule
 \multicolumn{4}{@{}l}{\emph{Both timestamps in one process: publish to receipt, or to the
 acknowledgment}} \\
-\kafka{}'s end-to-end and producer tools & 1~ms & Cannot fall below zero in one process; on a path
-faster than a millisecond every percentile of the end-to-end tool reads zero & read, run \\
+\kafka{}'s end-to-end and producer tools & 1~ms & Never measured: the end-to-end tool polls only
+after each acknowledgment, so a message that arrived first is timed no earlier; on a path faster
+than a millisecond its every percentile reads zero & read, run \\
 RabbitMQ PerfTest & 1~$\mu$s & Replaced by its absolute value, uncounted; until June 2026 a zero
 was dropped too & read, run \\
 NATS command-line latency test & 1~$\mu$s & Kept for its minimum, median and maximum, refused by
 its histogram library for its percentiles; uncounted & read, run \\
+Xinfra Monitor & 1~ms & Replaced by zero in its percentiles, kept in its average; uncounted &
+read \\
+Strimzi Canary & 1~ms & Binned with the fastest messages; dropped by the log reader it ships,
+uncounted & read \\
+RabbitMQ Stream PerfTest & 1~ms & Dropped when below zero, uncounted, since June 2026; a zero is
+kept & read \\
 \midrule
 \multicolumn{4}{@{}l}{\emph{Both timestamps in one process: request to reply, a round trip}} \\
 \texttt{wrk2} & 10~$\mu$s & Printed as impossible, then refused by its histogram library, or the
@@ -483,12 +495,15 @@ PerfTest takes the absolute value~\cite{rabbitmq_perftest}, and \texttt{emqtt-be
 sample in its histogram but counts such a value as zero in the average it
 prints~\cite{emqtt_bench}. Until June 2026 PerfTest also kept only values above zero, which in its
 millisecond mode deleted every trip shorter than a millisecond. The filter in librdkafka's
-\texttt{rdkafka\_performance} prints a line for each value it drops but keeps no count. The
-remaining message tool, Apache \kafka{}'s bundled pair, never measures such a value. Its
+\texttt{rdkafka\_performance} prints a line for each value it drops but keeps no count. Users
+have reported such values: in the Yahoo Streaming Benchmark's tracker in 2018, still open, and in
+RabbitMQ Stream PerfTest's in May 2026, which answered with a filter that drops them. Of the two
+message tools that cut nothing, Apache \kafka{}'s bundled pair never measures such a value. Its
 end-to-end tool waits for each acknowledgment before it polls for the message, so a message that
 reached the consumer first is reported no earlier than its acknowledgment. It also rounds each
 latency down to whole milliseconds, so on a path faster than a millisecond every percentile it
-reports is zero~\cite{kafka_tools}. Of the tools that time no message, \texttt{fio} and \texttt{btt}
+reports is zero~\cite{kafka_tools}. PerfKit Benchmarker's messaging benchmark keeps the value,
+floored to whole milliseconds. Of the tools that time no message, \texttt{fio} and \texttt{btt}
 substitute zero and one nanosecond, and only Rezolus counts what it discards, in its scheduler
 sampler since August 2026~\cite{rezolus}.
 

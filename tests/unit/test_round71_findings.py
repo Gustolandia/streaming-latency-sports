@@ -403,8 +403,9 @@ class TestW3FoundTheRegistryWasSpillingARow:
         # 20 since 2 Oct 2026: RabbitMQ PerfTest's getDifference and the NATS CLI's histogram
         # bound check, the two lines our first readings never reached. 24 since 11 Oct 2026:
         # librdkafka's rdkafka_performance, its consumer's subtraction and guard and its
-        # producer's unguarded span, and Kafka's end-to-end tool sending before it polls.
-        assert len(rows) == 24
+        # producer's unguarded span, and Kafka's end-to-end tool sending before it polls. 36
+        # since the six tools read later that day, two lines each.
+        assert len(rows) == 36
         assert all(set(r) == set(hr.FIELDS) for r in rows)
 
     def test_the_pulsar_evidence_points_at_the_file_that_holds_it(self):
@@ -424,14 +425,15 @@ class TestW3FoundTheRegistryWasSpillingARow:
         could move a number. This one does not, and the assertion is the proof."""
         import harness_registry as hr
         s = hr.summary()
-        assert s["nonnegative_filters"] == ["Apache Pulsar perf"]
+        assert "Apache Pulsar perf" in s["nonnegative_filters"]
         assert s["filters"] == ["OpenMessaging Benchmark", "librdkafka rdkafka_performance"]
         # The relocation moved nothing. What moved later, on 2 Oct 2026, were PerfTest and the
         # NATS CLI: one evidence line and one silent tool each (test_harness_registry). On 11 Oct
         # 2026 librdkafka's rdkafka_performance added three lines and an eighth silent tool, and
         # Kafka's end-to-end tool one line: it sends, waits for the acknowledgment, then polls.
-        assert s["evidence_lines"] == 24 and s["harnesses"] == 11
-        assert s["n_silent"] == 8 and "Apache Pulsar perf" in s["silent"]
+        # The six tools read later that day added two lines each and five silent tools.
+        assert s["evidence_lines"] == 36 and s["harnesses"] == 17
+        assert s["n_silent"] == 13 and "Apache Pulsar perf" in s["silent"]
 
 
 class TestW3TheScriptIsCoveredWithoutTouchingTheNetwork:

@@ -55,6 +55,13 @@ CROSS_PROCESS = [
     # producer's `wall_clock() - source_ts` subtracts a stamp it took itself, in one process,
     # and must not match. Added on 11 Oct 2026 with the tool.
     re.compile(r"\b\w*clock\(\)\s*-\s*\w*remote\w*"),
+    # PerfKit Benchmarker's messaging benchmark subtracts a publisher process's time.time_ns() from
+    # a receiver process's, by name: `receive_timestamp - published_timestamp`. Added 11 Oct 2026.
+    re.compile(r"\breceive\w*\s*-\s*publish\w*"),
+    # Clojure, prefix and parenthesised: the Yahoo Streaming Benchmark's
+    # `(- (Long/parseLong time_updated) (Long/parseLong window-time))`, a processor's wall clock
+    # minus a time that came from the generator's. Added 11 Oct 2026.
+    re.compile(r"\(-\s+\(\S+\s+[\w-]*time[\w-]*\)\s+\(\S+\s+[\w-]*time[\w-]*\)\)"),
     # The subtraction can also be behind an abstraction, which is the harder case to see and
     # the reason this list is patterns rather than a grep for a minus sign. RabbitMQ
     # PerfTest's `timestampProvider.getDifference(now, messageTimestamp)` is a cross-process
@@ -103,6 +110,14 @@ NONNEGATIVE_FILTER = [
     re.compile(r"if\s*\(\s*(\w*[Ll]atency\w*)\s*>=\s*0\s*\)"),
     re.compile(r"if\s+(\w*latency\w*)\s*>=\s*0\s*:", re.I),
     re.compile(r"\b(\w*[Ll]atency\w*)\s*>=\s*0\s+andalso\b"),
+    # A list kept only where the value reaches what is then subtracted from it, so nothing below
+    # zero survives and a zero does: the Yahoo Streaming Benchmark's analysis notebook,
+    # `[x - window_size_ms for x in update_times if x >= window_size_ms]`. Added 11 Oct 2026.
+    re.compile(r"\[\s*(\w+)\s*-\s*(\w+)\s+for\s+\1\s+in\s+\w+\s+if\s+\1\s*>=\s*\2\s*\]"),
+    # A parser that cannot read a minus sign drops a negative duration as surely as a test does:
+    # the log reader Strimzi Canary ships matches `duration=([0-9]+)`. A zero still parses.
+    # Added 11 Oct 2026.
+    re.compile(r"(duration|latency)\w*=\(\[0-9\]\+\)", re.I),
 ]
 
 # A positivity guard only deletes a sample if what it guards is the *sample*. Round 6 caught us
@@ -149,6 +164,10 @@ LIBRARY_REFUSAL = [
     # documentation audit (T5) read the histogram, and the finding reached this list on
     # 2 Oct 2026.
     re.compile(r"if\s+uint\(\s*\w+\s*\)\s*>=\s*uint\(\s*len\("),
+    # A recorder that throws on a negative: Kafka Trogdor's own histogram,
+    # `throw new RuntimeException("invalid negative value.");`. ProduceBench catches it inside the
+    # send callback and only logs it, so the sample is lost. Added 11 Oct 2026.
+    re.compile(r"throw\s+new\s+\w*Exception\s*\(\s*\"[^\"]*negative", re.I),
 ]
 
 # A third response, and the one that hides the failure most completely: detect the inversion and
@@ -165,6 +184,13 @@ SUPPRESSION = [
     re.compile(r"if\s*\(.*\b\w*(sec|nsec|usec|msec|delta|elapsed|latency)\w*\s*<\s*0\b.*\)", re.I),
     # `Math.max(0, now - publishTimestamp)` -- clamped at the floor, silently.
     re.compile(r"(Math\.)?max\s*\(\s*0[LlFfDd]?\s*,\s*[^)]*-\s*\w*(time|stamp|latency)\w*", re.I),
+    # The same floor with the latency first and something else subtracted from it: Kafka
+    # Trogdor's `Long.max(0L, (latency - histogramMinMs) / histogramStepMs)`. Added 11 Oct 2026.
+    re.compile(r"max\s*\(\s*0[LlFfDd]?\s*,\s*\(?\s*\w*(time|stamp|latency)\w*\s*-", re.I),
+    # A value below a recorder's floor pinned to it: kafka-clients' Percentiles,
+    # `boundedValue = min;`, which Xinfra Monitor records into. A tracker of the minimum assigns
+    # the other way round, `min = value`, and does not match. Added 11 Oct 2026.
+    re.compile(r"\b\w*[Vv]alue\w*\s*=\s*min\s*;"),
     # `latency = Double.NaN;` -- replaced by a non-number.
     re.compile(r"\w*latency\w*\s*=\s*[\w.]*NaN\b", re.I),
     # `return Math.abs(ts1 - ts2);` -- the sign thrown away, so a negative span enters the
@@ -206,6 +232,10 @@ QUANTIZED_RETENTION = [
     re.compile(r"=\s*\w*(elapsed|latency|duration|delta|diff)\w*\s*/\s*1000\s*/\s*1000\b", re.I),
     re.compile(r"=\s*\(\s*int\s*\)\s*\(\s*\w*(now|end)\w*\s*-\s*\w*(start|begin)\w*\s*\)", re.I),
     re.compile(r"(MILLISECONDS|SECONDS)\.to(Micros|Nanos)\s*\(\s*\w+\s*-\s*\w+", re.I),
+    # Python's floor division of nanoseconds to milliseconds, PerfKit Benchmarker's
+    # `return ns // 1_000_000`: the fraction goes, and a negative is floored away from zero.
+    # Added 11 Oct 2026.
+    re.compile(r"\b\w+\s*//\s*1_?000_?000\b"),
 ]
 
 # The order matters only for reporting; a line may belong to more than one class.

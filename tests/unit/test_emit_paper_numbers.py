@@ -2529,14 +2529,24 @@ class TestTheMessageToolCount:
     """Sections I and V-A lead with the tools that time a message (11 Oct 2026): how many cut a
     value at or below zero out of a figure they report, and which one never measures it."""
 
-    def test_the_committed_registry_gives_seven_of_eight(self):
+    def test_the_committed_registry_gives_twelve_of_fourteen(self):
+        """Seven of eight on the morning of 11 Oct 2026; the six tools read that evening made it
+        twelve of fourteen, and past twelve house style keeps the digits."""
         got = dict(epn.registry_macros())
-        assert (got["harnessMessageWord"], got["harnessMessageWordCap"]) == ("eight", "Eight")
-        assert (got["harnessMessageCutWord"], got["harnessMessageCutWordCap"]) == ("seven", "Seven")
+        assert (got["harnessMessageWord"], got["harnessMessageWordCap"]) == ("14", "14")
+        assert (got["harnessMessageCutWord"], got["harnessMessageCutWordCap"]) == ("twelve",
+                                                                                  "Twelve")
         assert not {"harnessMessage", "harnessMessageCut"} & set(got), \
             "the digits are quoted nowhere, so they are not emitted"
 
-    def test_a_registry_whose_remaining_tool_is_not_kafkas_stops_the_build(self, monkeypatch):
+    def test_a_count_past_twelve_still_has_its_words(self):
+        """The survey grew to seventeen tools, and its sentences quote the count through the
+        word macro; above twelve the word is the digits, but the macro must still be there."""
+        got = dict(epn.registry_macros())
+        assert got["harnessAuditedWord"] == got["harnessAudited"] == "17"
+        assert "harnessEvidenceLinesWord" not in got, "a count no sentence spells gets no words"
+
+    def test_a_registry_whose_remaining_tools_are_others_stops_the_build(self, monkeypatch):
         import harness_registry
         real = harness_registry.summary()
         fake = dict(real, message_cut=sorted(set(real["message_cut"]) - {"wrk2"}))

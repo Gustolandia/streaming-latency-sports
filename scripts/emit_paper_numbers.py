@@ -1066,6 +1066,14 @@ REGISTRY_CITES = {
     "NATS CLI": "nats_cli",
     # 11 Oct 2026: read in after the tools block had run it, at the commit it built.
     "librdkafka rdkafka_performance": "librdkafka_perf",
+    # 11 Oct 2026, the same day: six tools the plan never listed, read at the author's request
+    # (data/tools_audit/batch_10.json).
+    "Xinfra Monitor": "xinfra_monitor",
+    "Strimzi Canary": "strimzi_canary",
+    "Kafka Trogdor": "kafka_trogdor",
+    "RabbitMQ Stream PerfTest": "rabbitmq_stream_perftest",
+    "Yahoo Streaming Benchmark": "yahoo_streaming_benchmark",
+    "PerfKit Benchmarker messaging": "pkb_messaging",
 }
 
 
@@ -1078,6 +1086,10 @@ def _tt(name):
         return "\\texttt{blktrace/btt}"
     if name == "librdkafka rdkafka_performance":
         return "\\texttt{rdkafka\\_performance}"
+    if name == "Yahoo Streaming Benchmark":
+        return "Yahoo Streaming Bench."
+    if name == "PerfKit Benchmarker messaging":
+        return "PerfKit messaging"
     if name == "OpenMessaging Benchmark":
         return "OpenMessaging Bench."
     return name
@@ -1841,17 +1853,25 @@ def registry_macros():
         ("harnessMessage", str(len(s["message_tools"]))),
         ("harnessMessageCut", str(len(s["message_cut"]))),
     ]
-    #: The prose names the one message tool that cuts nothing, Kafka's bundled pair, and says why:
-    #: it times inside one process. If the registry ever says otherwise, the build stops here.
+    #: The prose names the two message tools that cut nothing and says what each does instead:
+    #: Kafka's bundled pair never measures such a value, and PerfKit Benchmarker's messaging
+    #: benchmark keeps it. If the registry ever says otherwise, the build stops here.
     rest = sorted(set(s["message_tools"]) - set(s["message_cut"]))
-    if rest != ["Apache Kafka (bundled)"]:
-        raise ValueError("the paper names Kafka's bundled tools as the one message tool that cuts "
-                         "nothing; the registry says %s" % rest)
+    if rest != ["Apache Kafka (bundled)", "PerfKit Benchmarker messaging"]:
+        raise ValueError("the paper names Kafka's bundled tools and PerfKit Benchmarker's messaging "
+                         "benchmark as the message tools that cut nothing; the registry says %s"
+                         % rest)
     # Spelled forms of the same counts. IEEE house style wants a small number spelled in
     # prose; the alternative to emitting the word was transcribing it, which is the failure
-    # mode this whole file exists to prevent.
+    # mode this whole file exists to prevent. Above twelve the style keeps the digits, which
+    # _spell gives back; the forms are emitted all the same (11 Oct 2026), because a count that
+    # grows past twelve -- the survey's did, to seventeen -- must not leave its sentence
+    # pointing at a macro that is no longer there.
+    #: The count of evidence lines is no count a sentence spells, so it gets no word forms: two
+    #: macros nobody reads would be two numbers nobody checks.
     spelled = [(name, _spell(int(value))) for name, value in list(out)
-               if name.startswith("harness") and value.isdigit() and int(value) <= 12]
+               if name.startswith("harness") and value.isdigit()
+               and name != "harnessEvidenceLines"]
     out += [(name + "Word", word) for name, word in spelled]
     # And the same word capitalised, because several of these open a sentence and a macro
     # cannot know that it does. Emitting both beats teaching the manuscript to remember.

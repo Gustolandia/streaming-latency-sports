@@ -98,7 +98,13 @@ ABBREVIATIONS = frozenset((
 #: tools that cut the value. The count never opens a sentence, but test_emit_paper_numbers
 #: holds every spelled count to its twin, so that a sentence can open on one without a new
 #: macro; half a pair is not a pair. The count's digits, read by nothing, are not emitted.
-UNUSED_MACRO_CEILING = 68
+#: 71 since the second reading of the same day (data/tools_audit/batch_11.json). Two twins went
+#: quiet because their counts passed twelve and print as digits, and a sentence or caption no
+#: longer opens on them: harnessAuditedWordCap, which headed the registry table's caption, and
+#: harnessMessageWordCap, which opened S5's first sentence. The third is harnessMessageKeepWordCap,
+#: the twin of the new count of message tools that cut nothing, which is read only mid-sentence.
+#: Each stays emitted by the same rule as the twin above.
+UNUSED_MACRO_CEILING = 71
 
 
 def rendered(name):

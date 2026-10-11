@@ -1074,14 +1074,34 @@ REGISTRY_CITES = {
     "RabbitMQ Stream PerfTest": "rabbitmq_stream_perftest",
     "Yahoo Streaming Benchmark": "yahoo_streaming_benchmark",
     "PerfKit Benchmarker messaging": "pkb_messaging",
+    # The second reading of that day, by the same protocol (data/tools_audit/batch_11.json):
+    # ten tools that time a message. Pepper-Box and xk6-kafka time none and are not rows.
+    "Redpanda kgo-repeater": "kgo_repeater",
+    "IBM Sarama producer perf": "sarama_perf",
+    "SBK": "sbk_bench",
+    "mqtt-benchmark": "mqtt_benchmark",
+    "Google Pub/Sub load test": "pubsub_loadtest",
+    "Pravega benchmark": "pravega_bench",
+    "Apache RocketMQ benchmark": "rocketmq_bench",
+    "Apache ActiveMQ Artemis perf": "artemis_perf",
+    "Quiver": "quiver_tool",
+    "Apache BookKeeper benchmark": "bookkeeper_bench",
 }
 
 
 def _tt(name):
     """Tool names that are literal command names are set in a monospace face."""
-    literal = {"emqtt-bench", "fio"}
+    literal = {"emqtt-bench", "fio", "mqtt-benchmark"}
     if name in literal:
         return "\\texttt{%s}" % name.replace("_", "\\_")
+    short = {"Redpanda kgo-repeater": "\\texttt{kgo-repeater}",
+             "IBM Sarama producer perf": "Sarama producer perf.",
+             "Google Pub/Sub load test": "Pub/Sub load test",
+             "Apache RocketMQ benchmark": "RocketMQ benchmark",
+             "Apache ActiveMQ Artemis perf": "Artemis \\texttt{perf}",
+             "Apache BookKeeper benchmark": "BookKeeper benchmark"}
+    if name in short:
+        return short[name]
     if name == "blktrace btt":
         return "\\texttt{blktrace/btt}"
     if name == "librdkafka rdkafka_performance":
@@ -1791,6 +1811,15 @@ def literature_macros(path=os.path.join("docs", "results", "external",
             ("litInsideRegimeWord", _spell(len(inside)))]
 
 
+#: The message tools that cut nothing out of what they report, as the paper and the supplement
+#: group them: one keeps a value below zero out of its figures and counts it; three time in one
+#: process on a monotonic clock and never meet one; and three keep it.
+MESSAGE_KEEP_COUNTS = ["SBK"]
+MESSAGE_KEEP_NEVER_MEET = ["Apache Kafka (bundled)", "IBM Sarama producer perf", "mqtt-benchmark"]
+MESSAGE_KEEP_KEEP = ["PerfKit Benchmarker messaging", "Redpanda kgo-repeater",
+                     "Apache RocketMQ benchmark"]
+
+
 def registry_macros():
     """The audited-harness survey in Section II, counted rather than asserted.
 
@@ -1853,14 +1882,20 @@ def registry_macros():
         ("harnessMessage", str(len(s["message_tools"]))),
         ("harnessMessageCut", str(len(s["message_cut"]))),
     ]
-    #: The prose names the two message tools that cut nothing and says what each does instead:
-    #: Kafka's bundled pair never measures such a value, and PerfKit Benchmarker's messaging
-    #: benchmark keeps it. If the registry ever says otherwise, the build stops here.
+    #: The prose names the message tools that cut nothing and says what each does instead, in
+    #: three groups: the one that counts what it keeps out, the ones that time on a monotonic
+    #: clock in one process and never meet such a value, and the ones that keep it. If the
+    #: registry ever says otherwise, the build stops here (11 Oct 2026, after the second reading).
     rest = sorted(set(s["message_tools"]) - set(s["message_cut"]))
-    if rest != ["Apache Kafka (bundled)", "PerfKit Benchmarker messaging"]:
-        raise ValueError("the paper names Kafka's bundled tools and PerfKit Benchmarker's messaging "
-                         "benchmark as the message tools that cut nothing; the registry says %s"
-                         % rest)
+    if (rest != sorted(MESSAGE_KEEP_COUNTS + MESSAGE_KEEP_NEVER_MEET + MESSAGE_KEEP_KEEP)
+            or sorted(set(MESSAGE_KEEP_COUNTS) & set(s["counts_discards"]))
+            != sorted(MESSAGE_KEEP_COUNTS)):
+        raise ValueError("the paper names the message tools that cut nothing -- %s count what "
+                         "they keep out, %s never meet such a value, %s keep it; the registry says "
+                         "%s cut nothing, of which %s count"
+                         % (MESSAGE_KEEP_COUNTS, MESSAGE_KEEP_NEVER_MEET, MESSAGE_KEEP_KEEP,
+                            rest, sorted(s["counts_discards"])))
+    out.append(("harnessMessageKeep", str(len(rest))))
     # Spelled forms of the same counts. IEEE house style wants a small number spelled in
     # prose; the alternative to emitting the word was transcribing it, which is the failure
     # mode this whole file exists to prevent. Above twelve the style keeps the digits, which
@@ -1880,7 +1915,7 @@ def registry_macros():
     # ledger once the words are spelled: a macro nobody reads is a number nobody checks. The
     # capitalised twins stay, as every spelled count's does.
     out = [(name, value) for name, value in out
-           if name not in ("harnessMessage", "harnessMessageCut")]
+           if name not in ("harnessMessage", "harnessMessageCut", "harnessMessageKeep")]
     # The scope of the guard, computed rather than remembered. A referee who opens
     # MessageProducer.java finds a nanosecond clock and no filter, and will read an
     # unqualified "the benchmark filters" as overstated. These macros make the qualifier a

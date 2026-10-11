@@ -399,6 +399,66 @@ class TestPatternsAddedForNonJvmSources:
     def test_floor_division_of_nanoseconds_to_milliseconds_keeps_a_coarser_value(self):
         assert "quantized_retention" in classify("return ns // 1_000_000")
 
+    # The second reading of 11 Oct 2026 (data/tools_audit/batch_11.json), each line as its source
+    # has it, beside a near spelling each pattern must leave alone.
+
+    def test_a_go_clock_held_in_a_variable_minus_a_decoded_stamp_is_cross_process(self):
+        assert classify("e2e_latency := now.UnixMicro() - message.SentAt") == [
+            "cross_process_latency"]
+
+    def test_a_go_clock_minus_an_unrelated_field_is_not(self):
+        assert classify("left := now.UnixMicro() - cfg.Deadline") == []
+
+    def test_a_stamp_read_off_the_message_by_a_getter_is_cross_process(self):
+        assert classify("long born2ConsumerRT = now - msg.getBornTimestamp();") == [
+            "cross_process_latency"]
+
+    def test_received_on_minus_start_is_cross_process(self):
+        assert classify("final long elapsedUs = receivedOn - start;") == ["cross_process_latency"]
+
+    def test_numpy_columns_receive_minus_send_are_cross_process(self):
+        line = 'latencies = transfers["receive_time"] - transfers["send_time"]'
+        assert classify(line) == ["cross_process_latency"]
+
+    def test_an_array_of_latencies_kept_above_zero_is_a_filter(self):
+        assert classify("if (bench.latencies[i] > 0) {") == ["positive_only_filter"]
+
+    def test_an_array_of_counts_above_zero_is_not(self):
+        assert classify("if (bench.counts[i] > 0) {") == []
+
+    def test_an_array_indexed_by_the_latency_refuses_a_negative(self):
+        assert classify("latencies[latency]++;") == ["library_refusal"]
+
+    def test_an_array_indexed_by_something_else_does_not(self):
+        assert classify("latencies[i]++;") == []
+
+    def test_a_bucket_index_floored_at_the_first_bucket_is_a_substitution(self):
+        line = "int bucket = Math.max((int) Math.floor(raw_bucket), 0);"
+        assert classify(line) == ["silent_suppression"]
+
+    def test_a_ceiling_on_a_bucket_index_is_not(self):
+        assert classify("int bucket = Math.min((int) Math.floor(raw_bucket), top);") == []
+
+    def test_timestamps_held_unsigned_wrap_a_negative(self):
+        line = 'dtype = [("send_time", _numpy.uint64), ("receive_time", _numpy.uint64)]'
+        assert classify(line) == ["silent_suppression"]
+
+    def test_timestamps_held_signed_do_not(self):
+        assert classify('dtype = [("send_time", _numpy.int64)]') == []
+
+    def test_a_go_duration_divided_by_a_millisecond_keeps_a_coarser_value(self):
+        line = "requestLatencyInMs := int64(requestLatency / time.Millisecond)"
+        assert classify(line) == ["quantized_retention"]
+
+    def test_a_go_duration_multiplied_is_not(self):
+        assert classify("budget := int64(requestLatency * time.Millisecond)") == []
+
+    def test_a_count_of_invalid_latencies_added_to_is_a_counter(self):
+        assert has_discard_counter_line("this.invalidLatencyRecords += events;")
+
+    def test_a_total_of_valid_latencies_added_to_is_not(self):
+        assert not has_discard_counter_line("this.totalLatency += latency * events;")
+
     def test_a_discard_metric_named_for_samples_counts_as_a_counter(self):
         # Rezolus names the noun it counts "samples", not "count".
         assert has_discard_counter_line('name = "scheduler_discarded_samples",')

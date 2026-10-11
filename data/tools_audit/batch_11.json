@@ -1,0 +1,2091 @@
+{
+ "audited_utc": "2026-10-11",
+ "protocol": "freeze 04, Section 'Experiments for Mode 2', T5",
+ "terms": [
+  "negative latency",
+  "negative",
+  "clock skew",
+  "resolution",
+  "rounding",
+  "millisecond",
+  "nanosecond",
+  "latency 0"
+ ],
+ "tools": [
+  {
+   "tool": "Redpanda kgo-verifier, including kgo-repeater",
+   "repository": "https://github.com/redpanda-data/kgo-verifier",
+   "version_seen": "main at 6567f2f5a16388a13b71296c60a0260534e19216, 2025-07-30 (repository archived; no releases, no tags). README.md:1 says development moved to redpanda-data/redpanda; its copy (tests/go/kgo-verifier on dev 4254992f6115e92c1dbd86f90bb0aee0b869f15e, 2026-10-08) has the same e2e lines at the same line numbers and the same go-metrics pin",
+   "what_it_times": "kgo-repeater reports two latencies per worker, in microseconds. e2e is end to end through the cluster: the producing goroutine writes SentAt = time.Now().UnixMicro() into the message body, and whichever member of the shared consumer group receives the record subtracts its own time.Now().UnixMicro(). That member can be another worker in the same process, another process, or a process on another machine in the documented remote-controlled group mode (Redpanda's own test harness runs one process per node with one -group). ack is publish latency: produce call to ack callback, in one process. kgo-verifier proper reports only an ack latency, timed the same way",
+   "documentation": {
+    "clock_and_resolution": {
+     "finding": "e2e uses the wall clock on both sides, cut to whole microseconds. Go's UnixMicro builds the value from the wall-clock seconds plus nanoseconds divided by 1e3. Go documents that time-telling reads the wall clock and only subtraction of Time values uses the monotonic clock; here two int64 wall-clock numbers are subtracted, so any clock step, or any offset between the stamping and receiving hosts, enters the result. ack uses time.Since(sentAt), a monotonic difference in one process, then Duration.Microseconds() truncates. Build pins go 1.23.8 with toolchain go1.23.11 (Go source read at go1.23.11)",
+     "evidence": [
+      "pkg/worker/repeater/repeater_worker.go:412-415",
+      "pkg/worker/repeater/repeater_worker.go:258-259",
+      "pkg/worker/repeater/repeater_worker.go:439-440",
+      "pkg/worker/verifier/producer_worker.go:426, 445-447",
+      "go.mod:3-5",
+      "golang/go@go1.23.11 src/time/time.go:16-20, 941-949, 1254-1261, 792",
+      "cmd/kgo-repeater/main.go:40-45, 266-270"
+     ]
+    },
+    "odd_values": {
+     "finding": "There is no sign test anywhere. e2e_latency goes straight into a go-metrics Histogram backed by an ExpDecaySample (reservoir 1024, alpha 0.015). go-metrics stores any int64 and gets percentiles by sorting the reservoir and interpolating. A zero or negative value is therefore kept, sorts first, and shows only as a lower p50, p90 or p99: the only figures reported (/status JSON and the shutdown log). No minimum is reported, and nothing counts or flags values at or below zero. ack uses the same histogram; it cannot go negative, and a sub-microsecond ack would read 0. go-metrics is pinned at v0.0.0-20201227073835-cf1acfcdf475 (an archived repo). Redpanda's harness then averages the per-worker percentiles",
+     "evidence": [
+      "pkg/worker/repeater/repeater_worker.go:261",
+      "pkg/worker/worker.go:51-56",
+      "pkg/worker/worker.go:24-29",
+      "go.mod:9",
+      "rcrowley/go-metrics@cf1acfcd histogram.go:198-199",
+      "rcrowley/go-metrics@cf1acfcd sample.go:164-174, 278-293",
+      "redpanda-data/redpanda@4254992f tests/rptest/services/kgo_repeater_service.py:391-393, 410-415"
+     ]
+    },
+    "warnings": {
+     "finding": "None about clocks or values at or below zero. None of the eight terms occurs in README.md, the repository's only documentation. Its only caveats are that latency measurement is basic and 'not engineered to be a rigorous benchmark', and that latencies are in microseconds. It documents the multi-process, multi-node shared-group mode, where e2e crosses machines, and says nothing about clock synchronisation",
+     "evidence": [
+      "README.md:24-25",
+      "README.md:63",
+      "README.md:14-18",
+      "README.md:38-43"
+     ]
+    }
+   },
+   "plan_said": "not in the plan's table of tools: read on 11 Oct 2026 at the author's request, so the plan made no prediction",
+   "audit_found": "e2e is a wall-clock difference in whole microseconds between the stamping worker and whichever group member consumes the record, which is another process or host in the documented group mode. A value at or below zero is kept unflagged in a 1024-value reservoir, shows only through p50/p90/p99, and nothing counts it. The ack latency (kgo-verifier's only latency) is monotonic, in one process, and cannot be negative",
+   "prediction": "none made",
+   "searches": [
+    {
+     "term": "negative latency",
+     "where": "github issues and pull requests (redpanda-data/kgo-verifier)",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "github issues and pull requests (redpanda-data/kgo-verifier)",
+     "hits": 0
+    },
+    {
+     "term": "clock skew",
+     "where": "github issues and pull requests (redpanda-data/kgo-verifier)",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "github issues and pull requests (redpanda-data/kgo-verifier)",
+     "hits": 0
+    },
+    {
+     "term": "rounding",
+     "where": "github issues and pull requests (redpanda-data/kgo-verifier)",
+     "hits": 0
+    },
+    {
+     "term": "millisecond",
+     "where": "github issues and pull requests (redpanda-data/kgo-verifier)",
+     "hits": 0
+    },
+    {
+     "term": "nanosecond",
+     "where": "github issues and pull requests (redpanda-data/kgo-verifier)",
+     "hits": 0
+    },
+    {
+     "term": "latency 0",
+     "where": "github issues and pull requests (redpanda-data/kgo-verifier)",
+     "hits": 0
+    }
+   ],
+   "reports": [],
+   "checked_here": [
+    "repeater_worker.go:258-261 `now := time.Now()` / `e2e_latency := now.UnixMicro() - message.SentAt` / `v.globalStats.E2e_latency.Update(e2e_latency)` and :412-415 `sentAt := time.Now()` ... `SentAt:  sentAt.UnixMicro(),`, read back at 6567f2f5"
+   ],
+   "auditor_checked": [
+    "repeater_worker.go:259 `e2e_latency := now.UnixMicro() - message.SentAt` and :415 `SentAt:  sentAt.UnixMicro(),` read back at 6567f2f5",
+    "same e2e lines in redpanda-data/redpanda at 4254992f, tests/go/kgo-verifier/pkg/worker/repeater/repeater_worker.go:258-261, with the same go-metrics pin (tests/go/kgo-verifier/go.mod:7)",
+    "Redpanda's harness starts kgo-repeater on each node with the same -group and -remote (tests/rptest/services/kgo_repeater_service.py:133-138 at 4254992f)",
+    "go-metrics ExpDecaySample.update and SamplePercentiles read at cf1acfcd: no sign test",
+    "the search API shows 67 PRs and 0 issues in the repo; the only latency-related PRs are #30 (2023-04-12, merged; moved the sentAt stamp after the rate limiter) and #62 (2024-12-06, merged; consumer-group shutdown). Neither concerns values at or below zero; both bodies read, plus #62's comments"
+   ],
+   "not_determined": [
+    "How often a record is consumed on a different host from its producer (depends on partition assignment; not measured)",
+    "Reports in redpanda-data/redpanda, where development moved: only 'kgo-repeater negative' (0 hits) and 'negative latency' (1 hit, PR #3500, not read) were searched"
+   ]
+  },
+  {
+   "tool": "IBM Sarama kafka-producer-performance",
+   "repository": "https://github.com/IBM/sarama (tools/kafka-producer-performance)",
+   "version_seen": "main at 36f7a14ebb0ff3ab6f5137963241568247c9e360, 2026-10-01 (not archived). Latest release v1.61.1, published 2026-09-27; its tag resolves to commit c0f15301b4b77be468320c17f094f01a9eebe233. The tool's main.go, metrics.go and go.mod are identical at both; broker.go differs only in unrelated error handling and has the same latency lines (the truncation is at broker.go:1939 in v1.61.1 and :1983 at HEAD)",
+   "what_it_times": "No per-message latency. The tool prints Sarama's client metric request-latency-in-ms. That metric covers every Kafka request on every broker connection (produce, metadata, ApiVersions and SASL alike, seed brokers included). It runs from just before the request is written to just after the response header is read, all in one process. For produce requests this is a per-request (per-batch) publish latency, send to acknowledgment. With -required-acks=0 there is no response, and the recorded value is the socket write time alone",
+   "documentation": {
+    "clock_and_resolution": {
+     "finding": "requestTime := time.Now() is taken before the write and time.Since(promise.requestTime) after the header read, so Go subtracts monotonic readings (go 1.26.0 in go.mod; time.go read at go1.26.0). The Duration is then divided by time.Millisecond in int64 arithmetic, which truncates to whole milliseconds: every request under 1 ms is recorded as 0. Output prints one decimal ('%.1f ms'), but the samples are integers",
+     "evidence": [
+      "broker.go:1210",
+      "broker.go:1370-1371",
+      "broker.go:1982-1984",
+      "go.mod:3",
+      "golang/go@go1.26.0 src/time/time.go:17-20, 1225-1233, 915, 935-937"
+     ]
+    },
+    "odd_values": {
+     "finding": "Zero is kept and common. The truncated int64 goes into a go-metrics ExpDecaySample histogram (reservoir 1028, alpha 0.015) with no test, and the printed mean, stddev and 50th to 99.9th percentiles include it; nothing counts zeros. The error path records too, so a read that fails at once is a 0. With -required-acks=0, which the flag offers, the promise is nil and the socket write time becomes the latency, normally 0 ms. A negative cannot come from a monotonic subtraction, which Go has done since 1.9; if one occurred, go-metrics would store it like any other value (same sample.go code as kgo-verifier's pin). go-metrics is pinned at v0.0.0-20250401214520-65e299d6c5c9. ApiVersions requests feed the same histogram",
+     "evidence": [
+      "broker.go:1225-1228",
+      "broker.go:1372-1373",
+      "broker.go:532-534",
+      "tools/kafka-producer-performance/main.go:93-97",
+      "metrics.go:15-23",
+      "go.mod:12",
+      "rcrowley/go-metrics@65e299d6 sample.go:164-174",
+      "golang/go@go1.9 doc/go1.9.html:366-372",
+      "broker.go:1491, 1504, 1543, 1962-1963"
+     ]
+    },
+    "warnings": {
+     "finding": "None. None of the eight terms occurs in the tool's README, tools/README.md, the top-level README.md or the package documentation in sarama.go. The only statement of unit is the metric-table row 'Distribution of the request latency in ms for all brokers'. The tool's output says 'ms avg latency', '50th' and so on without saying the figures are per request rather than per message",
+     "evidence": [
+      "tools/kafka-producer-performance/README.md:1-20",
+      "sarama.go:36",
+      "sarama.go:52",
+      "tools/kafka-producer-performance/main.go:420-437"
+     ]
+    }
+   },
+   "plan_said": "not in the plan's table of tools: read on 11 Oct 2026 at the author's request, so the plan made no prediction",
+   "audit_found": "It times Kafka requests, not messages: one process, monotonic clock, truncated to whole milliseconds. Every sub-millisecond request is a 0 that enters the mean and percentiles uncounted, and with acks=0 the figure is just the socket write. A negative cannot arise on Go 1.9 or later. The 2016 review that added the metric acknowledged negatives on the then non-monotonic clock and merged without a guard",
+   "prediction": "none made",
+   "searches": [
+    {
+     "term": "negative latency",
+     "where": "github issues and pull requests (IBM/sarama); the legacy search API (q=repo:IBM/sarama \"negative latency\", no advanced_search) returns 1: PR #766",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "github issues and pull requests (IBM/sarama)",
+     "hits": 46
+    },
+    {
+     "term": "clock skew",
+     "where": "github issues and pull requests (IBM/sarama); the one hit is issue #1670, Kerberos authentication",
+     "hits": 1
+    },
+    {
+     "term": "resolution",
+     "where": "github issues and pull requests (IBM/sarama)",
+     "hits": 21
+    },
+    {
+     "term": "rounding",
+     "where": "github issues and pull requests (IBM/sarama)",
+     "hits": 2
+    },
+    {
+     "term": "millisecond",
+     "where": "github issues and pull requests (IBM/sarama); the specified gh command returns 100, its --limit cap; search API total_count is 143",
+     "hits": 143
+    },
+    {
+     "term": "nanosecond",
+     "where": "github issues and pull requests (IBM/sarama)",
+     "hits": 5
+    },
+    {
+     "term": "latency 0",
+     "where": "github issues and pull requests (IBM/sarama); the legacy search API returns 7",
+     "hits": 3
+    }
+   ],
+   "reports": [
+    {
+     "title": "Expose request latency metric",
+     "url": "https://github.com/IBM/sarama/pull/766",
+     "opened": "2016-10-17",
+     "outcome": "merged 2016-11-22",
+     "why_relevant": "Added the request-latency-in-ms histogram this tool prints. In review, wvanbergen (2016-10-24) asked whether time.Now() not being monotonic mattered. The author, slaunay (2016-10-25), replied that a non-monotonic clock 'can lead to negative or inaccurate latency metric', judged it minor, and saw no portable fix in Go at the time. It was merged without a guard; Go 1.9 later made the subtraction monotonic"
+    },
+    {
+     "title": "Add requests-in-flight metric",
+     "url": "https://github.com/IBM/sarama/pull/1539",
+     "opened": "2019-11-14",
+     "outcome": "merged 2020-02-04",
+     "why_relevant": "The author's comment of 2019-11-19 (slaunay) explains that a metadata read that failed immediately was recorded in request-latency-in-ms as 0 ms: failed requests enter the same histogram as zeros. HEAD still records on the error path (broker.go:1372-1373)"
+    }
+   ],
+   "checked_here": [
+    "broker.go:1371 `requestLatency := time.Since(promise.requestTime)` and :1983-1984 `requestLatencyInMs := int64(requestLatency / time.Millisecond)` / `b.requestLatency.Update(requestLatencyInMs)`, read back at 36f7a14e"
+   ],
+   "auditor_checked": [
+    "broker.go:1983 `requestLatencyInMs := int64(requestLatency / time.Millisecond)` read back at 36f7a14e; the same line is at broker.go:1939 in v1.61.1 (c0f15301)",
+    "tools/kafka-producer-performance/main.go is identical at HEAD and v1.61.1 (diff)",
+    "go-metrics sample.go and histogram.go are identical between Sarama's pin 65e299d6 and kgo-verifier's pin cf1acfcd (diff)",
+    "all 46 'negative' hits scanned in bodies and comments for latency or clock context: only #766 discusses a negative latency; the rest are WaitGroup counters, record timestamps, partitions and dependency notes",
+    "comment authors, dates and URLs for #766 and #1539 read with gh api repos/IBM/sarama/issues/comments/<id>"
+   ],
+   "not_determined": [
+    "The 143 'millisecond' and 21 'resolution' hits were not read; 'negative' was scanned in full and the 'clock skew', 'rounding', 'nanosecond' and 'latency 0' hits by title and context",
+    "Share of zero samples in a typical run (not measured)"
+   ]
+  },
+  {
+   "tool": "Pepper-Box, the JMeter Kafka load generator",
+   "repository": "https://github.com/GSLabDev/pepper-box (HTTP 404 on 11 Oct 2026; code read from the fork https://github.com/arvindbheri/pepper-box)",
+   "version_seen": "GSLabDev/pepper-box: the repository and its commits/HEAD both return 404 (deleted or private), so its HEAD, releases and archive flag could not be read. Its fork network is now rooted at satishbhor/pepper-box, whose master equals tag v1.0 = 4233f8383f6a8a238c1764e3b779aa8312795757 (2017-03-28). Read: master at c9f5970c5903c7cd0e9d6140dbc8958991761301 (2021-09-08, 'Upgrade Guava Version'). That is the master HEAD of six forks created between 2021-10-23 and 2023-12-04 (arvindbheri, vnagireddy-virsec, SreeCoder, AneesJenawfar, MoheyEl-DinBadr, samlane), taken as the last upstream master; pom.xml version 1.0",
+   "what_it_times": "No message latency of its own. The JMeter sampler times only the call to KafkaProducer.send(), which is asynchronous. A sample is therefore the time to hand one record to the client's buffer, not a publish or end-to-end latency, whatever acks is set to. JMeter's Latency field is never set and stays 0. The TIMESTAMP() template function lets users embed the sender's System.currentTimeMillis() in message bodies (the README's example schemas do), but no Pepper-Box code reads it back; any end-to-end figure would come from the user's own consumer. The standalone PepperBoxLoadGenerator records no latency",
+   "documentation": {
+    "clock_and_resolution": {
+     "finding": "Sample start and end come from JMeter's SampleResult. The plugin compiles against JMeter 3.1 in provided scope, so the user's JMeter supplies the class at run time; I read 3.1's. By default (sampleresult.useNanoTime=true) both readings are System.nanoTime()/1000000 plus a fixed offset: a monotonic clock in whole milliseconds, read in one JMeter thread. With useNanoTime=false they are System.currentTimeMillis(). TIMESTAMP() is System.currentTimeMillis(), the wall clock, in milliseconds",
+     "evidence": [
+      "src/main/java/com/gslab/pepper/sampler/PepperBoxKafkaSampler.java:168-169, 179-182, 187-188",
+      "pom.xml:11-12, 19",
+      "apache/jmeter@v3_1 src/core/org/apache/jmeter/samplers/SampleResult.java:231-232, 422-424, 434-441, 1076-1078, 1088-1090",
+      "src/main/java/com/gslab/pepper/input/FieldDataFunctions.java:43-48"
+     ]
+    },
+    "odd_values": {
+     "finding": "elapsed = endTime - startTime - idleTime, with no sign test. On the default monotonic clock it is never negative but often 0, because send() usually returns within a millisecond. With useNanoTime=false, a backward wall-clock step could make it negative, and it would be kept. Latency stays at its initial 0 for every sample: Pepper-Box never calls latencyEnd() or setLatency(), JavaSampler passes the result through untouched, and the bundled pepper_box.jmx Summary Report saves that column. Nothing counts zero or negative samples, and no histogram library is involved: JMeter listeners aggregate the raw values",
+     "evidence": [
+      "apache/jmeter@v3_1 src/core/org/apache/jmeter/samplers/SampleResult.java:1054",
+      "apache/jmeter@v3_1 src/core/org/apache/jmeter/samplers/SampleResult.java:188-189, 1270-1271",
+      "apache/jmeter@v3_1 src/protocol/java/org/apache/jmeter/protocol/java/sampler/JavaSampler.java:196",
+      "pepper_box.jmx:174, 179-181",
+      "src/main/java/com/gslab/pepper/PepperBoxLoadGenerator.java:174-185"
+     ]
+    },
+    "warnings": {
+     "finding": "None. README.md, the only documentation, has no clock, resolution or negative-value warning. Of the eight terms only 'millisecond' occurs (README.md:306 and 309), saying TIMESTAMP() returns milliseconds. README.md:63 lists acks (0/1/-1) as a producer property without saying the sampler never waits for an ack",
+     "evidence": [
+      "README.md:306",
+      "README.md:309",
+      "README.md:63",
+      "README.md:107",
+      "README.md:258"
+     ]
+    }
+   },
+   "plan_said": "not in the plan's table of tools: read on 11 Oct 2026 at the author's request, so the plan made no prediction",
+   "audit_found": "It measures no message latency. The JMeter sample is the duration of an asynchronous send() call (monotonic millisecond clock by default, frequently 0), and JMeter's Latency column is always 0. The send-time stamp it offers (TIMESTAMP(), wall-clock ms) is never subtracted by Pepper-Box itself",
+   "prediction": "none made",
+   "searches": [
+    {
+     "term": "negative latency",
+     "where": "github issues and pull requests (GSLabDev/pepper-box): GitHub search refused the repo qualifier because the repository does not exist",
+     "hits": null
+    },
+    {
+     "term": "negative",
+     "where": "github issues and pull requests (GSLabDev/pepper-box): refused, repository does not exist",
+     "hits": null
+    },
+    {
+     "term": "clock skew",
+     "where": "github issues and pull requests (GSLabDev/pepper-box): refused, repository does not exist",
+     "hits": null
+    },
+    {
+     "term": "resolution",
+     "where": "github issues and pull requests (GSLabDev/pepper-box): refused, repository does not exist",
+     "hits": null
+    },
+    {
+     "term": "rounding",
+     "where": "github issues and pull requests (GSLabDev/pepper-box): refused, repository does not exist",
+     "hits": null
+    },
+    {
+     "term": "millisecond",
+     "where": "github issues and pull requests (GSLabDev/pepper-box): refused, repository does not exist",
+     "hits": null
+    },
+    {
+     "term": "nanosecond",
+     "where": "github issues and pull requests (GSLabDev/pepper-box): refused, repository does not exist",
+     "hits": null
+    },
+    {
+     "term": "latency 0",
+     "where": "github issues and pull requests (GSLabDev/pepper-box): refused, repository does not exist",
+     "hits": null
+    },
+    {
+     "term": "negative latency",
+     "where": "github issues and pull requests (satishbhor/pepper-box, network root; issues disabled, 0 issues or PRs in total)",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "github issues and pull requests (satishbhor/pepper-box)",
+     "hits": 0
+    },
+    {
+     "term": "clock skew",
+     "where": "github issues and pull requests (satishbhor/pepper-box)",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "github issues and pull requests (satishbhor/pepper-box)",
+     "hits": 0
+    },
+    {
+     "term": "rounding",
+     "where": "github issues and pull requests (satishbhor/pepper-box)",
+     "hits": 0
+    },
+    {
+     "term": "millisecond",
+     "where": "github issues and pull requests (satishbhor/pepper-box)",
+     "hits": 0
+    },
+    {
+     "term": "nanosecond",
+     "where": "github issues and pull requests (satishbhor/pepper-box)",
+     "hits": 0
+    },
+    {
+     "term": "latency 0",
+     "where": "github issues and pull requests (satishbhor/pepper-box)",
+     "hits": 0
+    }
+   ],
+   "reports": [],
+   "checked_here": [
+    "PepperBoxKafkaSampler.java:169 `sampleResult.sampleStart();`, :179 `producer.send(producerRecord);`, :182 `sampleResult.sampleEnd();`, read back at c9f5970c in the fork arvindbheri/pepper-box; GSLabDev/pepper-box answers 404"
+   ],
+   "auditor_checked": [
+    "PepperBoxKafkaSampler.java:169 `sampleResult.sampleStart();`, :179 `producer.send(producerRecord);`, :182 `sampleResult.sampleEnd();` read back at c9f5970c through the arvindbheri fork",
+    "JMeter tag v3_1 resolved to cde76463: SampleResult.java:189 `private long latency = 0;`, set by latencyEnd() at :1270-1271, which Pepper-Box never calls",
+    "fork network: nine forks report parent satishbhor/pepper-box; six forks created after 2021-10 share master c9f5970c",
+    "README.md recounted for the eight terms straight from GitHub: only millisecond=2"
+   ],
+   "not_determined": [
+    "Upstream HEAD, releases, archive status and the whole issue and PR history of GSLabDev/pepper-box, because the repository cannot be read. Outside GitHub, one read-only query to the archive.org availability API showed a Wayback snapshot of its issues page dated 2022-07-04; fetching it was refused by the tool, so it was not read",
+    "Whether upstream had branches or tags beyond master c9f5970c: samlane's fork (created 2023-12-04) reports pushed_at 2023-10-11T08:22:00Z, later than c9f5970c, yet holds only master at c9f5970c",
+    "Behaviour under JMeter releases after 3.1 (SampleResult not read there)"
+   ]
+  },
+  {
+   "tool": "SBK, the Storage Benchmark Kit",
+   "repository": "https://github.com/kmgowda/SBK",
+   "version_seen": "master at 39af60da882d865524510dea86df6412549c31a6, 2026-09-29 (not archived; gradle.properties sbkVersion=10.8). Latest release v10.7, published 2026-09-09: annotated tag 3ea163ec00c3851aaf207a68f0304cb4a746f0ba, commit 194db7dd4cc232b3560b894a0169971d355ea0ae. These cited files are byte-identical at v10.7: LatencyRecorder, Time and the three clock classes, Reader, Writer, ByteArray, the recorder, the results logger, the gRPC logger, logger.properties and the Kafka driver files. SbkParameters.java and SbkReader.java differ only by unrelated validation, which moves the cited blocks by 6 lines",
+   "what_it_times": "It depends on the command. With both -writers and -readers in one SBK process (Action Write_Reading) it measures end to end: each writer stamps time.getCurrentTime() into the first 8 bytes of the payload and records nothing itself, and each reader subtracts that stamp from its own time.getCurrentTime() (PerL computes endTime - startTime). With writers only it times the write call to completion; with readers only, the read call. In SBK's own end-to-end mode both readings are in one JVM. But the stamp travels inside the record, and the reader subtracts whoever wrote it. SBK-GEM runs the same arguments, mixed writer-plus-reader workloads included, on several hosts against one target, and the Kafka driver puts every reader in one consumer group named after the topic. So a record stamped on one host can be subtracted on another. The Kafka reader applies the first record's stamp in each poll to every record in that poll. Whether a driver supports end to end at all is per driver",
+   "documentation": {
+    "clock_and_resolution": {
+     "finding": "Chosen with -time; the default is timeUnit=ms. ms means System.currentTimeMillis(): the wall clock in whole milliseconds, possibly coarser per the JDK. mcs means System.nanoTime()/1000; ns means System.nanoTime(). The JDK 25 javadoc (SBK builds with Java 25) says nanoTime counts from an arbitrary per-JVM origin, possibly negative, and has meaning only as a difference within one JVM. An mcs or ns stamp subtracted in another JVM is therefore meaningless, and an ms stamp across hosts carries their clock offset. SBM rejects a client whose time unit differs from its own, but nothing ties mcs or ns to a single JVM",
+     "evidence": [
+      "sbk-api/src/main/resources/logger.properties:15-18",
+      "perl/src/main/java/io/time/MilliSeconds.java:37-38",
+      "perl/src/main/java/io/time/MicroSeconds.java:37-38",
+      "perl/src/main/java/io/time/NanoSeconds.java:37-38",
+      "perl/src/main/java/io/time/Time.java:80-82",
+      "sbk-api/src/main/java/io/sbk/api/Writer.java:137-142",
+      "sbk-api/src/main/java/io/sbk/data/impl/ByteArray.java:76-78, 89-90",
+      "sbk-api/src/main/java/io/sbk/api/Reader.java:160-164, 191-192",
+      "drivers/kafka/src/main/java/io/sbk/driver/Kafka/KafkaReader.java:102-117",
+      "drivers/kafka/src/main/java/io/sbk/driver/Kafka/Kafka.java:118",
+      "perl/src/main/java/io/perl/api/impl/ArrayWindowLatencyPeriodicRecorder.java:54-57",
+      "sbk-api/src/main/java/io/sbk/params/impl/SbkParameters.java:283-291",
+      "sbk-api/src/main/java/io/sbk/api/impl/SbkReader.java:135-141",
+      "sbk-api/src/main/java/io/sbk/api/DataRecordsWriter.java:513, 536",
+      "sbk-gem/README.md:19",
+      "sbk-gem/src/main/java/io/gem/params/impl/SbkGemParameters.java:325-331",
+      "sbk-api/src/main/java/io/sbk/logger/impl/GrpcLogger.java:259-261",
+      "gradle/sbk-java-bootstrap.properties:5",
+      "openjdk/jdk@jdk-25-ga src/java.base/share/classes/java/lang/System.java:324-329, 346-352, 363-365"
+     ]
+    },
+    "odd_values": {
+     "finding": "There is an explicit filter: LatencyRecorder.record() counts latency < 0 in invalidLatencyRecords and keeps it out of min, max, mean and percentiles, though the records still count toward throughput. The count is reported every window and in the total, in four places: 'N invalid latencies' on the console, the InvalidLatencies CSV column, the <prefix>_InvalidLatencyRecords Prometheus metric, and the invalidLatencyRecords field sent to SBM. Zero is valid under the default minLatency=0 and enters the percentiles. Non-negative values outside -minlatency..-maxlatency (default 0..180000 units) count as lower or higher discards: they are kept out of the percentiles but stay in min, max and the mean. A negative first stamp in a Kafka poll marks every record of that poll invalid. HdrHistogram 2.2.2 is pinned but used only with histogram=true (default false), and only after this filter, so its recordValue never sees a negative. The per-latency logger callback receives the raw value before the filter; the gRPC logger re-checks latency >= 0 and the bounds before forwarding values to SBM",
+     "evidence": [
+      "perl/src/main/java/io/perl/api/LatencyRecorder.java:122-141",
+      "perl/src/main/java/io/perl/api/LatencyWindow.java:107-112",
+      "sbk-api/src/main/resources/logger.properties:20-24",
+      "perl/src/main/java/io/perl/logger/impl/ResultsLogger.java:225-228",
+      "sbk-api/src/main/java/io/sbk/logger/impl/CSVLogger.java:131",
+      "perl/src/main/java/io/perl/logger/impl/Metrics.java:121-123",
+      "sbk-api/src/main/java/io/sbk/logger/impl/GrpcLogger.java:395, 430-431, 441",
+      "sbk-api/src/main/proto/sbp.proto:93-95",
+      "gradle.properties:117",
+      "perl/build.gradle:63",
+      "sbk-api/src/main/resources/sbk.properties:35-36",
+      "perl/src/main/java/io/perl/api/impl/HdrExtendedLatencyRecorder.java:122-125",
+      "perl/src/main/java/io/perl/api/impl/LongHashMapLatencyRecorder.java:147-151"
+     ]
+    },
+    "warnings": {
+     "finding": "No document says that values at or below zero come from clock offsets or steps, and none says that mcs and ns stamps are JVM-local. What exists: docs/LATENCY_RECORDERS.md describes the invalid counter, explains that out-of-range values are counted but kept out of percentiles, and notes that reportLatency() itself lacks a negative-index check. README.md:327-335 warns that old decimal string timestamp headers decode as different timestamps under the new hexadecimal format and can give a run of entirely invalid latencies. The SBK-GEM README asks users to record 'host clock status'. Agent-skill references under .devin list synchronised host clocks as a distributed preflight item and name 'clock/measurement errors' as a cause of invalid or discarded latencies. Occurrences of the eight terms (case-insensitive) in the 111 markdown files read at 39af60da: 'negative latency' 1 (LATENCY_RECORDERS.md:898, a list of test cases), 'negative' 22 (includes 'non-negative'), 'clock skew' 1 (docs/AGENT_RECIPES.md:431, an S3 signature error), 'resolution' 10, 'rounding' 0, 'millisecond' 69, 'nanosecond' 35, 'latency 0' 0",
+     "evidence": [
+      "docs/LATENCY_RECORDERS.md:125-131, 169-172, 278-283, 892-898",
+      "README.md:327-335",
+      "sbk-gem/README.md:564",
+      ".devin/skills/sbk-distributed-benchmark-runner/references/distributed-validation.md:14, 40",
+      ".devin/skills/sbk-distributed-benchmark-runner/references/distributed-topology.md:68-70",
+      ".devin/skills/sbk-benchmark-runner/references/methodology-and-results.md:77-78",
+      "docs/sbk-internals.md:184-186, 3324",
+      "drivers/nats/README.md:11",
+      "docs/AGENT_RECIPES.md:431"
+     ]
+    }
+   },
+   "plan_said": "not in the plan's table of tools: read on 11 Oct 2026 at the author's request, so the plan made no prediction",
+   "audit_found": "Values below zero are explicitly filtered and counted: a negative end-to-end value is kept out of min, max, mean and percentiles and reported as 'invalid latencies' in every output, and zero is valid. Default stamps are wall-clock milliseconds; mcs and ns stamps are System.nanoTime values meaningful only inside one JVM. Yet SBK-GEM mixed workloads, combined with the Kafka driver's shared consumer group, let one host subtract another host's stamp, and no document warns of either",
+   "prediction": "none made",
+   "searches": [
+    {
+     "term": "negative latency",
+     "where": "github issues and pull requests (kmgowda/SBK)",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "github issues and pull requests (kmgowda/SBK)",
+     "hits": 13
+    },
+    {
+     "term": "clock skew",
+     "where": "github issues and pull requests (kmgowda/SBK)",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "github issues and pull requests (kmgowda/SBK)",
+     "hits": 50
+    },
+    {
+     "term": "rounding",
+     "where": "github issues and pull requests (kmgowda/SBK)",
+     "hits": 2
+    },
+    {
+     "term": "millisecond",
+     "where": "github issues and pull requests (kmgowda/SBK)",
+     "hits": 9
+    },
+    {
+     "term": "nanosecond",
+     "where": "github issues and pull requests (kmgowda/SBK)",
+     "hits": 5
+    },
+    {
+     "term": "latency 0",
+     "where": "github issues and pull requests (kmgowda/SBK); the legacy search API returns 8",
+     "hits": 3
+    }
+   ],
+   "reports": [
+    {
+     "title": "Fix core reader, timestamp, and ramp correctness",
+     "url": "https://github.com/kmgowda/SBK/pull/517",
+     "opened": "2026-09-29",
+     "outcome": "merged 2026-09-29",
+     "why_relevant": "Changed string-payload timestamps from decimal to a 16-hex-digit header. Its description (body line 60) says old decimal headers can silently decode as other timestamps, giving nonsensical values or entirely invalid latency records. The fix documents the risk (README.md:327-335) and adds no runtime format check"
+    },
+    {
+     "title": "Optimize exact SBM nanosecond aggregation",
+     "url": "https://github.com/kmgowda/SBK/pull/497",
+     "opened": "2026-08-29",
+     "outcome": "merged 2026-08-29",
+     "why_relevant": "Says negative values are normally discarded by latency validation. Its tests now push signed values directly into the paged nanosecond recorder; how measured negatives are treated did not change"
+    }
+   ],
+   "checked_here": [
+    "LatencyRecorder.java:125-126 `if (latency < 0) {` / `this.invalidLatencyRecords += events;`, read back at 39af60da",
+    "logger.properties:18 `timeUnit=ms` and :21 `minLatency=0`; KafkaReader.java:113-115 `if (status.startTime == 0) {` / `status.startTime = dType.getTime(record.value());`, read back at 39af60da"
+   ],
+   "auditor_checked": [
+    "LatencyRecorder.java:125-126 `if (latency < 0) {` / `this.invalidLatencyRecords += events;` read back at 39af60da and at v10.7 194db7dd",
+    "logger.properties:18 `timeUnit=ms` identical at v10.7",
+    "every recorder (Array, LongHashMap, Map, HybridPaged) calls record() before storing, so buckets and HdrHistogram see only validated values",
+    "the Kafka driver takes only the first record's stamp per poll (KafkaReader.java:113-115)",
+    "user reports #249 (2021-10-12) and #316 (2022-03-01) show '0 invalid latencies' in pasted output, so the counter is visible to users",
+    "PR #512 (2026-09-07) fixed negative 'pending' read/write counts, not latencies; all 13 'negative' hits' bodies and comments scanned"
+   ],
+   "not_determined": [
+    "Whether drivers other than Kafka let a reader consume records written by another SBK process in a GEM run (only the Kafka driver was read)",
+    "Whether anyone has run SBK-GEM mixed workloads with -time mcs or ns: no issue or PR reports it",
+    "The 50 'resolution' and 9 'millisecond' hits were not read in full"
+   ]
+  },
+  {
+   "tool": "mqtt-benchmark",
+   "repository": "https://github.com/krylovsk/mqtt-benchmark",
+   "version_seen": "main HEAD f46efba1a710a117c80d0ba94281e0a99e7b96a4 (committer date 2022-07-30T12:35:53Z). Latest release v0.2.0; its tag ref resolves to the same commit f46efba1a710a117c80d0ba94281e0a99e7b96a4. Archived: false.",
+   "what_it_times": "Publish latency only. Each client goroutine stamps time.Now() just before client.Publish and again when the paho token completes, then subtracts. With paho.mqtt.golang v1.4.1 (pinned in go.mod) the token completes on PUBACK at QoS 1 (the default), on PUBCOMP at QoS 2, and straight after the packet is written to the socket at QoS 0, so at QoS 0 no broker acknowledgment is timed. The tool has no subscriber, so it measures no end-to-end and no round-trip latency. It reports min, max, mean and standard deviation in milliseconds, per client and overall.",
+   "documentation": {
+    "clock_and_resolution": {
+     "finding": "Both stamps come from time.Now() in the same goroutine of one process, never from two processes or machines. The value is m.Delivered.Sub(m.Sent). Go computes Sub from the monotonic clock readings when both Times carry them, and every time.Now() result carries one. The result is converted to float milliseconds (Seconds()*1000) and printed with three decimals. I did not read how finely the monotonic clock ticks on each OS.",
+     "evidence": [
+      "client.go:110",
+      "client.go:120",
+      "client.go:57",
+      "main.go:205-208",
+      "go.mod:3-7",
+      "golang/go@go1.18:src/time/time.go:48-52",
+      "eclipse/paho.mqtt.golang@v1.4.1:net.go:225-228",
+      "eclipse/paho.mqtt.golang@v1.4.1:net.go:240-243",
+      "eclipse/paho.mqtt.golang@v1.4.1:net.go:293",
+      "eclipse/paho.mqtt.golang@v1.4.1:net.go:311-313",
+      "main.go:68"
+     ]
+    },
+    "odd_values": {
+     "finding": "Nothing filters, clamps, takes an absolute value or bins. Each successful publish appends its value to a plain slice, which GoStats summarises with StatsMin, StatsMax, StatsMean and the sample standard deviation. Because the subtraction uses monotonic readings, a wall-clock step cannot produce a value at or below zero. If one did occur it would be kept and would set the minimum. Timeouts and publish errors are kept out of the slice and counted as Failures in the Ratio line, not as latencies.",
+     "evidence": [
+      "client.go:51-58",
+      "client.go:62-64",
+      "client.go:113-122"
+     ]
+    },
+    "warnings": {
+     "finding": "None. README.md and CHANGELOG.md say nothing about clocks, clock skew, negative values, resolution or rounding. The only term hit is 'milliseconds' in the help text of the -wait flag.",
+     "evidence": [
+      "README.md:53-54",
+      "main.go:69"
+     ]
+    }
+   },
+   "plan_said": "not in the plan's table of tools: read on 11 Oct 2026 at the author's request, so the plan made no prediction",
+   "audit_found": "It times publish to acknowledgment (or to the socket write at QoS 0) in one goroutine on Go's monotonic clock. It has no end-to-end measurement. A value at or below zero cannot come from a clock step, and if one occurred nothing would drop, clamp or count it. The docs carry no warning. Issue and PR search found 0 hits for 'negative latency', 'negative', 'clock skew', 'rounding', 'nanosecond' and 'latency 0'. The 2 other hits ('resolution', 'millisecond') are unrelated.",
+   "prediction": "none made",
+   "searches": [
+    {
+     "term": "negative latency",
+     "where": "docs: README.md, CHANGELOG.md at f46efba1 (case-insensitive fixed-string grep; hits = matching lines)",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "docs: README.md, CHANGELOG.md at f46efba1",
+     "hits": 0
+    },
+    {
+     "term": "clock skew",
+     "where": "docs: README.md, CHANGELOG.md at f46efba1",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "docs: README.md, CHANGELOG.md at f46efba1",
+     "hits": 0
+    },
+    {
+     "term": "rounding",
+     "where": "docs: README.md, CHANGELOG.md at f46efba1",
+     "hits": 0
+    },
+    {
+     "term": "millisecond",
+     "where": "docs: README.md, CHANGELOG.md at f46efba1 (README.md:54, -wait flag help)",
+     "hits": 1
+    },
+    {
+     "term": "nanosecond",
+     "where": "docs: README.md, CHANGELOG.md at f46efba1",
+     "hits": 0
+    },
+    {
+     "term": "latency 0",
+     "where": "docs: README.md, CHANGELOG.md at f46efba1",
+     "hits": 0
+    },
+    {
+     "term": "negative latency",
+     "where": "issues+PRs, gh search issues --repo krylovsk/mqtt-benchmark --include-prs --limit 100",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "issues+PRs krylovsk/mqtt-benchmark",
+     "hits": 0
+    },
+    {
+     "term": "clock skew",
+     "where": "issues+PRs krylovsk/mqtt-benchmark",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "issues+PRs krylovsk/mqtt-benchmark (#22 'Network Error', about DNS resolution; unrelated)",
+     "hits": 1
+    },
+    {
+     "term": "rounding",
+     "where": "issues+PRs krylovsk/mqtt-benchmark",
+     "hits": 0
+    },
+    {
+     "term": "millisecond",
+     "where": "issues+PRs krylovsk/mqtt-benchmark (PR #26, ramp-up option; unrelated)",
+     "hits": 1
+    },
+    {
+     "term": "nanosecond",
+     "where": "issues+PRs krylovsk/mqtt-benchmark",
+     "hits": 0
+    },
+    {
+     "term": "latency 0",
+     "where": "issues+PRs krylovsk/mqtt-benchmark",
+     "hits": 0
+    }
+   ],
+   "reports": [
+    {
+     "title": "How to subscribe?",
+     "url": "https://github.com/krylovsk/mqtt-benchmark/issues/18",
+     "opened": "2021-01-04T02:38:01Z",
+     "outcome": "closed; on 2021-07-07 the maintainer (krylovsk) pointed the user to a separate MQTT client such as mosquitto_sub",
+     "why_relevant": "Confirms the tool has no subscriber, so it cannot time end to end. No issue or PR reports a negative latency."
+    }
+   ],
+   "checked_here": [
+    "client.go:110 `m.Sent = time.Now()`, :120 `m.Delivered = time.Now()` and :57 `times = append(times, m.Delivered.Sub(m.Sent).Seconds()*1000)`, read back at f46efba1"
+   ],
+   "auditor_checked": [],
+   "not_determined": [
+    "How finely Go's monotonic clock ticks on the platforms users run, which decides whether a 0.000 ms value can appear; not read.",
+    "Which toolchain a given binary is built with: go.mod gives only the minimum (go 1.18). The monotonic rule quoted is from the go1.18 tag and reads the same at go1.26.0."
+   ]
+  },
+  {
+   "tool": "Google Cloud Pub/Sub load test framework (Flic)",
+   "repository": "https://github.com/GoogleCloudPlatform/pubsub (directory load-test-framework)",
+   "version_seen": "master HEAD cd7d07bbfa4b81afc148f31a091f9b0d958dbe01 (committer date 2026-10-09T14:51:50Z). Latest release v0.11-alpha; its tag ref resolves to commit e7e3a6e8a178d20f883fa6dc58a63056c1d3ef44. That is a repository-wide release from 2021-11-19, not a release of the framework. The latency, bucketing and percentile files cited here have identical blob SHAs at both commits. Archived: false.",
+   "what_it_times": "Two latencies, kept apart by client side. The subscriber side is end to end: the publisher writes its wall-clock milliseconds into a 'sendTime' message attribute, and on receipt the subscriber subtracts that from its own wall-clock milliseconds. The publisher side is publish latency, from publish start to success of the publish future, in the same process. Java, Go, Python and Node clients each implement this, and the publisher and subscriber of a run use the same language. In the default GCE mode (--local and --in_process both default to false) each client type gets its own managed instance group, so the two end-to-end stamps come from different machines. After the burn-in period the Java controller adds up the clients' log-1.5 histograms, logs the 50, 99 and 99.9 percentiles, and writes the bucket midpoints for 50, 90, 99 and 99.9 to output.csv.",
+   "documentation": {
+    "clock_and_resolution": {
+     "finding": "Every language uses a wall clock at millisecond resolution: Java System.currentTimeMillis(); Go time.Now().UnixNano() divided by one million (UnixNano tells time, so it reads the wall clock, not the monotonic reading); Python int(time.time()*1000); Node (new Date).getTime(). The end-to-end value subtracts the publisher VM's wall clock from the subscriber VM's. Nothing in the code synchronises, measures or corrects the offset between them. Values are whole milliseconds, binned by floor(log base 1.5), so results are reported as bucket bounds or midpoints, not as measured values. Java's javadoc says the granularity of currentTimeMillis can be coarser than 1 ms. Python's docs say time.time() can return a lower value if the clock is set back.",
+     "evidence": [
+      "load-test-framework/src/main/java/com/google/pubsub/clients/gcloud/CPSSubscriberTask.java:68-71",
+      "load-test-framework/src/main/java/com/google/pubsub/clients/common/AbstractPublisher.java:83",
+      "load-test-framework/src/main/java/com/google/pubsub/clients/common/AbstractPublisher.java:92-95",
+      "load-test-framework/src/main/java/com/google/pubsub/clients/gcloud/CPSPublisherTask.java:75",
+      "load-test-framework/go_src/internal/util/util.go:24-26",
+      "load-test-framework/go_src/internal/tasks/publisher.go:122-126",
+      "load-test-framework/go_src/internal/tasks/subscriber.go:55",
+      "load-test-framework/go_src/internal/tasks/subscriber.go:68-74",
+      "load-test-framework/python_src/clients/cps_publisher_task.py:62",
+      "load-test-framework/python_src/clients/cps_subscriber_task.py:37-38",
+      "load-test-framework/node_src/src/publisher_task.js:65-69",
+      "load-test-framework/node_src/src/subscriber_task.js:47",
+      "load-test-framework/src/main/java/com/google/pubsub/flic/Driver.java:185-191",
+      "load-test-framework/src/main/java/com/google/pubsub/flic/controllers/test_parameters/ParameterOverrides.java:25-33",
+      "load-test-framework/src/main/java/com/google/pubsub/flic/controllers/GCEController.java:75-85",
+      "load-test-framework/src/main/java/com/google/pubsub/flic/controllers/resource_controllers/GCEComputeResourceController.java:61-66",
+      "load-test-framework/src/main/java/com/google/pubsub/clients/common/MetricsHandler.java:72-73",
+      "load-test-framework/src/main/java/com/google/pubsub/flic/controllers/Client.java:248-250",
+      "load-test-framework/src/main/java/com/google/pubsub/flic/common/LatencyTracker.java:111-120",
+      "load-test-framework/src/main/java/com/google/pubsub/flic/Driver.java:244-246",
+      "load-test-framework/src/main/java/com/google/pubsub/flic/output/CsvOutput.java:83-86",
+      "openjdk/jdk8u@77bae344e843f0e39f927b505305ce38e3d7cafc:jdk/src/share/classes/java/lang/System.java:340-352",
+      "golang/go@go1.11.5:src/time/time.go:12-20",
+      "golang/go@go1.11.5:src/time/time.go:1115-1116",
+      "python/cpython@v3.7.17:Doc/library/time.rst:586-590",
+      "tc39/ecma262@5345883164f463e87f8b40aca4956157ecba8783:spec.html:34065"
+     ]
+    },
+    "odd_values": {
+     "finding": "Nothing filters, clamps on purpose, or counts values at or below zero. What happens to one depends on the subscriber's language. (1) Java: bucket = max((int) floor(ln(ms)/ln 1.5), 0). ln(0) is -Infinity and ln of a negative is NaN; HotSpot's d2i turns those into Integer.MIN_VALUE and 0. So 0 ms, negative and 1 ms values all land in bucket 0, which the controller labels [0, 1) ms. Whenever bucket 0 alone holds at least floor(N*p/100) of the N samples (for the median, about half), getNthPercentileIndex runs past the end of its loop and throws RuntimeException('Programming error: negative values appear in buckets.'). Driver.printStats is called inside a forEach with no try. (2) Go: 0 gives Log2 = -Inf, Max(0, -Inf) = 0, so bucket 0. A negative gives Log2 = NaN and Max(0, NaN) = NaN, and int(NaN) is implementation-dependent under the Go spec. The GCE startup script installs go1.11.5.linux-amd64. On amd64 the conversion compiles to CVTTSD2SQ, the same instruction for which golang/go#67756 shows int(math.NaN()) = -9223372036854775808. The tracker's grow loop is then skipped and BucketValues[bucket]++ indexes out of range: a run-time panic in the tracker goroutine, which the Go spec says terminates the program. One negative latency would therefore end the subscriber process. On arm64 the same issue shows 0, which would put the value in bucket 0. (3) Python: adds sys.float_info.min, so 0 avoids log(0) and lands in bucket 0. A negative value makes math.log raise ValueError('math domain error') inside the receive callback, before message.ack(), so the value is never recorded. (4) Node: 0 lands in bucket 0. A negative gives Math.log = NaN, then Math.max(0, NaN) = NaN, then this.latencies[NaN] += 1. That writes a property named 'NaN' (not an array index) whose value becomes NaN; no bucket changes and nothing counts it. Two further defects: (a) The clients put a value v into bucket floor(log1.5 v), so bucket n holds [1.5^n, 1.5^(n+1)), but LatencyTracker and the proto read bucket n as [1.5^(n-1), 1.5^n), so every reported bound is one bucket (a factor of 1.5) low. (b) The Python publisher's done-callback lambda reads publish_time when it runs, not when it was created. Each publish latency is therefore measured from the most recent publish, which biases it toward 0.",
+     "evidence": [
+      "load-test-framework/src/main/java/com/google/pubsub/clients/common/MetricsHandler.java:72-77",
+      "load-test-framework/src/main/java/com/google/pubsub/flic/common/LatencyTracker.java:28-30",
+      "load-test-framework/src/main/java/com/google/pubsub/flic/common/LatencyTracker.java:37-52",
+      "load-test-framework/src/main/java/com/google/pubsub/flic/common/LatencyTracker.java:54-59",
+      "load-test-framework/src/main/java/com/google/pubsub/flic/Driver.java:125-128",
+      "load-test-framework/src/main/java/com/google/pubsub/flic/Driver.java:153",
+      "load-test-framework/src/main/java/com/google/pubsub/flic/Driver.java:239-246",
+      "load-test-framework/proto/loadtest.proto:104-107",
+      "load-test-framework/go_src/internal/util/metrics_tracker.go:66-73",
+      "load-test-framework/go_src/internal/util/metrics_tracker.go:86-94",
+      "load-test-framework/src/main/resources/gce/cps-gcloud-go-subscriber_startup_script.sh:30-32",
+      "load-test-framework/python_src/clients/metrics_tracker.py:43-49",
+      "load-test-framework/python_src/clients/cps_subscriber_task.py:36-43",
+      "load-test-framework/src/main/resources/gce/cps-gcloud-python-subscriber_startup_script.sh:34",
+      "load-test-framework/src/main/resources/gce/cps-gcloud-python-subscriber_startup_script.sh:39",
+      "load-test-framework/python_src/requirements.txt:1-3",
+      "load-test-framework/node_src/src/metrics_tracker.js:33-47",
+      "load-test-framework/node_src/src/subscriber_task.js:46-53",
+      "load-test-framework/src/main/resources/gce/cps-gcloud-java-subscriber_startup_script.sh:25",
+      "load-test-framework/src/main/resources/gce/cps-gcloud-node-subscriber_startup_script.sh:24",
+      "load-test-framework/python_src/clients/cps_publisher_task.py:61-68",
+      "load-test-framework/python_src/clients/cps_publisher_task.py:78-79",
+      "openjdk/jdk8u@77bae344e843f0e39f927b505305ce38e3d7cafc:jdk/src/share/classes/java/lang/Math.java:278-283",
+      "openjdk/jdk8u@77bae344e843f0e39f927b505305ce38e3d7cafc:jdk/src/share/classes/java/lang/Math.java:432-434",
+      "openjdk/jdk8u@77bae344e843f0e39f927b505305ce38e3d7cafc:hotspot/src/share/vm/runtime/sharedRuntime.cpp:445-453",
+      "golang/go@go1.11.5:src/math/log.go:76-79",
+      "golang/go@go1.11.5:src/math/log10.go:15-16",
+      "golang/go@go1.11.5:src/math/floor.go:9-12",
+      "golang/go@go1.11.5:src/math/dim.go:28-32",
+      "golang/go@go1.11.5:doc/go_spec.html:4075-4077",
+      "golang/go@go1.11.5:doc/go_spec.html:2981-2982",
+      "golang/go@go1.11.5:doc/go_spec.html:3007-3008",
+      "golang/go@go1.11.5:doc/go_spec.html:5933-5941",
+      "golang/go@go1.11.5:src/cmd/compile/internal/gc/ssa.go:1444",
+      "golang/go@go1.11.5:src/cmd/compile/internal/ssa/gen/AMD64.rules:127",
+      "golang/go@go1.22.3:src/cmd/compile/internal/ssa/_gen/AMD64.rules:168",
+      "https://github.com/golang/go/issues/67756 (body, 'What did you see happen?' block; first comment)",
+      "python/cpython@v3.7.17:Modules/mathmodule.c:1951",
+      "python/cpython@v3.7.17:Modules/mathmodule.c:1924-1925",
+      "python/cpython@v3.7.17:Modules/mathmodule.c:708-716",
+      "python/cpython@v3.7.17:Modules/mathmodule.c:919-922",
+      "python/cpython@v3.7.17:Doc/faq/programming.rst:230-232",
+      "tc39/ecma262@5345883164f463e87f8b40aca4956157ecba8783:spec.html:33790-33791",
+      "tc39/ecma262@5345883164f463e87f8b40aca4956157ecba8783:spec.html:33706",
+      "tc39/ecma262@5345883164f463e87f8b40aca4956157ecba8783:spec.html:33848",
+      "tc39/ecma262@5345883164f463e87f8b40aca4956157ecba8783:spec.html:2853"
+     ]
+    },
+    "warnings": {
+     "finding": "None. load-test-framework/README.md is the only document (wiki/ holds one PNG), and it and the repository README have zero hits for all eight terms. The README says only that the framework is provided as-is for testing. A 2016 review comment on PR #6 noted that the controller's clock may differ from a VM's; it was raised about the throughput timer, not about message latency.",
+     "evidence": [
+      "load-test-framework/README.md:10-13"
+     ]
+    }
+   },
+   "plan_said": "not in the plan's table of tools: read on 11 Oct 2026 at the author's request, so the plan made no prediction",
+   "audit_found": "It measures end-to-end latency across machines as the difference of two wall clocks in whole milliseconds, with no clock check. Values at or below zero are never counted, and what happens to them depends on the subscriber's language. Java puts them in the lowest bucket together with 1 ms values; if that bucket holds the percentile's share, the controller throws an exception whose message blames negative values, and no CSV is written. Go puts 0 in bucket 0, but a negative value gives a bucket index of int(NaN), which on the amd64 build the startup script makes is -9223372036854775808; the index panics and ends the subscriber process. Python puts 0 in bucket 0 but raises ValueError on a negative value, so that value is lost and the message is not acked in that callback. Node puts 0 in bucket 0 and silently loses a negative value under the key 'NaN'. There is no documentation warning, and no issue or PR on negative latency.",
+   "prediction": "none made",
+   "searches": [
+    {
+     "term": "negative latency",
+     "where": "docs: load-test-framework/README.md and repository README.md at cd7d07bb (case-insensitive fixed-string grep; hits = matching lines)",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "docs: load-test-framework/README.md, README.md at cd7d07bb",
+     "hits": 0
+    },
+    {
+     "term": "clock skew",
+     "where": "docs: load-test-framework/README.md, README.md at cd7d07bb",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "docs: load-test-framework/README.md, README.md at cd7d07bb",
+     "hits": 0
+    },
+    {
+     "term": "rounding",
+     "where": "docs: load-test-framework/README.md, README.md at cd7d07bb",
+     "hits": 0
+    },
+    {
+     "term": "millisecond",
+     "where": "docs: load-test-framework/README.md, README.md at cd7d07bb",
+     "hits": 0
+    },
+    {
+     "term": "nanosecond",
+     "where": "docs: load-test-framework/README.md, README.md at cd7d07bb",
+     "hits": 0
+    },
+    {
+     "term": "latency 0",
+     "where": "docs: load-test-framework/README.md, README.md at cd7d07bb",
+     "hits": 0
+    },
+    {
+     "term": "negative latency",
+     "where": "issues+PRs, gh search issues --repo GoogleCloudPlatform/pubsub --include-prs --limit 100 (search covers the whole repository, not only the framework)",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "issues+PRs GoogleCloudPlatform/pubsub (#104/#105 negative partition numbers in the Kafka connector, #356 flow control, #408 dependency bump; none about latency)",
+     "hits": 4
+    },
+    {
+     "term": "clock skew",
+     "where": "issues+PRs GoogleCloudPlatform/pubsub",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "issues+PRs GoogleCloudPlatform/pubsub (#384, #425, #184, #156; none about latency)",
+     "hits": 4
+    },
+    {
+     "term": "rounding",
+     "where": "issues+PRs GoogleCloudPlatform/pubsub",
+     "hits": 0
+    },
+    {
+     "term": "millisecond",
+     "where": "issues+PRs GoogleCloudPlatform/pubsub (PR #11 max publish latency testing, PR #114, #182; none about negative or zero latency)",
+     "hits": 3
+    },
+    {
+     "term": "nanosecond",
+     "where": "issues+PRs GoogleCloudPlatform/pubsub",
+     "hits": 0
+    },
+    {
+     "term": "latency 0",
+     "where": "issues+PRs GoogleCloudPlatform/pubsub",
+     "hits": 0
+    }
+   ],
+   "reports": [
+    {
+     "title": "Ability to Orchestrate Clients on GCE (review comment discussion_r82688111)",
+     "url": "https://github.com/GoogleCloudPlatform/pubsub/pull/6#discussion_r82688111",
+     "opened": "PR opened 2016-09-28T16:11:46Z; comment 2016-10-10T21:38:59Z (amordkov)",
+     "outcome": "PR merged 2016-10-14. The comment proposed that each VM report its own running time; today's CheckResponse carries running_duration (load-test-framework/proto/loadtest.proto:109-110).",
+     "why_relevant": "The only place in the repository where a reviewer notes that the controller's clock may differ from a remote VM's. It was handled for the throughput timer only; the message latency still subtracts one VM's wall clock from another's. No issue or PR reports a negative latency."
+    }
+   ],
+   "checked_here": [
+    "CPSSubscriberTask.java:68-70 `Duration.ofMillis(` / `System.currentTimeMillis()` / `- Long.parseLong(message.getAttributesMap().get(\"sendTime\"))));`, read back at cd7d07bb",
+    "MetricsHandler.java:72-73 `double raw_bucket = Math.log(value.latency.toMillis()) / Math.log(1.5);` / `int bucket = Math.max((int) Math.floor(raw_bucket), 0);` and LatencyTracker.java:51 `throw new RuntimeException(\"Programming error: negative values appear in buckets.\");`, read back at cd7d07bb",
+    "go_src/internal/util/metrics_tracker.go:70-72 `rawBucket := math.Floor(logBase(float64(latencyMs), 1.5))` / `return int(math.Max(0, rawBucket))` and :94 `mt.response.BucketValues[bucket]++`; cps-gcloud-go-subscriber_startup_script.sh:31 go1.11.5.linux-amd64; python_src/clients/metrics_tracker.py:45 `math.log(latency_ms + sys.float_info.min, 1.5)`; node_src/src/metrics_tracker.js:38-39, read back at cd7d07bb"
+   ],
+   "auditor_checked": [],
+   "not_determined": [
+    "What google-cloud-pubsub does after the Python callback raises (logs, nacks, redelivers). requirements.txt does not pin the library, so no version could be read.",
+    "How far apart publisher and subscriber VM clocks are in practice on GCE; this lies outside the source.",
+    "None of the failure paths (Java throw, Go panic, Python ValueError, Node NaN key) was executed here. Each follows from the quoted source lines and the quoted language rules.",
+    "The int(NaN) value under go1.11.5 on amd64 was not observed. It is inferred because go1.11.5 and go1.22.3 both lower float64-to-int64 to CVTTSD2SQ, and golang/go#67756 shows -9223372036854775808 for go1.22.3 on amd64."
+   ]
+  },
+  {
+   "tool": "xk6-kafka (k6 extension for Kafka)",
+   "repository": "https://github.com/mostafa/xk6-kafka",
+   "version_seen": "main HEAD cab4c9daf746f51f0d5877295d96b577ea41eabe (committer date 2026-09-08T16:42:59Z). Latest release v2.2.0; its tag ref is an annotated tag object c222077081027ecf0b1165574fe03016e178509f that points to the same commit cab4c9daf746f51f0d5877295d96b577ea41eabe. Archived: false. The runtime is Confluent-backed (confluent-kafka-go v2.14.0, k6 v2.2.0, go 1.26).",
+   "what_it_times": "It reports no message latency of any kind: none end to end, none per message on publish. It times whole JavaScript calls in the k6 process with time.Now() and time.Since. kafka_writer_write_seconds is the duration of one produce() call. That call waits for every delivery report only when requiredAcks is non-zero; an unset requiredAcks (Go zero value 0) maps to acks=0 and returns as soon as the messages are enqueued. kafka_writer_batch_seconds is that duration divided by the number of messages for the topic. kafka_reader_read_seconds is the duration of one consume() call. Four latency-named Trends are always pushed as 0: kafka_writer_batch_queue_seconds, kafka_writer_wait_seconds, kafka_reader_dial_seconds and kafka_reader_wait_seconds. Scripts can read the Kafka record timestamp of consumed messages as 'time', but the extension never subtracts it from anything.",
+   "documentation": {
+    "clock_and_resolution": {
+     "finding": "Durations use Go's monotonic clock: time.Now() and then time.Since(startedAt) in the same goroutine, which the Go docs describe as robust against wall-clock resets. They are pushed into k6 Trend metrics. The record timestamp handed to scripts is formatted with time.RFC3339, a layout with no fractional-second field, so it carries whole seconds only unless the script sets nanoPrecision: true (which switches to RFC3339Nano). The docs say only that nanoPrecision gives nanosecond precision; they never say the default is whole seconds.",
+     "evidence": [
+      "pkg/kafka/writer.go:316-323",
+      "pkg/kafka/reader.go:281",
+      "pkg/kafka/reader.go:297",
+      "pkg/kafka/reader.go:314",
+      "pkg/kafka/stats.go:191-196",
+      "pkg/kafka/reader.go:416-422",
+      "pkg/kafka/consumer.go:390-394",
+      "pkg/kafka/writer.go:98-100",
+      "api-docs/v2/index.d.ts:232-233",
+      "go.mod:3",
+      "go.mod:11",
+      "go.mod:19",
+      "golang/go@go1.26.0:src/time/time.go:31-33",
+      "golang/go@go1.26.0:src/time/time.go:48-52",
+      "golang/go@go1.26.0:src/time/format.go:99-100",
+      "golang/go@go1.26.0:src/time/format.go:119-120",
+      "pkg/kafka/producer.go:74-77",
+      "pkg/kafka/producer.go:108-121",
+      "pkg/kafka/producer.go:222-224",
+      "pkg/kafka/writer.go:44",
+      "pkg/kafka/confluent_config.go:387-394"
+     ]
+    },
+    "odd_values": {
+     "finding": "The tool computes no per-message latency, and its durations are monotonic, so its own arithmetic cannot produce a negative value. It does emit zeros by design. Four Trends are hard-coded to metrics.D(0) on every call. When produce() fails, writeTime and batchTime stay 0 and are still pushed into kafka_writer_write_seconds and kafka_writer_batch_seconds. readTime stays 0 when consume() returns no messages and no error. Nothing marks these zeros. Errors are counted separately in kafka_writer_error_count and in the reader's error and timeout counters. The README's sample output shows the four always-zero Trends at avg=min=max=0s. It also shows acks_required 0 with microsecond write times, consistent with enqueue-only timing.",
+     "evidence": [
+      "pkg/kafka/compatibility_metrics.go:75-88",
+      "pkg/kafka/compatibility_metrics.go:138-163",
+      "pkg/kafka/compatibility_metrics.go:313-319",
+      "pkg/kafka/compatibility_metrics.go:391-417",
+      "pkg/kafka/writer.go:318",
+      "README.md:450",
+      "README.md:464",
+      "README.md:467-468",
+      "README.md:473-474",
+      "README.md:482",
+      "README.md:484"
+     ]
+    },
+    "warnings": {
+     "finding": "No warning about clocks, clock skew, negative values or rounding. The README describes the always-zero Trends as real timings, for example 'Waiting time before writing messages'. MIGRATION.md says v2 values are compatibility-derived from produce and consume operations. The only resolution note is the nanoPrecision line. The example script test_json.js checks consumed messages with a strict new Date(msg.time) < new Date(), which is a sanity check, not a latency.",
+     "evidence": [
+      "README.md:527-529",
+      "README.md:543-546",
+      "MIGRATION.md:47",
+      "api-docs/v2/index.d.ts:232-233",
+      "scripts/test_json.js:105",
+      "scripts/test_json.js:160"
+     ]
+    }
+   },
+   "plan_said": "not in the plan's table of tools: read on 11 Oct 2026 at the author's request, so the plan made no prediction",
+   "audit_found": "Not a message-latency tool. It reports durations of produce() and consume() calls on a monotonic clock, so no value can be negative. By default the produce timing excludes the broker, because acks=0 returns on enqueue. Four latency-named Trends are constant zeros, and failed produces add more zeros, with no marker. The record timestamp reaches scripts at 1 s resolution unless nanoPrecision is set. There is no documentation warning and no issue or PR on negative latency. Two issues touch the subject: #260 (users computing end to end from the message time hit 1 s resolution, which led to nanoPrecision) and #364 (consumed timestamps out of causal order).",
+   "prediction": "none made",
+   "searches": [
+    {
+     "term": "negative latency",
+     "where": "docs: README.md, MIGRATION.md, docs/*.md, scripts/v2/README.md, api-docs/**/*.md, api-docs/index.d.ts, api-docs/v2/index.d.ts at cab4c9da (case-insensitive fixed-string grep; hits = matching lines)",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "docs as above",
+     "hits": 0
+    },
+    {
+     "term": "clock skew",
+     "where": "docs as above",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "docs as above (docs/v2.0.0-plan.md:369, docs/v2.1.0-protobuf.md:27,95,100,164,165, docs/v2.2.0-subcommand.md:56,64,103; all about schema or import resolution)",
+     "hits": 9
+    },
+    {
+     "term": "rounding",
+     "where": "docs as above",
+     "hits": 0
+    },
+    {
+     "term": "millisecond",
+     "where": "docs as above (TIME enum constant MILLISECOND in api-docs, docs/kerberos.md:50)",
+     "hits": 7
+    },
+    {
+     "term": "nanosecond",
+     "where": "docs as above (TIME enum constant NANOSECOND; nanoPrecision doc at api-docs/index.d.ts:232, api-docs/v2/index.d.ts:232 and the two ConsumeConfig.md pages)",
+     "hits": 10
+    },
+    {
+     "term": "latency 0",
+     "where": "docs as above",
+     "hits": 0
+    },
+    {
+     "term": "negative latency",
+     "where": "issues+PRs, gh search issues --repo mostafa/xk6-kafka --include-prs --limit 100",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "issues+PRs mostafa/xk6-kafka (#205 filter on consume; unrelated)",
+     "hits": 1
+    },
+    {
+     "term": "clock skew",
+     "where": "issues+PRs mostafa/xk6-kafka",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "issues+PRs mostafa/xk6-kafka (#354, #297, #296, #88; unrelated)",
+     "hits": 4
+    },
+    {
+     "term": "rounding",
+     "where": "issues+PRs mostafa/xk6-kafka (#364 Incorrect Kafka message timestamps)",
+     "hits": 1
+    },
+    {
+     "term": "millisecond",
+     "where": "issues+PRs mostafa/xk6-kafka (#416, #329, #260, #339, #316, #199, #180)",
+     "hits": 7
+    },
+    {
+     "term": "nanosecond",
+     "where": "issues+PRs mostafa/xk6-kafka (#417, #416, #316, #315 timeout gauges a factor of 1e6 off, #202)",
+     "hits": 5
+    },
+    {
+     "term": "latency 0",
+     "where": "issues+PRs mostafa/xk6-kafka",
+     "hits": 0
+    }
+   ],
+   "reports": [
+    {
+     "title": "Add millis to consumed messages",
+     "url": "https://github.com/mostafa/xk6-kafka/issues/260",
+     "opened": "2023-11-10T10:15:39Z",
+     "outcome": "A contributor reported on 2024-04-10 that a nanoPrecision consumer option had been added; the issue was closed as stale by the bot on 2025-03-23.",
+     "why_relevant": "A user tried to measure end to end from the consumed message's time and found the default RFC3339 format drops sub-second digits. Since the tool computes no latency itself, users who do so in scripts get 1 s resolution by default."
+    },
+    {
+     "title": "Incorrect Kafka message timestamps",
+     "url": "https://github.com/mostafa/xk6-kafka/issues/364",
+     "opened": "2025-11-16T20:23:57Z",
+     "outcome": "Closed as stale by the bot on 2026-01-18. The maintainer linked PR #372; the thread attributed the issue to record-level versus batch-level timestamps (LogAppendTime) in the kafka-go path.",
+     "why_relevant": "Reports a downstream topic's message timestamped before the upstream message that caused it, which would give a negative interval if a script subtracted the two."
+    },
+    {
+     "title": "Fix subsecond precision",
+     "url": "https://github.com/mostafa/xk6-kafka/pull/372",
+     "opened": "2025-12-09T21:44:29Z",
+     "outcome": "merged 2025-12-09T21:51:43Z",
+     "why_relevant": "Its description says it fixes a loss of sub-millisecond precision in timestamps after conversion (linked from #364)."
+    }
+   ],
+   "checked_here": [
+    "writer.go:316 `startedAt := time.Now()` and :318 `time.Since(startedAt)`; producer.go:222-223 `func producerWaitsForAck(writerConfig *WriterConfig) bool {` / `return writerConfig == nil || writerConfig.RequiredAcks != 0`; compatibility_metrics.go:143 and :161 `Value:    metrics.D(0),` for WriterBatchQueueTime and WriterWaitTime, and :397 and :415 for ReaderDialTime and ReaderWaitTime, read back at cab4c9da"
+   ],
+   "auditor_checked": [],
+   "not_determined": [
+    "What timestamp librdkafka/confluent-kafka-go v2.14.0 gives a record whose Time is the zero value. The comment at writer.go:98-99 says it is set automatically; the library code was not read.",
+    "The k6 v2.2.0 Trend sink code was not read. Only the README's sample output shows that zero samples enter and are reported.",
+    "How finely the monotonic clock ticks on each OS."
+   ]
+  },
+  {
+   "tool": "Pravega benchmark",
+   "repository": "https://github.com/pravega/pravega-benchmark",
+   "version_seen": "master HEAD 33b79e5fcd06a12654217664fb79f168dcab8325 (committer date 2023-11-15T07:53:11Z). Latest release v0.13.0; its tag ref resolves to commit 3807aeddfa64b65ced8d332558c80ec0ca6e4d47. HEAD is 1 commit ahead and changes only gradle.properties. Archived: false. No deprecation notice or successor is named in the README or in any issue or PR.",
+   "what_it_times": "Three modes. Writer-only measures write latency: System.currentTimeMillis() before writeEvent, and again when its future completes. Reader-only measures the duration of one readNextEvent call. End to End Latency mode is on only when one invocation has both -producers and -consumers. In it, the writer puts System.currentTimeMillis() into the first 8 bytes of each event, and a reader thread in the same JVM subtracts it from its own System.currentTimeMillis() after reading. Results are periodic window lines (average and maximum) plus a final line with the 50th, 75th, 95th, 99th, 99.9th and 99.99th percentiles in whole milliseconds.",
+   "documentation": {
+    "clock_and_resolution": {
+     "finding": "The clock is the wall clock in milliseconds, System.currentTimeMillis(), whose javadoc says the granularity depends on the OS and may be tens of milliseconds. In end-to-end mode both stamps are taken in one JVM on one machine, so no offset between machines can enter, but a backwards step of the wall clock between write and read can. The latency is cast to int milliseconds and counted in an int array of 3,600,000 one-millisecond bins, and percentiles print as whole milliseconds.",
+     "evidence": [
+      "src/main/java/io/pravega/perf/PravegaPerfTest.java:330-335",
+      "src/main/java/io/pravega/perf/PravegaPerfTest.java:351-356",
+      "src/main/java/io/pravega/perf/Worker.java:17",
+      "src/main/java/io/pravega/perf/WriterWorker.java:183-185",
+      "src/main/java/io/pravega/perf/WriterWorker.java:207-210",
+      "src/main/java/io/pravega/perf/ReaderWorker.java:93-99",
+      "src/main/java/io/pravega/perf/ReaderWorker.java:135-141",
+      "src/main/java/io/pravega/perf/ReaderWorker.java:73-78",
+      "src/main/java/io/pravega/perf/PravegaWriterWorker.java:61-67",
+      "src/main/java/io/pravega/perf/PerfStats.java:123",
+      "src/main/java/io/pravega/perf/PerfStats.java:278-280",
+      "src/main/java/io/pravega/perf/PerfStats.java:295",
+      "src/main/java/io/pravega/perf/PerfStats.java:351-355",
+      "openjdk/jdk8u@77bae344e843f0e39f927b505305ce38e3d7cafc:jdk/src/share/classes/java/lang/System.java:340-352"
+     ]
+    },
+    "odd_values": {
+     "finding": "Zero is kept: it goes into bin 0, and countLatencies includes index 0. A negative value meets no guard. The window first adds it to its running total and maximum, then latencies[latency]++ uses it as an array index, which throws ArrayIndexOutOfBoundsException. The assert above that line checks only latency < latencies.length, and no build or start file I read passes -ea. The exception ends the single statistics thread (QueueProcessor.call), so no further window lines and no final percentile line are printed. At shutdown, ret.get() rethrows it as an ExecutionException, which PravegaPerfTest only prints. With -readcsv or -writecsv the raw value is written to the CSV and included in the printed window averages; the same exception then fires when printTotal re-reads the file, so the final summary is still lost. A value of 3,600,000 ms or more hits the same array bound. Nothing counts the offending value.",
+     "evidence": [
+      "src/main/java/io/pravega/perf/PerfStats.java:123-126",
+      "src/main/java/io/pravega/perf/PerfStats.java:199-204",
+      "src/main/java/io/pravega/perf/PerfStats.java:302-313",
+      "src/main/java/io/pravega/perf/PerfStats.java:334-338",
+      "src/main/java/io/pravega/perf/PerfStats.java:371-378",
+      "src/main/java/io/pravega/perf/PerfStats.java:386-392",
+      "src/main/java/io/pravega/perf/PerfStats.java:424-432",
+      "src/main/java/io/pravega/perf/PravegaPerfTest.java:382-393"
+     ]
+    },
+    "warnings": {
+     "finding": "The README defines end-to-end latency and says the tool outputs percentiles. It has no warning about clocks, negative values or resolution; its only term hits are 'milliseconds' in the help text of the watermark-period options. Open issue #97 holds maintainer comments that latency is measured at millisecond precision with System.currentTimeMillis(), so percentiles cannot be finer than 1 ms.",
+     "evidence": [
+      "README.md:14-16",
+      "README.md:210-213"
+     ]
+    }
+   },
+   "plan_said": "not in the plan's table of tools: read on 11 Oct 2026 at the author's request, so the plan made no prediction",
+   "audit_found": "It measures end-to-end latency inside one JVM from two wall-clock readings in whole milliseconds. Zero is kept. A negative value, which arises only if the wall clock steps back between write and read, throws ArrayIndexOutOfBoundsException and silently ends the statistics: no further window lines and no final percentiles, only a stack trace at shutdown. There is no documentation warning and no issue or PR on negative latency. Maintainers acknowledged millisecond precision in #97. PR #15 (2018) replaced System.currentTimeMillis(), but HEAD calls it again.",
+   "prediction": "none made",
+   "searches": [
+    {
+     "term": "negative latency",
+     "where": "docs: README.md, ca-certificates/README.txt, lib/README.txt at 33b79e5f (case-insensitive fixed-string grep; hits = matching lines)",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "docs as above",
+     "hits": 0
+    },
+    {
+     "term": "clock skew",
+     "where": "docs as above",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "docs as above",
+     "hits": 0
+    },
+    {
+     "term": "rounding",
+     "where": "docs as above",
+     "hits": 0
+    },
+    {
+     "term": "millisecond",
+     "where": "docs as above (README.md:69 and :91, watermark-period options)",
+     "hits": 2
+    },
+    {
+     "term": "nanosecond",
+     "where": "docs as above",
+     "hits": 0
+    },
+    {
+     "term": "latency 0",
+     "where": "docs as above",
+     "hits": 0
+    },
+    {
+     "term": "negative latency",
+     "where": "issues+PRs, gh search issues --repo pravega/pravega-benchmark --include-prs --limit 100",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "issues+PRs pravega/pravega-benchmark",
+     "hits": 0
+    },
+    {
+     "term": "clock skew",
+     "where": "issues+PRs pravega/pravega-benchmark",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "issues+PRs pravega/pravega-benchmark (PR #88 throughput recorder)",
+     "hits": 1
+    },
+    {
+     "term": "rounding",
+     "where": "issues+PRs pravega/pravega-benchmark",
+     "hits": 0
+    },
+    {
+     "term": "millisecond",
+     "where": "issues+PRs pravega/pravega-benchmark (#97, PR #23, PR #88, PR #70)",
+     "hits": 4
+    },
+    {
+     "term": "nanosecond",
+     "where": "issues+PRs pravega/pravega-benchmark",
+     "hits": 0
+    },
+    {
+     "term": "latency 0",
+     "where": "issues+PRs pravega/pravega-benchmark (#44, #45, #47, #51, PR #93: logs with 0.0 ms max latency, NaN ms averages for empty windows, or 0 ms percentiles)",
+     "hits": 5
+    }
+   ],
+   "reports": [
+    {
+     "title": "Write out Percentiles at end of test",
+     "url": "https://github.com/pravega/pravega-benchmark/issues/97",
+     "opened": "2020-01-22T10:12:33Z",
+     "outcome": "open",
+     "why_relevant": "Maintainers note that percentiles have no decimal precision (2 ms or 3 ms, never 2.5 ms), and that publish and end-to-end latency are measured at millisecond precision with System.currentTimeMillis(). This is the only discussion of the tool's time resolution."
+    },
+    {
+     "title": "replace System.currentTimeMillis() by java8 time instances in the benchmark code (fixed by PR #15)",
+     "url": "https://github.com/pravega/pravega-benchmark/issues/13",
+     "opened": "2018-11-05T15:04:20Z",
+     "outcome": "Closed 2018-11-16. PR #15 (https://github.com/pravega/pravega-benchmark/pull/15) was merged 2018-11-15T17:35:25Z, yet HEAD again calls System.currentTimeMillis() in the timing code.",
+     "why_relevant": "History of the clock choice; I did not trace when the timing code went back to currentTimeMillis."
+    },
+    {
+     "title": "Option -recreate is not working.",
+     "url": "https://github.com/pravega/pravega-benchmark/issues/51",
+     "opened": "2019-07-31T12:19:26Z",
+     "outcome": "closed 2019-11-07",
+     "why_relevant": "Posted logs show reader-only summaries such as '0 ms 50th, 0 ms 75th': zero-millisecond values reported as percentiles. These come from reader-only mode (readNextEvent duration), not end to end."
+    },
+    {
+     "title": "Not able to run the tool with producer and consumer values together",
+     "url": "https://github.com/pravega/pravega-benchmark/issues/44",
+     "opened": "2019-05-24T06:51:19Z",
+     "outcome": "closed 2019-09-25 after a maintainer posted a working run",
+     "why_relevant": "Logs show 'NaN ms avg latency' for empty windows (0/0) in Write/Reading (end-to-end) mode: an odd value the tool prints without comment."
+    }
+   ],
+   "checked_here": [
+    "PerfStats.java:123 `final int latency = (int) (t.endTime - t.startTime);` and :335-337 `assert latency < latencies.length : \"Invalid latency\";` ... `latencies[latency]++;`; ReaderWorker.java:95-99 `final long endTime = System.currentTimeMillis();` ... `stats.recordTime(start, endTime, ret.length);`, read back at 33b79e5f"
+   ],
+   "auditor_checked": [],
+   "not_determined": [
+    "Whether, in documented use, an end-to-end reader can receive events written by another, writer-only process. Such events carry random payload bytes where the time header would be.",
+    "When the timing code returned to System.currentTimeMillis() after PR #15; history not traced.",
+    "Whether a successor tool exists: none is named in the README or in any issue or PR, and the README of kmgowda/SBK does not mention pravega-benchmark."
+   ]
+  },
+  {
+   "tool": "Apache RocketMQ benchmark: Producer and Consumer (example/src/main/java/org/apache/rocketmq/example/benchmark)",
+   "repository": "https://github.com/apache/rocketmq",
+   "version_seen": "default branch develop, HEAD 9ea2ccdc2b41445aee5e177e14e501d606f5a1ed (committed 2026-10-08T09:24:04Z); latest release rocketmq-all-5.5.1 = efa1be59d6fc747ad220f036c86030f05f0419f9 (published 2026-08-20); Consumer.java, Producer.java and DefaultMQProducerImpl.java have the same blob SHA at the release and at HEAD; not archived",
+   "what_it_times": "Producer: publish latency (RT). System.currentTimeMillis() is read just before the message is prepared and sent, then again when the synchronous send returns (or in the async onSuccess callback), in the same process. Consumer: end-to-end B2C ('born to consume') = the consumer's System.currentTimeMillis() at the start of the listener callback minus the message's born timestamp. The producer client sets the born timestamp from its own System.currentTimeMillis() when it builds the send request. Also S2C ('store to consume') = the same consumer reading minus the broker's store timestamp. Each report prints a window average (AVG) and a maximum (MAX) in ms.",
+   "documentation": {
+    "clock_and_resolution": {
+     "finding": "All stamps are wall-clock System.currentTimeMillis() with 1 ms resolution. B2C subtracts the producer JVM's clock from the consumer JVM's clock: the producer client sets the born timestamp, and the broker copies it into the stored message. S2C subtracts the broker's clock from the consumer's; CommitLog takes SystemClock.now(), which returns System.currentTimeMillis(). The shipped scripts start Producer and Consumer as separate background JVMs. So B2C always crosses two processes, and crosses two machines whenever producer and consumer are on different hosts. S2C always crosses broker and consumer. Only msgs.get(0) of each listener call is timed; the push consumer's default batch size is 1. Producer RT uses one process's wall clock, so only a clock step between its two readings can make it negative.",
+     "evidence": [
+      "example/src/main/java/org/apache/rocketmq/example/benchmark/Consumer.java:166-179",
+      "client/src/main/java/org/apache/rocketmq/client/impl/producer/DefaultMQProducerImpl.java:1000",
+      "broker/src/main/java/org/apache/rocketmq/broker/processor/SendMessageProcessor.java:313",
+      "store/src/main/java/org/apache/rocketmq/store/CommitLog.java:1089-1096",
+      "common/src/main/java/org/apache/rocketmq/common/SystemClock.java:19-23",
+      "example/src/main/java/org/apache/rocketmq/example/benchmark/Producer.java:185",
+      "example/src/main/java/org/apache/rocketmq/example/benchmark/Producer.java:290-302",
+      "client/src/main/java/org/apache/rocketmq/client/consumer/DefaultMQPushConsumer.java:229-232",
+      "distribution/benchmark/consumer.sh:18",
+      "distribution/benchmark/producer.sh:18"
+     ]
+    },
+    "odd_values": {
+     "finding": "Nothing filters, clamps, takes the absolute value of, or counts a value at or below zero. Each B2C and S2C value is added to a LongAdder total, and the message is added to the received count. Zeros and negatives therefore pull AVG(B2C) and AVG(S2C) down and can make them negative. The maxima are AtomicLongs that start at 0, are reset to 0 after every report, and rise only when value > current (compareAndSetMax). So a negative can never appear in MAX(B2C) or MAX(S2C). An interval of only negative values prints MAX 0 next to a negative AVG. An interval with no messages prints AVG NaN (0/0.0) and MAX 0. The Producer handles RT the same way: a total, plus a maximum that starts at 0, rises only on larger values and is never reset. Side finding in the same directory: TimerConsumer stores now minus the requested delivery time, which is negative when a timer message arrives early by the consumer's clock. It stores these in a ConcurrentSkipListSet, so equal values collapse and its percentiles are over distinct values only.",
+     "evidence": [
+      "example/src/main/java/org/apache/rocketmq/example/benchmark/Consumer.java:166-179",
+      "example/src/main/java/org/apache/rocketmq/example/benchmark/Consumer.java:104-116",
+      "example/src/main/java/org/apache/rocketmq/example/benchmark/Consumer.java:246-255",
+      "example/src/main/java/org/apache/rocketmq/example/benchmark/Consumer.java:265-267",
+      "example/src/main/java/org/apache/rocketmq/example/benchmark/Producer.java:290-302",
+      "example/src/main/java/org/apache/rocketmq/example/benchmark/Producer.java:389-398",
+      "example/src/main/java/org/apache/rocketmq/example/benchmark/Producer.java:414",
+      "example/src/main/java/org/apache/rocketmq/example/benchmark/timer/TimerConsumer.java:126-135",
+      "example/src/main/java/org/apache/rocketmq/example/benchmark/timer/TimerConsumer.java:168"
+     ]
+    },
+    "warnings": {
+     "finding": "None. No README or docs page describes the benchmark: none of the 94 Markdown files at the pinned SHA contains 'benchmark'. The eight-term hits are unrelated: a proxy port setting, ACL 'privilege resolution', 'surrounding', and configuration units. The benchmark code prints no clock or sign warning.",
+     "evidence": []
+    }
+   },
+   "plan_said": "not in the plan's table of tools: read on 11 Oct 2026 at the author's request, so the plan made no prediction",
+   "audit_found": "B2C is an end-to-end latency between two different JVMs' wall clocks at 1 ms resolution, and nothing documents a clock requirement. A value at or below zero is kept in the average but can never appear in the maximum, which starts at 0. Nothing counts such values.",
+   "prediction": "none made",
+   "searches": [
+    {
+     "term": "negative latency",
+     "where": "GitHub apache/rocketmq issues+PRs (gh search issues --include-prs --limit 100)",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "GitHub apache/rocketmq issues+PRs (gh search issues --include-prs --limit 100)",
+     "hits": 92
+    },
+    {
+     "term": "clock skew",
+     "where": "GitHub apache/rocketmq issues+PRs (gh search issues --include-prs --limit 100)",
+     "hits": 2
+    },
+    {
+     "term": "resolution",
+     "where": "GitHub apache/rocketmq issues+PRs (gh search issues --include-prs --limit 100)",
+     "hits": 53
+    },
+    {
+     "term": "rounding",
+     "where": "GitHub apache/rocketmq issues+PRs (gh search issues --include-prs --limit 100)",
+     "hits": 2
+    },
+    {
+     "term": "millisecond",
+     "where": "GitHub apache/rocketmq issues+PRs (gh search issues --include-prs --limit 100)",
+     "hits": 43
+    },
+    {
+     "term": "nanosecond",
+     "where": "GitHub apache/rocketmq issues+PRs (gh search issues --include-prs --limit 100)",
+     "hits": 6
+    },
+    {
+     "term": "latency 0",
+     "where": "GitHub apache/rocketmq issues+PRs (gh search issues --include-prs --limit 100)",
+     "hits": 1
+    },
+    {
+     "term": "negative latency",
+     "where": "README+docs: 94 *.md at 9ea2ccdc outside src/test, case-insensitive substring, matching lines",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "README+docs: 94 *.md at 9ea2ccdc",
+     "hits": 1
+    },
+    {
+     "term": "clock skew",
+     "where": "README+docs: 94 *.md at 9ea2ccdc",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "README+docs: 94 *.md at 9ea2ccdc",
+     "hits": 4
+    },
+    {
+     "term": "rounding",
+     "where": "README+docs: 94 *.md at 9ea2ccdc (the hit is 'surrounding')",
+     "hits": 1
+    },
+    {
+     "term": "millisecond",
+     "where": "README+docs: 94 *.md at 9ea2ccdc",
+     "hits": 10
+    },
+    {
+     "term": "nanosecond",
+     "where": "README+docs: 94 *.md at 9ea2ccdc",
+     "hits": 0
+    },
+    {
+     "term": "latency 0",
+     "where": "README+docs: 94 *.md at 9ea2ccdc",
+     "hits": 0
+    },
+    {
+     "term": "negative latency",
+     "where": "Apache JIRA ROCKETMQ (legacy tracker), REST JQL text ~ phrase",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "Apache JIRA ROCKETMQ (legacy)",
+     "hits": 3
+    },
+    {
+     "term": "clock skew",
+     "where": "Apache JIRA ROCKETMQ (legacy)",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "Apache JIRA ROCKETMQ (legacy)",
+     "hits": 0
+    },
+    {
+     "term": "rounding",
+     "where": "Apache JIRA ROCKETMQ (legacy)",
+     "hits": 6
+    },
+    {
+     "term": "millisecond",
+     "where": "Apache JIRA ROCKETMQ (legacy)",
+     "hits": 18
+    },
+    {
+     "term": "nanosecond",
+     "where": "Apache JIRA ROCKETMQ (legacy)",
+     "hits": 0
+    },
+    {
+     "term": "latency 0",
+     "where": "Apache JIRA ROCKETMQ (legacy)",
+     "hits": 0
+    }
+   ],
+   "reports": [
+    {
+     "title": "benchmark consumer tools can not read accumulated msg when producer stop sending msg",
+     "url": "https://github.com/apache/rocketmq/issues/2725",
+     "opened": "2021-03-11",
+     "outcome": "closed 2021-03-12 by the reporter after a consumer-group offset explanation; no code change",
+     "why_relevant": "The reporter's Consumer output with no traffic shows AVG(B2C) NaN and MAX(B2C) 0: the zero floor of the maximum, seen in a real run. It does not report a negative latency."
+    },
+    {
+     "title": "fix(client): clamp the pop retry delay level when a message is younger than the first level",
+     "url": "https://github.com/apache/rocketmq/pull/11063",
+     "opened": "2026-09-08",
+     "outcome": "open",
+     "why_relevant": "Names producer/consumer clock skew, which shrinks a consumer-clock-minus-born-timestamp age, as one trigger of an exception in client code. This shows the project knows born-timestamp ages are skew-sensitive. It is not about the benchmark."
+    },
+    {
+     "title": "add message property PROPERTY_BORN_TIMESTAMP and set bornTimeStamp in…",
+     "url": "https://github.com/apache/rocketmq/pull/4653",
+     "opened": "2022-07-21",
+     "outcome": "merged 2022-07-25",
+     "why_relevant": "In 5.x proxy deployments, the request-header born timestamp had been set by the proxy. This PR makes it carry the message's own born timestamp, which changes whose clock B2C subtracts there. Not a negative-latency report."
+    }
+   ],
+   "checked_here": [
+    "Consumer.java:166-167 `MessageExt msg = msgs.get(0);` / `long now = System.currentTimeMillis();`, :171 `long born2ConsumerRT = now - msg.getBornTimestamp();`, :177 `compareAndSetMax(statsBenchmarkConsumer.getBorn2ConsumerMaxRT(), born2ConsumerRT);`, :248 `while (value > prev) {` and :265 `born2ConsumerMaxRT = new AtomicLong(0L);`, read back at 9ea2ccdc"
+   ],
+   "auditor_checked": [
+    "Born timestamp origin read in the client and broker (DefaultMQProducerImpl.java:1000, SendMessageProcessor.java:313); store timestamp origin read in CommitLog and SystemClock.",
+    "Consumer.java read in full: it never calls setConsumeMessageBatchMaxSize; receive count is incremented once per listener call (Consumer.java:166-179).",
+    "Producer.java contains no '.set(' call, so its Max RT is never reset (grep in (b)); the Consumer resets both maxima each report (Consumer.java:104-116).",
+    "BatchProducer.java and TransactionProducer.java (grep only) compute publish RT the same way, as a currentTimeMillis difference with a maximum raised only by larger values.",
+    "Blob SHAs identical at rocketmq-all-5.5.1 and HEAD: Consumer.java 57270fcd006b31c89847fb06a73e111fffaa0267, Producer.java a86d2d7183f657f974369a5d13bf2cc58544980c, DefaultMQProducerImpl.java 9ad5fcef4dcd671f615553111ac504b91378ee12.",
+    "Extra GitHub searches: 'B2C' 1 hit (#2725), 'S2C' 1 (#2725), 'born2Consumer' 0, '\"benchmark\" negative' 10 (none about benchmark latency). The 92 'negative' hits were screened by title; none concerns the benchmark.",
+    "Search-method note: gh search issues sends single words unquoted. Quoting a single word changes counts in GitHub's advanced search: 'rounding' quoted gives 75 vs 2 unquoted here. Counts above use the unquoted gh form.",
+    "The rocketmq-site website repo: code search for 'benchmark' finds only release notes and a limits page; there is no benchmark usage page."
+   ],
+   "not_determined": [
+    "No run was made. The printed effect of a negative value (a lower or negative AVG, MAX 0) is read from the code.",
+    "Whose clock the born timestamp carries when the producer sends through a RocketMQ 5.x proxy (see PR #4653); not traced.",
+    "Whether users normally place producer and consumer on different hosts; the scripts allow either."
+   ]
+  },
+  {
+   "tool": "Apache ActiveMQ Artemis CLI 'artemis perf' (client, producer, consumer)",
+   "repository": "https://github.com/apache/artemis (formerly apache/activemq-artemis; the old URL redirects)",
+   "version_seen": "default branch main, HEAD 50c178e5053ab2d26158aa09bfb86fe99ace176f (committed 2026-10-10T03:38:28Z); no GitHub releases; latest tag 2.57.0 = 20cab945f0944d669a0aac383a7578e2a6fd7346 (committed 2026-09-09). RecordingMessageListener, SkeletalProducerLoadGenerator, PerfConsumerCommand, MicrosClock and JMSMessageListenerWrapper have the same blob SHAs at 2.57.0 and HEAD, and both pin HdrHistogram 2.2.2. Not archived.",
+   "what_it_times": "'transfer time' (end-to-end): the producer writes its send time into the long message property 'time'. The consumer's MessageListener subtracts it from its own clock reading and records the difference, in µs, in an HdrHistogram SingleWriterRecorder. Also 'send ack time' (publish latency: the same property read back in the producing process's JMS 2 CompletionListener). With --rate, also 'send delay time' (actual minus scheduled send time). Printed as mean, percentiles and max in µs.",
+   "documentation": {
+    "clock_and_resolution": {
+     "finding": "The clock depends on the command. 'perf client' runs producers and consumers in one JVM and stamps both ends with System.nanoTime() converted to µs: monotonic, one process. 'perf producer' and 'perf consumer' are separate JVMs, and each uses MicrosClock. MicrosClock is a wall clock read through jdk.internal.misc.VM.getNanoTimeAdjustment and truncated to µs. When that JDK-internal method is not accessible, it falls back to System.currentTimeMillis() x 1000 (1 ms steps in µs units) and prints a stderr notice. The broker-instance launcher uses artemis-utility.profile for every command except 'run'. That profile adds --add-opens java.base/jdk.internal.misc only when JAVA_ARGS is unset, and the home-folder launcher's default JAVA_ARGS lacks it. The docs name running producers and consumers on different machines as a reason to use the separate commands, so transfer time then subtracts one host's wall clock from another's.",
+     "evidence": [
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/PerfClientCommand.java:133",
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/PerfClientCommand.java:161",
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/PerfConsumerCommand.java:52-57",
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/PerfProducerCommand.java:79-84",
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/MicrosClock.java:49-73",
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/MicrosClock.java:33-43",
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/SkeletalProducerLoadGenerator.java:134",
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/RecordingMessageListener.java:77-100",
+      "docs/user-manual/perf-tools.adoc:13-21",
+      "artemis-cli/src/main/resources/org/apache/activemq/artemis/cli/commands/etc/artemis-utility.profile:30-32",
+      "artemis-cli/src/main/resources/org/apache/activemq/artemis/cli/commands/bin/artemis:52-58",
+      "artemis-distribution/src/main/resources/bin/artemis:47-48",
+      "docs/user-manual/perf-tools.adoc:26-30"
+     ]
+    },
+    "odd_values": {
+     "finding": "Zero is recorded normally. A negative transfer time goes straight into SingleWriterRecorder.recordValue. The build pins HdrHistogram 2.2.2, whose countsArrayIndex throws ArrayIndexOutOfBoundsException ('Histogram recorded value cannot be negative.') before any count, min/max or total is updated. The recorder is auto-resizing, but that code is never reached. RecordingMessageListener catches only JMSException, so the exception leaves onMessage after the message was already added to 'received' and to the message-count limiter. With the default CORE protocol, JMSMessageListenerWrapper catches the RuntimeException and logs WARN 132001 'Unhandled exception thrown from onMessage'. For the default AUTO_ACKNOWLEDGE session it then rolls the core session back: a JMS-style rollback that returns delivered messages to the broker. The perf tool counts nothing. Its fatal flag is set only for JMSException, so the summary still prints 'result: success'. 'send ack time' and 'send delay time' go through the same unguarded recordValue: asyncOnSendCompleted and trySend catch only JMSException, and the Core CompletionListenerWrapper has no catch. No clamp, filter or absolute value exists anywhere. The only Math.max(0, …) clamps the delay before the next scheduled send, not a latency.",
+     "evidence": [
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/RecordingMessageListener.java:77-100",
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/MessageListenerBenchmark.java:274-278",
+      "pom.xml:126",
+      "artemis-pom/pom.xml:427-429",
+      "artemis-cli/pom.xml:143-146",
+      "src/main/java/org/HdrHistogram/AbstractHistogram.java:2397-2400 (HdrHistogram/HdrHistogram @3ae7ae18, tag HdrHistogram-2.2.2)",
+      "src/main/java/org/HdrHistogram/AbstractHistogram.java:558-567 (HdrHistogram @3ae7ae18)",
+      "src/main/java/org/HdrHistogram/SingleWriterRecorder.java:83-85 (HdrHistogram @3ae7ae18)",
+      "src/main/java/org/HdrHistogram/SingleWriterRecorder.java:134-141 (HdrHistogram @3ae7ae18)",
+      "src/main/java/org/HdrHistogram/Histogram.java:173-176 (HdrHistogram @3ae7ae18)",
+      "artemis-jms-client/src/main/java/org/apache/activemq/artemis/jms/client/ActiveMQMessageConsumer.java:118",
+      "artemis-jms-client/src/main/java/org/apache/activemq/artemis/jms/client/JMSMessageListenerWrapper.java:108-131",
+      "artemis-jms-client/src/main/java/org/apache/activemq/artemis/jms/client/ActiveMQJMSClientLogger.java:34-35",
+      "artemis-core-client/src/main/java/org/apache/activemq/artemis/core/client/impl/ClientSessionImpl.java:919-939",
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/MessageListenerBenchmark.java:210",
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/ConnectionAbstract.java:34-35",
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/LiveStatistics.java:156-171",
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/LiveStatistics.java:346-349",
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/LiveStatistics.java:334-343",
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/SkeletalProducerLoadGenerator.java:164-176",
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/SkeletalProducerLoadGenerator.java:219-223",
+      "artemis-jms-client/src/main/java/org/apache/activemq/artemis/jms/client/ActiveMQMessageProducer.java:538-543",
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/SkeletalProducerLoadGenerator.java:141-145",
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/ProducerTargetRateLoadGenerator.java:52-58",
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/ProducerTargetRateLoadGenerator.java:67-70"
+     ]
+    },
+    "warnings": {
+     "finding": "Nothing about clocks, synchronisation or negative values. perf-tools.adoc recommends the separate producer and consumer for different machines and defines transfer time with no clock caveat. A grep of that page for clock|skew|sync|ntp|wall|machine|negative|add-opens|microsecond finds only the different-machines line; the other hits are 'async'. The only clock-related text is the code's stderr notice when it falls back to System.currentTimeMillis, which is a resolution notice, not a synchronisation warning. The eight-term hits in the 126 doc files are unrelated to perf.",
+     "evidence": [
+      "docs/user-manual/perf-tools.adoc:13-21",
+      "docs/user-manual/perf-tools.adoc:104-110",
+      "artemis-cli/src/main/java/org/apache/activemq/artemis/cli/commands/messages/perf/PerfConsumerCommand.java:52-57"
+     ]
+    }
+   },
+   "plan_said": "not in the plan's table of tools: read on 11 Oct 2026 at the author's request, so the plan made no prediction",
+   "audit_found": "With 'perf producer' and 'perf consumer' as separate processes (the documented multi-machine setup), transfer time subtracts two wall clocks. Any negative difference makes HdrHistogram 2.2.2 throw. The sample is lost, the Core JMS client logs a WARN and rolls the session back, and the perf summary still reports success with nothing counted. Inside 'perf client' both stamps come from one JVM's nanoTime, so negatives are not expected there.",
+   "prediction": "none made",
+   "searches": [
+    {
+     "term": "negative latency",
+     "where": "GitHub apache/artemis PRs (GitHub issues disabled; gh search issues --include-prs --limit 100)",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "GitHub apache/artemis PRs (gh search issues)",
+     "hits": 96
+    },
+    {
+     "term": "clock skew",
+     "where": "GitHub apache/artemis PRs (gh search issues)",
+     "hits": 1
+    },
+    {
+     "term": "resolution",
+     "where": "GitHub apache/artemis PRs (gh search issues)",
+     "hits": 38
+    },
+    {
+     "term": "rounding",
+     "where": "GitHub apache/artemis PRs (gh search issues)",
+     "hits": 1
+    },
+    {
+     "term": "millisecond",
+     "where": "GitHub apache/artemis PRs (gh search issues)",
+     "hits": 29
+    },
+    {
+     "term": "nanosecond",
+     "where": "GitHub apache/artemis PRs (gh search issues)",
+     "hits": 6
+    },
+    {
+     "term": "latency 0",
+     "where": "GitHub apache/artemis PRs (gh search issues)",
+     "hits": 0
+    },
+    {
+     "term": "negative latency",
+     "where": "all 6,780 apache/artemis PRs listed via pulls API, title+body substring",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "all 6,780 PRs, title+body substring",
+     "hits": 43
+    },
+    {
+     "term": "clock skew",
+     "where": "all 6,780 PRs, title+body substring",
+     "hits": 1
+    },
+    {
+     "term": "resolution",
+     "where": "all 6,780 PRs, title+body substring",
+     "hits": 26
+    },
+    {
+     "term": "rounding",
+     "where": "all 6,780 PRs, title+body substring",
+     "hits": 2
+    },
+    {
+     "term": "millisecond",
+     "where": "all 6,780 PRs, title+body substring",
+     "hits": 4
+    },
+    {
+     "term": "nanosecond",
+     "where": "all 6,780 PRs, title+body substring",
+     "hits": 1
+    },
+    {
+     "term": "latency 0",
+     "where": "all 6,780 PRs, title+body substring",
+     "hits": 0
+    },
+    {
+     "term": "negative latency",
+     "where": "README.md + docs/**/*.adoc|md (126 files) at 50c178e5, matching lines",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "README+docs (126 files)",
+     "hits": 8
+    },
+    {
+     "term": "clock skew",
+     "where": "README+docs (126 files)",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "README+docs (126 files)",
+     "hits": 1
+    },
+    {
+     "term": "rounding",
+     "where": "README+docs (126 files)",
+     "hits": 0
+    },
+    {
+     "term": "millisecond",
+     "where": "README+docs (126 files)",
+     "hits": 124
+    },
+    {
+     "term": "nanosecond",
+     "where": "README+docs (126 files)",
+     "hits": 3
+    },
+    {
+     "term": "latency 0",
+     "where": "README+docs (126 files)",
+     "hits": 0
+    },
+    {
+     "term": "negative latency",
+     "where": "Apache JIRA ARTEMIS (the project's issue tracker), REST JQL text ~",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "Apache JIRA ARTEMIS",
+     "hits": 104
+    },
+    {
+     "term": "clock skew",
+     "where": "Apache JIRA ARTEMIS",
+     "hits": 1
+    },
+    {
+     "term": "resolution",
+     "where": "Apache JIRA ARTEMIS",
+     "hits": 53
+    },
+    {
+     "term": "rounding",
+     "where": "Apache JIRA ARTEMIS (JIRA stems the word)",
+     "hits": 84
+    },
+    {
+     "term": "millisecond",
+     "where": "Apache JIRA ARTEMIS",
+     "hits": 118
+    },
+    {
+     "term": "nanosecond",
+     "where": "Apache JIRA ARTEMIS",
+     "hits": 35
+    },
+    {
+     "term": "latency 0",
+     "where": "Apache JIRA ARTEMIS",
+     "hits": 0
+    }
+   ],
+   "reports": [
+    {
+     "title": "ARTEMIS-3522 Implement performance tools to evaluate throughput and Response Under Load performance of Artemis",
+     "url": "https://issues.apache.org/jira/browse/ARTEMIS-3522",
+     "opened": "2021-10-09",
+     "outcome": "Closed/Fixed 2022-03-22, fix version 2.21.0",
+     "why_relevant": "The perf tool's founding requirements include cross-JVM timing at microsecond granularity. The issue never discusses clock synchronisation or negative values."
+    },
+    {
+     "title": "ARTEMIS-3522 Implement performance tool for RUL benchmarks",
+     "url": "https://github.com/apache/artemis/pull/3857",
+     "opened": "2021-11-17",
+     "outcome": "closed 2022-03-02 without a GitHub merge (the JIRA is marked Fixed)",
+     "why_relevant": "The author's first comment plans wall-clock providers so that µs latencies can be measured across processes and machines. This confirms cross-machine wall-clock timing was the design intent."
+    },
+    {
+     "title": "ARTEMIS-1393 CriticalAnalyzer timeout uses System::currentTimeMillis",
+     "url": "https://issues.apache.org/jira/browse/ARTEMIS-1393",
+     "opened": "2017-09-06",
+     "outcome": "Closed/Fixed 2017-10-19, fix version 2.4.0",
+     "why_relevant": "Broker-side precedent: the broker's timeout code moved from the wall clock to nanoTime because the wall clock follows OS/NTP changes. Not the perf tool."
+    },
+    {
+     "title": "ARTEMIS-2213 Clock drift causing server halt",
+     "url": "https://issues.apache.org/jira/browse/ARTEMIS-2213",
+     "opened": "2018-12-25",
+     "outcome": "Resolved as Abandoned 2020-01-10; PR #2481 closed unmerged 2019-01-04",
+     "why_relevant": "A backward clock step made an elapsed time negative and halted brokers: a precedent for negative durations from wall-clock steps. Not the perf tool."
+    }
+   ],
+   "checked_here": [
+    "RecordingMessageListener.java:85-88 `final long start = message.getLongProperty(\"time\");` / `final long receivedOn = timeProvider.now();` / `final long elapsedUs = receivedOn - start;` / `receiveLatencyRecorder.recordValue(elapsedUs);`, read back at 50c178e5",
+    "HdrHistogram AbstractHistogram.java:2398-2399 `if (value < 0) {` / `throw new ArrayIndexOutOfBoundsException(\"Histogram recorded value cannot be negative.\");`, read back at tag HdrHistogram-2.2.2 (3ae7ae18)"
+   ],
+   "auditor_checked": [
+    "HdrHistogram 2.2.2 is pinned (pom.xml:126; also 2.2.2 at tag 2.57.0). Its negative-value behaviour was read in HdrHistogram's own source at tag HdrHistogram-2.2.2 (commit 3ae7ae18d81887484974011c1c7a2bdc9178ab09).",
+    "Auto-resize does not save negatives: countsArrayIndex throws before the try/handleRecordException path (AbstractHistogram.java:558-567, 2397-2400).",
+    "The perf listener is wrapped by JMSMessageListenerWrapper on CORE connections (ActiveMQMessageConsumer.java:118). Default protocol is CORE (ConnectionAbstract.java:34-35). Consumer sessions are AUTO_ACKNOWLEDGE unless --tx (MessageListenerBenchmark.java:210). AMQP uses Qpid JMS's JmsConnectionFactory (ConnectionAbstract.java:27, 85).",
+    "Launcher scripts read: from the home folder, or with a user-set JAVA_ARGS as the docs' NOTE suggests, MicrosClock lacks --add-opens and the 1 ms fallback applies. This is deduced from the scripts and MicrosClock.checkAvailable, not run.",
+    "Repository renamed: GitHub search on repo:apache/activemq-artemis returns HTTP 422, and GraphQL returns 0 even for a bare repo: query. Searches were rerun on repo:apache/artemis, and every PR was also listed through the pulls API.",
+    "Perf-tool sources and JMSMessageListenerWrapper are byte-identical (same blob SHAs) at tag 2.57.0 and HEAD.",
+    "JIRA ARTEMIS searched for perf-tool issues (artemis perf, perf client/consumer/producer, transfer time, MicrosClock, HdrHistogram): ARTEMIS-3901, -6034 and -6280 concern shutdown and durable subscriptions; none concern latency values."
+   ],
+   "not_determined": [
+    "What the AMQP path (Qpid JMS client) does with a RuntimeException thrown from onMessage; not read.",
+    "What happens after the CORE rollback: redelivery, re-recording the same message with a later receive time, double counting in 'received', or dead-lettering after max delivery attempts. Broker behaviour not read or run.",
+    "Behaviour with --tx: the wrapper skips the rollback for transacted sessions; consequences not traced.",
+    "Where an exception thrown from the producer's CompletionListener ends up below ActiveMQMessageProducer.sendAcknowledged. By code reading, such a completion never reaches onSendCompleted(), so 'pending' is never decremented, and with the default --max-pending 1 the generator would stop sending (AsyncJms2ProducerFacade.java:138-143, 179-191). Deduced, not executed.",
+    "Whether 'send delay time' (now minus fireTimeMicros) can actually go negative when the executor delay and the wall-clock provider disagree.",
+    "No run was made."
+   ]
+  },
+  {
+   "tool": "Quiver (quiver, quiver-arrow)",
+   "repository": "https://github.com/ssorj/quiver",
+   "version_seen": "default branch main, HEAD ba4e5766b3b18e8456eefe8c8754894586ac58dc (committed 2025-07-31T12:32:18Z), VERSION.txt 0.4.0-SNAPSHOT; latest release 0.3.0 = 41cfc3c9964a58cda829f157b6280d519b94343a (published 2019-04-22). arrow.py, common.py.in and the C arrow differ between 0.3.0 and HEAD. Not archived.",
+   "what_it_times": "End-to-end only. The sender arrow puts its send time in the application property SendTime and writes '<send-time>,0' per message. The receiver arrow writes '<send-time>,<receive-time>' using its own clock. quiver-arrow (Python) reads the receiver's transfer file and computes receive minus send for every message: the 0/25/50/75/100% and 90-99.999% percentiles, and the mean in the JSON summary. It also computes a live mean from every 100th line. 'quiver' launches one receiver and one sender quiver-arrow as local subprocesses and prints the receiver's percentiles in ms.",
+   "documentation": {
+    "clock_and_resolution": {
+     "finding": "Every arrow stamps whole milliseconds from a wall clock. The default C arrow uses clock_gettime(CLOCK_REALTIME) truncated to ms. C++ uses system_clock in ms, Python int(time.time()*1000), JavaScript Date().getTime(). The JMS, ProtonJ2 and Vert.x arrows use System.currentTimeMillis(), and .NET uses DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(). The implementation contract requires unix-epoch milliseconds. Under 'quiver', both arrows are separate processes on the same host, reading one CLOCK_REALTIME. 'quiver-arrow send' and 'quiver-arrow receive' can be started separately against any server URL, so different hosts are possible, but no doc describes that. Sub-millisecond latencies print as 0 ms, as in the README's sample run.",
+     "evidence": [
+      "impls/quiver-arrow-qpid-proton-c.c:132-136",
+      "impls/quiver-arrow-qpid-proton-c.c:201-205",
+      "impls/quiver-arrow-qpid-proton-c.c:229-230",
+      "python/quiver/common.py.in:126",
+      "python/quiver/common.py.in:368-369",
+      "impls/quiver-arrow-qpid-proton-python.in:139-145",
+      "impls/quiver-arrow-qpid-proton-python.in:163-166",
+      "impls/quiver-arrow-qpid-proton-cpp.cpp:51-54",
+      "impls/quiver-arrow-qpid-proton-cpp.cpp:228-231",
+      "impls/quiver-arrow-rhea.in:187-188",
+      "impls/quiver-arrow-rhea.in:215-218",
+      "java/quiver-jms-driver/src/main/java/net/ssorj/quiver/QuiverArrowJms.java:233-234",
+      "java/quiver-jms-driver/src/main/java/net/ssorj/quiver/QuiverArrowJms.java:273-274",
+      "java/quiver-protonj2/src/main/java/net/ssorj/quiver/QuiverArrowProtonJ2.java:246-247",
+      "java/quiver-protonj2/src/main/java/net/ssorj/quiver/QuiverArrowProtonJ2.java:306-307",
+      "java/quiver-vertx-proton/src/main/java/net/ssorj/quiver/QuiverArrowVertxProton.java:208-209",
+      "java/quiver-vertx-proton/src/main/java/net/ssorj/quiver/QuiverArrowVertxProton.java:245-246",
+      "dotnet/quiver-proton-dotnet/Program.cs:252-253",
+      "dotnet/quiver-proton-dotnet/Program.cs:321-322",
+      "impls/README.md:76-85",
+      "impls/README.md:127-128",
+      "python/quiver/pair.py:123-138",
+      "README.md:9-16",
+      "README.md:36-41"
+     ]
+    },
+    "odd_values": {
+     "finding": "Zero is kept. Values below zero are not filtered, clamped or counted, but the final statistics corrupt them. compute_results loads both columns as numpy uint64, and compute_latencies subtracts the two uint64 arrays. So a receive stamp earlier than the send stamp gives 2^64 - |d| (about 1.8e19 ms) instead of -|d|. numpy documents that its integer types behave like C integers and that it does not warn on overflow in arrays. That value then enters latency_average, the 100% field and the upper nines. The live mean (receiver snapshots and the 'Lat [ms]' column of 'quiver') uses Python ints and keeps negatives negative, so live and final figures disagree on the same data. Lines without a comma are skipped with an error message. Release 0.3.0 kept negatives: it built a signed numpy int32 array from Python-int differences. uint64 arrived in commit 072ae54a99cbfc395aa301c89ac82fd64c5a30e0 (committed 2021-12-03). Side finding: scripts/gen-benchmark-results labels latency_quartiles[1] (the 25th percentile) 'Median latency' and latency_nines[3] (the 99.99th) '99.999% latency'.",
+     "evidence": [
+      "python/quiver/arrow.py:263-265",
+      "python/quiver/arrow.py:300-308",
+      "doc/source/reference/arrays.scalars.rst:110-113 (numpy/numpy @70fa9984)",
+      "doc/source/reference/arrays.promotion.rst:132-133 (numpy/numpy @70fa9984)",
+      "python/quiver/arrow.py:395-402",
+      "python/quiver/arrow.py:429-436",
+      "python/quiver/arrow.py:438-460",
+      "python/quiver/pair.py:242",
+      "python/quiver/arrow.py:290-298",
+      "python/quiver/arrow.py:305-325 (@41cfc3c9, release 0.3.0)",
+      "python/quiver/arrow.py:319 (@fcfff787, before the change)",
+      "python/quiver/arrow.py:292-293, 323-324 (@072ae54a, the change)",
+      "scripts/gen-benchmark-results:252-253"
+     ]
+    },
+    "warnings": {
+     "finding": "Nothing about clocks or negative values. impls/README.md fixes the unit (epoch milliseconds) and the SendTime property. README.md's sample run shows 0 ms at 0% and 25% and a live latency of 0, with no comment. Of the eight terms, only 'millisecond' occurs in the 3 Markdown files (impls/README.md lines 83 and 128).",
+     "evidence": [
+      "impls/README.md:76-85",
+      "impls/README.md:127-128",
+      "README.md:9-16",
+      "README.md:36-41"
+     ]
+    }
+   },
+   "plan_said": "not in the plan's table of tools: read on 11 Oct 2026 at the author's request, so the plan made no prediction",
+   "audit_found": "Quiver's final latency statistics turn any negative end-to-end value into an enormous positive one, with no filter, count or warning. This is uint64 wraparound on main since Dec 2021; the 2019 release kept the value negative. Zero is kept, and it is common because every implementation stamps whole milliseconds.",
+   "prediction": "none made",
+   "searches": [
+    {
+     "term": "negative latency",
+     "where": "GitHub ssorj/quiver issues+PRs (gh search issues --include-prs --limit 100)",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "GitHub ssorj/quiver issues+PRs",
+     "hits": 0
+    },
+    {
+     "term": "clock skew",
+     "where": "GitHub ssorj/quiver issues+PRs",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "GitHub ssorj/quiver issues+PRs",
+     "hits": 1
+    },
+    {
+     "term": "rounding",
+     "where": "GitHub ssorj/quiver issues+PRs",
+     "hits": 0
+    },
+    {
+     "term": "millisecond",
+     "where": "GitHub ssorj/quiver issues+PRs",
+     "hits": 3
+    },
+    {
+     "term": "nanosecond",
+     "where": "GitHub ssorj/quiver issues+PRs",
+     "hits": 0
+    },
+    {
+     "term": "latency 0",
+     "where": "GitHub ssorj/quiver issues+PRs",
+     "hits": 1
+    },
+    {
+     "term": "negative latency",
+     "where": "README.md, impls/README.md, packaging/README.md at ba4e5766, matching lines",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "3 Markdown files",
+     "hits": 0
+    },
+    {
+     "term": "clock skew",
+     "where": "3 Markdown files",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "3 Markdown files",
+     "hits": 0
+    },
+    {
+     "term": "rounding",
+     "where": "3 Markdown files",
+     "hits": 0
+    },
+    {
+     "term": "millisecond",
+     "where": "3 Markdown files",
+     "hits": 2
+    },
+    {
+     "term": "nanosecond",
+     "where": "3 Markdown files",
+     "hits": 0
+    },
+    {
+     "term": "latency 0",
+     "where": "3 Markdown files",
+     "hits": 0
+    }
+   ],
+   "reports": [
+    {
+     "title": "Support target throughput benchmarks and microseconds precision",
+     "url": "https://github.com/ssorj/quiver/issues/39",
+     "opened": "2018-06-20",
+     "outcome": "open",
+     "why_relevant": "The only latency-resolution discussion. A contributor's run shows 0 ms at the 0/25/50% percentiles in ms, versus 42/58/65 µs with a microsecond branch, and asks for µs timestamps. Negative values are not mentioned."
+    },
+    {
+     "title": "Added support for target throughput benchmarks in Java",
+     "url": "https://github.com/ssorj/quiver/pull/38",
+     "opened": "2018-06-20",
+     "outcome": "closed 2021-05-24 without a GitHub merge; the maintainer says he cherry-picked it and still plans the millis-to-micros change",
+     "why_relevant": "The maintainer acknowledges that millisecond resolution remains."
+    }
+   ],
+   "checked_here": [
+    "arrow.py:264 `dtype = [(\"send_time\", _numpy.uint64), (\"receive_time\", _numpy.uint64)]` and :301 `latencies = transfers[\"receive_time\"] - transfers[\"send_time\"]`, read back at ba4e5766; release 0.3.0's arrow.py:316 `latencies = _numpy.array(latencies, _numpy.int32)`, read back at 41cfc3c9"
+   ],
+   "auditor_checked": [
+    "Clock source read in all eight arrow implementations at HEAD (C, C++, Python, JavaScript, JMS driver, ProtonJ2, Vert.x Proton, .NET); all are epoch milliseconds.",
+    "History: the uint64 dtype and uint64 subtraction were introduced by commit 072ae54a (committed 2021-12-03). The preceding version (fcfff787ea706cfb6cda3768648f5b1646f189b5) and release 0.3.0 build a signed int32 array.",
+    "numpy semantics taken from numpy's docs at 70fa99843c75ae12434805bb4b1b07b94598c5c9 (integers mirror C integers; array overflow does not warn).",
+    "The live mean samples every 100th transfer line with signed Python ints (arrow.py:429-460); pair.py prints it as 'Lat [ms]' (pair.py:242).",
+    "gen-benchmark-results label mismatch, checked against arrow.py's percentile order (arrow.py:300-308)."
+   ],
+   "not_determined": [
+    "No run. The exact value printed for a negative difference was not observed. Expected 2^64 - |d| ms; because numpy.percentile returns float64, a small |d| would print as 18446744073709551616.",
+    "Whether numpy.fromiter would reject a negative field in the transfer file (not reachable with epoch stamps).",
+    "Whether sender and receiver are ever run on different hosts in practice; the docs never describe it."
+   ]
+  },
+  {
+   "tool": "Apache BookKeeper benchmark (bookkeeper-benchmark; BenchThroughputLatency via 'bin/benchmark writes')",
+   "repository": "https://github.com/apache/bookkeeper",
+   "version_seen": "default branch master, HEAD 773a988ddf8b888a8869c6ae33f696935eba5cdc (committed 2026-09-16T20:54:13Z); latest release release-4.18.1 = 01512c31b302a5ea0da3ea84897841a6fcb4713d (published 2026-09-16); BenchThroughputLatency.java has the same blob SHA at both; not archived",
+   "what_it_times": "Publish (write) latency only. System.nanoTime() is read just before LedgerHandle.asyncAddEntry and again in the addComplete callback, in the same client process. Per-entry nanoseconds go into a long[] indexed by send order. At the end it logs the 99th and 95th percentiles in ms and dumps the sorted values to latencyDump.dat. There is no end-to-end latency; BenchReadThroughputLatency and BenchBookie report only totals or averages.",
+   "documentation": {
+    "clock_and_resolution": {
+     "finding": "Monotonic System.nanoTime() in nanoseconds, with both stamps in the same JVM. Clock offsets between machines play no part, and wall-clock steps cannot make the difference negative. The dump file also writes each value truncated to whole ms (l / 1000000).",
+     "evidence": [
+      "bookkeeper-benchmark/src/main/java/org/apache/bookkeeper/benchmark/BenchThroughputLatency.java:187-188",
+      "bookkeeper-benchmark/src/main/java/org/apache/bookkeeper/benchmark/BenchThroughputLatency.java:233-248",
+      "bookkeeper-benchmark/src/main/java/org/apache/bookkeeper/benchmark/BenchThroughputLatency.java:428-439",
+      "bookkeeper-benchmark/bin/benchmark:51-55",
+      "bookkeeper-benchmark/bin/benchmark:120-121"
+     ]
+    },
+    "odd_values": {
+     "finding": "Values at or below zero are dropped silently. The latency array starts as zeros, and a slot is written only when rc == 0, so 0 also means 'no successful completion'. The summary keeps only entries with latencies[i] > 0 and uses that filtered count as the number of completions for throughput. A zero or negative latency would therefore look like a failed or unfinished add, and nothing counts the dropped entries. With no positive entries the percentile function returns 0.0, so an empty run logs 0.0 ms percentiles. For comparison, the bookie server's BKStats.updateLatency drops negative latencies with a WARN 'Latency time coming negative'; this guard was added after BOOKKEEPER-327.",
+     "evidence": [
+      "bookkeeper-benchmark/src/main/java/org/apache/bookkeeper/benchmark/BenchThroughputLatency.java:72",
+      "bookkeeper-benchmark/src/main/java/org/apache/bookkeeper/benchmark/BenchThroughputLatency.java:92",
+      "bookkeeper-benchmark/src/main/java/org/apache/bookkeeper/benchmark/BenchThroughputLatency.java:233-248",
+      "bookkeeper-benchmark/src/main/java/org/apache/bookkeeper/benchmark/BenchThroughputLatency.java:396-413",
+      "bookkeeper-benchmark/src/main/java/org/apache/bookkeeper/benchmark/BenchThroughputLatency.java:445-451",
+      "bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/BKStats.java:109-117"
+     ]
+    },
+    "warnings": {
+     "finding": "None. bookkeeper-benchmark has no README. The website lists it only as a benchmarking suite for measuring BookKeeper performance, and bin/benchmark's usage text names only writes, reads and bookie. The eight-term hits in the 127 doc files are unrelated configuration and proposal text.",
+     "evidence": [
+      "site3/website/docs/getting-started/installation.md:68",
+      "bookkeeper-benchmark/bin/benchmark:51-55"
+     ]
+    }
+   },
+   "plan_said": "not in the plan's table of tools: read on 11 Oct 2026 at the author's request, so the plan made no prediction",
+   "audit_found": "BenchThroughputLatency times a same-process publish with the monotonic clock, so negatives are not expected. Its > 0 filter would silently drop any zero or negative value together with failed adds, and an empty run reports 0.0 ms percentiles. Side finding: the separate bkperf tool's 'dlog read' prints latency mean, percentiles and max from HdrHistogram recorders that nothing writes to, so those fields are always 0.",
+   "prediction": "none made",
+   "searches": [
+    {
+     "term": "negative latency",
+     "where": "GitHub apache/bookkeeper issues+PRs (gh search issues --include-prs --limit 100)",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "GitHub apache/bookkeeper issues+PRs",
+     "hits": 84
+    },
+    {
+     "term": "clock skew",
+     "where": "GitHub apache/bookkeeper issues+PRs",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "GitHub apache/bookkeeper issues+PRs",
+     "hits": 43
+    },
+    {
+     "term": "rounding",
+     "where": "GitHub apache/bookkeeper issues+PRs",
+     "hits": 2
+    },
+    {
+     "term": "millisecond",
+     "where": "GitHub apache/bookkeeper issues+PRs",
+     "hits": 22
+    },
+    {
+     "term": "nanosecond",
+     "where": "GitHub apache/bookkeeper issues+PRs",
+     "hits": 1
+    },
+    {
+     "term": "latency 0",
+     "where": "GitHub apache/bookkeeper issues+PRs",
+     "hits": 0
+    },
+    {
+     "term": "negative latency",
+     "where": "README+docs: 127 *.md/*.mdx/*.txt at 773a988d outside src/test, versioned_docs and blog, matching lines",
+     "hits": 0
+    },
+    {
+     "term": "negative",
+     "where": "README+docs (127 files)",
+     "hits": 24
+    },
+    {
+     "term": "clock skew",
+     "where": "README+docs (127 files)",
+     "hits": 0
+    },
+    {
+     "term": "resolution",
+     "where": "README+docs (127 files)",
+     "hits": 8
+    },
+    {
+     "term": "rounding",
+     "where": "README+docs (127 files)",
+     "hits": 0
+    },
+    {
+     "term": "millisecond",
+     "where": "README+docs (127 files)",
+     "hits": 18
+    },
+    {
+     "term": "nanosecond",
+     "where": "README+docs (127 files)",
+     "hits": 0
+    },
+    {
+     "term": "latency 0",
+     "where": "README+docs (127 files)",
+     "hits": 0
+    },
+    {
+     "term": "negative latency",
+     "where": "Apache JIRA BOOKKEEPER (legacy tracker), REST JQL text ~ phrase",
+     "hits": 2
+    },
+    {
+     "term": "negative",
+     "where": "Apache JIRA BOOKKEEPER (legacy)",
+     "hits": 19
+    },
+    {
+     "term": "clock skew",
+     "where": "Apache JIRA BOOKKEEPER (legacy)",
+     "hits": 1
+    },
+    {
+     "term": "resolution",
+     "where": "Apache JIRA BOOKKEEPER (legacy)",
+     "hits": 11
+    },
+    {
+     "term": "rounding",
+     "where": "Apache JIRA BOOKKEEPER (legacy)",
+     "hits": 21
+    },
+    {
+     "term": "millisecond",
+     "where": "Apache JIRA BOOKKEEPER (legacy)",
+     "hits": 20
+    },
+    {
+     "term": "nanosecond",
+     "where": "Apache JIRA BOOKKEEPER (legacy)",
+     "hits": 3
+    },
+    {
+     "term": "latency 0",
+     "where": "Apache JIRA BOOKKEEPER (legacy)",
+     "hits": 2
+    }
+   ],
+   "reports": [
+    {
+     "title": "BOOKKEEPER-327 System.currentTimeMillis usage in BookKeeper",
+     "url": "https://issues.apache.org/jira/browse/BOOKKEEPER-327",
+     "opened": "2012-07-05",
+     "outcome": "Closed/Fixed 2012-07-24, fix versions 4.2.0 and 4.1.1",
+     "why_relevant": "System-time changes made bookie latency statistics negative and threw ArrayIndexOutOfBoundsException. The fix moved to nanoTime and made BKStats drop negative latencies with a WARN; the guard is still at BKStats.java:109-117. Server statistics, not the benchmark."
+    },
+    {
+     "title": "BOOKKEEPER-330 System.currentTimeMillis usage in Hedwig",
+     "url": "https://issues.apache.org/jira/browse/BOOKKEEPER-330",
+     "opened": "2012-07-09",
+     "outcome": "Closed/Fixed 2012-07-26",
+     "why_relevant": "The same change for Hedwig. A comment discusses currentTimeMillis's lower resolution and its exposure to NTP jumps and clock skew."
+    },
+    {
+     "title": "BOOKKEEPER-310 Changes in hedwig server to support JMS spec",
+     "url": "https://issues.apache.org/jira/browse/BOOKKEEPER-310",
+     "opened": "2012-06-21",
+     "outcome": "Closed/Fixed 2012-07-30",
+     "why_relevant": "A review comment attributes an ArrayIndexOutOfBoundsException in latency buckets to a negative latency after a time change, and defers the fix to BOOKKEEPER-327/330."
+    },
+    {
+     "title": "The latency of BenchThroughputLatency may be wrong due to Integer overflow when we do a large scale benchmark test",
+     "url": "https://github.com/apache/bookkeeper/pull/2381",
+     "opened": "2020-07-20",
+     "outcome": "merged 2020-08-13",
+     "why_relevant": "In the benchmark itself: above 20,000,000 samples the percentile index went negative through int overflow. This is a negative index, not a negative latency."
+    },
+    {
+     "title": "fix wrong implementation for percentile in bookkeeper-benchmark",
+     "url": "https://github.com/apache/bookkeeper/pull/3864",
+     "opened": "2023-03-14",
+     "outcome": "merged 2024-04-22",
+     "why_relevant": "Changed the percentile computation in the same reporting code."
+    },
+    {
+     "title": "Fix NPE in BenchThroughputLatency",
+     "url": "https://github.com/apache/bookkeeper/pull/3859",
+     "opened": "2023-03-12",
+     "outcome": "merged 2023-03-13",
+     "why_relevant": "The reporter's log shows a 0-completion run printing NaN percentiles. At the pinned SHA the percentile function returns 0.0 for an empty array instead."
+    }
+   ],
+   "checked_here": [
+    "BenchThroughputLatency.java:239 `long newTime = System.nanoTime() - context.localStartTime;`, :244-245 `if (rc == 0) {` / `latencies[(int) entryId] = newTime;` and :398 `if (bench.latencies[i] > 0) {`, read back at 773a988d"
+   ],
+   "auditor_checked": [
+    "BenchThroughputLatency.java has the same blob (42aed3ce1727305460a839942a6022f692241df7) at release-4.18.1 and HEAD.",
+    "BKStats drop-negative guard at HEAD (BKStats.java:109-117), traced to BOOKKEEPER-327's discussion.",
+    "bkperf (tools/perf, 'BookKeeper Perf Tool'): dlog write records nanoTime-based µs into HdrHistogram Recorders (PerfWriter.java:313-328). PerfReaderBase, PerfReader and PerfSegmentReader never call recordValue (greps in (b)), yet log latency stats from those recorders (PerfReaderBase.java:94-99, 146-162; PerfReader.java:123-126). HdrHistogram 2.1.10 (pom.xml:166) returns 0 for an empty histogram's mean, percentiles and max (AbstractHistogram.java:1247-1249, 1277-1280, 1336-1345 at 17027831283e87e6d0aa32eeb62991c911a65c91).",
+    "BenchReadThroughputLatency and BenchBookie use nanoTime totals/averages only (grep plus partial read).",
+    "The legacy JIRA BOOKKEEPER was searched in addition to GitHub; 'rounding' quoted vs unquoted on GitHub gives 28 vs 2 (unquoted gh form reported)."
+   ],
+   "not_determined": [
+    "No run.",
+    "Whether an add can complete within one System.nanoTime() tick, which would give a latency of 0 that is then silently dropped; not tested.",
+    "bkperf journal and table commands were located but not read in full."
+   ]
+  }
+ ]
+}

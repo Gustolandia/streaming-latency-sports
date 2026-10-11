@@ -1076,17 +1076,19 @@ on the harness above.
 \section{S5. Tools read at source, tools run, and public reports}
 \label{s:tools}
 
-\textbf{Tools read at source.} \harnessMessageWordCap{} of the \harnessAuditedWord{} tools we read
-at source time messages, and \harnessMessageCutWord{} of those cut a value at or below zero out of
-a figure they report without counting it. One of the \harnessMessageCutWord{},
-\texttt{emqtt-bench}, keeps the value in its histogram and leaves it out of the average it prints.
-Of the remaining two, \kafka{}'s bundled pair never measures it (the note on
-\texttt{EndToEndLatency} below), and PerfKit Benchmarker's messaging benchmark keeps it, floored to
-whole milliseconds. Counted by whether the sample itself is lost, \harnessSilentWord{} of all
-\harnessAuditedWord{} dispose of it, \texttt{fio} and \texttt{btt} among them. Six of the tools,
-which the plan never listed, were read in October 2026 by the protocol of the earlier audit
-(\brk{data/tools_audit/batch_10.json}). Every verdict traces to a line of source a reader can
-check. Each row of the registry file,
+\textbf{Tools read at source.} Of the \harnessAuditedWord{} tools we read at source,
+\harnessMessageWord{} time messages, and \harnessMessageCutWord{} of those cut a value at or below
+zero out of a figure they report without counting it. One of them, \texttt{emqtt-bench}, keeps the
+value in its histogram and leaves it out of the average it prints. Of the remaining
+\harnessMessageKeepWord{}, SBK keeps the value out of its figures and counts it, the one message
+tool that does. \kafka{}'s bundled pair, IBM Sarama's producer tool and \texttt{mqtt-benchmark}
+time in one process on a monotonic clock and never meet it (the note on \texttt{EndToEndLatency}
+below). PerfKit Benchmarker's messaging benchmark, Redpanda's \texttt{kgo-repeater} and RocketMQ's
+benchmark keep it. Counted by whether the sample itself is lost, \harnessSilentWord{} of all
+\harnessAuditedWord{} dispose of it, \texttt{fio} and \texttt{btt} among them. The plan never
+listed the tools of two readings in October 2026, which followed the protocol of the earlier audit
+(\brk{data/tools_audit/batch_10.json} and \brk{batch_11.json}). Every verdict traces to a line of
+source a reader can check. Each row of the registry file,
 \brk{docs/results/external/harness_registry.csv}, carries one source line, the file and symbol it
 came from, the upstream URL and the date it was read. The class labels are not stored. They are
 recomputed on every build and every test run by the classifier that read the OpenMessaging
@@ -1103,7 +1105,7 @@ registry, one row per span because one tool can treat two spans differently, gen
 registry file at build time. Its sources, in row order, are \registryTableSources.
 
 \begin{table}[tb]
-\caption{\textbf{\harnessAuditedWordCap{} tools, read at source.} The span each measures, the clock it reads, what
+\caption{\textbf{Every tool we read at source, \harnessAuditedWord{} in all.} The span each measures, the clock it reads, what
 happens to a value at or below zero, and whether the tool counts what it discards; one row per
 span where a tool measures two, and a dash where nothing is discarded. The source line behind
 every row is in the artifact's registry.}
@@ -1203,9 +1205,46 @@ still open.
 to whole milliseconds, so a trip under a millisecond reads zero; its mean and percentiles keep
 every value, sign and all. It measures managed services only: Google Pub/Sub, AWS SQS and Azure
 Service Bus.
-\item Two further tools we read are not in the count, because they do not make the measurement.
-SPECjms2007 defines Delivery Time and never reports it, and Redpanda's \texttt{rpk} ships no
-latency benchmark.
+\item SBK, the Storage Benchmark Kit, is the second tool we read that counts what it discards. A
+value below zero is kept out of its minimum, maximum, mean and percentiles and counted, and every
+report prints the count as invalid latencies; a zero is kept. Its default timestamps are
+wall-clock milliseconds, and its multi-host mode lets one host subtract another's timestamp, which
+no document mentions.
+\item Redpanda's \texttt{kgo-repeater} subtracts the timestamping worker's wall clock from that of
+whichever member of its consumer group receives the record, another process or host in its
+documented group mode, in whole microseconds. A value at or below zero is kept, unflagged, in the
+sample its 50th, 90th and 99th percentiles are read from, which are the only figures it reports.
+\item The Google Cloud Pub/Sub load test framework subtracts one virtual machine's wall clock from
+another's, in milliseconds, and bins the result by its logarithm. Its Java client puts a zero or a
+negative into the bucket of the fastest messages. Its Go client, on the build its startup script
+installs, ends with a panic at the first negative; its Python client raises before it acknowledges
+the message; and its Node client files the value under a key named \texttt{NaN}, where nothing
+counts it.
+\item The Pravega benchmark indexes an array by each latency in whole milliseconds, so the place
+it records the value refuses a negative, as a library does in the tools above. The exception ends
+the thread that keeps its statistics: no later window is printed, nor any final percentile, and the
+only trace is a stack trace at shutdown.
+\item Apache ActiveMQ Artemis's \texttt{artemis perf} runs its producer and its consumer as two
+processes when, as its documentation suggests, they are on two machines, and records the
+difference of their wall clocks in microseconds into HdrHistogram 2.2.2, which throws on a
+negative. The client logs a warning and rolls the session back, and the run's summary still reads
+\texttt{success}.
+\item Quiver has held its two timestamps as unsigned 64-bit integers since December 2021, so a
+difference below zero wraps to some $10^{19}$~ms and enters its average and its top percentiles.
+Its release of 2019 kept the sign, and its live average still does.
+\item RocketMQ's benchmark consumer keeps a value below zero in its average, but its maximum
+starts at zero and only rises, so the value can never appear there.
+\item Apache BookKeeper's benchmark keeps a publish latency only if it is above zero, because a
+zero also marks an add that never completed; a latency of zero is dropped with the failures,
+uncounted. Its clock is monotonic, so no negative can arise.
+\item IBM Sarama's \texttt{kafka-producer-performance} times requests, not messages, on Go's
+monotonic clock, and truncates each to whole milliseconds, so every request under a millisecond
+enters its mean and percentiles as zero. \texttt{mqtt-benchmark} times each publish to its
+acknowledgment on the same kind of clock and keeps every value; it has no subscriber.
+\item Four further tools we read are not in the count, because they do not make the measurement.
+SPECjms2007 defines Delivery Time and never reports it, Redpanda's \texttt{rpk} ships no latency
+benchmark, Pepper-Box times only the call that hands a message to Kafka's client, and xk6-kafka
+times whole calls of the script that runs it, four of whose latency figures are always zero.
 \end{itemize}
 
 \textbf{Tools run.} Reading a tool tells what it does with a value below zero; running it tells

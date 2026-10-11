@@ -69,6 +69,20 @@ CROSS_PROCESS = [
     # local clock and the other arrived with the message.
     re.compile(r"get(Difference|Elapsed)\s*\(\s*\w*now\w*\s*,\s*\w*(message|publish|send)\w*",
                re.I),
+    # Go, with the clock read held in a variable and the stamp a field of the decoded message:
+    # Redpanda kgo-repeater's `e2e_latency := now.UnixMicro() - message.SentAt`. Added 11 Oct 2026
+    # with the second October reading (data/tools_audit/batch_11.json), as are those below.
+    re.compile(r"\bnow\.Unix(Micro|Milli|Nano)\(\)\s*-\s*\w+\.\w*(sent|send|pub)\w*", re.I),
+    # Java, the stamp read off the message by a getter: RocketMQ's benchmark consumer,
+    # `long born2ConsumerRT = now - msg.getBornTimestamp();`, the producer's clock in the born
+    # timestamp and the broker's in the store timestamp.
+    re.compile(r"\bnow\s*-\s*\w+\.get(Born|Store|Send|Publish)\w*Timestamp\s*\(", re.I),
+    # Artemis's `artemis perf`: `final long elapsedUs = receivedOn - start;`, where `start` was
+    # read from the message's `time` property, which the producer set.
+    re.compile(r"\breceived?On\s*-\s*start\b"),
+    # Python with numpy, column by column: Quiver's
+    # `latencies = transfers["receive_time"] - transfers["send_time"]`.
+    re.compile(r"\[\s*\"receive_time\"\s*\]\s*-\s*\w+\[\s*\"send_time\"\s*\]"),
 ]
 
 # Two guards, not one, and the difference is the difference between this paper's two failure
@@ -103,6 +117,10 @@ POSITIVE_FILTER = [
     # stale stamps. The same name on both sides of the `&&` is what makes it a range on one
     # value rather than two unrelated tests. Added on 11 Oct 2026 with the tool.
     re.compile(r"if\s*\(\s*(\w+)\s*>\s*0\s*&&\s*\1\s*<"),
+    # An array of latencies read element by element: BookKeeper's benchmark,
+    # `if (bench.latencies[i] > 0) {`, where 0 also marks an add that never completed, so a
+    # latency of zero is dropped with the failures. Added 11 Oct 2026 (batch 11).
+    re.compile(r"if\s*\(\s*[\w.]*latenc\w*\s*\[\s*\w+\s*\]\s*>\s*0\s*\)"),
 ]
 
 #: The weaker guard: drops inversions, keeps the quantum's zeros.
@@ -168,6 +186,12 @@ LIBRARY_REFUSAL = [
     # `throw new RuntimeException("invalid negative value.");`. ProduceBench catches it inside the
     # send callback and only logs it, so the sample is lost. Added 11 Oct 2026.
     re.compile(r"throw\s+new\s+\w*Exception\s*\(\s*\"[^\"]*negative", re.I),
+    # An array indexed by the latency itself: the Pravega benchmark's `latencies[latency]++;`.
+    # The JVM refuses a negative index with an exception that ends the thread keeping the
+    # statistics, so every later value is lost too, and nothing says why until shutdown. The
+    # store is the tool's own array rather than a library's, and the response is the same: the
+    # place the value is recorded refuses it and the tool never checks. Added 11 Oct 2026.
+    re.compile(r"\b\w*latencies\s*\[\s*\w*latency\w*\s*\]\s*\+\+"),
 ]
 
 # A third response, and the one that hides the failure most completely: detect the inversion and
@@ -200,6 +224,15 @@ SUPPRESSION = [
     # on; the documentation audit (T5) read the method itself and recorded the prediction as
     # failed, and that finding did not reach this classifier until 2 Oct 2026.
     re.compile(r"\b(Math\.)?abs\s*\(\s*\w+\s*-\s*\w+\s*\)"),
+    # A bucket index floored at the first bucket: the Google Cloud Pub/Sub load test framework's
+    # Java client, `int bucket = Math.max((int) Math.floor(raw_bucket), 0);`, where `raw_bucket`
+    # is the latency's logarithm, so a zero (minus infinity) and a negative (not a number) both
+    # land in the bucket of the fastest messages. Added 11 Oct 2026 (batch 11).
+    re.compile(r"max\s*\(\s*\(int\)\s*(Math\.)?floor\s*\(\s*\w*bucket\w*\s*\)\s*,\s*0\s*\)"),
+    # Times held unsigned, so a negative difference wraps to 2^64 less its size: Quiver's
+    # `dtype = [("send_time", _numpy.uint64), ("receive_time", _numpy.uint64)]`, from which a
+    # value below zero enters its average and its top percentiles as some 1.8e19 ms.
+    re.compile(r"\"\w*(send|receive)_time\"\s*,\s*[\w.]*uint64\b"),
 ]
 
 # Evidence that violations are counted rather than dropped -- what we argue should exist. The
@@ -209,7 +242,9 @@ SUPPRESSION = [
 # the practice it recommends would be a poor rule.
 DISCARD_COUNTER = re.compile(
     r"(negative|invalid|dropped|discard|violation|inverted)\w*[\s_]*"
-    r"(count|counter|sample|\+\+|\.inc)", re.I)
+    r"(count|counter|sample|\+\+|\+=|\.inc)", re.I)
+# `+=` since 11 Oct 2026: SBK counts each value below zero it keeps out of its figures,
+# `this.invalidLatencyRecords += events;`, and prints the count in every report.
 
 # The value is RETAINED at a coarser resolution than the clock that produced it.
 #
@@ -236,6 +271,10 @@ QUANTIZED_RETENTION = [
     # `return ns // 1_000_000`: the fraction goes, and a negative is floored away from zero.
     # Added 11 Oct 2026.
     re.compile(r"\b\w+\s*//\s*1_?000_?000\b"),
+    # Go's integer division of a Duration by a unit: Sarama's
+    # `requestLatencyInMs := int64(requestLatency / time.Millisecond)`, so every request under a
+    # millisecond is recorded as 0. Added 11 Oct 2026 (batch 11).
+    re.compile(r"\(\s*\w*(latency|elapsed|duration)\w*\s*/\s*time\.Millisecond\s*\)", re.I),
 ]
 
 # The order matters only for reporting; a line may belong to more than one class.

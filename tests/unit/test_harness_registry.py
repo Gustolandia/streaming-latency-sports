@@ -314,19 +314,28 @@ def test_the_round6_reaudit_headline_counts():
     tool among eleven.
 
     Later the same day the survey took in six tools the plan never listed, read by T5's protocol (data/tools_audit/batch_10.json): Xinfra Monitor and Kafka's Trogdor substitute, Trogdor's histogram also refuses, and RabbitMQ Stream PerfTest, the Yahoo Streaming Benchmark's notebook and Strimzi Canary's log reader guard at `>= 0`. PerfKit Benchmarker's messaging benchmark keeps every value. Seventeen tools, thirteen silent.
+
+    A second reading the same day took in ten more tools that time a message
+    (data/tools_audit/batch_11.json). Google's Pub/Sub load test floors a bucket index at the
+    fastest bucket and Quiver holds its timestamps unsigned, so both substitute; the Pravega
+    benchmark's own array and Artemis's HdrHistogram refuse; BookKeeper's benchmark guards at
+    `> 0`. SBK counts what it keeps out, the second tool that does. Redpanda's kgo-repeater and
+    RocketMQ's benchmark keep every value, and Sarama's producer tool and mqtt-benchmark time on a
+    monotonic clock in one process. Twenty-seven tools, eighteen silent.
     """
     s = summary()
-    assert s["harnesses"] == 17
-    assert s["n_silent"] == 13
-    assert s["suppressors"] == ["Kafka Trogdor", "RabbitMQ PerfTest", "Xinfra Monitor",
-                                "blktrace btt", "fio"]
-    assert s["counts_discards"] == ["Rezolus"]
+    assert s["harnesses"] == 27
+    assert s["n_silent"] == 18
+    assert s["suppressors"] == ["Google Pub/Sub load test", "Kafka Trogdor", "Quiver",
+                                "RabbitMQ PerfTest", "Xinfra Monitor", "blktrace btt", "fio"]
+    assert s["counts_discards"] == ["Rezolus", "SBK"]
     assert "emqtt-bench" not in s["silent"]
-    assert s["filters"] == ["OpenMessaging Benchmark", "librdkafka rdkafka_performance"], \
-        "the strict guard, `> 0`"
+    assert s["filters"] == ["Apache BookKeeper benchmark", "OpenMessaging Benchmark",
+                            "librdkafka rdkafka_performance"], "the strict guard, `> 0`"
     assert s["nonnegative_filters"] == ["Apache Pulsar perf", "RabbitMQ Stream PerfTest",
                                         "Strimzi Canary", "Yahoo Streaming Benchmark"], \
         "the weaker one, `>= 0`"
     assert "Apache Pulsar perf" in s["silent"], "a weaker guard is still a silent one"
-    assert s["library_refusals"] == ["Kafka Trogdor", "NATS CLI", "wrk2"]
+    assert s["library_refusals"] == ["Apache ActiveMQ Artemis perf", "Kafka Trogdor", "NATS CLI",
+                                     "Pravega benchmark", "wrk2"]
     assert "PerfKit Benchmarker messaging" not in s["silent"], "it keeps every value, floored"

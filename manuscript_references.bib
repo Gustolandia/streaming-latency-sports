@@ -627,3 +627,93 @@
   annote  = {The interval for a ratio of two proportions the supplement uses. First page from
              Crossref, last page from SciPy's citation, 2026-10-06.}
 }
+
+@misc{kgo_repeater,
+  author       = {{Redpanda Data}},
+  title        = {kgo-verifier --- \texttt{pkg/worker/repeater/repeater\_worker.go}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/redpanda-data/kgo-verifier}. Accessed: Oct. 11, 2026},
+  annote       = {\url{https://github.com/redpanda-data/kgo-verifier}, read at commit 6567f2f5 (archived; its copy in redpanda-data/redpanda has the same lines); the end-to-end latency is a wall-clock difference kept unflagged. Accessed: Oct. 11, 2026}
+}
+
+@misc{sarama_perf,
+  author       = {{IBM}},
+  title        = {Sarama --- \texttt{broker.go} and \texttt{tools/kafka-producer-performance}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/IBM/sarama}. Accessed: Oct. 11, 2026},
+  annote       = {\url{https://github.com/IBM/sarama}, read at commit 36f7a14e, release 1.61.1; request latency truncated to whole milliseconds. Accessed: Oct. 11, 2026}
+}
+
+@misc{sbk_bench,
+  author       = {K. Munegowda},
+  title        = {{SBK}: Storage Benchmark Kit --- \texttt{LatencyRecorder.java}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/kmgowda/SBK}. Accessed: Oct. 11, 2026},
+  annote       = {\url{https://github.com/kmgowda/SBK}, read at commit 39af60da, release 10.7; a negative latency is excluded and counted as invalid. Accessed: Oct. 11, 2026}
+}
+
+@misc{mqtt_benchmark,
+  author       = {A. Krylovsky},
+  title        = {mqtt-benchmark --- \texttt{client.go}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/krylovsk/mqtt-benchmark}. Accessed: Oct. 11, 2026},
+  annote       = {\url{https://github.com/krylovsk/mqtt-benchmark}, read at commit f46efba1, release 0.2.0; publish to acknowledgment on a monotonic clock. Accessed: Oct. 11, 2026}
+}
+
+@misc{pubsub_loadtest,
+  author       = {{Google}},
+  title        = {Cloud Pub/Sub load test framework --- \texttt{MetricsHandler.java}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/GoogleCloudPlatform/pubsub}. Accessed: Oct. 11, 2026},
+  annote       = {\url{https://github.com/GoogleCloudPlatform/pubsub}, read at commit cd7d07bb; a zero or negative latency is binned with the fastest messages, and other clients fail on it. Accessed: Oct. 11, 2026}
+}
+
+@misc{pravega_bench,
+  author       = {{Pravega}},
+  title        = {Pravega benchmark --- \texttt{PerfStats.java}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/pravega/pravega-benchmark}. Accessed: Oct. 11, 2026},
+  annote       = {\url{https://github.com/pravega/pravega-benchmark}, read at commit 33b79e5f; a negative latency is an array index that ends its statistics. Accessed: Oct. 11, 2026}
+}
+
+@misc{rocketmq_bench,
+  author       = {{Apache Software Foundation}},
+  title        = {Apache {RocketMQ} --- \texttt{example/.../benchmark/Consumer.java}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/apache/rocketmq}. Accessed: Oct. 11, 2026},
+  annote       = {\url{https://github.com/apache/rocketmq}, read at commit 9ea2ccdc, release 5.5.1; born-to-consume latency across two JVMs' wall clocks. Accessed: Oct. 11, 2026}
+}
+
+@misc{artemis_perf,
+  author       = {{Apache Software Foundation}},
+  title        = {Apache {ActiveMQ} Artemis --- \texttt{artemis perf}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/apache/artemis}. Accessed: Oct. 11, 2026},
+  annote       = {\url{https://github.com/apache/artemis}, read at commit 50c178e5, release 2.57.0; transfer time recorded into HdrHistogram 2.2.2, which throws on a negative. Accessed: Oct. 11, 2026}
+}
+
+@misc{quiver_tool,
+  author       = {J. Ross},
+  title        = {Quiver --- \texttt{python/quiver/arrow.py}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/ssorj/quiver}. Accessed: Oct. 11, 2026},
+  annote       = {\url{https://github.com/ssorj/quiver}, read at commit ba4e5766; unsigned timestamps wrap a negative difference to about 1.8e19 ms. Accessed: Oct. 11, 2026}
+}
+
+@misc{bookkeeper_bench,
+  author       = {{Apache Software Foundation}},
+  title        = {Apache {BookKeeper} --- \texttt{BenchThroughputLatency.java}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/apache/bookkeeper}. Accessed: Oct. 11, 2026},
+  annote       = {\url{https://github.com/apache/bookkeeper}, read at commit 773a988d, release 4.18.1; a publish latency of zero is dropped with the failures. Accessed: Oct. 11, 2026}
+}

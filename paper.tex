@@ -451,6 +451,13 @@ since June 2026; a zero is kept & read, run \\
 Yahoo Streaming Benchmark & 1~ms & Kept in its output file; dropped by the notebook that
 analyses it, uncounted & read, run \\
 PerfKit Benchmarker, messaging & 1~ms & Kept, floored to whole milliseconds & read \\
+Apache ActiveMQ Artemis's \texttt{perf} & 1~$\mu$s & Refused by its histogram library; the session
+is rolled back and the run still reads success; uncounted & read \\
+Google's Pub/Sub load test framework & 1~ms & Binned with the fastest messages by its Java client;
+its Go client panics, its Python client raises, its Node client loses it; uncounted & read \\
+Quiver & 1~ms & Wrapped by unsigned arithmetic to some $10^{19}$~ms, uncounted & read \\
+Redpanda's \texttt{kgo-repeater}, RocketMQ's benchmark & 1~$\mu$s, 1~ms & Kept, unflagged;
+RocketMQ's maximum, which starts at zero, cannot show it & read \\
 \midrule
 \multicolumn{4}{@{}l}{\emph{Both timestamps in one process: publish to receipt, or to the
 acknowledgment}} \\
@@ -465,6 +472,15 @@ Xinfra Monitor & 1~ms & Replaced by zero in its percentiles, kept in its average
 read, run \\
 Strimzi Canary & 1~ms & Binned with the fastest messages; dropped by the log reader it ships,
 uncounted & read, run \\
+Storage Benchmark Kit (SBK) & 1~ms & Kept out of its figures and counted, the one message tool
+that counts it & read \\
+Pravega benchmark & 1~ms & An array index that throws, ending every later statistic; uncounted &
+read \\
+Apache BookKeeper's benchmark, to the acknowledgment & 1~ns & A zero dropped with the failed
+writes, uncounted; no value below zero can arise & read \\
+Sarama's producer tool, requests; \texttt{mqtt-benchmark} & 1~ms, 1~ns & Never met: a
+monotonic clock in one process; Sarama truncates every request under a millisecond to zero &
+read \\
 \midrule
 \multicolumn{4}{@{}l}{\emph{Both timestamps in one process: request to reply, a round trip}} \\
 \texttt{wrk2} & 10~$\mu$s & Printed as impossible, then refused by its histogram library, or the
@@ -497,16 +513,18 @@ prints~\cite{emqtt_bench}. Until June 2026 PerfTest also kept only values above 
 millisecond mode deleted every trip shorter than a millisecond. The filter in librdkafka's
 \texttt{rdkafka\_performance} prints a line for each value it drops but keeps no count. Users
 have reported such values: in the Yahoo Streaming Benchmark's tracker in 2018, still open, and in
-RabbitMQ Stream PerfTest's in May 2026, which answered with a filter that drops them. Of the two
-message tools that cut nothing, Apache \kafka{}'s bundled pair never measures such a value. Its
+RabbitMQ Stream PerfTest's in May 2026, which answered with a filter that drops them. Of the
+\harnessMessageKeepWord{} message tools that cut nothing, one, SBK, keeps such a value out of its
+figures and counts it. Apache \kafka{}'s bundled pair never measures such a value. Its
 end-to-end tool waits for each acknowledgment before it polls for the message, so a message that
 reached the consumer first is reported no earlier than its acknowledgment. Beside an observer that
 noted when each message became readable, $\kOneEarlyBusyLo$--$\kOneEarlyBusyHi\%$ of messages were
 readable before the tool had their acknowledgment with every core $\toolsLoadPct\%$ busy, and at
 most $\kOneEarlyFirstHi\%$ with the tool at real-time priority (Supplement~S5). It also rounds each
 latency down to whole milliseconds, so on a path faster than a millisecond every percentile it
-reports is zero~\cite{kafka_tools}. PerfKit Benchmarker's messaging benchmark keeps the value,
-floored to whole milliseconds. Of the tools that time no message, \texttt{fio} and \texttt{btt}
+reports is zero~\cite{kafka_tools}. Two more time in one process on a monotonic clock and never
+meet such a value either, and the last three keep it, PerfKit Benchmarker's messaging benchmark
+floored to whole milliseconds (Supplement~S5). Of the tools that time no message, \texttt{fio} and \texttt{btt}
 substitute zero and one nanosecond, and only Rezolus counts what it discards, in its scheduler
 sampler since August 2026~\cite{rezolus}.
 

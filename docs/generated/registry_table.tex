@@ -4,18 +4,27 @@
 \toprule
 Tool & Language, vendor & Span measured & Clock & What happens to the value & Counts \\
 \midrule
+Artemis \texttt{perf} & Java, Apache Software Foundation & end-to-end & microsecond & refused by own library & no \\
+BookKeeper benchmark & Java, Apache Software Foundation & publish & nanosecond & filter, $>0$ & no \\
 Apache Kafka (bundled) & Java, Apache Software Foundation & end-to-end & nanosecond & truncate to the resolution & no \\
 Apache Kafka (bundled) & Java, Apache Software Foundation & publish & millisecond & truncate to the resolution & no \\
 Apache Pulsar perf & Java, Apache Software Foundation & end-to-end & millisecond & filter, $\geq 0$ & no \\
+RocketMQ benchmark & Java, Apache Software Foundation & end-to-end & millisecond & --- & --- \\
+Pub/Sub load test & Java, Google & end-to-end & millisecond & substitute a value & no \\
+Sarama producer perf. & Go, IBM & publish & millisecond & truncate to the resolution & no \\
 Kafka Trogdor & Java, Apache Software Foundation & end-to-end & millisecond & substitute a value & no \\
 Kafka Trogdor & Java, Apache Software Foundation & publish & millisecond & refused by own library & no \\
 NATS CLI & Go, Synadia & end-to-end & nanosecond & refused by own library & no \\
 OpenMessaging Bench. & Java, Linux Foundation & end-to-end & millisecond & filter, $>0$, truncate to the resolution & no \\
 OpenMessaging Bench. & Java, Linux Foundation & publish & nanosecond & --- & --- \\
 PerfKit messaging & Python, Google & end-to-end & millisecond & truncate to the resolution & no \\
+Pravega benchmark & Java, Pravega & end-to-end & millisecond & refused by own library & no \\
+Quiver & Python, Justin Ross & end-to-end & millisecond & substitute a value & no \\
 RabbitMQ PerfTest & Java, Broadcom/VMware & end-to-end & nanosecond & substitute a value & no \\
 RabbitMQ Stream PerfTest & Java, Broadcom/VMware & end-to-end & millisecond & filter, $\geq 0$ & no \\
+\texttt{kgo-repeater} & Go, Redpanda Data & end-to-end & microsecond & --- & --- \\
 Rezolus & Rust, IOP Systems & scheduler wakeup & nanosecond & discard & yes \\
+SBK & Java, Keshava Munegowda & end-to-end & millisecond & discard & yes \\
 Strimzi Canary & Go, Strimzi & end-to-end & millisecond & filter, $\geq 0$ & no \\
 Xinfra Monitor & Java, LinkedIn & end-to-end & millisecond & substitute a value & no \\
 Yahoo Streaming Bench. & Clojure, Yahoo & end-to-end & millisecond & filter, $\geq 0$ & no \\
@@ -24,6 +33,7 @@ Yahoo Streaming Bench. & Clojure, Yahoo & end-to-end & millisecond & filter, $\g
 \texttt{fio} & C, Jens Axboe & I/O completion & nanosecond & substitute a value & no \\
 \texttt{rdkafka\_performance} & C, Confluent & end-to-end & microsecond & filter, $>0$ & no \\
 \texttt{rdkafka\_performance} & C, Confluent & publish & microsecond & --- & --- \\
+\texttt{mqtt-benchmark} & Go, Alexander Krylovsky & publish & nanosecond & --- & --- \\
 wrk2 & C, G. Tene & end-to-end & microsecond & refused by own library & no \\
 \bottomrule
 \end{tabular}

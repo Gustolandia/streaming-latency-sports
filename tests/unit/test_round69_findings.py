@@ -150,8 +150,10 @@ class TestR2TheTwoThresholdsAreDifferentThings:
     def test_pulsar_is_in_the_weaker_class_and_still_silent(self):
         import harness_registry
         s = harness_registry.summary()
-        # 11 Oct 2026: librdkafka's rdkafka_performance joined the strict class when it was read.
-        assert s["filters"] == ["OpenMessaging Benchmark", "librdkafka rdkafka_performance"]
+        # 11 Oct 2026: librdkafka's rdkafka_performance joined the strict class when it was read,
+        # and BookKeeper's benchmark with the second reading that day.
+        assert s["filters"] == ["Apache BookKeeper benchmark", "OpenMessaging Benchmark",
+                                "librdkafka rdkafka_performance"]
         # 11 Oct 2026: three of the six tools read that day guard at `>= 0` as well.
         assert s["nonnegative_filters"] == ["Apache Pulsar perf", "RabbitMQ Stream PerfTest",
                                             "Strimzi Canary", "Yahoo Streaming Benchmark"]
@@ -168,10 +170,11 @@ class TestR2TheTwoThresholdsAreDifferentThings:
         were missed. 11 Oct 2026: librdkafka's rdkafka_performance, read into the registry,
         made it eleven tools, eight silent and ten vendors; C was already among the languages.
         The six read later that day made it seventeen tools, thirteen silent, fourteen vendors
-        and seven languages, Clojure and Python the new ones."""
+        and seven languages, Clojure and Python the new ones. The second reading that day made it
+        twenty-seven tools, eighteen silent and twenty vendors, in the same seven languages."""
         import harness_registry
         s = harness_registry.summary()
-        assert (s["harnesses"], s["n_silent"], s["vendors"], s["languages"]) == (17, 13, 14, 7)
+        assert (s["harnesses"], s["n_silent"], s["vendors"], s["languages"]) == (27, 18, 20, 7)
 
     def test_a_threshold_is_not_a_new_response(self):
         from audit_external_harness import DISPOSAL_KINDS, DISPOSAL_RESPONSES

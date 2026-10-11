@@ -24,6 +24,13 @@ author, line by line, rather than taken on the auditor's word. The rest is the a
 and is marked as such. A claim that could not be determined says so; it is not filled in with
 something plausible.
 
+From `batch_11.json` on, a record also carries `auditor_checked`: what the auditor itself read
+back, with the command it ran. It is the auditor's word, as the rest of the record is, and it is
+kept apart from `checked_here` so that the author's read-backs stay the only lines under that name.
+Two of that batch's twelve tools time no message at all -- Pepper-Box times the call that hands a
+record to Kafka's client, and xk6-kafka times whole calls of its script -- so they are recorded and
+are not in the registry's count of tools that time a message.
+
 ## What the plan predicted
 
 The plan's own table of tools (freeze 04, Section "The tools") classifies each tool's handling of

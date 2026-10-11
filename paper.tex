@@ -110,7 +110,7 @@ it $\rtFactorLow$--$\rtFactorHigh\times$ on \kafka{} and $\rtRedisFactorLow$--$\
 \item \textbf{The industry-wide audit} (Section~\ref{sec:external}). Of the \harnessMessageWord{}
 message tools we read at source, \harnessMessageCutWord{} cut such values out of a figure they
 report, without counting them, \kafka{}'s own never measures them, and one keeps them.
-\toolsOneClockWordCap{} of the \toolsRunWord{} we ran take both timestamps in one process, so
+Of the \toolsRunWord{} we ran, \toolsOneClockWord{} take both timestamps in one process, so
 they never measure a \emph{one-way latency}, the time from one process to another. On a
 millisecond clock, a filter that keeps only latencies above zero, a \emph{positivity filter}, also
 deletes the fastest messages, and no public report we audited says how many samples it kept.
@@ -445,9 +445,11 @@ as zero and is printed only when some value is above zero & read, run \\
 \raggedright librdkafka's \brk{rdkafka_performance} & 10~$\mu$s & Dropped unless above zero, with a
 printed line, uncounted; none reached zero in our runs & read, run \\
 \kafka{}'s Trogdor, end to end & 1~ms & Replaced by its histogram's floor, uncounted; that histogram
-throws on a negative, which loses a producer's sample & read \\
+throws on a negative, which loses a producer's sample & read, run \\
+RabbitMQ Stream PerfTest, as producer and consumer & 1~ms & Dropped when below zero, uncounted,
+since June 2026; a zero is kept & read, run \\
 Yahoo Streaming Benchmark & 1~ms & Kept in its output file; dropped by the notebook that
-analyses it, uncounted & read \\
+analyses it, uncounted & read, run \\
 PerfKit Benchmarker, messaging & 1~ms & Kept, floored to whole milliseconds & read \\
 \midrule
 \multicolumn{4}{@{}l}{\emph{Both timestamps in one process: publish to receipt, or to the
@@ -460,11 +462,9 @@ was dropped too & read, run \\
 NATS command-line latency test & 1~$\mu$s & Kept for its minimum, median and maximum, refused by
 its histogram library for its percentiles; uncounted & read, run \\
 Xinfra Monitor & 1~ms & Replaced by zero in its percentiles, kept in its average; uncounted &
-read \\
+read, run \\
 Strimzi Canary & 1~ms & Binned with the fastest messages; dropped by the log reader it ships,
-uncounted & read \\
-RabbitMQ Stream PerfTest & 1~ms & Dropped when below zero, uncounted, since June 2026; a zero is
-kept & read \\
+uncounted & read, run \\
 \midrule
 \multicolumn{4}{@{}l}{\emph{Both timestamps in one process: request to reply, a round trip}} \\
 \texttt{wrk2} & 10~$\mu$s & Printed as impossible, then refused by its histogram library, or the
@@ -500,7 +500,10 @@ have reported such values: in the Yahoo Streaming Benchmark's tracker in 2018, s
 RabbitMQ Stream PerfTest's in May 2026, which answered with a filter that drops them. Of the two
 message tools that cut nothing, Apache \kafka{}'s bundled pair never measures such a value. Its
 end-to-end tool waits for each acknowledgment before it polls for the message, so a message that
-reached the consumer first is reported no earlier than its acknowledgment. It also rounds each
+reached the consumer first is reported no earlier than its acknowledgment. Beside an observer that
+noted when each message became readable, $\kOneEarlyBusyLo$--$\kOneEarlyBusyHi\%$ of messages were
+readable before the tool had their acknowledgment with every core $\toolsLoadPct\%$ busy, and at
+most $\kOneEarlyFirstHi\%$ with the tool at real-time priority (Supplement~S5). It also rounds each
 latency down to whole milliseconds, so on a path faster than a millisecond every percentile it
 reports is zero~\cite{kafka_tools}. PerfKit Benchmarker's messaging benchmark keeps the value,
 floored to whole milliseconds. Of the tools that time no message, \texttt{fio} and \texttt{btt}
@@ -512,10 +515,13 @@ sampler since August 2026~\cite{rezolus}.
 Reading a tool shows what it does with a value below zero, not whether it ever meets one. The
 registered campaign therefore ran \toolsRunWord{} benchmarking tools against a broker on a second
 machine, \toolsRoundsWord{} rounds each, with predictions fixed from their source before any run.
-Five of them ran later, in a block of their own, because one version of the plan had left them
-out (Supplement~S5). A delay added to the path in steps moved every tool's figure
-$\toolsSlopeLo$--$\toolsSlopeHi$~ms per millisecond added and per crossing of the delay, so every
-tool measures the path. Moving back the clock of the process that subtracts, at two offsets longer
+Ten of them ran later, in blocks of their own: five that one version of the plan had left out, and
+five read in October (Supplement~S5). A delay added to the path in steps moved the figure of every
+tool but one $\toolsSlopeLo$--$\toolsSlopeHi$~ms per millisecond added and per crossing of the
+delay, so those tools measure the path. The Yahoo Streaming Benchmark's did not, as predicted,
+though for another reason: each write of its results waits for four replies that cross the delay
+(Supplement~S5). Moving back the clock
+of the process that subtracts, at two offsets longer
 than the interval the tool times, separated the tools that read one clock from those that read
 two. The
 figures of \toolsOneClockWord{} tools stayed within a quarter of the offset in every one of their
@@ -525,15 +531,18 @@ the same reason it cannot measure the one-way latency of the delivery a broker e
 The other \toolsTwoClockWord{} timestamp a message in one process and subtract in another. In
 $\toolsTwoClockRuns$ of their $\toolsTwoClockOf$ runs the moved clock shifted their figures or cut
 what they kept, and the rest were undecided. Of the \toolsTwoClockWord{}, librdkafka's
-\texttt{rdkafka\_performance} adds the clocks' offset to the path's latency. Pulsar's client and
-the OpenMessaging Benchmark drop what comes out below zero, uncounted. Under the larger offset
+\texttt{rdkafka\_performance} adds the clocks' offset to the path's latency. Pulsar's client, the
+OpenMessaging Benchmark, RabbitMQ Stream PerfTest and the Yahoo Streaming Benchmark drop what comes
+out below zero, uncounted, and \kafka{}'s Trogdor replaces it with zero. Under the larger offset
 Pulsar's client kept $\toolsPulsarKeptLo$ to $\toolsPulsarKeptHi$ of $\toolsAskedToSend$
-latencies. \texttt{emqtt-bench}'s histogram keeps values below zero, but its console printed no
+latencies, and Stream PerfTest $\toolsStreamKeptLo$ to $\toolsStreamKeptHi$.
+\texttt{emqtt-bench}'s histogram keeps values below zero, but its console printed no
 latency under either offset (Supplement~S5). Waiting for a core shows in these tools as time added
 rather than as a value below zero. With every core $\toolsLoadPct\%$ busy, the 99th percentile of
 each of the \toolsTailToolsWord{} tools that print one rose by $\toolsTailRiseLo$--$\toolsTailRiseHi$~ms
-while its median moved by at most $\toolsMedianMoveHi$~ms, and real-time priority took nearly all of
-that rise back in \toolsTailBackWord{} of them (Supplement~S5).
+while its median moved by at most $\toolsMedianMoveHi$~ms (Trogdor's, in whole milliseconds, by one),
+and real-time priority took nearly all of that rise back in \toolsTailBackWord{} of them
+(Supplement~S5).
 
 \subsection{A positivity filter on a millisecond clock}
 \label{sec:extmethod}

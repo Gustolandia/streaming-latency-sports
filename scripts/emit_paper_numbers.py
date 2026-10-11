@@ -3535,6 +3535,12 @@ UNDECIDED_RUN = "undecided"
 #: tool times crosses the delayed direction.
 SLOPE_BAND = (0.5, 1.5)
 
+#: The tools a freeze predicted would not follow the staircase, by the change that predicted it:
+#: YSB writes each window at a flush once a second (freeze 33, D36-5); why its figures then ran
+#: far ahead of the delay was read after the runs (scripts/ysb_flush.py). Each is held to the
+#: opposite of the band, so the prose's exception is checked as hard as the rule.
+SLOPE_PREDICTED_OUTSIDE = {"ysb": "D36-5"}
+
 #: The tools by the names a reader knows them by, short enough for a column-wide table.
 TOOL_NAMES = {
     "valkey-benchmark": "Valkey benchmark",
@@ -3553,6 +3559,11 @@ TOOL_NAMES = {
     "emqtt-bench": "emqtt-bench",
     "ycsb": "YCSB",
     "nats-bench": "NATS bench",
+    "xinfra-monitor": "Xinfra Monitor",
+    "strimzi-canary": "Strimzi Canary",
+    "trogdor": "\\kafka{} Trogdor",
+    "stream-perftest": "Stream PerfTest",
+    "ysb": "Yahoo Streaming Bench.",
 }
 
 #: The table's row order: by the interval timed, one-clock intervals first; and how each is set
@@ -3577,16 +3588,24 @@ def _tools_judged(t1, t2):
     """What Section V-B's sentences rest on, checked before any of it is printed.
 
     The sentences depend on the judged runs and would be wrong if a re-run moved them: that every
-    tool measured the path (every staircase slope inside the band fixed in advance), and that
+    tool measured the path (every staircase slope inside the band fixed in advance), but those a
+    freeze predicted would not and whose every slope lies outside it, and that
     each tool is on one clock or on two. Which, is freeze 31's answer from the offset itself
     (D34-2, the `clocks` column), not the five hypotheses' verdict, which stays beside it. A tool
     answered both ways, a tool never answered, and a tool whose answer is not what its invocation
     was read to time before any run, each stops the build instead of leaving the prose behind.
     """
-    per_crossing = [float(r["slope"]) / int(r["crossings"]) for r in t1 if r["slope"]]
+    per_crossing = [float(r["slope"]) / int(r["crossings"]) for r in t1
+                    if r["slope"] and r["tool"] not in SLOPE_PREDICTED_OUTSIDE]
     if not per_crossing or not all(SLOPE_BAND[0] <= s <= SLOPE_BAND[1] for s in per_crossing):
         raise ValueError("a staircase slope lies outside the band frozen for it, so 'every "
                          "tool measures the path' no longer holds")
+    outside = [float(r["slope"]) / int(r["crossings"]) for r in t1
+               if r["slope"] and r["tool"] in SLOPE_PREDICTED_OUTSIDE]
+    if any(SLOPE_BAND[0] <= s <= SLOPE_BAND[1] for s in outside):
+        raise ValueError("a tool predicted not to follow the staircase (%s) followed it in a "
+                         "round, so the prose's exception no longer holds"
+                         % sorted(SLOPE_PREDICTED_OUTSIDE))
     trip = {r["tool"]: r["trip"] for r in t1}
     answered = {tool: set() for tool in trip}
     for r in t2:
@@ -3649,13 +3668,51 @@ def tools_block_macros(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
                          "judged to time against one clock; the tables do not hold them")
     kept = [int(k) for _, k, _ in larger]
     (wrong,) = wrong
+    #: What Stream PerfTest kept under the larger offset of each round, quoted beside Pulsar's.
+    stream = {}
+    for r in t2:
+        if r["tool"] == "stream-perftest":
+            stream.setdefault(r["round"], []).append((float(r["offset_ms"]), r["kept"], r["sent"]))
+    stream_kept = [int(max(runs)[1]) for runs in stream.values() if max(runs)[1]]
+    if (not stream or len(stream_kept) != len(stream)
+            or {max(runs)[2] for runs in stream.values()} != {wrong["sent"]}):
+        raise ValueError("the prose quotes what Stream PerfTest kept under the larger offset of "
+                         "every round, of the count Pulsar's client was asked to send; the "
+                         "tables do not hold it")
+    #: The slopes of the tool predicted not to follow the staircase, quoted where the supplement
+    #: says it did not (`_tools_judged` has held each outside the band).
+    ysb = [float(r["slope"]) / int(r["crossings"]) for r in t1 if r["tool"] == "ysb" and r["slope"]]
+    if not ysb:
+        raise ValueError("the supplement quotes the Yahoo Streaming Benchmark's slopes; the "
+                         "tables hold none")
+    #: And how freeze 21's judge read its clock-moved runs, which the supplement explains: some
+    #: as timing against one clock, while version 34's rule answered two for every one of them.
+    ysb_t2 = [r for r in t2 if r["tool"] == "ysb"]
+    ysb_one = sum(r["verdict"] == ONE_CLOCK for r in ysb_t2)
+    if (not ysb_one or any(r["clocks"] != "two" for r in ysb_t2)
+            or any(r["verdict_31"] != UNDECIDED_RUN for r in ysb_t2)):
+        raise ValueError("the supplement says freeze 21's judge read some of YSB's clock-moved "
+                         "runs as timing against one clock, and version 34's judge left all of "
+                         "them undecided with an answer of two from the offset; the tables "
+                         "disagree")
+    #: The supplement names two of the one-clock tools, and says Trogdor's clamp left its runs at
+    #: the larger offset of each round undecided while those at the smaller read two.
+    trogdor = {}
+    for r in t2:
+        if r["tool"] == "trogdor":
+            trogdor.setdefault(r["round"], []).append((float(r["offset_ms"]), r["clocks"]))
+    if (not {"xinfra-monitor", "strimzi-canary"} <= set(one) or not trogdor
+            or any([c for _, c in sorted(runs)] != ["two", UNDECIDED_RUN]
+                   for runs in trogdor.values())):
+        raise ValueError("the supplement says Xinfra Monitor and Strimzi Canary read one clock, "
+                         "and that Trogdor read two at the smaller offset of each round and was "
+                         "undecided at the larger; the tables disagree")
     return [
         ("toolsRunWord", _spell(len({r["tool"] for r in t1}))),
         ("toolsRoundsWord", _spell(len(rounds))),
         ("toolsSlopeLo", "%.2f" % min(per_crossing)),
         ("toolsSlopeHi", "%.2f" % max(per_crossing)),
         ("toolsOneClockWord", _spell(len(one))),
-        ("toolsOneClockWordCap", _spell(len(one)).capitalize()),
         ("toolsOneClockOf", str(len(one_runs))),
         ("toolsTwoClockWord", _spell(len(two))),
         ("toolsTwoClockRuns", str(sum(r["clocks"] == "two" for r in two_runs))),
@@ -3664,6 +3721,12 @@ def tools_block_macros(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
         ("toolsPulsarKeptLo", str(min(kept))),
         ("toolsPulsarKeptHi", str(max(kept))),
         ("toolsPulsarOneClockKept", wrong["kept"]),
+        ("toolsStreamKeptLo", str(min(stream_kept))),
+        ("toolsStreamKeptHi", str(max(stream_kept))),
+        ("toolsYsbSlopeLo", "%.1f" % min(ysb)),
+        ("toolsYsbSlopeHi", "%.0f" % max(ysb)),
+        ("toolsYsbOneClockWord", _spell(ysb_one)),
+        ("toolsYsbRunsWord", _spell(len(ysb_t2))),
         ("toolsAskedToSend", "{:,}".format(int(wrong["sent"])).replace(",", "{,}")),
     ]
 
@@ -3674,6 +3737,12 @@ DEFAULT_TOOLS_T3_TABLE = os.path.join("docs", "generated", "tools_load_table.tex
 #: How much of the tail's rise under load real-time priority must take back for the prose to say
 #: it took back nearly all of it. A threshold for describing T3, which has no rule of its own.
 TAIL_BACK_SHARE = 0.9
+
+#: The tools whose median the load moved by exactly one step of what they print, by that step:
+#: Trogdor prints whole milliseconds, and its median went from 2 to 3. The prose names it, and
+#: quotes the largest move of the others beside it, rather than let one printed step stand as
+#: how far every median moved.
+MEDIAN_ONE_STEP = {"trogdor": 1.0}
 
 
 def _tools_load(t3_path=TOOLS_T3):
@@ -3693,6 +3762,10 @@ def _tools_load(t3_path=TOOLS_T3):
         cells.setdefault((r["tool"], r["round"]), {})[(r["load_pct"], r["go_first"])] = r
     fold = {}
     for (tool, _rnd), c in sorted(cells.items()):
+        #: A tool predicted not to follow the path cannot show the wait for a core in its figure
+        #: either: YSB's tail is set by its flush once a second. It is described on its own.
+        if tool in SLOPE_PREDICTED_OUTSIDE:
+            continue
         idle, under, ahead = c.get(("0", "no")), c.get((busy, "no")), c.get((busy, "yes"))
         if not (idle and under and ahead and idle["p99"] and under["p99"] and ahead["p99"]):
             continue
@@ -3703,9 +3776,12 @@ def _tools_load(t3_path=TOOLS_T3):
         f["idle"].append(i99)
         f["under"].append(u99)
         f["ahead"].append(a99)
-        f["move"].append(abs(float(under["p50"]) - float(idle["p50"])))
-        f["p50_idle"].append(float(idle["p50"]))
-        f["p50_under"].append(float(under["p50"]))
+        #: Xinfra Monitor prints a 99th percentile and no median; its tail counts, its median
+        #: cannot.
+        if idle["p50"] and under["p50"]:
+            f["move"].append(abs(float(under["p50"]) - float(idle["p50"])))
+            f["p50_idle"].append(float(idle["p50"]))
+            f["p50_under"].append(float(under["p50"]))
         if u99 > i99:
             f["back"].append((u99 - a99) / (u99 - i99))
     import statistics as _st
@@ -3728,12 +3804,18 @@ def tools_load_macros(t3_path=TOOLS_T3):
     busy, fold = _tools_load(t3_path)
     rises = [v["rise"] for v in fold.values()]
     back = [t for t, v in fold.items() if v.get("back", 0.0) >= TAIL_BACK_SHARE]
+    moves = {t: v["move"] for t, v in fold.items() if "move" in v}
+    if any(moves.get(t) != step for t, step in MEDIAN_ONE_STEP.items()):
+        raise ValueError("the prose says the load moved the median of %s by exactly one step of "
+                         "what it prints; the table says %s"
+                         % (sorted(MEDIAN_ONE_STEP), {t: moves.get(t) for t in MEDIAN_ONE_STEP}))
     return [
         ("toolsLoadPct", busy),
         ("toolsTailToolsWord", _spell(len(fold))),
         ("toolsTailRiseLo", "%.1f" % min(rises)),
         ("toolsTailRiseHi", "%.1f" % max(rises)),
-        ("toolsMedianMoveHi", "%.1f" % max(v["move"] for v in fold.values())),
+        ("toolsMedianMoveHi", "%.1f" % max(m for t, m in moves.items()
+                                           if t not in MEDIAN_ONE_STEP)),
         ("toolsTailBackWord", _spell(len(back))),
     ]
 
@@ -3755,10 +3837,185 @@ def render_tools_load_table(t3_path=TOOLS_T3):
     ]
     for tool in sorted(fold, key=lambda t: TOOL_NAMES[t].lower()):
         v = fold[tool]
-        lines.append("%s & %.2f & %.2f & %.2f & %.2f & %.2f \\\\" % (
-            TOOL_NAMES[tool], v["p50_idle"], v["p50_under"], v["idle"], v["under"], v["ahead"]))
+        medians = ("%.2f & %.2f" % (v["p50_idle"], v["p50_under"]) if "p50_idle" in v
+                   else "-- & --")
+        lines.append("%s & %s & %.2f & %.2f & %.2f \\\\" % (
+            TOOL_NAMES[tool], medians, v["idle"], v["under"], v["ahead"]))
     lines += ["\\bottomrule", "\\end{tabular}"]
     return "\n".join(lines) + "\n"
+
+
+YSB_FLUSH_CSV = os.path.join("docs", "results", "tools", "ysb_flush.csv")
+YSB_FIT_CSV = os.path.join("docs", "results", "tools", "ysb_t2_fit.csv")
+
+
+def ysb_flush_macros(csv_path=YSB_FLUSH_CSV):
+    """Supplement S5's reason, read after the runs, for the Yahoo Streaming Benchmark's staircase:
+    how far apart one window's writes for successive campaigns were within a flush, with no delay
+    and with the largest delay T1 added, and how fast that gap grew with the delay in each round
+    (scripts/ysb_post_hoc.py). The prose quotes one gap at no delay, a range at the largest delay,
+    and a gap that grew in every round, so a table that holds anything else stops the build."""
+    if not os.path.exists(csv_path):
+        print("note: YSB flush table absent")
+        return []
+    import csv as _csv
+    import ysb_post_hoc
+    with open(csv_path, encoding="utf-8", newline="") as fh:
+        rows = list(_csv.DictReader(fh))
+    split = [r for r in rows if r["gap_ms"] != ""]
+    top = max(float(r["added_ms"]) for r in rows)
+    zero = sorted({float(r["gap_ms"]) for r in split if float(r["added_ms"]) == 0.0})
+    at_top = sorted(float(r["gap_ms"]) for r in split if float(r["added_ms"]) == top)
+    slopes = ysb_post_hoc.slopes(rows)
+    if (len(zero) != 1 or len(at_top) < 2 or at_top[0] == at_top[-1]
+            or set(slopes) != {r["round"] for r in rows} or min(slopes.values()) <= 0):
+        raise ValueError("the supplement quotes one gap between YSB's writes at no delay, a range "
+                         "at the largest delay, and a gap that grew in every round; the table "
+                         "does not hold them")
+    return [
+        ("toolsYsbGapZero", "%g" % zero[0]),
+        ("toolsYsbGapTopLo", "%g" % at_top[0]),
+        ("toolsYsbGapTopHi", "%g" % at_top[-1]),
+        ("toolsYsbTopAddedMs", "%g" % top),
+        ("toolsYsbGapSlopeLo", "%.1f" % min(slopes.values())),
+        ("toolsYsbGapSlopeHi", "%.1f" % max(slopes.values())),
+        ("toolsYsbGapRuns", str(len(split))),
+        ("toolsYsbGapOf", str(len(rows))),
+    ]
+
+
+def ysb_fit_macros(csv_path=YSB_FIT_CSV):
+    """Supplement S5's direct reading of the Yahoo Streaming Benchmark's clock-moved runs, beside
+    the frozen verdicts (scripts/ysb_post_hoc.py): the share of windows its notebook dropped with no
+    clock moved; what "drops the negatives" predicts each moved run keeps, and its average, against
+    what the run kept and printed; and how far each run's average fell from its round's control,
+    which is what timing against one clock predicts it would not. The prose says the prediction
+    fits every run and that every average fell, so a table that says otherwise stops the build."""
+    if not os.path.exists(csv_path):
+        print("note: YSB fit table absent")
+        return []
+    import csv as _csv
+    with open(csv_path, encoding="utf-8", newline="") as fh:
+        rows = list(_csv.DictReader(fh))
+    control = {r["round"]: r for r in rows if r["reference"] == ""}
+    moved = [r for r in rows if r["reference"] != ""]
+    if not moved or {r["round"] for r in moved} != set(control):
+        raise ValueError("the supplement reads every clock-moved YSB run against its round's "
+                         "control; the fit table does not pair them")
+    dropped = [100.0 * (1 - int(r["kept"]) / int(r["sent"])) for r in control.values()]
+    predicted = [100.0 * int(r["predicted_kept"]) / int(r["reference"]) for r in moved]
+    kept = [100.0 * int(r["kept"]) / int(r["sent"]) for r in moved]
+    off = [abs(float(r["avg_ms"]) - float(r["predicted_avg_ms"])) for r in moved]
+    fell = [float(control[r["round"]]["avg_ms"]) - float(r["avg_ms"]) for r in moved]
+    #: "Fits": the share kept within ten points of the share predicted, and the average within a
+    #: tenth of the offset of the average predicted. A description's threshold, read after the
+    #: runs, and stated beside it.
+    if (any(abs(k - p) > 10.0 for k, p in zip(kept, predicted))
+            or any(o > 0.1 * float(r["offset_ms"]) for o, r in zip(off, moved))
+            or min(fell) <= 0):
+        raise ValueError("the supplement says 'drops the negatives' fits every clock-moved YSB "
+                         "run and that every average fell from its control; the table disagrees")
+    return [
+        ("toolsYsbControlDropLo", "%.0f" % min(dropped)),
+        ("toolsYsbControlDropHi", "%.0f" % max(dropped)),
+        ("toolsYsbFitPredLo", "%.0f" % min(predicted)),
+        ("toolsYsbFitPredHi", "%.0f" % max(predicted)),
+        ("toolsYsbFitKeptLo", "%.0f" % min(kept)),
+        ("toolsYsbFitKeptHi", "%.0f" % max(kept)),
+        ("toolsYsbFitAvgHi", "%.0f" % max(off)),
+        ("toolsYsbFellLo", "%.0f" % min(fell)),
+    ]
+
+
+K1_CSV = os.path.join("docs", "results", "tools", "k1.csv")
+K1_VERDICTS = os.path.join("docs", "results", "tools", "k1_verdicts.json")
+DEFAULT_K1_TABLE = os.path.join("docs", "generated", "k1_table.tex")
+#: K1's cells as T3's (D35-6): load in percent and whether Kafka's tool ran at real-time priority.
+K1_CELLS = (("0", "no"), ("0", "yes"), ("88", "no"), ("88", "yes"))
+
+
+def _k1(csv_path=K1_CSV, verdicts_path=K1_VERDICTS):
+    """K1's judged runs by cell, and its verdicts, checked against what the prose says of them.
+
+    The prose says each of K1-a to K1-d held in every round, so a verdict that did not stops the
+    build rather than leaving the sentence standing beside data that no longer support it."""
+    import csv as _csv
+    with open(csv_path, encoding="utf-8") as fh:
+        rows = [r for r in _csv.DictReader(fh) if r["judged"] == "True"]
+    with open(verdicts_path, encoding="utf-8") as fh:
+        found = json.load(fh)
+    failing = {k: v["verdict"] for k, v in found.items() if v["verdict"] != "holds"}
+    if failing:
+        raise ValueError("the prose says K1-a to K1-d each held in every round; the verdicts "
+                         "say %s" % failing)
+    cells = {cell: [r for r in rows if (r["load_pct"], r["go_first"]) == cell] for cell in K1_CELLS}
+    if any(not v for v in cells.values()):
+        raise ValueError("a K1 cell has no judged run")
+    rounds = {r["round"] for r in rows}
+    if any(len(v) != len(rounds) for v in cells.values()):
+        raise ValueError("K1's cells were not all judged in the same rounds")
+    return cells, sorted(rounds)
+
+
+def _median(values):
+    import statistics as _st
+    return _st.median(values)
+
+
+def k1_macros(csv_path=K1_CSV, verdicts_path=K1_VERDICTS):
+    """Section V-A's sentence on K1: how often a record was readable before Kafka's own tool had
+    its acknowledgment, idle and loaded, and at real-time priority, and how late it timed them."""
+    if not (os.path.exists(csv_path) and os.path.exists(verdicts_path)):
+        print("note: K1 tables absent")
+        return []
+    cells, rounds = _k1(csv_path, verdicts_path)
+    share = {c: [100.0 * float(r["early_share"]) for r in v] for c, v in cells.items()}
+    loaded = cells[("88", "no")]
+    return [
+        ("kOneRoundsWord", _spell(len(rounds))),
+        ("kOneEarlyIdleLo", "%.1f" % min(share[("0", "no")])),
+        ("kOneEarlyIdleHi", "%.1f" % max(share[("0", "no")])),
+        ("kOneEarlyBusyLo", "%.0f" % min(share[("88", "no")])),
+        ("kOneEarlyBusyHi", "%.0f" % max(share[("88", "no")])),
+        ("kOneEarlyFirstHi", "%.1f" % max(share[("88", "yes")] + share[("0", "yes")])),
+        ("kOneLateMedian", "%.1f" % _median([float(r["late_p50_ms"]) for r in loaded])),
+        ("kOneToolNine", "%d" % round(_median([float(r["tool_p99_ms"]) for r in loaded]))),
+        ("kOneObservedNine", "%.1f" % _median([float(r["observed_p99_ms"]) for r in loaded])),
+    ]
+
+
+def render_k1_table(csv_path=K1_CSV, verdicts_path=K1_VERDICTS):
+    """The supplement's K1 table: for each cell, the share of records readable before Kafka's tool
+    had their acknowledgment (median and range over the rounds), the median of S, and the 99th
+    percentile the tool computed beside the observer's, each the median over the rounds."""
+    cells, rounds = _k1(csv_path, verdicts_path)
+    lines = [
+        "% Generated by scripts/emit_paper_numbers.py from docs/results/tools/k1.csv.",
+        "% Do not edit by hand.",
+        "\\begin{tabular}{@{}llrrrrr@{}}",
+        "\\toprule",
+        " & & \\multicolumn{2}{c}{Readable first (\\%)} & & \\multicolumn{2}{c}{99th percentile (ms)} \\\\",
+        "\\cmidrule(lr){3-4}\\cmidrule(l){6-7}",
+        "Load & Kafka's tool & median & range & $S$, median (ms) & tool & observer \\\\",
+        "\\midrule",
+    ]
+    for load, first in K1_CELLS:
+        v = cells[(load, first)]
+        shares = [100.0 * float(r["early_share"]) for r in v]
+        lines.append("%s & %s & %.1f & %.1f--%.1f & %.2f & %.0f & %.2f \\\\" % (
+            "idle" if load == "0" else "%s\\%%" % load,
+            "real-time priority" if first == "yes" else "normal priority",
+            _median(shares), min(shares), max(shares),
+            _median([float(r["s_p50_ms"]) for r in v]),
+            _median([float(r["tool_p99_ms"]) for r in v]),
+            _median([float(r["observed_p99_ms"]) for r in v])))
+    lines += ["\\bottomrule", "\\end{tabular}"]
+    return "\n".join(lines) + "\n"
+
+
+def _signed(value):
+    """A table cell's number in text mode, its minus a minus sign rather than a hyphen."""
+    return "%.2f" % value if value >= 0 else "$-$%.2f" % -value
 
 
 def render_tools_table(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
@@ -3785,9 +4042,9 @@ def render_tools_table(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
                   for r in t1 if r["tool"] == tool and r["slope"]]
         runs = [r for r in t2 if r["tool"] == tool]
         label = "one" if tool in one else "two"
-        lines.append("%s & %s & %.2f--%.2f & %s & %d/%d \\\\" % (
-            TOOL_NAMES[tool], TRIP_CELLS[trip[tool]], min(slopes), max(slopes), label,
-            sum(r["clocks"] == label for r in runs), len(runs)))
+        lines.append("%s & %s & %s--%s & %s & %d/%d \\\\" % (
+            TOOL_NAMES[tool], TRIP_CELLS[trip[tool]], _signed(min(slopes)), _signed(max(slopes)),
+            label, sum(r["clocks"] == label for r in runs), len(runs)))
     lines += ["\\bottomrule", "\\end{tabular}"]
     return "\n".join(lines) + "\n"
 
@@ -4448,7 +4705,8 @@ def _all_pairs(m):
             + spread_macros() + payload_flip_macros() + literature_census_macros()
             + arm_macros() + manipulation_macros()
             + deletion_macros() + literature_macros() + cliff_macros() + reach_macros()
-            + tools_block_macros() + tools_load_macros() + recv_wait_macros()
+            + tools_block_macros() + tools_load_macros() + ysb_flush_macros() + ysb_fit_macros()
+            + k1_macros() + recv_wait_macros()
             + law_reading_macros()
             + s_window_macros() + rate_by_delivery_macros() + mechanism_interval_macros()
             + traced_pooled_macros() + workload_macros() + backlog_macros()
@@ -4473,6 +4731,7 @@ def main(argv=None):
     ap.add_argument("--interval-table", default=DEFAULT_INTERVAL_TABLE)
     ap.add_argument("--tools-table", default=DEFAULT_TOOLS_TABLE)
     ap.add_argument("--tools-load-table", default=DEFAULT_TOOLS_T3_TABLE)
+    ap.add_argument("--k1-table", default=DEFAULT_K1_TABLE)
     ap.add_argument("--recv-wait-table", default=DEFAULT_RECV_WAIT_TABLE)
     ap.add_argument("--mechanism-table", default=DEFAULT_MECHANISM_TABLE)
     ap.add_argument("--groups-table", default=DEFAULT_GROUPS_TABLE)
@@ -4517,6 +4776,9 @@ def main(argv=None):
         targets.append((args.tools_table, render_tools_table()))
     if os.path.exists(TOOLS_T3):
         targets.append((args.tools_load_table, render_tools_load_table()))
+    # K1 like the tools block: its guard is why the table exists, so only its absence is tolerated.
+    if os.path.exists(K1_CSV) and os.path.exists(K1_VERDICTS):
+        targets.append((args.k1_table, render_k1_table()))
     recv = render_recv_wait_table()
     if recv:
         targets.append((args.recv_wait_table, recv))

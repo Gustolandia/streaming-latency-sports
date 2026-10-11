@@ -127,3 +127,43 @@ round,tool,offset_ms,verdict,standing,sent,kept,verdict_31,clocks,clocks_why
 4,pulsar-perf,5.0073,undecided,,3000,4,undecided,two,it kept 4 of the 3000 it was asked to send
 4,ycsb,1.7420,undecided,drops the negatives; drops zero and below; times against one clock,3000,3000,undecided,one,"its figures stayed within a quarter of the 1.742 ms offset (avg +0.007, p50 +0.010, min +0.006)"
 4,ycsb,3.7875,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.788 ms offset (avg -0.023, p50 -0.013, min -0.037)"
+1,stream-perftest,1.9859,undecided,,3000,628,undecided,two,it kept 628 of the 3000 it was asked to send
+1,stream-perftest,3.9877,undecided,,3000,3,undecided,two,it kept 3 of the 3000 it was asked to send
+1,strimzi-canary,2.7402,undecided,drops zero and below; times against one clock,3000,,undecided,one,"its figures stayed within a quarter of the 2.740 ms offset (avg +0.162, p50 +0.000, min +0.000)"
+1,strimzi-canary,4.7430,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 4.743 ms offset (avg +0.162, p50 +0.000, min +0.000)"
+1,trogdor,2.7385,undecided,,3000,,undecided,two,"its figures moved by more than half the 2.739 ms offset (avg -2.159, p50 -2.000)"
+1,trogdor,4.7098,undecided,,3000,,undecided,undecided,"its figures moved between a quarter and half the 4.710 ms offset (avg -2.171, p50 -2.000)"
+1,xinfra-monitor,2.7370,undecided,drops zero and below; times against one clock,3000,,undecided,one,its figures stayed within a quarter of the 2.737 ms offset (avg +0.003)
+1,xinfra-monitor,4.7327,times against one clock,times against one clock,3000,,times against one clock,one,its figures stayed within a quarter of the 4.733 ms offset (avg +0.077)
+2,stream-perftest,1.9125,undecided,,3000,1226,undecided,two,it kept 1226 of the 3000 it was asked to send
+2,stream-perftest,3.9153,undecided,,3000,3,undecided,two,it kept 3 of the 3000 it was asked to send
+2,strimzi-canary,2.7118,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 2.712 ms offset (avg +0.020, p50 +0.000, min +0.000)"
+2,strimzi-canary,4.7125,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 4.713 ms offset (avg -0.086, p50 +0.000, min +0.000)"
+2,trogdor,2.7060,undecided,,3000,,undecided,two,"its figures moved by more than half the 2.706 ms offset (avg -2.158, p50 -2.000)"
+2,trogdor,4.6961,undecided,,3000,,undecided,undecided,"its figures moved between a quarter and half the 4.696 ms offset (avg -2.167, p50 -2.000)"
+2,xinfra-monitor,2.7167,times against one clock,times against one clock,3000,,times against one clock,one,its figures stayed within a quarter of the 2.717 ms offset (avg +0.080)
+2,xinfra-monitor,4.6856,times against one clock,times against one clock,3000,,times against one clock,one,its figures stayed within a quarter of the 4.686 ms offset (avg +0.049)
+3,stream-perftest,1.9250,undecided,,3000,782,undecided,two,it kept 782 of the 3000 it was asked to send
+3,stream-perftest,3.9475,undecided,,3000,4,undecided,two,it kept 4 of the 3000 it was asked to send
+3,strimzi-canary,2.6947,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 2.695 ms offset (avg -0.035, p50 +0.000, min +0.000)"
+3,strimzi-canary,4.6941,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 4.694 ms offset (avg -0.012, p50 +0.000, min +0.000)"
+3,trogdor,2.7131,undecided,,3000,,undecided,two,"its figures moved by more than half the 2.713 ms offset (avg -2.079, p50 -2.000)"
+3,trogdor,4.6899,undecided,,3000,,undecided,undecided,"its figures moved between a quarter and half the 4.690 ms offset (avg -2.100, p50 -2.000)"
+3,xinfra-monitor,2.6650,times against one clock,times against one clock,3000,,times against one clock,one,its figures stayed within a quarter of the 2.665 ms offset (avg +0.039)
+3,xinfra-monitor,4.6825,times against one clock,times against one clock,3000,,times against one clock,one,its figures stayed within a quarter of the 4.683 ms offset (avg +0.018)
+4,stream-perftest,1.8255,undecided,,3000,807,undecided,two,it kept 807 of the 3000 it was asked to send
+4,stream-perftest,3.9020,undecided,,3000,4,undecided,two,it kept 4 of the 3000 it was asked to send
+4,strimzi-canary,2.7275,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 2.728 ms offset (avg -0.113, p50 +0.000, min +0.000)"
+4,strimzi-canary,4.7283,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 4.728 ms offset (avg +0.035, p50 +0.000, min +0.000)"
+4,trogdor,2.7811,undecided,,3000,,undecided,two,"its figures moved by more than half the 2.781 ms offset (avg -2.051, p50 -2.000)"
+4,trogdor,4.8016,undecided,,3000,,undecided,undecided,"its figures moved between a quarter and half the 4.802 ms offset (avg -2.058, p50 -2.000)"
+4,xinfra-monitor,2.8060,times against one clock,times against one clock,3000,,times against one clock,one,its figures stayed within a quarter of the 2.806 ms offset (avg +0.069)
+4,xinfra-monitor,4.8179,times against one clock,times against one clock,3000,,times against one clock,one,its figures stayed within a quarter of the 4.818 ms offset (avg -0.018)
+1,ysb,421.4983,undecided,,1297,600,undecided,two,it kept 600 of the 1297 it was asked to send
+1,ysb,423.5062,undecided,,1200,578,undecided,two,it kept 578 of the 1200 it was asked to send
+2,ysb,326.0098,undecided,,1300,749,undecided,two,it kept 749 of the 1300 it was asked to send
+2,ysb,328.0417,times against one clock,times against one clock,1299,699,undecided,two,it kept 699 of the 1299 it was asked to send
+3,ysb,381.5108,times against one clock,times against one clock,1300,696,undecided,two,it kept 696 of the 1300 it was asked to send
+3,ysb,383.5058,times against one clock,times against one clock,1300,613,undecided,two,it kept 613 of the 1300 it was asked to send
+4,ysb,354.5230,times against one clock,times against one clock,1300,677,undecided,two,it kept 677 of the 1300 it was asked to send
+4,ysb,356.4957,times against one clock,times against one clock,1262,659,undecided,two,it kept 659 of the 1262 it was asked to send

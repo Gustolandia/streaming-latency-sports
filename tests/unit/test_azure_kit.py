@@ -733,11 +733,17 @@ class TestTheToolsBlock:
         Five invocations, not four: T2 runs the tool a third time at no offset as its control
         (D23-1), and that one carries no wrapper at all, which is the whole point of it. And a
         sixth since freeze 33: YSB's reference is YSB itself at no delay (D36-3), in the
-        namespace, as T1's zero step runs it.
+        namespace, as T1's zero step runs it. And four more since freeze 34: PerfKit's T1, its zero
+        step alone, and its reference, PerfKit itself, both unwrapped since its broker is a managed
+        service T1 cannot reach; and S1's control and its stepped run, both in the namespace and
+        neither otherwise wrapped, since what differs between them is the machine's clock.
         """
         code = self.tools()
-        assert code.count("bash cloud/azure/tools_run.sh") == 6
+        assert code.count("bash cloud/azure/tools_run.sh") == 10
         assert 'SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh ysb' in code
+        assert 'bash cloud/azure/tools_run.sh pkb "$out/reference_pkb"' in code
+        assert code.count('SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh "$tool" "$control"') == 1
+        assert code.count('SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh "$tool" "$run"') == 1
         assert 'SBL_TOOL_WRAP="$wrap"' in code
         assert 'WRAP="${SBL_TOOL_WRAP:-}"' in self.runner()
 
@@ -1861,8 +1867,10 @@ class TestEveryPinnedToolHasSomethingThatInstallsIt:
 
     def test_the_block_pins_the_ten_tools_the_plan_counts(self):
         """Eleven for the first block (ten runnable, Kafka's two bundled tools apart), the five
-        freeze 30 adds (D33-1), the four freeze 32 adds (D35-1), and YSB (D36-1)."""
-        assert len(self._tools()) == 21
+        freeze 30 adds (D33-1), the four freeze 32 adds (D35-1), YSB (D36-1), and freeze 34's
+        PerfKit and Stream PerfTest as one instance, which shares its jar with the two-instance
+        runs but is its own way of running it."""
+        assert len(self._tools()) == 23
 
     @pytest.mark.parametrize("tool", ["vegeta", "hey", "k6", "wrk2", "valkey-benchmark",
                                       "memtier_benchmark", "rdkafka_performance",

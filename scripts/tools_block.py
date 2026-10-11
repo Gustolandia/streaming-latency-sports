@@ -6,7 +6,9 @@ The registered law campaign ran eleven benchmarking tools on the first x86 pair,
 each (blocks T1 to T4, plan decision D3-1: "the tools block T1-T4 is in this paper"; the
 write-up is docs/results/tools/t1-t4-eleven-tools.md), and a second block ran the five the plan
 had registered and version 15 had left unrun, four rounds each on the same pair (freeze 30;
-docs/results/tools/t1-t4-five-tools.md). Their raw runs stay outside git, in the
+docs/results/tools/t1-t4-five-tools.md). Five more, read at source in October, ran four rounds
+each, four on the same pair (freeze 32) and YSB on the second x86 pair (freeze 33;
+docs/results/tools/t1-t4-october-tools.md). Their raw runs stay outside git, in the
 whole runs folders archived with the data record. What the paper says about them is a handful
 of counts, and a count the paper prints has to be a fold over committed rows like every other
 number in it. So this script reads the judged files the campaign left beside each run and
@@ -42,6 +44,10 @@ Which judged file stands for which round is the write-up's decision, not this sc
               the corrected programs.
   the five    v33_20261010T075920Z, tools_v33 and tools_v33_round2 to _round4, judged on the
               pair as each ran.
+  the four    v35_20261011T105302Z, tools_v35 and tools_v35_round2 to _round4, judged on the
+              pair as each ran (freeze 32).
+  YSB         ../matched-b/v36_20261011T063738Z, tools_v36 and tools_v36_round2 to _round4,
+              judged on the second x86 pair as each ran (freeze 33).
 
     python scripts/tools_block.py --collected runs/azure/collected/matched
 """
@@ -80,6 +86,20 @@ ROUNDS_V33 = tuple(
     (rnd, "v33_20261010T075920Z/x/runs/azure/" + folder, None, {})
     for rnd, folder in (("1", "tools_v33"), ("2", "tools_v33_round2"), ("3", "tools_v33_round3"),
                         ("4", "tools_v33_round4")))
+
+#: Freeze 32's block (D35-1): Xinfra Monitor, Strimzi Canary, Trogdor and Stream PerfTest, judged
+#: on the pair as each ran. K1, which ran in the same folders, is folded by kafka_clamp.py's block.
+ROUNDS_V35 = tuple(
+    (rnd, "v35_20261011T105302Z/x/runs/azure/" + folder, None, {})
+    for rnd, folder in (("1", "tools_v35"), ("2", "tools_v35_round2"), ("3", "tools_v35_round3"),
+                        ("4", "tools_v35_round4")))
+
+#: Freeze 33's block (D36-1): YSB, four rounds on the second x86 pair, judged on that pair as each
+#: ran; its folder sits beside the first pair's, so it is named from there.
+ROUNDS_V36 = tuple(
+    (rnd, "../matched-b/v36_20261011T063738Z/x/runs/azure/" + folder, None, {})
+    for rnd, folder in (("1", "tools_v36"), ("2", "tools_v36_round2"), ("3", "tools_v36_round3"),
+                        ("4", "tools_v36_round4")))
 
 #: The interval each tool times, as the plan read its invocation before any run (the addendum
 #: of freeze 21, "How each tool keeps time"). It is how the tool was run, not a measurement, and
@@ -266,7 +286,8 @@ def t3_rows(rnd, folder):
 def collect(collected, rounds=None):
     """The three tables, every round, from the folders the write-up names."""
     t1, t2, t3 = [], [], []
-    for rnd, runs, verdicts, read_again in (ROUNDS + ROUNDS_V33 if rounds is None else rounds):
+    for rnd, runs, verdicts, read_again in (ROUNDS + ROUNDS_V33 + ROUNDS_V35 + ROUNDS_V36
+                                            if rounds is None else rounds):
         again = {tool: os.path.join(collected, d, "t1-%s-step.json" % tool)
                  for tool, d in read_again.items()}
         t1 += t1_rows(rnd, os.path.join(collected, runs), again)

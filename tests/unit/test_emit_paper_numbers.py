@@ -2579,7 +2579,7 @@ class TestToolsUnderLoad:
                 (rnd, tool, load, "no", "%.4f" % p50[1], "%.4f" % under, ""),
                 (rnd, tool, load, "yes", "%.4f" % p50[1], "%.4f" % ahead, "")]
 
-    def _table(self, tmp_path, extra=()):
+    def _table(self, tmp_path, extra=(), trogdor=None):
         rows = (self._cells("1", "k6", 0.86, 2.92, 0.85) + self._cells("2", "k6", 0.84, 2.94, 0.85)
                 + self._cells("1", "nats-bench", 1.39, 4.21, 3.94, p50=(1.31, 1.38))
                 + self._cells("2", "nats-bench", 1.43, 4.02, 3.96, p50=(1.35, 1.26))
@@ -2589,13 +2589,30 @@ class TestToolsUnderLoad:
                 # emqtt-bench prints no percentile and stays out of every figure.
                 + [("1", "emqtt-bench", "0", "no", "", "", "1.0000"),
                    ("1", "emqtt-bench", "88", "no", "", "", "1.8500")])
-        return self._write(tmp_path, rows + list(extra))
+        return self._write(tmp_path, rows + list(self._trogdor() if trogdor is None else trogdor)
+                           + list(extra))
+
+    def _trogdor(self, p50=(2.0, 3.0)):
+        """Trogdor as 11 October left it: whole milliseconds, its median one step up under load."""
+        return (self._cells("1", "trogdor", 3.0, 8.0, 6.0, p50=p50)
+                + self._cells("2", "trogdor", 3.0, 8.0, 6.0, p50=p50))
 
     def test_the_figures_the_sentence_quotes(self, tmp_path):
+        """Trogdor's tail rose by 5 ms and real-time priority took back two fifths of it; its
+        median's one printed step is named in the prose, not quoted as the largest move."""
         got = dict(epn.tools_load_macros(self._table(tmp_path)))
-        assert got == {"toolsLoadPct": "88", "toolsTailToolsWord": "two",
-                       "toolsTailRiseLo": "2.1", "toolsTailRiseHi": "2.6",
+        assert got == {"toolsLoadPct": "88", "toolsTailToolsWord": "three",
+                       "toolsTailRiseLo": "2.1", "toolsTailRiseHi": "5.0",
                        "toolsMedianMoveHi": "0.1", "toolsTailBackWord": "one"}
+
+    def test_a_median_named_as_one_printed_step_that_moved_otherwise_stops_the_build(self,
+                                                                                    tmp_path):
+        with pytest.raises(ValueError, match="exactly one step"):
+            epn.tools_load_macros(self._table(tmp_path, trogdor=self._trogdor(p50=(2.0, 2.0))))
+
+    def test_a_table_without_the_tool_named_as_one_printed_step_stops_the_build(self, tmp_path):
+        with pytest.raises(ValueError, match="exactly one step"):
+            epn.tools_load_macros(self._table(tmp_path, trogdor=()))
 
     def test_a_tool_whose_tail_did_not_rise_stops_the_build(self, tmp_path):
         flat = self._cells("1", "vegeta", 1.6, 1.5, 1.5) + self._cells("2", "vegeta", 1.6, 1.5, 1.5)
@@ -2613,7 +2630,8 @@ class TestToolsUnderLoad:
     def test_the_table_has_a_row_per_tool_that_prints_a_percentile(self, tmp_path):
         table = epn.render_tools_load_table(self._table(tmp_path))
         rows = [l for l in table.splitlines() if l.endswith("\\\\") and "&" in l][2:]
-        assert rows == ["k6 & 0.70 & 0.72 & 0.85 & 2.93 & 0.85 \\\\",
+        assert rows == ["\\kafka{} Trogdor & 2.00 & 3.00 & 3.00 & 8.00 & 6.00 \\\\",
+                        "k6 & 0.70 & 0.72 & 0.85 & 2.93 & 0.85 \\\\",
                         "NATS bench & 1.31 & 1.30 & 1.43 & 4.02 & 3.94 \\\\"]
 
     def test_the_committed_table_is_the_one_the_data_give(self):
@@ -2629,6 +2647,113 @@ class TestToolsUnderLoad:
         assert main(["--ledger", str(led), "--out", str(out), "--table",
                      str(tmp_path / "t.tex"), "--tools-load-table", str(load)]) == 0
         assert not load.exists()
+
+
+class TestTheYsbReadings:
+    """Supplement S5's two readings of the Yahoo Streaming Benchmark made after its runs
+    (scripts/ysb_post_hoc.py): how far apart its writes for one window were, against the delay,
+    and its clock-moved runs read directly against "drops the negatives". Each is quoted as the
+    prose quotes it, and each claim the prose makes of every round or run is a guard."""
+
+    FLUSH = ("round", "added_ms", "values", "windows", "steps", "gap_ms")
+    FIT = ("round", "offset_ms", "sent", "kept", "avg_ms", "reference", "predicted_kept",
+           "predicted_avg_ms")
+
+    def _csv(self, tmp_path, name, fields, rows):
+        p = tmp_path / name
+        with p.open("w", newline="", encoding="utf-8") as fh:
+            w = csv.writer(fh)
+            w.writerow(fields)
+            w.writerows(rows)
+        return str(p)
+
+    def _flush(self, tmp_path, zero2="3.0", top2="11.0", one_delay_round=False):
+        rows = [("1", "0.0", 1300, 12, 1118, "3.0"), ("1", "1.1", 1281, "", "", ""),
+                ("1", "2.0", 1200, 11, 968, "10.0"),
+                ("2", "0.0", 1200, 11, 1025, zero2), ("2", "2.0", 1300, 12, 1055, top2)]
+        if one_delay_round:
+            rows.append(("3", "0.0", 1300, 12, 1100, "3.0"))
+        return self._csv(tmp_path, "flush.csv", self.FLUSH, rows)
+
+    def test_the_gaps_the_supplement_quotes(self, tmp_path):
+        """Round 1: 3 to 10 ms over 2 ms added, 3.5 ms per ms; round 2: 3 to 11, 4.0."""
+        got = dict(epn.ysb_flush_macros(self._flush(tmp_path)))
+        assert got == {"toolsYsbGapZero": "3", "toolsYsbGapTopLo": "10", "toolsYsbGapTopHi": "11",
+                       "toolsYsbTopAddedMs": "2", "toolsYsbGapSlopeLo": "3.5",
+                       "toolsYsbGapSlopeHi": "4.0", "toolsYsbGapRuns": "4",
+                       "toolsYsbGapOf": "5"}
+
+    def test_two_gaps_at_no_delay_stop_the_build(self, tmp_path):
+        with pytest.raises(ValueError, match="one gap between YSB's writes"):
+            epn.ysb_flush_macros(self._flush(tmp_path, zero2="4.0"))
+
+    def test_one_gap_at_the_largest_delay_stops_the_build(self, tmp_path):
+        """The prose quotes a range there."""
+        with pytest.raises(ValueError, match="a range at the largest delay"):
+            epn.ysb_flush_macros(self._flush(tmp_path, top2="10.0"))
+
+    def test_a_round_with_no_slope_stops_the_build(self, tmp_path):
+        with pytest.raises(ValueError, match="grew in every round"):
+            epn.ysb_flush_macros(self._flush(tmp_path, one_delay_round=True))
+
+    def test_a_gap_that_shrank_stops_the_build(self, tmp_path):
+        with pytest.raises(ValueError, match="grew in every round"):
+            epn.ysb_flush_macros(self._flush(tmp_path, top2="2.0"))
+
+    def test_an_absent_flush_table_emits_nothing(self, tmp_path, capsys):
+        assert epn.ysb_flush_macros(str(tmp_path / "none.csv")) == []
+        assert "YSB flush table absent" in capsys.readouterr().out
+
+    def _fit(self, tmp_path, kept2="749", avg2="359.4", control2=True):
+        rows = [("1", "0", 1300, 989, "520.2", "", "", ""),
+                ("1", "421.4983", 1297, 600, "341.1", 1300, 649, "303.2"),
+                ("2", "326.0098", 1300, kept2, avg2, 1291, 644, "359.2")]
+        if control2:
+            rows.append(("2", "0", 1300, 1004, "569.3", "", "", ""))
+        return self._csv(tmp_path, "fit.csv", self.FIT, rows)
+
+    def test_the_fit_the_supplement_quotes(self, tmp_path):
+        """Dropped with no clock moved: 311 and 296 of 1,300. Predicted kept: 649 of 1,300 and
+        644 of 1,291; kept: 600 of 1,297 and 749 of 1,300. Averages 37.9 and 0.2 ms from those
+        predicted; each fell from its control, by 179.1 and 209.9 ms."""
+        got = dict(epn.ysb_fit_macros(self._fit(tmp_path)))
+        assert got == {"toolsYsbControlDropLo": "23", "toolsYsbControlDropHi": "24",
+                       "toolsYsbFitPredLo": "50", "toolsYsbFitPredHi": "50",
+                       "toolsYsbFitKeptLo": "46", "toolsYsbFitKeptHi": "58",
+                       "toolsYsbFitAvgHi": "38", "toolsYsbFellLo": "179"}
+
+    def test_a_moved_round_without_its_control_stops_the_build(self, tmp_path):
+        with pytest.raises(ValueError, match="against its round's control"):
+            epn.ysb_fit_macros(self._fit(tmp_path, control2=False))
+
+    def test_a_kept_share_far_from_the_prediction_stops_the_build(self, tmp_path):
+        with pytest.raises(ValueError, match="fits every clock-moved YSB run"):
+            epn.ysb_fit_macros(self._fit(tmp_path, kept2="900"))
+
+    def test_an_average_far_from_the_prediction_stops_the_build(self, tmp_path):
+        """More than a tenth of the 326 ms offset away."""
+        with pytest.raises(ValueError, match="fits every clock-moved YSB run"):
+            epn.ysb_fit_macros(self._fit(tmp_path, avg2="400.0"))
+
+    def test_an_average_that_did_not_fall_stops_the_build(self, tmp_path):
+        """One clock predicts no fall; the prose says every run's average fell."""
+        p = self._csv(tmp_path, "fit.csv", self.FIT,
+                      [("1", "0", 1300, 989, "300.0", "", "", ""),
+                       ("1", "421.4983", 1297, 600, "310.0", 1300, 649, "303.2")])
+        with pytest.raises(ValueError, match="every average fell"):
+            epn.ysb_fit_macros(p)
+
+    def test_an_absent_fit_table_emits_nothing(self, tmp_path, capsys):
+        assert epn.ysb_fit_macros(str(tmp_path / "none.csv")) == []
+        assert "YSB fit table absent" in capsys.readouterr().out
+
+    def test_the_committed_tables_give_what_the_supplement_quotes(self):
+        """The figures S5 prints, from the tables the repository carries."""
+        flush, fit = dict(epn.ysb_flush_macros()), dict(epn.ysb_fit_macros())
+        assert (flush["toolsYsbGapZero"], flush["toolsYsbGapTopLo"], flush["toolsYsbGapTopHi"],
+                flush["toolsYsbGapRuns"], flush["toolsYsbGapOf"]) == ("3", "10", "11", "27", "40")
+        assert (fit["toolsYsbFitKeptLo"], fit["toolsYsbFitKeptHi"], fit["toolsYsbFellLo"]) == (
+            "46", "58", "179")
 
 
 class TestTheToolsBlock:
@@ -2673,9 +2798,40 @@ class TestTheToolsBlock:
                 self._t2("2", "pulsar-perf", "5.04", self.ONE if judged_one > 1 else "undecided",
                          "two", kept=kept2, sent=sent2, corrected="drops the negatives")]
 
+    def _october(self, ysb_verdict=ONE, ysb_corrected="undecided", trogdor_larger="undecided",
+                 stream_sent="3000", canary=True, ysb=True):
+        """The five tools read in October, shaped as 11 October left them: Xinfra Monitor and the
+        canary on one clock; Stream PerfTest keeping a few at the larger offset; Trogdor two at
+        the smaller offset and undecided at the larger; and YSB, two by the offset, one of its
+        runs read by freeze 21 as timing against one clock, version 34 deciding none."""
+        t1 = [("1", "stream-perftest", "across two processes", "p50", "1", "1.1411"),
+              ("1", "trogdor", "across two processes", "p50", "1", "1.1411"),
+              ("1", "xinfra-monitor", "in one process", "avg", "1", "1.0390")]
+        t2 = [self._t2("1", "stream-perftest", "1.99", "undecided", "two", kept="628"),
+              self._t2("1", "stream-perftest", "3.99", "undecided", "two", kept="3",
+                       sent=stream_sent),
+              self._t2("2", "stream-perftest", "1.91", "undecided", "two", kept="1226"),
+              self._t2("2", "stream-perftest", "3.92", "undecided", "two", kept="4",
+                       sent=stream_sent),
+              self._t2("1", "trogdor", "2.74", "undecided", "two"),
+              self._t2("1", "trogdor", "4.71", "undecided", trogdor_larger),
+              self._t2("1", "xinfra-monitor", "2.74", self.ONE, "one"),
+              self._t2("1", "xinfra-monitor", "4.73", self.ONE, "one")]
+        if canary:
+            t1.append(("1", "strimzi-canary", "in one process", "p50", "1", "1.0000"))
+            t2.append(self._t2("1", "strimzi-canary", "2.74", self.ONE, "one"))
+        if ysb:
+            t1 += [("1", "ysb", "across two processes", "p50", "1", "235.5156"),
+                   ("2", "ysb", "across two processes", "p50", "1", "-0.2382")]
+            t2 += [self._t2("1", "ysb", "421.50", "undecided", "two", kept="600", sent="1297",
+                            corrected="undecided"),
+                   self._t2("1", "ysb", "423.51", ysb_verdict, "two", kept="578", sent="1200",
+                            corrected=ysb_corrected)]
+        return t1, t2
+
     def _tables(self, tmp_path, rdkafka_round2=KEEPS, slope="1.0084", drop_round2=False,
                 rdkafka_round1="undecided", wrk2_clocks="one", rdkafka_clocks="two",
-                pulsar=None):
+                pulsar=None, october=None):
         t1 = [("1", "wrk2", "round trip", "p50", "1", slope),
               ("1", "rdkafka_performance", "across two processes", "avg", "2", "1.9583"),
               ("1", "pulsar-perf", "across two processes", "p50", "1", "1.0285"),
@@ -2691,18 +2847,24 @@ class TestTheToolsBlock:
         t2 += self._pulsar() if pulsar is None else pulsar
         if not drop_round2:
             t2.append(self._t2("2", "rdkafka_performance", "4.59", rdkafka_round2, "two"))
-        return self._write(tmp_path, t1, t2)
+        more_t1, more_t2 = self._october() if october is None else october
+        return self._write(tmp_path, t1 + more_t1, t2 + more_t2)
 
     def test_the_counts_the_section_quotes(self, tmp_path):
+        """Nine tools: four on one clock in seven runs, five on two answered so in twelve of
+        their fourteen runs (Pulsar's undecided run and Trogdor's at the larger offset are the
+        two). YSB's slopes are its own, held outside the band and out of the band's figures."""
         got = dict(epn.tools_block_macros(*self._tables(tmp_path)))
-        assert got == {"toolsRunWord": "four", "toolsRoundsWord": "two",
+        assert got == {"toolsRunWord": "nine", "toolsRoundsWord": "two",
                        "toolsSlopeLo": "0.98", "toolsSlopeHi": "1.14",
-                       "toolsOneClockWord": "two", "toolsOneClockWordCap": "Two",
-                       "toolsOneClockOf": "4",
-                       "toolsTwoClockWord": "two", "toolsTwoClockRuns": "5",
-                       "toolsTwoClockOf": "6", "toolsKeepsRoundsWord": "one",
+                       "toolsOneClockWord": "four", "toolsOneClockOf": "7",
+                       "toolsTwoClockWord": "five", "toolsTwoClockRuns": "12",
+                       "toolsTwoClockOf": "14", "toolsKeepsRoundsWord": "one",
                        "toolsPulsarKeptLo": "3", "toolsPulsarKeptHi": "7",
-                       "toolsPulsarOneClockKept": "7", "toolsAskedToSend": "3{,}000"}
+                       "toolsPulsarOneClockKept": "7", "toolsStreamKeptLo": "3",
+                       "toolsStreamKeptHi": "4", "toolsYsbSlopeLo": "-0.2",
+                       "toolsYsbSlopeHi": "236", "toolsYsbOneClockWord": "one",
+                       "toolsYsbRunsWord": "two", "toolsAskedToSend": "3{,}000"}
 
     def test_a_round_with_no_run_of_the_two_clock_tool_is_not_counted_for_it(self, tmp_path):
         """A round that never ran the tool must not count as one in which it kept every value:
@@ -2781,8 +2943,53 @@ class TestTheToolsBlock:
         assert rows == [
             "wrk2 & round trip & 1.01--1.04 & one & 3/3 \\\\",
             "\\kafka{} producer & to ack. & 1.14--1.14 & one & 1/1 \\\\",
+            "Strimzi Canary & one process & 1.00--1.00 & one & 1/1 \\\\",
+            "Xinfra Monitor & one process & 1.04--1.04 & one & 2/2 \\\\",
             "Pulsar perf. & two processes & 1.03--1.14 & two & 3/4 \\\\",
-            "librdkafka perf. & two processes & 0.98--0.98 & two & 2/2 \\\\"]
+            "librdkafka perf. & two processes & 0.98--0.98 & two & 2/2 \\\\",
+            "Stream PerfTest & two processes & 1.14--1.14 & two & 4/4 \\\\",
+            "\\kafka{} Trogdor & two processes & 1.14--1.14 & two & 1/2 \\\\",
+            "Yahoo Streaming Bench. & two processes & $-$0.24--235.52 & two & 2/2 \\\\"]
+
+    def test_a_slope_predicted_outside_the_band_that_falls_inside_stops_the_build(self,
+                                                                                tmp_path):
+        t1, t2 = self._october()
+        t1 = [r if r[1] != "ysb" else r[:5] + ("1.2",) for r in t1]
+        with pytest.raises(ValueError, match="predicted not to follow"):
+            epn.tools_block_macros(*self._tables(tmp_path, october=(t1, t2)))
+
+    def test_tables_without_yahoos_slopes_stop_the_build(self, tmp_path):
+        with pytest.raises(ValueError, match="Yahoo Streaming Benchmark's slopes"):
+            epn.tools_block_macros(*self._tables(tmp_path, october=self._october(ysb=False)))
+
+    def test_yahoo_with_no_run_read_as_one_clock_stops_the_build(self, tmp_path):
+        with pytest.raises(ValueError, match="freeze 21's judge read some of YSB"):
+            epn.tools_block_macros(*self._tables(
+                tmp_path, october=self._october(ysb_verdict="undecided")))
+
+    def test_yahoo_decided_by_version_34_stops_the_build(self, tmp_path):
+        with pytest.raises(ValueError, match="left all of them undecided"):
+            epn.tools_block_macros(*self._tables(
+                tmp_path, october=self._october(ysb_corrected="drops the negatives")))
+
+    def test_trogdor_decided_at_the_larger_offset_stops_the_build(self, tmp_path):
+        with pytest.raises(ValueError, match="Trogdor read two at the smaller offset"):
+            epn.tools_block_macros(*self._tables(
+                tmp_path, october=self._october(trogdor_larger="two")))
+
+    def test_tables_without_the_canary_stop_the_build(self, tmp_path):
+        """The supplement names Xinfra Monitor and Strimzi Canary among the one-clock tools."""
+        with pytest.raises(ValueError, match="Xinfra Monitor and Strimzi Canary"):
+            epn.tools_block_macros(*self._tables(tmp_path, october=self._october(canary=False)))
+
+    def test_stream_asked_to_send_another_count_stops_the_build(self, tmp_path):
+        """Its kept count is quoted of the count Pulsar's client was asked to send."""
+        with pytest.raises(ValueError, match="Stream PerfTest kept"):
+            epn.tools_block_macros(*self._tables(
+                tmp_path, october=self._october(stream_sent="2000")))
+
+    def test_a_negative_slope_is_set_with_a_minus_sign(self):
+        assert epn._signed(-0.2382) == "$-$0.24" and epn._signed(1.0) == "1.00"
 
     def test_the_committed_table_is_the_one_the_data_give(self):
         repo = Path(__file__).resolve().parents[2]
@@ -2863,3 +3070,91 @@ class TestTheReceiverWaitIsEmitted:
         assert main(["--ledger", str(led), "--out", str(out), "--table",
                      str(tmp_path / "t.tex"), "--recv-wait-table", str(recv)]) == 0
         assert not recv.exists()
+
+
+class TestKOne:
+    """K1 for Section V-A's sentence and the supplement's table (freeze 32, D35-6, D35-7): how often
+    a record was readable before Kafka's own end-to-end tool had its acknowledgment. The prose says
+    K1-a to K1-d each held in every round; a verdict that did not is a guard, not a note."""
+
+    #: The pilot's shape, a cell's share of records readable first, nudged per round.
+    SHARES = {("0", "no"): 0.026, ("0", "yes"): 0.006, ("88", "no"): 0.27, ("88", "yes"): 0.001}
+
+    def _block(self, tmp_path, shares=None, skip=(), covers=None):
+        import json
+        sys.path.insert(0, str(SCRIPTS_DIR))
+        import kafka_clamp as kc
+        root = tmp_path / "runs"
+        for rnd in range(1, 7):
+            folder = root / ("tools_v35" if rnd == 1 else "tools_v35_round%d" % rnd)
+            for (load, first), share in (shares or self.SHARES).items():
+                if (rnd, load, first) in skip:
+                    continue
+                run = folder / ("k1-l%s-first%s" % (load, first))
+                run.mkdir(parents=True)
+                loaded = (load, first) == ("88", "no")
+                (run / "k1.json").write_text(json.dumps({
+                    "traced": 3000, "paired": 3000, "missed_by_observer": 0,
+                    "early": int(share * 3000), "early_share": share + rnd / 10000.0,
+                    "elapsed_covers_ack": (covers or {}).get((rnd, load, first), True),
+                    "s_ms": {"p01": -0.2, "p50": 0.2, "p99": 0.7},
+                    "tool_prints": {"avg": 1.7, "p50": 1, "p99": 8 if loaded else 3},
+                    "observed_ms": {"avg": 1.0, "p50": 0.9, "p99": 4.5 if loaded else 2.0},
+                    "early_reported_late_by_ms": {"p50": 2.3, "p99": 7.8, "max": 68.0},
+                    "torn_rows": {"trace": 0, "arrivals": 0}}), encoding="utf-8")
+        out, verdicts = tmp_path / "k1.csv", tmp_path / "k1_verdicts.json"
+        kc.main(["block", "--root", str(root), "--out", str(out), "--verdicts", str(verdicts)])
+        return str(out), str(verdicts)
+
+    def test_its_sentence_is_folded_from_the_block(self, tmp_path):
+        got = dict(epn.k1_macros(*self._block(tmp_path)))
+        assert got["kOneRoundsWord"] == "six"
+        assert (got["kOneEarlyBusyLo"], got["kOneEarlyBusyHi"]) == ("27", "27")
+        assert (got["kOneEarlyIdleLo"], got["kOneEarlyIdleHi"]) == ("2.6", "2.7")
+        assert got["kOneEarlyFirstHi"] == "0.7", "the larger of the two real-time cells"
+        assert (got["kOneLateMedian"], got["kOneToolNine"], got["kOneObservedNine"]) == \
+            ("2.3", "8", "4.5")
+
+    def test_its_table_gives_each_cell_a_row(self, tmp_path):
+        table = epn.render_k1_table(*self._block(tmp_path))
+        rows = [line for line in table.splitlines() if line.startswith(("idle", "88"))]
+        assert len(rows) == 4
+        assert rows[2].startswith("88\\% & normal priority & 27.0 & 27.0--27.1 & 0.20 & 8 & 4.50")
+        assert "Readable first (\\%)" in table and "%%" not in table
+
+    def test_a_prediction_that_failed_stops_the_build(self, tmp_path):
+        """Load not raising the share in one round fails K1-c, which the prose says held."""
+        shares = dict(self.SHARES)
+        shares[("0", "no")] = 0.5
+        with pytest.raises(ValueError, match="K1-c"):
+            epn.k1_macros(*self._block(tmp_path, shares=shares))
+
+    def test_a_cell_never_judged_stops_the_build(self, tmp_path):
+        """A run whose trace does not cover its acknowledgment fails K1-a, and is not judged."""
+        covers = {(r, "0", "yes"): False for r in range(1, 7)}
+        out, verdicts = self._block(tmp_path, covers=covers)
+        with pytest.raises(ValueError, match="K1-a"):
+            epn.k1_macros(out, verdicts)
+
+    def test_an_empty_cell_or_uneven_rounds_stop_the_build(self, tmp_path):
+        import json
+        out, verdicts = self._block(tmp_path)
+        rows = list(csv.DictReader(open(out, encoding="utf-8")))
+        fields = list(rows[0])
+        with open(verdicts, "w", encoding="utf-8") as fh:
+            json.dump({"K1-a": {"verdict": "holds"}}, fh)
+        def write(keep):
+            with open(out, "w", encoding="utf-8", newline="") as fh:
+                w = csv.DictWriter(fh, fieldnames=fields)
+                w.writeheader()
+                w.writerows(r for r in rows if keep(r))
+        write(lambda r: (r["load_pct"], r["go_first"]) != ("88", "yes"))
+        with pytest.raises(ValueError, match="no judged run"):
+            epn.k1_macros(out, verdicts)
+        write(lambda r: not (r["round"] == "6" and r["load_pct"] == "0" and r["go_first"] == "no"))
+        with pytest.raises(ValueError, match="same rounds"):
+            epn.k1_macros(out, verdicts)
+
+    def test_absent_tables_emit_nothing(self, tmp_path, capsys):
+        assert epn.k1_macros(str(tmp_path / "none.csv"), str(tmp_path / "none.json")) == []
+        assert "K1 tables absent" in capsys.readouterr().out

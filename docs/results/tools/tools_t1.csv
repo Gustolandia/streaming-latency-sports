@@ -63,3 +63,23 @@ round,tool,trip,figure,crossings,slope
 4,omb,across two processes,p50,1,0.5574
 4,pulsar-perf,across two processes,p50,1,1.1411
 4,ycsb,round trip,p50,1,1.0389
+1,stream-perftest,across two processes,p50,1,1.1411
+1,strimzi-canary,in one process,p50,1,0.9997
+1,trogdor,across two processes,p50,1,1.1411
+1,xinfra-monitor,in one process,avg,1,1.0394
+2,stream-perftest,across two processes,p50,1,1.1411
+2,strimzi-canary,in one process,p50,1,0.9997
+2,trogdor,across two processes,p50,1,1.1411
+2,xinfra-monitor,in one process,avg,1,1.0122
+3,stream-perftest,across two processes,p50,1,1.1411
+3,strimzi-canary,in one process,p50,1,0.9997
+3,trogdor,across two processes,p50,1,1.1411
+3,xinfra-monitor,in one process,avg,1,1.0347
+4,stream-perftest,across two processes,p50,1,1.0285
+4,strimzi-canary,in one process,p50,1,0.9997
+4,trogdor,across two processes,p50,1,1.1411
+4,xinfra-monitor,in one process,avg,1,1.0596
+1,ysb,across two processes,p50,1,235.5156
+2,ysb,across two processes,p50,1,85.1374
+3,ysb,across two processes,p50,1,-0.2382
+4,ysb,across two processes,p50,1,190.9160

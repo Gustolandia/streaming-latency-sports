@@ -51,6 +51,11 @@ YSB_HOME="${SBL_YSB_HOME:-$HOME/tools/src/streaming-benchmarks}"
 FLINK_HOME="${SBL_FLINK_HOME:-$HOME/tools/flink-1.11.0}"
 YSB_LOAD="${SBL_YSB_LOAD:-1000}"
 YSB_TEST_TIME="${SBL_YSB_TEST_TIME:-120}"
+#: Freeze 34's PerfKit messaging client, laid out as on PerfKit's client VM, and its own defaults:
+#: 100 messages of 10 characters, no warm-up (messaging_service_benchmark.py:72-100).
+PKB_VM="${SBL_PKB_VM:-$HOME/tools/pkb-vm}"
+PKB_MESSAGES="${SBL_PKB_MESSAGES:-100}"
+PKB_SIZE="${SBL_PKB_SIZE:-10}"
 #: The one address here that is not across the pair. Two of these tools are made of processes
 #: that talk to one another -- OMB's coordinator to its two workers, emqtt-bench's subscriber
 #: serving its own metrics -- and they do it on the machine's loopback. It names the tool's own
@@ -368,7 +373,12 @@ XM
     [ -n "$c_pids" ] && sudo kill $c_pids 2>/dev/null
     stop_own
     echo "# the canary's log"
-    cat "$OUT/canary.log" ;;
+    cat "$OUT/canary.log"
+    #: Freeze 34: the reader the canary's repository ships for that log, run on it, whose pattern
+    #: cannot match a minus sign (tools/canary_latencies.py:19).
+    echo "# the canary's own log reader on that log"
+    python3 "$HOME/tools/src/strimzi-canary/tools/canary_latencies.py" -f "$OUT/canary.log" 2>&1 \
+      | head -n 40 ;;
   trogdor)
     # Kafka's Trogdor from the 3.7.1 release, as its README runs it: a coordinator and agents,
     # given workloads as JSON specs. ProduceBench on one agent writes its wall clock into each
@@ -459,6 +469,51 @@ XM
     echo "# the stream consumer's /metrics, read once the producer had finished"
     cat "$here/consumer_metrics.txt"
     stop_own ;;
+  stream-perftest-one)
+    # RabbitMQ Stream PerfTest as its documentation runs it when nothing else is asked for: one
+    # instance, its producer and its consumer in one JVM on one wall clock, at the block's rate and
+    # size for the block's minute (freeze 34, S1). Its metrics page is read three seconds before
+    # it ends, so that its count of what it kept and its count of what it consumed are read at the
+    # same moment.
+    here="$(cd "$OUT" && pwd)"
+    s_name="sbl-stream-one-$(date +%s)"
+    $WRAP env JAVA_HOME="$JAVA11" "$JAVA11/bin/java" -jar "$STREAM_PERF_JAR" \
+      --uris "rabbitmq-stream://guest:guest@$BROKER_PRIV:5552" --streams "$s_name" \
+      --leader-locator client-local --producers 1 --consumers 1 --rate "$RATE" --size 512 \
+      --time "$SECONDS_TO_RUN" --delete-streams --prometheus > "$here/instance.txt" 2>&1 &
+    s_one=$!
+    OWN_PIDS="$OWN_PIDS $s_one"
+    OWN_PATTERN="stream-perf-test\\.jar .*$s_name"
+    sleep $((SECONDS_TO_RUN - 3))
+    $NS curl -s -m 5 "http://$OWN:8080/metrics" > "$here/consumer_metrics.txt" 2>/dev/null
+    wait "$s_one" 2>/dev/null
+    echo "# the stream consumer instance"
+    cat "$here/instance.txt"
+    echo "# the stream consumer's /metrics, read once the producer had finished"
+    cat "$here/consumer_metrics.txt"
+    stop_own ;;
+  pkb)
+    # PerfKit Benchmarker's messaging benchmark as PerfKit runs it on its client VM
+    # (azure_service_bus.py:79-101): from where its client lies, `python3 -m azure_benchmark`, the
+    # end-to-end scenario, its defaults. Its publisher and its receiver are processes its main
+    # process starts, one message in flight at a time. On the machine itself in every stage: its
+    # broker is a managed service that T1's namespace was never for, and the namespace cannot
+    # reach the machine's name resolver. The rest of the wrap -- go-first or a moved clock --
+    # reaches all three of its processes, since it starts them itself. Its connection string is
+    # read from a file only this user can read, and any key in its output is blanked before the
+    # output is kept.
+    conn_file="${SBL_PKB_CONNECTION:-$HOME/.pkb_connection}"
+    [ -r "$conn_file" ] || { echo "no Service Bus connection string at $conn_file" >&2; exit 3; }
+    #: What T2 holds its count against is the messages it is asked for, not the block's minute.
+    echo "$PKB_MESSAGES" > "$OUT/asked_to_send.txt"
+    pkb_wrap=""
+    [ -n "${REST// /}" ] && pkb_wrap="sudo $REST"
+    ( cd "$PKB_VM" && $pkb_wrap env PYTHONPATH="$PKB_VM" python3 -m azure_benchmark \
+        --topic_name=pkb-topic --subscription_name=pkb-subscription \
+        --benchmark_scenario=end_to_end_latency --number_of_messages="$PKB_MESSAGES" \
+        --message_size="$PKB_SIZE" --warmup_messages=0 \
+        --connection_str="$(cat "$conn_file")" ) 2>&1 \
+      | sed -E 's/(SharedAccessKey=)[^;"[:space:]]+/\1<blanked>/g' ;;
   ysb)
     # The Yahoo Streaming Benchmark as its stream-bench.sh runs its Flink test (D36-1): a Flink
     # cluster of one JobManager and one TaskManager, its job, its generator emitting ad events into

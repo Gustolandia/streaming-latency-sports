@@ -1235,3 +1235,72 @@ class TestFreeze33sYsb:
         """What YSB wrote, less the window, sign kept: the reference T2 predicts from (D36-3)."""
         got = tr.read_tool("ysb", _ysb([10000, 10400, 9700, 9300]))
         assert got["written_ms"] == [-700, -300, 0, 400] and got["windows_ms"] == [0, 400]
+
+
+def _pkb(samples, failures=0, p50=24.0, p99=41.03):
+    """PerfKit's metrics line, as latency_runner.py prints it with json.dumps when it ends."""
+    import json
+    mean = sum(samples) / len(samples) if samples else float("nan")
+    return json.dumps({
+        "e2e_latency_failure_counter": {"value": failures, "unit": "", "metadata": {}},
+        "e2e_latency_mean": {"value": mean, "unit": "milliseconds", "metadata": {"samples": samples}},
+        "e2e_latency_cold": {"value": samples[0] if samples else None, "unit": "milliseconds", "metadata": {}},
+        "e2e_latency_p50": {"value": p50, "unit": "milliseconds", "metadata": {}},
+        "e2e_latency_p99": {"value": p99, "unit": "milliseconds", "metadata": {}},
+        "e2e_acknowledge_latency_mean": {"value": 30.0, "unit": "milliseconds", "metadata": {"samples": [30]}},
+    })
+
+
+class TestFreeze34sTools:
+    """PerfKit's messaging benchmark, Stream PerfTest as one instance, and the canary's own log
+    reader, read as freeze 34 reads them."""
+
+    def test_pkb_reads_its_printed_figures_and_its_samples(self):
+        text = "I1011 starting the run\n" + _pkb([25, 23, 24, 80]) + "\n"
+        got = tr.read_tool("pkb", text)
+        assert got["reported_ms"] == {"avg": 38.0, "p50": 24.0, "p99": pytest.approx(41.03),
+                                      "min": 23.0, "max": 80.0}
+        assert got["steps_ms"]["avg"] == pytest.approx(0.25) and got["steps_ms"]["min"] == 1.0
+        assert got["kept"] == got["received"] == 4 and got["samples_ms"] == [25.0, 23.0, 24.0, 80.0]
+
+    def test_pkb_keeps_a_value_below_zero_and_counts_its_failures(self):
+        got = tr.read_tool("pkb", _pkb([25, -30, 24], failures=2))
+        assert got["reported_ms"]["min"] == -30.0 and got["kept"] == 3
+        assert got["received"] == 5 and got["failures"] == 2
+
+    def test_pkb_reads_its_last_metrics_line_and_nothing_that_is_not_one(self):
+        """Read from the end: a later line that is not JSON, or JSON of something else, is passed."""
+        text = _pkb([10, 12]) + "\n" + "{not json\n" + '{"other": 1}\n' + "absl: done\n"
+        assert tr.read_tool("pkb", text)["reported_ms"]["max"] == 12.0
+
+    def test_pkb_without_its_metrics_line_reads_nothing(self):
+        got = tr.read_tool("pkb", "Traceback (most recent call last):\n")
+        assert got["reported_ms"] == {} and got["samples_ms"] == [] and got["kept"] is None
+
+    def test_pkb_that_timed_nothing_has_no_figures(self):
+        got = tr.read_tool("pkb", _pkb([], failures=100))
+        assert got["reported_ms"] == {} and got["kept"] == 0 and got["received"] == 100
+
+    def test_pkb_without_its_percentiles_still_reads_its_mean(self):
+        import json
+        line = json.loads(_pkb([10, 14]))
+        del line["e2e_latency_p50"], line["e2e_latency_p99"]
+        got = tr.read_tool("pkb", json.dumps(line))
+        assert set(got["reported_ms"]) == {"avg", "min", "max"}
+
+    def test_stream_perftest_as_one_instance_reads_as_two_do_under_its_own_name(self):
+        got = tr.read_tool("stream-perftest-one", STREAM + _stream_metrics("3000.0", "4.21", "3000.0"))
+        assert got["tool"] == "stream-perftest-one" and got["kept"] == 3000
+        assert got["reported_ms"]["p50"] == 1.0
+
+    def test_the_canary_counts_its_negative_durations_and_keeps_its_own_readers_average(self):
+        text = (CANARY.replace("duration=0 ms", "duration=-48 ms")
+                + "# the canary's own log reader on that log\n\nProducer Latency Average: \n1.1\n\n"
+                  "E2E Latency Average: \n45.7\n")
+        got = tr.read_tool("strimzi-canary", text)
+        assert got["logged_negative"] == 1 and got["shipped_reader_avg"] == 45.7
+        assert got["reported_ms"]["min"] == -48.0
+
+    def test_a_canary_run_with_no_shipped_reader_output_has_no_such_average(self):
+        got = tr.read_tool("strimzi-canary", CANARY)
+        assert got["shipped_reader_avg"] is None and got["logged_negative"] == 0

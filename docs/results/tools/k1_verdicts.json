@@ -1,0 +1,45 @@
+{
+  "K1-a": {
+    "runs": 24,
+    "verdict": "holds"
+  },
+  "K1-b": {
+    "failed_in_rounds": [],
+    "held_in_rounds": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "not_judged_in_rounds": [],
+    "verdict": "holds"
+  },
+  "K1-c": {
+    "failed_in_rounds": [],
+    "held_in_rounds": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "not_judged_in_rounds": [],
+    "verdict": "holds"
+  },
+  "K1-d": {
+    "failed_in_rounds": [],
+    "held_in_rounds": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "not_judged_in_rounds": [],
+    "verdict": "holds"
+  }
+}

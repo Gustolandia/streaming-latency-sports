@@ -120,6 +120,8 @@ strimzi-canary|git|f3812fb53f2344fe654875027ee8caab254316c2
 trogdor|kafka|3.7.1
 stream-perftest|jar|1.8.0
 ysb|git|d1aaf6bb28e97acb64625e125b447f495cf0776e
+pkb|git|e5fd49d7d0f83621ae6fddeaa74ed3a0a02081e3
+stream-perftest-one|jar|1.8.0
 '
 #: The last five are the tools the plan registered and version 15 left unrun (D15-6), run under
 #: freeze 30 (D33-1), each at the version the audit read (data/tools_audit/batch_01, 03, 04 and
@@ -151,6 +153,12 @@ LEIN_VERSION="2.11.2"
 LEIN_SCRIPT_SHA256="f83e3de252cb09d301f18f1912acffa807b54c1c9a96772ae63847a946032bd4"
 LEIN_JAR_SHA256="7d31ae23ae769e927438b0cd55d15a93e7dabab09fd4fc15877979161e108774"
 
+#: Freeze 34: PerfKit Benchmarker's messaging benchmark at the commit the reading read. PerfKit
+#: installs its client's packages unpinned (messaging_service.py: `pip3 install absl-py numpy`,
+#: azure_service_bus.py: `pip3 install azure-servicebus`); here each is pinned to its release on
+#: 11 October 2026 that the driver's Python 3.10 can run, so that the run can be made again.
+PKB_PIP="azure-servicebus==7.15.0 absl-py==2.5.1 numpy==2.2.6"
+
 #: What those five are built and run with, pinned like them and checked against the checksums
 #: their publishers give, because each is part of what produced the program whose behaviour the
 #: block reports. OMB needs a newer Maven than Ubuntu's 3.6.3 (its enforcer asks for 3.8.6), and
@@ -169,7 +177,7 @@ PULSAR_SHA512="8c0a63cc6421c8eb3c4a55b8895ca08a38a1c6771758251fc7a82edbc4c6a42bb
 #: System.currentTimeMillis() and os:system_time(millisecond) both.
 FAKEABLE="wrk2 valkey-benchmark memtier_benchmark rdkafka_performance kafka-end-to-end \
 kafka-producer-perf rabbitmq-perftest omb pulsar-perf emqtt-bench ycsb \
-xinfra-monitor trogdor stream-perftest ysb"
+xinfra-monitor trogdor stream-perftest ysb pkb stream-perftest-one"
 #: The tools it cannot: Go does not go through the C library for the clock.
 GO_TOOLS="vegeta hey k6 nats-latency nats-bench strimzi-canary"
 
@@ -517,6 +525,39 @@ get_ysb () {
 #: second x86 pair had 30 MB free, most of its disk taken by the A2 sessions' kernel builds, and
 #: the whole install failed for want of room; this installs what the one tool needs and nothing
 #: else.
+#: PerfKit's messaging client laid out as PerfKit lays it out on its client VM
+#: (messaging_service.py:17-41 and :89-108, azure_service_bus.py:21-31 and :104-115): its common
+#: scripts and its Azure scripts under ~/perfkitbenchmarker, an empty __init__.py in every folder,
+#: and azure_benchmark.py beside them, started as `python3 -m azure_benchmark` from where it lies.
+get_pkb () {
+  local src="$WORK/src/PerfKitBenchmarker" vm="$WORK/pkb-vm"
+  [ -f "$vm/azure_benchmark.py" ] && { log "   PerfKit's messaging client already laid out"; return 0; }
+  log "   laying out PerfKit's messaging client at ${1:0:8}"
+  ( rm -rf "$src" && mkdir -p "$src" && cd "$src" && git init -q \
+      && git remote add origin https://github.com/GoogleCloudPlatform/PerfKitBenchmarker \
+      && git fetch -q --depth 1 origin "$1" && git checkout -q FETCH_HEAD ) > "$DIR/build_pkb.log" 2>&1 \
+    || { log "   WARN: PerfKit could not be fetched; see $DIR/build_pkb.log"; return 1; }
+  local s="$src/perfkitbenchmarker/scripts/messaging_service_scripts"
+  local lib="$vm/perfkitbenchmarker/scripts/messaging_service_scripts" f
+  rm -rf "$vm"; mkdir -p "$lib/common/e2e" "$lib/azure"
+  for f in __init__.py app.py client.py errors.py log_utils.py runners.py e2e/__init__.py \
+           e2e/latency_runner.py e2e/main_process.py e2e/protocol.py e2e/publisher.py \
+           e2e/receiver.py e2e/streaming_pull_receiver.py e2e/worker_utils.py; do
+    cp "$s/common/$f" "$lib/common/$f" || { log "   WARN: PerfKit has no common/$f"; return 1; }
+  done
+  for f in __init__.py azure_service_bus_client.py; do
+    cp "$s/azure/$f" "$lib/azure/$f" || { log "   WARN: PerfKit has no azure/$f"; return 1; }
+  done
+  cp "$s/azure_benchmark.py" "$vm/" || { log "   WARN: PerfKit has no azure_benchmark.py"; return 1; }
+  find "$vm/perfkitbenchmarker" -type d -exec touch {}/__init__.py \;
+  # shellcheck disable=SC2086
+  sudo pip3 install -q $PKB_PIP >> "$DIR/build_pkb.log" 2>&1 \
+    || { log "   WARN: PerfKit's client packages did not install; see $DIR/build_pkb.log"; return 1; }
+  ( cd "$src" && git rev-parse HEAD ) > "$DIR/commit_pkb.txt" 2>/dev/null
+  pip3 freeze 2>/dev/null | grep -i -E '^(azure-servicebus|absl-py|numpy|azure-core|uamqp)==' \
+    > "$DIR/pkb_packages.txt"
+}
+
 install_for () {
   local tool="${1:?which tool}"
   log "== $tool alone, at the version the reading read"
@@ -531,6 +572,10 @@ install_for () {
          "$WORK"/src/streaming-benchmarks/data/target/uberjar/setup-*-standalone.jar \
          "$WORK/flink-$FLINK_VERSION/bin/flink" >/dev/null 2>&1 \
         || stop "YSB, its generator or Flink is not there; see $DIR/build_ysb.log" ;;
+    pkb)
+      get_pkb e5fd49d7d0f83621ae6fddeaa74ed3a0a02081e3
+      [ -f "$WORK/pkb-vm/azure_benchmark.py" ] \
+        || stop "PerfKit's messaging client is not laid out; see $DIR/build_pkb.log" ;;
     *) stop "$tool has no install of its own; run the whole install" ;;
   esac
   log "CAMPAIGN_COMPLETE: $tool installed alone"
@@ -656,7 +701,8 @@ for tool, pattern in (("omb", "omb/lib/*benchmark-framework*.jar"),
                       ("strimzi-canary", "src/strimzi-canary/cmd/target/strimzi-canary"),
                       ("trogdor", "kafka_2.13-3.7.1/libs/trogdor-*.jar"),
                       ("stream-perftest", "stream-perf-test.jar"),
-                      ("ysb", "src/streaming-benchmarks/flink-benchmarks/target/flink-benchmarks-*.jar")):
+                      ("ysb", "src/streaming-benchmarks/flink-benchmarks/target/flink-benchmarks-*.jar"),
+                      ("pkb", "pkb-vm/azure_benchmark.py")):
     hits = sorted(glob.glob(os.path.join(os.path.expanduser("~/tools"), pattern)))
     if not hits:
         found[tool] = {"present": False, "why": "nothing at ~/tools/%s" % pattern}
@@ -976,6 +1022,21 @@ reference_for () {
     #: the window, sign kept -- what it wrote, not what its notebook kept, since at its default load
     #: a quarter of its windows come out below zero on one clock. T2 takes its offsets and its
     #: predictions from them exactly as it takes them from a client's trips.
+    #: Freeze 34: PerfKit's reference is PerfKit itself at no offset, every message it timed: its
+    #: broker is a managed service no client of ours was written for, and it prints every sample.
+    pkb)
+      log "   PerfKit itself, once more, for the reference: no client of ours speaks to its broker"
+      bash cloud/azure/tools_run.sh pkb "$out/reference_pkb" > "$out/reference.log" 2>&1
+      python3 -c 'import json, sys
+sys.path.insert(0, "scripts")
+import tool_readings
+r = tool_readings.read_tool("pkb", open(sys.argv[1], encoding="utf-8").read())
+if not r.get("samples_ms"):
+    raise SystemExit("PerfKit timed no message to take a reference from")
+json.dump({"source": "pkb itself", "trips_ms": r["samples_ms"]}, open(sys.argv[2], "w"))' \
+        "$out/reference.log" "$out/reference_trips.json" \
+        || { log "   WARN: the PerfKit reference timed nothing; see $out/reference.log"; return 1; }
+      return 0 ;;
     ysb)
       log "   YSB itself, once more at no delay, for the reference: no client of ours times a window"
       SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh ysb "$out/reference_ysb" \
@@ -1110,6 +1171,14 @@ server_answers () {
     rdkafka_performance|kafka-end-to-end|kafka-producer-perf|omb|xinfra-monitor|trogdor)
       timeout 5 bash -c "echo > /dev/tcp/$host/19092" 2>/dev/null \
         || { echo "nothing listens for Kafka at $host:19092"; return 1; } ;;
+    pkb)
+      #: Freeze 34: PerfKit's broker is the Azure Service Bus namespace made for it, reached over
+      #: AMQP's TLS port; its name is the part of the connection string this may say aloud.
+      local ns
+      ns=$(sed -n 's#^Endpoint=sb://\([^/;]*\).*#\1#p' "${SBL_PKB_CONNECTION:-$HOME/.pkb_connection}" 2>/dev/null)
+      [ -n "$ns" ] || { echo "no Service Bus connection string in ${SBL_PKB_CONNECTION:-$HOME/.pkb_connection}"; return 1; }
+      timeout 5 bash -c "echo > /dev/tcp/$ns/5671" 2>/dev/null \
+        || { echo "nothing answers AMQP at $ns:5671"; return 1; } ;;
     ysb)
       #: YSB's generator speaks Kafka 0.8.2's protocol, which Kafka 4 removed and 3.9.1 still
       #: speaks, so it uses the canary's broker (D36-2); and it keeps its windows in Redis.
@@ -1121,7 +1190,7 @@ server_answers () {
       #: The Kafka 3.9.1 broker brokers_here starts for the canary alone (D35-5).
       timeout 5 bash -c "echo > /dev/tcp/$host/19094" 2>/dev/null \
         || { echo "nothing listens for Kafka 3.9.1 at $host:19094"; return 1; } ;;
-    stream-perftest)
+    stream-perftest|stream-perftest-one)
       #: RabbitMQ's stream plugin listens on 5552 once brokers_here has enabled it; the advertised
       #: host it gives clients is the broker's own private address, set beside it.
       timeout 5 bash -c "echo > /dev/tcp/$host/5552" 2>/dev/null \
@@ -1173,6 +1242,23 @@ t1 () {
   have_tool "$tool"
   needs_server "$tool"
   not_run_yet T1 "$tool" "t1-$tool-*ms/tool.txt"
+  #: Freeze 34: a tool whose broker is a managed service is out of T1's reach -- the delay is added
+  #: on the broker's card, and its broker is not ours -- so only its zero step is run, the tool and
+  #: its reference, which T2 reads its offsets from, and the staircase is recorded as not run.
+  case "$tool" in
+    pkb)
+      log "== T1 $tool: its broker is a managed service, which the staircase cannot reach; the zero step only"
+      local run="t1-$tool-0ms"
+      mkdir -p "$DIR/$run"
+      echo "out of reach: the broker is Azure Service Bus, not the testbed's" > "$DIR/$run/delay.json"
+      bash cloud/azure/tools_run.sh "$tool" "$DIR/$run" > "$DIR/$run/tool.txt" 2>&1
+      python3 scripts/tool_readings.py read --tool "$tool" --file "$DIR/$run/tool.txt" \
+        --out "$DIR/$run/reading.json" >/dev/null 2>&1 \
+        || log "WARN: $tool reported no latency at its zero step; kept as a reading of nothing"
+      reference_for "$tool" "$DIR/$run"
+      log "CAMPAIGN_COMPLETE: T1 $tool, its zero step only; its runs are under $DIR"
+      return 0 ;;
+  esac
   local steps="0 0.1 0.2 0.3 0.5 0.7 0.9 1.1 1.5 2.0"
   local order; order=$(echo $steps | tr ' ' '\n' | shuf | tr '\n' ' ')
   log "== T1 $tool: the delay staircase, in the order $order"
@@ -1588,6 +1674,64 @@ k1 () {
   log "CAMPAIGN_COMPLETE: K1; its runs are under $DIR"
 }
 
+#: S1 (freeze 34): the wall clock steps back while the tool runs.
+#:
+#: A tool that takes both of its timestamps in one process meets a value below zero only when the
+#: wall clock steps back between them, as it did in one RabbitMQ Stream PerfTest during a cluster's
+#: rolling restart (its issue 418). T2's constant offset moves both readings together and cannot
+#: make one. S1 runs the tool once as it is, the control, and once while scripts/clock_stepper.py
+#: steps this machine's wall clock back by S1_STEP_MS once every S1_PERIOD_S seconds, chrony
+#: stopped, until the tool ends; then measures the clock against the hypervisor's PTP clock, puts
+#: it forward by exactly the steps made, and starts chrony again. A monotonic clock does not move,
+#: so the tools that time with one are the controls. Every step is written down beside the run.
+S1_STEP_MS="${SBL_S1_STEP_MS:-50}"
+S1_PERIOD_S="${SBL_S1_PERIOD_S:-1}"
+s1 () {
+  local tool="${1:?which tool}"
+  have_tool "$tool"
+  needs_server "$tool"
+  not_run_yet S1 "$tool" "s1-$tool-*/tool.txt"
+  machine_is_quiet \
+    || stop "S1 steps this machine's clock, and a campaign is running here; every process would see the steps"
+  needs_namespace
+  log "== S1 $tool: the wall clock steps back $S1_STEP_MS ms every $S1_PERIOD_S s while it runs"
+  local control="$DIR/s1-$tool-control" run="$DIR/s1-$tool-stepped"
+  mkdir -p "$control" "$run"
+  SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh "$tool" "$control" > "$control/tool.txt" 2>&1
+  python3 scripts/tool_readings.py read --tool "$tool" --file "$control/tool.txt" \
+    --out "$control/reading.json" >/dev/null 2>&1 \
+    || log "   the control reported no latency at all"
+  log "   the control done"
+  sudo systemctl stop chrony || stop "chrony could not be stopped, and it would pull every step back"
+  trap 'sudo systemctl start chrony >/dev/null 2>&1' EXIT
+  sudo python3 scripts/clock_step.py measure > "$run/clock_before.json" 2>&1
+  #: Long enough for any tool here; it is stopped when the tool ends, every step already written.
+  sudo python3 scripts/clock_stepper.py --step-ms "$S1_STEP_MS" --period-s "$S1_PERIOD_S" \
+    --seconds 900 --pattern back --log "$run/steps.csv" > "$run/stepper.txt" 2>&1 &
+  SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh "$tool" "$run" > "$run/tool.txt" 2>&1
+  #: Anchored at the interpreter, which neither sudo's nor pkill's own command line begins with.
+  sudo pkill -f -- '^python3 scripts/clock_stepper.py' 2>/dev/null
+  wait 2>/dev/null
+  sudo python3 scripts/clock_step.py measure > "$run/clock_after_steps.json" 2>&1
+  local made
+  made=$(python3 -c 'import csv, sys
+rows = list(csv.DictReader(open(sys.argv[1], encoding="utf-8")))
+print("%.3f" % (sum(int(r["step_ns"]) for r in rows if r["direction"] == "back") / 1e6))' \
+    "$run/steps.csv" 2>/dev/null)
+  if [ -n "$made" ] && [ "$made" != "0.000" ]; then
+    sudo python3 scripts/clock_step.py shift --ms="$made" --out "$run/clock_put_back.json" \
+      > /dev/null 2>&1 || log "   WARN: the clock could not be put forward by $made ms; chrony will pull it"
+  fi
+  sudo systemctl start chrony >/dev/null 2>&1
+  trap - EXIT
+  sudo python3 scripts/clock_step.py measure > "$run/clock_after.json" 2>&1
+  python3 scripts/tool_readings.py read --tool "$tool" --file "$run/tool.txt" \
+    --out "$run/reading.json" >/dev/null 2>&1 \
+    || log "   the stepped run reported no latency at all"
+  log "   stepped back ${made:-0} ms in all, and put forward by as much"
+  log "CAMPAIGN_COMPLETE: S1 $tool; its runs are under $DIR"
+}
+
 #: The reference on its own, for a staircase that already ran without one.
 #:
 #: T1 takes it at the zero step and T2 will not start without it. When the reference was calling
@@ -1624,6 +1768,7 @@ case "${1:-}" in
   install-for) install_for "${2:-}" ;;
   reference) reference "${2:-}" ;;
   k1) k1 ;;
+  s1) s1 "${2:-}" ;;
   t1) t1 "${2:-}" ;;
   t2) t2 "${2:-}" ;;
   t3) t3 "${2:-}" ;;

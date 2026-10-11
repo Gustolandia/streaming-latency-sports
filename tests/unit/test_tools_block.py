@@ -19,11 +19,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 import tool_negatives as tn  # noqa: E402
 import tools_block as tb  # noqa: E402
 
-#: The four tools freeze 32 registered, with how each keeps time, before their block ran (D35-2),
-#: and freeze 33's YSB (D36-4). Their runs are not in the committed tables until their blocks are
-#: folded, when each goes from here.
-FREEZE_32_UNFOLDED = {"xinfra-monitor", "strimzi-canary", "trogdor", "stream-perftest", "ysb"}
-
 #: The five columns freeze 31's re-judging adds to a T2 row.
 REJUDGED = ("sent", "kept", "verdict_31", "clocks", "clocks_why")
 
@@ -390,24 +385,23 @@ class TestMain:
         assert not out.exists()
 
     def test_the_committed_tables_are_what_the_paper_reads(self):
-        """Sixteen tools, four rounds, two offsets each, every T2 run judged again: the shape
-        Section V-B and the supplement's S5 describe."""
+        """Twenty-one tools, four rounds, two offsets each, every T2 run judged again: the shape
+        Section V-B and the supplement's S5 describe. 11 October folded the five tools freezes 32
+        and 33 ran into them."""
         repo = Path(__file__).resolve().parents[2]
         with (repo / "docs" / "results" / "tools" / "tools_t1.csv").open(encoding="utf-8") as fh:
             t1 = list(csv.DictReader(fh))
         with (repo / "docs" / "results" / "tools" / "tools_t2.csv").open(encoding="utf-8") as fh:
             t2 = list(csv.DictReader(fh))
-        assert len({r["tool"] for r in t1}) == 16 and len({r["round"] for r in t1}) == 4
-        assert len(t1) == 64 and len(t2) == 128
+        assert len({r["tool"] for r in t1}) == 21 and len({r["round"] for r in t1}) == 4
+        assert len(t1) == 84 and len(t2) == 168
         #: Every tool in the tables has the interval the plan read for it before any run, and
-        #: every tool the plan read was run -- but the four freeze 32 read before their block ran
-        #: (D35-2), which this line names until that block is folded into the tables.
-        assert {r["tool"] for r in t1} | FREEZE_32_UNFOLDED == set(tb.TRIPS)
-        assert not FREEZE_32_UNFOLDED & {r["tool"] for r in t1}
+        #: every tool the plan read was run.
+        assert {r["tool"] for r in t1} == set(tb.TRIPS)
         assert all(r["clocks"] in ("one", "two", "undecided") and r["verdict_31"] for r in t2)
         #: T3: every tool, every round, idle and loaded, each with and without go-first.
         with (repo / "docs" / "results" / "tools" / "tools_t3.csv").open(encoding="utf-8") as fh:
             t3 = list(csv.DictReader(fh))
-        assert len(t3) == 256 and {r["tool"] for r in t3} | FREEZE_32_UNFOLDED == set(tb.TRIPS)
+        assert len(t3) == 336 and {r["tool"] for r in t3} == set(tb.TRIPS)
         assert {(r["load_pct"], r["go_first"]) for r in t3} == {
             ("0", "no"), ("0", "yes"), ("88", "no"), ("88", "yes")}

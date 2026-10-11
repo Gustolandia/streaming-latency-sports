@@ -149,6 +149,14 @@ ALLOWED = {
     ("postmortem.tex", "spanHandlingSharePct", r"medians gets $2.6\times$"):
         "a ratio of pooled medians among three readings of one quantity (S18), equal to the "
         "share of Redis's delivery its parse would add, in percent",
+    # 11 Oct 2026: K1's emitted shares (k1_macros) print one value the supplement already types
+    # for the tracer's wait threshold.
+    ("supplement.tex", "kOneEarlyIdleLo", r"a wait for a core outlasts 0.5~ms"):
+        "the wait for a core whose probability the tracer reads (S3), 0.5 ms, equal to the lowest "
+        "share of K1's idle runs in which a message was readable before Kafka's tool had its "
+        "acknowledgment, in percent; a wait and a share sharing two digits",
+    ("supplement.tex", "kOneEarlyIdleLo", r"$\Pr[\text{wait}>0.5\,\text{ms}]$"):
+        "the same wait, in the caption of the tracer's table",
 }
 
 

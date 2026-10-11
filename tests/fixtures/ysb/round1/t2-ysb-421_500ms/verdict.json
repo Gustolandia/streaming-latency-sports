@@ -1,0 +1,86 @@
+{
+  "allowed_ms": {
+    "avg": 137.85086810005302,
+    "min": 4.152721144938076
+  },
+  "asked_ms": 421.5,
+  "behaviour": null,
+  "changes_ms": {
+    "avg": -179.09380182002025,
+    "min": 0.0
+  },
+  "count_agrees_with": [],
+  "count_matches_sent": false,
+  "count_reported": 600,
+  "decided": false,
+  "exit_code": 0,
+  "expected": {
+    "drops the negatives": {
+      "avg_ms": 303.228813559322,
+      "count": 649,
+      "min_ms": 0.5
+    },
+    "drops zero and below": {
+      "avg_ms": 303.228813559322,
+      "count": 649,
+      "min_ms": 0.5
+    },
+    "keeps every value": {
+      "avg_ms": -227.9991538461634,
+      "count": 1300,
+      "min_ms": -4208.400000000001
+    },
+    "replaces the negatives with zero": {
+      "avg_ms": 151.38115384615384,
+      "count": 1300,
+      "min_ms": 0.0
+    }
+  },
+  "moved_from_control_ms": {
+    "avg": 179.09380182002025,
+    "min": 0.0
+  },
+  "negatives_made": 651,
+  "noise_ms": {
+    "avg": 32.4917612086666,
+    "min": 0.9788057606541591
+  },
+  "offset_ms": 421.4983,
+  "predicted_changes_ms": {
+    "drops the negatives": {
+      "avg": 109.7780443285528,
+      "min": 3787.5
+    },
+    "drops zero and below": {
+      "avg": 109.7780443285528,
+      "min": 3787.5
+    },
+    "keeps every value": {
+      "avg": -421.44992307693263,
+      "min": -421.40000000000055
+    },
+    "replaces the negatives with zero": {
+      "avg": -42.06961538461539,
+      "min": 3787.0
+    },
+    "times against one clock": {
+      "avg": 0.0,
+      "min": 0.0
+    }
+  },
+  "reference_trips": 1300,
+  "reported_avg_ms": 341.07,
+  "rule": "freeze 21 (D25-1, D25-2)",
+  "ruled_out": {
+    "drops the negatives": "its avg changed -179.0938 ms where this predicts +109.7780; 288.8718 apart, more than the 137.8509 ms its own noise allows",
+    "drops zero and below": "its avg changed -179.0938 ms where this predicts +109.7780; 288.8718 apart, more than the 137.8509 ms its own noise allows",
+    "keeps every value": "its avg changed -179.0938 ms where this predicts -421.4499; 242.3561 apart, more than the 137.8509 ms its own noise allows",
+    "replaces the negatives with zero": "its min changed +0.0000 ms where this predicts +3787.0000; 3787.0000 apart, more than the 4.1527 ms its own noise allows",
+    "times against one clock": "its avg changed -179.0938 ms where this predicts +0.0000; 179.0938 apart, more than the 137.8509 ms its own noise allows"
+  },
+  "sent": 1297,
+  "shift_ms": 421.4983,
+  "step_ms": 0.1,
+  "still_standing": [],
+  "why": "none of the five accounts for what it printed (avg changed -179.0938 ms, allowed 137.8509; min changed +0.0000 ms, allowed 4.1527); what each predicted is beside it"
+}

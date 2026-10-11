@@ -609,6 +609,7 @@ def read_nats_bench(text):
 #: The lines the runner writes between a tool's console and what it reads off the tool after it.
 CANARY_METRICS = "# the canary's /metrics, read at the end of the run"
 CANARY_LOG = "# the canary's log"
+CANARY_SHIPPED = "# the canary's own log reader on that log"
 TROGDOR_CONSUME = "# trogdor's consume task"
 TROGDOR_PRODUCE = "# trogdor's produce task"
 STREAM_CONSUMER = "# the stream consumer instance"
@@ -679,6 +680,7 @@ def read_strimzi_canary(text):
     holds is kept beside the figures, not as `kept`."""
     _, _, rest = (text or "").partition(CANARY_METRICS)
     metrics, _, log = rest.partition(CANARY_LOG)
+    log, _, shipped = log.partition(CANARY_SHIPPED)
     got, steps = {}, {}
     total = _find(metrics, r"^strimzi_canary_records_consumed_latency_sum\{[^}]*\}\s+(%s)\s*$"
                   % _DOUBLE)
@@ -694,9 +696,13 @@ def read_strimzi_canary(text):
             steps[key] = 1.0
         got["min"], got["max"] = float(durations[0]), float(durations[-1])
         steps["min"] = steps["max"] = 1.0
+    #: The average the canary's own log reader printed for the same log, which skips every
+    #: negative duration (freeze 34, S1), kept beside the figures rather than read as one.
+    shipped_avg = _find(shipped, r"E2E Latency Average:\s*\n\s*(%s)" % _DOUBLE)
     return _reading("strimzi-canary", got, steps,
                     histogram_count=int(float(count)) if count is not None else None,
-                    logged=len(durations))
+                    logged=len(durations), logged_negative=sum(1 for d in durations if d < 0),
+                    shipped_reader_avg=float(shipped_avg) if shipped_avg is not None else None)
 
 
 def read_trogdor(text):
@@ -831,6 +837,52 @@ def read_ysb(text):
                     windows_ms=kept, written_ms=sorted(x - YSB_WINDOW_MS for x in written))
 
 
+def read_pkb(text):
+    """PerfKit Benchmarker's messaging benchmark at e5fd49d7, its end-to-end scenario, which prints
+    its metrics as one line of JSON when it ends (latency_runner.py:192-194):
+
+        {"e2e_latency_failure_counter": {"value": 0, ...},
+         "e2e_latency_mean": {"value": 24.31, "unit": "milliseconds",
+                              "metadata": {"samples": [25, 23, ...]}},
+         "e2e_latency_p50": {"value": 24.0, ...}, "e2e_latency_p99": {"value": 41.03, ...}, ...}
+
+    Each sample is the receiver's time.time_ns() less the publisher's, floored to whole
+    milliseconds (latency_runner.py:27-28, :97-99), and the mean and the percentiles are numpy's
+    over every sample, a value below zero included (runners.py:74-104). Its mean, median and 99th
+    percentile are read as printed; its minimum and maximum, which it does not print as figures,
+    from the samples it prints beside them; the count it kept is the number of samples, and the
+    messages it lost are its failure counter. The samples themselves are kept, which is what T2
+    takes as its reference where PerfKit is its own (freeze 34)."""
+    found = None
+    for line in reversed((text or "").splitlines()):
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            parsed = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(parsed, dict) and "e2e_latency_mean" in parsed:
+            found = parsed
+            break
+    got, steps = {}, {}
+    if not found:
+        return _reading("pkb", got, steps, samples_ms=[])
+    samples = [float(v) for v in found["e2e_latency_mean"].get("metadata", {}).get("samples", [])]
+    if samples:
+        got["avg"] = float(found["e2e_latency_mean"]["value"])
+        steps["avg"] = 1.0 / len(samples)
+        for key, metric in (("p50", "e2e_latency_p50"), ("p99", "e2e_latency_p99")):
+            if metric in found:
+                got[key] = float(found[metric]["value"])
+                steps[key] = 1.0
+        got["min"], got["max"] = min(samples), max(samples)
+        steps["min"] = steps["max"] = 1.0
+    failures = int(found.get("e2e_latency_failure_counter", {}).get("value", 0))
+    return _reading("pkb", got, steps, kept=len(samples), received=len(samples) + failures,
+                    failures=failures, samples_ms=samples)
+
+
 #: Every tool this reads, by the name a campaign calls it.
 READERS = {
     "vegeta": read_vegeta,
@@ -858,6 +910,10 @@ READERS = {
     "stream-perftest": read_stream_perftest,
     # Freeze 33's YSB (D36-4), read as the notebook it ships reads its windows.
     "ysb": read_ysb,
+    # Freeze 34's PerfKit messaging benchmark, read from the metrics line it prints.
+    "pkb": read_pkb,
+    # Freeze 34's S1: Stream PerfTest as one instance, its default, read as its two instances are.
+    "stream-perftest-one": lambda text: dict(read_stream_perftest(text), tool="stream-perftest-one"),
 }
 
 

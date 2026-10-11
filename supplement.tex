@@ -1209,14 +1209,31 @@ latency benchmark.
 \end{itemize}
 
 \textbf{Tools run.} Reading a tool tells what it does with a value below zero; running it tells
-whether it ever meets one. The registered law campaign ran \toolsRunWord{} benchmarking tools on
-the first x86 pair, \toolsRoundsWord{} rounds each, under predictions fixed from their source
-before any run (its tools block, frozen with the plan; every amendment that touched it is
-listed in \brk{freezes/README.md}). Eleven ran in September. The plan had registered five more,
+whether it ever meets one. The registered law campaign ran \toolsRunWord{} benchmarking tools,
+\toolsRoundsWord{} rounds each, under predictions fixed from their source before any run (its
+tools block, frozen with the plan; every amendment that touched it is listed in
+\brk{freezes/README.md}). Eleven ran in September, on the first x86 pair. The plan had registered five more,
 but its version 15 left them unrun. They ran in October as a second block, under version 33
-(\brk{freezes/30-experiment-plan}), which was public before any of their runs.
-Table~\ref{stab:toolsrun} lists all of them. Under a delay added in steps, every tool's figure
-followed the delay at a slope inside the band the plan fixed in advance.
+(\brk{freezes/30-experiment-plan}), which was public before any of their runs. Five more, read at
+source in October, ran under versions 35 and 36 (\brk{freezes/32-experiment-plan},
+\brk{freezes/33-experiment-plan}), each public before its runs: Xinfra Monitor, Strimzi Canary,
+\kafka{}'s Trogdor and RabbitMQ Stream PerfTest on the same pair, and the Yahoo Streaming
+Benchmark on the second x86 pair, of the same machine type and processor.
+Table~\ref{stab:toolsrun} lists all of them. Under a delay added in steps, every tool's figure but
+one followed the delay at a slope inside the band the plan fixed in advance. The Yahoo Streaming
+Benchmark's did not, as version 36 predicted: its slopes ran from $\toolsYsbSlopeLo$ to
+$\toolsYsbSlopeHi$~ms per millisecond added. The prediction's reason, read again after the runs,
+was wrong. It took a window's figure, the time of the window's last write to Redis less the
+window's end, to be set by the once-a-second flush alone. But the flush writes the hundred
+campaigns' windows one after another, and each write waits for four replies from Redis, each of
+which crossed the delay. Within a flush, the writes of one window for successive campaigns were
+$\toolsYsbGapZero$~ms apart with no delay added and $\toolsYsbGapTopLo$ to $\toolsYsbGapTopHi$~ms
+apart with $\toolsYsbTopAddedMs$~ms added. In each round the gap grew by $\toolsYsbGapSlopeLo$ to
+$\toolsYsbGapSlopeHi$~ms per millisecond added, close to the four replies. (The gap is read in the
+$\toolsYsbGapRuns$ of its $\toolsYsbGapOf$ staircase runs whose collected file holds the same
+windows for every campaign, by \brk{scripts/ysb_post_hoc.py}.) The later a campaign's place in the
+flush, the later its window's figure, so a millisecond added could move the figure by hundreds of
+milliseconds.
 
 A second test, T2, moved back the clock of the process that subtracts, at two offsets longer than
 the interval the tool times. A program registered with the plan, the judge, then chose for each
@@ -1237,9 +1254,10 @@ rules, beside the verdict it was given. The corrected rule changes two verdicts,
 Pulsar's client. The run above becomes undecided, and one undecided run becomes ``drops the
 negatives''.
 
-Table~\ref{stab:toolsrun} gives each tool's answer in its Clocks column. \toolsOneClockWordCap{}
-tools take both timestamps in one process, and moving the clock left their figures within a
-quarter of the offset in every one of their $\toolsOneClockOf$ runs. The other
+Table~\ref{stab:toolsrun} gives each tool's answer in its Clocks column. Of the tools run,
+\toolsOneClockWord{} take both timestamps in one process, and moving the clock left their figures
+within a quarter of the offset in every one of their $\toolsOneClockOf$ runs. Xinfra Monitor and
+Strimzi Canary are among them: each runs its producer and its consumer in one process. The other
 \toolsTwoClockWord{} timestamp a message in one process and subtract in another. The judge read
 librdkafka's \texttt{rdkafka\_performance} as keeping every value in \toolsKeepsRoundsWord{} of
 its \toolsRoundsWord{} rounds, but its consumer drops any value at or below zero and prints a line
@@ -1250,7 +1268,26 @@ latencies, yet its summary printed $\toolsAskedToSend$ records received beside l
 computed from those few. The OpenMessaging Benchmark drops every value at or below zero (S4.5).
 \texttt{emqtt-bench}'s histogram kept every value, its sum going below zero with the clock. Its
 console printed no latency in any of its offset runs, because it prints its once-a-second average
-only when a counter that adds the latencies above zero changes.
+only when a counter that adds the latencies above zero changes. Stream PerfTest drops a value below
+zero: under the larger offset it kept $\toolsStreamKeptLo$ to $\toolsStreamKeptHi$ of
+$\toolsAskedToSend$ latencies. \kafka{}'s Trogdor replaces it with zero, so a moved clock can lower
+its figures only as far as zero, that is by its own latency. That is more than half the smaller
+offset and less than half the larger, and so its runs at the larger offset are undecided.
+
+The Yahoo Streaming Benchmark is the one tool whose notebook drops values with no clock moved:
+$\toolsYsbControlDropLo$--$\toolsYsbControlDropHi\%$ of its windows, those whose last write came
+before the window's end, as version 36 foresaw (D36-6). Both judges take their base from a
+reference that drops nothing, and both failed on it. Freeze 21's judge read
+\toolsYsbOneClockWord{} of its \toolsYsbRunsWord{} clock-moved runs as timing against one clock,
+because its allowance for a change is three times the scatter of the tool's figure across the T1
+staircase, and the flush had spread YSB's figure there by hundreds of milliseconds. Version 34's
+judge left all \toolsYsbRunsWord{} undecided, while its answer from the offset alone is two. Read
+directly against YSB's own reference instead, ``drops the negatives'' fits every run. It predicts
+that $\toolsYsbFitPredLo$--$\toolsYsbFitPredHi\%$ of windows are kept, against
+$\toolsYsbFitKeptLo$--$\toolsYsbFitKeptHi\%$ kept, and averages within $\toolsYsbFitAvgHi$~ms of
+those printed. Every run's average fell by $\toolsYsbFellLo$~ms or more from its round's control,
+where one clock predicts no fall. This reading was made after the runs, and the verdicts stand as
+given (\brk{docs/results/tools/ysb_t2_fit.csv}).
 
 A third test, T3, ran each tool idle and against a background load that kept every core
 $\toolsLoadPct\%$ busy, each with and without real-time priority on the process that subtracts. The
@@ -1259,20 +1296,45 @@ lengthened the tail of every tool that prints a 99th percentile and barely moved
 (Table~\ref{stab:toolsload}). Taking the median over the four rounds, the 99th percentile of each
 of the \toolsTailToolsWord{} rose by $\toolsTailRiseLo$--$\toolsTailRiseHi$~ms, of the order of the
 $\baseSliceMs$~ms slice a thread can wait for a core (Section~\ref{P-sec:tail}), while the median
-moved by at most $\toolsMedianMoveHi$~ms. Real-time priority took at least nine tenths of the rise
-back in \toolsTailBackWord{} of them. A tool times the wait for a core together with everything
-else it times, so the wait reads as latency.
+moved by at most $\toolsMedianMoveHi$~ms, except Trogdor's, which moved by one step of the whole
+milliseconds it prints. Real-time priority took at least nine tenths of the rise back in
+\toolsTailBackWord{} of them. A tool times the wait for a core together with everything else it
+times, so the wait reads as latency. The Yahoo Streaming Benchmark is left out of these figures,
+because its figure is set by its flush, as above, and not by the trip a waiting thread lengthens.
+
+\textbf{\kafka{}'s own end-to-end tool, beside an observer.} \kafka{}'s end-to-end tool publishes
+each message, waits for its acknowledgment, and only then polls for the message, so it cannot time
+a message earlier than its acknowledgment, however early the message was readable. Version 35
+(\brk{freezes/32-experiment-plan}) ran a copy of the tool changed only to write down, for each
+message, its offset and the moments it began, was acknowledged and was polled. Beside it ran an
+observer on the same machine and clock, at real-time priority, that wrote down when each message
+became readable to it. The test, K1, ran \kOneRoundsWord{} rounds of four cells, idle and with every
+core $\toolsLoadPct\%$ busy, the tool at normal and at real-time priority, 3,000 messages each
+(Table~\ref{stab:kone}). In every round some messages were readable before the tool had their
+acknowledgment: $\kOneEarlyIdleLo$--$\kOneEarlyIdleHi\%$ idle,
+$\kOneEarlyBusyLo$--$\kOneEarlyBusyHi\%$ under the load, and at most $\kOneEarlyFirstHi\%$ with the
+tool at real-time priority. The three predictions version 35 froze after a pilot of two rounds held
+in all \kOneRoundsWord{}: such messages occur under the load, the load raises their share, and
+real-time priority takes it back. The tool timed each such message from its acknowledgment, a
+median $\kOneLateMedian$~ms after the observer could read it. Under the load its own 99th
+percentile was $\kOneToolNine$~ms where the observer's was $\kOneObservedNine$~ms. What the tool
+reports is the publish, the acknowledgment and the poll, one after another: a waiting thread
+lengthens it, and a message that overtook its acknowledgment cannot shorten it.
 
 The per-run verdicts and figures are in \brk{docs/results/tools/tools_t1.csv},
-\brk{tools_t2.csv} and \brk{tools_t3.csv}, folded by \brk{scripts/tools_block.py} from the runs.
-The write-ups are
-\brk{docs/results/tools/t1-t4-eleven-tools.md}, with its five recorded faults, and
-\brk{docs/results/tools/t1-t4-five-tools.md}.
+\brk{tools_t2.csv} and \brk{tools_t3.csv}, folded by \brk{scripts/tools_block.py} from the runs;
+K1's are in \brk{docs/results/tools/k1.csv}, judged by \brk{scripts/kafka_clamp.py}, and the
+Yahoo Streaming Benchmark's readings after its runs in \brk{docs/results/tools/ysb_flush.csv} and
+\brk{ysb_t2_fit.csv}. The write-ups are
+\brk{docs/results/tools/t1-t4-eleven-tools.md}, with its five recorded faults,
+\brk{docs/results/tools/t1-t4-five-tools.md} and
+\brk{docs/results/tools/t1-t4-october-tools.md}.
 
 \begin{table}[tb]
-\caption{\textbf{\toolsOneClockWordCap{} of the tools run time on one clock, and
-\toolsTwoClockWord{} on two.} The registered campaign's tools block, \toolsRoundsWord{} rounds
-per tool on one pair of machines, eleven tools in September and five in October. Interval: what
+\caption{\textbf{Of the tools run, \toolsOneClockWord{} time on one clock and \toolsTwoClockWord{}
+on two.} The registered campaign's tools block, \toolsRoundsWord{} rounds per tool, eleven tools
+in September and ten in October, each on one pair of machines and the Yahoo Streaming Benchmark on
+a second pair of the same type. Interval: what
 the tool times, as its invocation was read before any run. Slope: how far its figure moved per
 millisecond of delay, divided by the number of times the interval crosses the delay, in its
 lowest and highest round. Clocks: how many clocks its two timestamps come from, answered from the
@@ -1296,6 +1358,22 @@ over the four rounds, in milliseconds, for the tools that print a 99th percentil
 \centering
 \footnotesize
 \input{docs/generated/tools_load_table}
+\end{table}
+
+\begin{table}[tb]
+\caption{\textbf{Under load, $\kOneEarlyBusyLo$--$\kOneEarlyBusyHi\%$ of the messages \kafka{}'s
+end-to-end tool timed were readable before it had their acknowledgment.} K1: the tool's traced
+copy beside an observer at
+real-time priority, \kOneRoundsWord{} rounds of 3,000 messages per cell, idle and with every core
+$\toolsLoadPct\%$ busy. Readable first: the share of messages the observer could read before the
+tool had their acknowledgment, the median and the range over the rounds. $S$: the observer's
+arrival less the tool's acknowledgment, the median over the rounds of each run's median. 99th
+percentile: the tool's own, in the whole milliseconds it prints, and the observer's, from each
+message's start to its arrival, each the median over the rounds.}
+\label{stab:kone}
+\centering
+\footnotesize
+\input{docs/generated/k1_table}
 \end{table}
 
 \textbf{Public reports.}\label{s:reach} Published results rarely carry the deletion's signature,

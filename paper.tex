@@ -454,12 +454,12 @@ analyses it, uncounted & read, run \\
 PerfKit Benchmarker, messaging & 1~ms & Kept, floored to whole milliseconds, also when a step of
 the clock makes one & read, run \\
 Apache ActiveMQ Artemis's \texttt{perf} & 1~$\mu$s & Refused by its histogram library; the session
-is rolled back and the run still reads success; uncounted & read \\
+is rolled back and the run still reads success; uncounted & read, run \\
 Google's Pub/Sub load test framework & 1~ms & Binned with the fastest messages by its Java client;
 its Go client panics, its Python client raises, its Node client loses it; uncounted & read \\
-Quiver & 1~ms & Wrapped by unsigned arithmetic to some $10^{19}$~ms, uncounted & read \\
+Quiver & 1~ms & Wrapped by unsigned arithmetic to some $10^{19}$~ms, uncounted & read, run \\
 Redpanda's \texttt{kgo-repeater}, RocketMQ's benchmark & 1~$\mu$s, 1~ms & Kept, unflagged;
-RocketMQ's maximum, which starts at zero, cannot show it & read \\
+RocketMQ's maximum, which starts at zero, cannot show it & read, run \\
 \midrule
 \multicolumn{4}{@{}l}{\emph{Both timestamps in one process: publish to receipt, or to the
 acknowledgment}} \\
@@ -475,14 +475,14 @@ read, run \\
 Strimzi Canary & 1~ms & Binned with the fastest messages; dropped by the log reader it ships,
 uncounted & read, run \\
 Storage Benchmark Kit (SBK) & 1~ms & Kept out of its figures and counted, the one message tool
-that counts it & read \\
+that counts it & read, run \\
 Pravega benchmark & 1~ms & An array index that throws, ending every later statistic; uncounted &
-read \\
+read, run \\
 Apache BookKeeper's benchmark, to the acknowledgment & 1~ns & A zero dropped with the failed
-writes, uncounted; no value below zero can arise & read \\
+writes, uncounted; no value below zero can arise & read, run \\
 Sarama's producer tool, requests; \texttt{mqtt-benchmark} & 1~ms, 1~ns & Never met: a
 monotonic clock in one process; Sarama truncates every request under a millisecond to zero &
-read \\
+read, run \\
 \midrule
 \multicolumn{4}{@{}l}{\emph{Both timestamps in one process: request to reply, a round trip}} \\
 \texttt{wrk2} & 10~$\mu$s & Printed as impossible, then refused by its histogram library, or the
@@ -535,8 +535,8 @@ sampler since August 2026~\cite{rezolus}.
 Reading a tool shows what it does with a value below zero, not whether it ever meets one. The
 registered campaign therefore ran \toolsRunWord{} benchmarking tools against a broker on a second
 machine, PerfKit Benchmarker against a managed queue, \toolsRoundsWord{} rounds each, with
-predictions fixed from their source before any run. Twenty of them ran later, in blocks of their
-own: five that one version of the plan had left out, and fifteen read in October
+predictions fixed from their source before any run. Twenty of them ran in October, in blocks of
+their own: five the plan had once left out, and fifteen read at source that month
 (Supplement~S5). A delay added to the path in steps, which cannot reach the managed queue's, moved
 the figure of every other tool but two $\toolsSlopeLo$--$\toolsSlopeHi$~ms per millisecond added
 and per crossing of the delay, so those tools measure the path. The Yahoo Streaming Benchmark's
@@ -547,18 +547,19 @@ consumer, which asks the broker for each batch, met the delay about twice (Suppl
 longer than the interval the tool times, separated the tools that read one clock from those that
 read two. The figures of \toolsOneClockWord{} tools stayed within a quarter of the offset in
 $\toolsOneClockHeld$ of their $\toolsOneClockOf$ runs, because each reads both timestamps from one
-clock; in the other, SBK's minimum, which it prints in whole milliseconds, moved by one. The Pravega
-benchmark reads one clock too, but counts what arrives in its minute, and the rule read its short
-counts as values dropped (Supplement~S5). All but
-PerfKit Benchmarker, whose two processes share one machine, take them in one process, timing a
-round trip or a message they publish and receive themselves, so they cannot measure the one-way
-latency of the delivery a broker exists to provide. A constant offset cannot make a value below
-zero in any of these tools, but a step of the clock can. Stepping the wall clock back under six
-tools that time on one clock showed, in all \sOneRoundsWord{} rounds and as their sources predicted,
-what each does with such a value. The Pravega benchmark stops counting at the first one: it prints
-no total and still ends as if it had succeeded. PerfKit Benchmarker keeps it, Strimzi Canary logs
-it, SBK counts it, Stream PerfTest, run as one process, drops it uncounted, and Xinfra Monitor's metrics library pins it to
-the floor of its percentiles, saying so only at debug level (Supplement~S5).
+clock; in the other, SBK's minimum, which it prints in whole milliseconds, moved by one. All but
+PerfKit Benchmarker, whose two processes share one machine, take both timestamps in one process,
+timing a round trip or a message they publish and receive themselves, so they cannot measure the
+one-way latency of the delivery a broker exists to provide. The Pravega benchmark reads one clock
+too, but it counts only what arrives in a fixed minute, so its count fell short whether or not its
+clock was moved, and most of its runs read as if the moved clock had cut what it kept
+(Supplement~S5). A constant offset cannot make a value below zero in any of these tools, but a step
+of the clock can. Stepping the wall clock back under six tools that time on one clock showed what
+each does with such a value, in all \sOneRoundsWord{} rounds and as their sources predicted.
+PerfKit Benchmarker keeps it, Strimzi Canary logs it, SBK counts it, Stream PerfTest, run as one
+process, drops it uncounted, and Xinfra Monitor's metrics library pins it to the floor of its
+percentiles, saying so only at debug level. The Pravega benchmark stops counting at the first one,
+so it prints no total, and its code then exits as if the run had succeeded (Supplement~S5).
 The other \toolsTwoClockWord{} timestamp a message in one process and subtract in another,
 Redpanda's \texttt{kgo-repeater} on another machine. In $\toolsTwoClockRuns$ of their
 $\toolsTwoClockOf$ runs the moved clock shifted their figures or cut what they kept, and the rest
@@ -567,10 +568,10 @@ RocketMQ's benchmark add the clocks' offset to the path's latency. Pulsar's clie
 OpenMessaging Benchmark, RabbitMQ Stream PerfTest and the Yahoo Streaming Benchmark drop what comes
 out below zero, uncounted, and \kafka{}'s Trogdor replaces it with zero. Under the larger offset
 Pulsar's client kept $\toolsPulsarKeptLo$ to $\toolsPulsarKeptHi$ of $\toolsAskedToSend$
-latencies, and Stream PerfTest $\toolsStreamKeptLo$ to $\toolsStreamKeptHi$. Quiver writes every
-value to a file of its own, but its summary subtracts in unsigned 64-bit integers, so a value below
-zero becomes about $1.8\times10^{19}$~ms, some 585 million years, and its maximum did so in every
-run under the offsets (Supplement~S5). Apache Artemis's perf
+latencies, and Stream PerfTest $\toolsStreamKeptLo$ to $\toolsStreamKeptHi$. Quiver keeps both
+timestamps of every message in a file, but its summary subtracts in unsigned 64-bit integers, so a
+value below zero becomes about $1.8\times10^{19}$~ms, some 585 million years, as its maximum did in
+every run under the offsets (Supplement~S5). Apache Artemis's perf
 client also subtracts in a second process, but its consumer refuses a value below zero and has the
 message delivered again until it comes out above zero. Its figures therefore hid the offset, while
 it received $\toolsArtemisReceivedLo$ to $\toolsArtemisReceivedHi$ messages from the
@@ -580,11 +581,11 @@ $\sOneArtemisSentLo$ to $\sOneArtemisSentHi$ messages and again reported success
 \texttt{emqtt-bench}'s histogram keeps values below zero, but its console printed no
 latency under either offset (Supplement~S5). Waiting for a core shows in these tools as time added
 rather than as a value below zero. With every core $\toolsLoadPct\%$ busy, the 99th percentile of
-each of the \toolsTailToolsWord{} tools that print one rose by $\toolsTailRiseLo$--$\toolsTailRiseHi$~ms
-while its median moved by at most $\toolsMedianMoveHi$~ms, except in the \toolsWholeMsWord{} that
-print whole milliseconds, where it rose by up to \toolsWholeStepsHi{} steps. Real-time priority took
-nearly all of that rise back in \toolsTailBackWord{} of them, and put those medians back where they
-were idle (Supplement~S5).
+each of the \toolsTailToolsWord{} tools that print one rose by $\toolsTailRiseLo$--$\toolsTailRiseHi$~ms,
+and real-time priority took nearly all of that rise back in \toolsTailBackWord{} of them. Medians
+moved by at most $\toolsMedianMoveHi$~ms, except in \toolsWholeMsWord{} tools that print whole
+milliseconds, where they rose by up to \toolsWholeStepsHi{} milliseconds and real-time priority put
+them back where they were idle (Supplement~S5).
 
 \subsection{A positivity filter on a millisecond clock}
 \label{sec:extmethod}

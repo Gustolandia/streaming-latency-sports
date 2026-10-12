@@ -1265,10 +1265,10 @@ versions 38 and 39 (\brk{freezes/35-experiment-plan}, \brk{freezes/36-experiment
 public before its runs: \texttt{mqtt-benchmark}, IBM Sarama's producer tool, SBK and Redpanda's
 \texttt{kgo-repeater} on the first pair, and Apache Artemis's perf client, RocketMQ's benchmark
 and BookKeeper's benchmark on the second, each of the last three against a broker of its own,
-started alone on that pair's broker machine. The last two, Quiver and the Pravega benchmark, build
-from source on older toolchains and ran under version 40 (\brk{freezes/37-experiment-plan}),
-public before its runs, on the second pair: Quiver against version 39's Artemis broker, and the
-Pravega benchmark against Pravega's own server. Table~\ref{stab:toolsrun} lists all of them. A delay
+started alone on that pair's broker machine. The last two, Quiver and the Pravega benchmark, must
+be built from source on older toolchains. They ran on the second pair under version 40
+(\brk{freezes/37-experiment-plan}), public before its runs, Quiver against the Artemis broker
+version 39 had started and the Pravega benchmark against Pravega's own server. Table~\ref{stab:toolsrun} lists all of them. A delay
 added in steps cannot reach the managed queue's path, so PerfKit's T1 was its zero step alone. Of
 the others, every tool's figure but two followed the delay at a slope inside the band the plan
 fixed in advance. The Yahoo Streaming
@@ -1339,19 +1339,25 @@ a second each add waits about a fiftieth of a second for its permit, inside the 
 times, and its median was $\toolsBookkeeperMedianLo$ to $\toolsBookkeeperMedianHi$~ms in every
 round, above the 15~ms version 39 predicted.
 
-The Pravega benchmark takes both timestamps in one process too, but is not among them. Its T2
-moved the machine's own clock rather than libfaketime's, because version 40's pilots found that
-libfaketime slows a Java program at an offset other than zero: under it the benchmark's median rose
-from 1 to 2~ms, and its reader waited out its one-second timeout in some runs, whether or not the
-monotonic clock moved with the wall clock. With the machine's clock moved, its median stayed where
-its control's was in every run and its average moved by at most $\toolsPravegaAvgMoveHi$~ms. But it
-counts what arrives in its minute, set-up included, and its count fell $\toolsCountedShortLo$ to
-$\toolsCountedShortHi$ short of the $\toolsAskedToSend$ asked for in all but one run. Version 34's
-rule reads a short count beside a longer control's as values dropped. It answered two in
-\toolsCountedTwoWord{} of the benchmark's \toolsCountedRunsWord{} runs, each by that count,
-undecided in \toolsCountedUndecidedWord{}, and one in the \toolsCountedOneWord{} run whose count was
-whole, in which a stall had let its writer catch up past its pace. So the rule did not find the
-one clock version 40 predicted, though nothing in the benchmark's figures moved with the clock.
+The Pravega benchmark takes both timestamps in one process too, but it is not among the
+\toolsOneClockWord{}. Nothing in its figures moved with the clock, yet version 34's rule did not
+find the one clock version 40 predicted. Its T2 moved the machine's own clock rather than use
+libfaketime, because version 40's pilots had found that libfaketime slows the benchmark, a Java
+program, at an offset other than zero, whether or not the monotonic clock moved with the wall
+clock. Under it the benchmark's median rose from 1 to 2~ms, and in some runs its reader waited out
+its one-second timeout. With the machine's clock moved, its median stayed where its control's was
+in every run, and its average moved by at most $\toolsPravegaAvgMoveHi$~ms. The count is what
+misled the rule. The benchmark runs for a fixed minute, set-up included, and counts only what
+arrives in it, so in all but one run its count fell $\toolsCountedShortLo$ to
+$\toolsCountedShortHi$ short of the $\toolsAskedToSend$ asked for, and its controls fell as short.
+Version 34's rule reads a count shorter than its control's as values dropped. In
+\toolsCountedTwoWord{} of the benchmark's \toolsCountedRunsWord{} runs the count came out
+\toolsPravegaBelowControlWord{} below its control's, and the rule answered two. It was undecided in
+the \toolsCountedUndecidedWord{} whose counts matched their controls', and answered one only in the
+\toolsCountedOneWord{} run whose count was whole, where after a stall its writer had published
+faster than its pace to catch up. Freeze 21's judge, which does not hold a short count against one
+clock, found the benchmark timing against one clock in \toolsCountedJudgedOneWord{} of its
+\toolsCountedRunsWord{} runs.
 
 The other \toolsTwoClockWord{} timestamp a message
 in one process and subtract in another, \texttt{kgo-repeater} on another machine. The judge read
@@ -1386,19 +1392,23 @@ less than half the offset. Version 34's rule therefore answered one or undecided
 this reason, and Table~\ref{stab:toolsrun} lists the tool as two clocks with none of its runs so
 answered.
 
-Quiver reads two clocks, its receiving arrow subtracting the timestamp of the arrow that publishes.
-It writes both timestamps of every transfer to a file of its own, and its summary subtracts them in unsigned 64-bit
-integers, so a value below zero becomes $2^{64}$ less its size, about $1.8\times10^{19}$~ms.
-Under the offsets its maximum came out so in every run, and at the larger offset
-$\toolsQuiverLargeBelowLo$ to $\toolsQuiverLargeBelowHi$ of its 3,000 transfers fell below zero and
-its median and average came out so too. Version 40 predicted that both its maximum and its average
-would pass $10^{18}$~ms at both offsets (T2-q). That failed in \toolsQuiverFailedWord{} round, in
-which only $\toolsQuiverFewBelow$ transfer fell below zero at the smaller offset, so its average
-stayed far under. There libfaketime, which moved its receiver's clock, slowed the receiver by about
-a millisecond, as in the pilots, and its usual trip became as long as the offset. In the other
-\toolsQuiverHeldWord{} rounds $\toolsQuiverSmallBelowLo$ to $\toolsQuiverSmallBelowHi$ of its
-transfers fell below zero at the smaller offset, and T2-q held. Freeze 21's judge left all of its
-runs undecided, and so did version 34's: neither has a behavior for a value that wraps.
+Quiver reads two clocks, because its receiver subtracts the timestamp its publisher wrote into the
+message from a reading of its own clock. It writes both timestamps of every message, which it calls
+a transfer, to a file of its own, and its summary subtracts them in unsigned 64-bit integers. A
+value below zero therefore becomes $2^{64}$ less its size, about $1.8\times10^{19}$~ms: it wraps.
+Under the offsets Quiver's maximum wrapped in every run. At the larger offset
+$\toolsQuiverLargeBelowLo$ to $\toolsQuiverLargeBelowHi$ of its $\toolsQuiverSent$ transfers fell
+below zero, so its median and average wrapped too. Version 40 predicted that both its maximum and
+its average would pass $10^{18}$~ms at both offsets (T2-q). The prediction failed in
+\toolsQuiverFailedWord{} round, in which only $\toolsQuiverFewBelow$ transfer fell below zero at
+the smaller offset, so its average stayed far under $10^{18}$~ms. In that round libfaketime, which
+moved the receiver's clock, also slowed the receiver by about a millisecond, as in the pilots. Its
+usual trip became as long as the offset, so moving the clock back by the offset left its median at
+zero rather than below it. In the other \toolsQuiverHeldWord{} rounds
+$\toolsQuiverSmallBelowLo$ to $\toolsQuiverSmallBelowHi$ of its transfers fell below zero at the
+smaller offset, and T2-q held. Freeze 21's judge left all of its runs undecided, and so did version
+34's judge, because neither has a behavior for a value that wraps. Version 34's answer from the
+offset alone needs none, and it was two in every run.
 
 The Yahoo Streaming Benchmark is the one tool whose notebook drops values with no clock moved:
 $\toolsYsbControlDropLo$--$\toolsYsbControlDropHi\%$ of its windows, those whose last write came
@@ -1418,15 +1428,16 @@ given (\brk{docs/results/tools/ysb_t2_fit.csv}).
 A third test, T3, ran each tool idle and against a background load that kept every core
 $\toolsLoadPct\%$ busy, each with and without real-time priority on the process that subtracts. The
 plan fixed no rule for T3, so what follows describes the runs and judges nothing. The load
-lengthened the tail of every tool that prints a 99th percentile and barely moved its median
-(Table~\ref{stab:toolsload}). Taking the median over the four rounds, the 99th percentile of each
-of the \toolsTailToolsWord{} rose by $\toolsTailRiseLo$--$\toolsTailRiseHi$~ms, of the order of the
-$\baseSliceMs$~ms slice a thread can wait for a core (Section~\ref{P-sec:tail}), while the median
-moved by at most $\toolsMedianMoveHi$~ms, except in the \toolsWholeMsWord{} tools that print whole
-milliseconds: Trogdor, SBK, Quiver and the Pravega benchmark. There it rose by up to
-\toolsWholeStepsHi{} steps, and real-time priority put it back where it was idle in every round.
-Real-time priority took at least nine tenths of the rise back in \toolsTailBackWord{} of them. A tool times the wait for a core together with everything else it
-times, so the wait reads as latency. The Yahoo Streaming Benchmark is left out of these figures,
+lengthened the tail of every tool that prints a 99th percentile (Table~\ref{stab:toolsload}).
+Taking the median over the four rounds, the 99th percentile of each of the \toolsTailToolsWord{}
+rose by $\toolsTailRiseLo$--$\toolsTailRiseHi$~ms, of the order of the $\baseSliceMs$~ms slice a
+thread can wait for a core (Section~\ref{P-sec:tail}), and real-time priority took back at least
+nine tenths of that rise in \toolsTailBackWord{} of them. The median barely moved, by at most
+$\toolsMedianMoveHi$~ms, in all but \toolsWholeMsWord{}: Trogdor, SBK, Quiver and the Pravega
+benchmark, which print their medians in whole milliseconds. Under the load each of their medians
+rose in at least one round, by up to \toolsWholeStepsHi{} milliseconds, and real-time priority put
+each back where it was idle in every round. A tool times the wait for a core together with
+everything else it times, so the wait reads as latency. The Yahoo Streaming Benchmark is left out of these figures,
 because its figure is set by its flush, as above, and not by the trip a waiting thread lengthens.
 So is PerfKit Benchmarker: its trip goes to a managed queue in a data center, and its 99th
 percentile of 100 messages, set by that queue's own tail, swung between its idle rounds by far
@@ -1458,15 +1469,18 @@ cluster's rolling restart. T2's constant offset cannot make one, so version 37
 the driver's wall clock stepped back by 20~ms, or by 50~ms for PerfKit, whose trip is longer, at
 gaps drawn around a fifth of a second, with chrony stopped (Table~\ref{stab:sone}). A message still
 on its way when the clock steps back is timed short by the step, and so comes out below zero if the
-step is longer than its trip. Every prediction version 37 fixed from the tools' sources held in all \sOneRoundsWord{}
-rounds. PerfKit printed $\sOnePkbLo$ to $\sOnePkbHi$ samples below zero in each stepped run and
+step is longer than its trip. Once the steps were undone, the wall clock was within
+$\sOneClockBackMs$~ms of the hypervisor's PTP clock. Every prediction version 37 fixed from the
+tools' sources held in all \sOneRoundsWord{} rounds. PerfKit printed $\sOnePkbLo$ to $\sOnePkbHi$ samples below zero in each stepped run and
 counted them in its mean and percentiles. Strimzi Canary logged $\sOneCanaryLo$ to
 $\sOneCanaryHi$ durations below zero. Stream PerfTest, run as one instance, kept $\sOneStreamLo$ to
 $\sOneStreamHi$ fewer latencies than the messages it consumed, and said nothing. Xinfra Monitor's
 metrics library pinned $\sOneXinfraLo$ to $\sOneXinfraHi$ values to the floor of its percentiles,
 which only its debug line shows: its printed 99th percentile was the control's in every round.
 None of them showed such a value in its control, and \kafka{}'s end-to-end tool, which times with
-a monotonic clock, did not see the steps. Versions 38 and 39 added four tools to S1. SBK counted
+a monotonic clock, did not see the steps. T2 had already shown Stream PerfTest's handling, when it
+ran as two instances. The other three could not have been seen without the steps. Versions 38 and
+39 added four tools to S1. SBK counted
 $\sOneSbkLo$ to $\sOneSbkHi$ of its latencies as invalid in each stepped run, and none in its
 controls. \texttt{mqtt-benchmark}, on a monotonic clock, kept its minimum above zero and its mean
 within a millisecond of its control's. Sarama's producer tool, also on a monotonic clock, kept its
@@ -1477,15 +1491,14 @@ that figure's spread from one run to the next. Artemis's producer, which reads t
 consumer, published $\sOneArtemisSentLo$ to $\sOneArtemisSentHi$ of its $\toolsAskedToSend$ messages in
 each stepped run, stopped, and reported success, as version 39 predicted after its pilot. A step
 inside one of its own timed publishes makes a value below zero that its histogram refuses, in a thread
-that catches only the messaging library's own exceptions. Version 40 added two more. Quiver's
-transfers held $\sOneQuiverLo$ to $\sOneQuiverHi$ values below zero in each stepped run and its
-maximum wrapped, while its controls held none. The Pravega benchmark printed one window in each
-stepped run and nothing after it: its one statistics task threw at the first value below zero, an
-\texttt{ArrayIndexOutOfBoundsException} naming the value, so no total was printed, and the program
-still ended as if it had succeeded; each control printed its total. Once the steps were undone, the wall clock was within
-$\sOneClockBackMs$~ms of the hypervisor's PTP clock. Stream PerfTest's
-handling is the one T2 showed of it run as two instances; the other three could not have been seen
-without the steps.
+that catches only the messaging library's own exceptions. Version 40 added two more. In each
+stepped run $\sOneQuiverLo$ to $\sOneQuiverHi$ of Quiver's transfers came out below zero and its
+maximum wrapped, while its controls had none. The Pravega benchmark printed no total in any stepped
+run. At the first value below zero its one statistics task threw an
+\texttt{ArrayIndexOutOfBoundsException} naming that value, and every later statistic was lost.
+Its code then exits with status 0, as it does after printing any exception, so a run that lost its
+statistics ends as one that succeeded; the runs did not record that status. Each control printed
+its total.
 
 The per-run verdicts and figures are in \brk{docs/results/tools/tools_t1.csv},
 \brk{tools_t2.csv} and \brk{tools_t3.csv}, folded by \brk{scripts/tools_block.py} from the runs;
@@ -1509,16 +1522,19 @@ on two.} The registered campaign's tools block, \toolsRoundsWord{} rounds per to
 in September and twenty in October, each on one of two pairs of machines of the same type;
 PerfKit Benchmarker timed a managed queue, which the staircase cannot reach, so it has no slope
 (---), and its two processes share one host. \texttt{kgo-repeater} times across two hosts.
-RocketMQ's slope missed the band in every round, and Artemis's perf client, on two clocks, kept the
-offset out of its figures by having each refused value delivered again. The Pravega benchmark, on
-one clock, was answered by its count rather than its figures (text). Interval: what
-the tool times, as its invocation was read before any run. Slope: how far its figure moved per
-millisecond of delay, divided by the number of times the interval crosses the delay, in its
-lowest and highest round. Clocks: how many clocks its two timestamps come from, answered from the
-offset alone as version 34 asks. Two means that moving back the clock of the process that
-subtracts cut what the tool kept, or moved its average, median or minimum by more than half the
-offset. One means that it kept every value and none of those moved by a quarter of the offset.
-Runs: the offset runs so answered, of all of that tool's. The rest were undecided.}
+RocketMQ's slope missed the band in every round. Interval: what the tool times, as its invocation
+was read before any run. Slope: how far its figure moved per millisecond of delay, divided by the
+number of times the interval crosses the delay, in its lowest and highest round. Clocks: how many
+clocks its two timestamps come from, as its interval implies. Runs: of its offset runs, how many
+version 34's rule, reading the offset alone, answered the same way. The rule answers two if moving
+back the clock of the process that subtracts cut what the tool kept, or moved its average, median
+or minimum by more than half the offset. It answers one if the tool kept every value and none of
+those moved by a quarter of the offset, and leaves the rest undecided. The title counts only the
+tools whose decided runs all agree with their Clocks. It leaves out Artemis's perf client, which
+reads two clocks but kept the offset out of its figures by having each refused value delivered
+again, so that its runs were answered one or left undecided. It also leaves out the Pravega
+benchmark, which reads one clock but counts only what arrives in a fixed minute, so that the rule
+read its short counts as values dropped (text).}
 \label{stab:toolsrun}
 \centering
 \footnotesize
@@ -1527,7 +1543,8 @@ Runs: the offset runs so answered, of all of that tool's. The rest were undecide
 \end{table}
 
 \begin{table}[tb]
-\caption{\textbf{On a busy machine every tool's tail lengthened and its median barely moved.} T3:
+\caption{\textbf{On a busy machine every tool's tail lengthened, and its median barely moved in all
+but \toolsWholeMsWord{}.} T3:
 each tool idle and against a background load keeping every core $\toolsLoadPct\%$ busy; real-time:
 the process that subtracts ran ahead of the load at real-time priority. Each figure is the median
 over the four rounds, in milliseconds, for the tools that print a 99th percentile.}
@@ -1559,11 +1576,12 @@ handled a value below zero their own way.} S1: each tool once as it is and once 
 wall clock stepped back by the step shown at gaps drawn around a fifth of a second,
 \sOneRoundsWord{} rounds. Steps: how many a stepped run made, lowest and highest round. Below zero:
 how many values below zero the tool's own output showed in a stepped run, lowest and highest round,
-and the most it showed in any control. \kafka{}'s end-to-end tool, \texttt{mqtt-benchmark} and
-Sarama's producer tool time with a monotonic clock; Sarama's prediction failed (text). Artemis's
-perf client and Quiver read two clocks: Artemis's row shows what its producer did, and Quiver's
-the transfers it kept below zero. The Pravega benchmark's row counts the one value its statistics
-stopped at in each stepped run.}
+and the most it showed in any control. The Pravega benchmark's statistics task stopped at the
+first value below zero, so its row counts one in each stepped run. \kafka{}'s end-to-end tool,
+\texttt{mqtt-benchmark} and Sarama's producer tool are not among the six, because they time with a
+monotonic clock, which the steps do not move; Sarama's prediction failed (text). Nor are Artemis's
+perf client and Quiver, which read two clocks. Artemis's row shows what its producer did, and
+Quiver's row shows how many of its transfers, as it calls messages, came out below zero.}
 \label{stab:sone}
 \centering
 \footnotesize

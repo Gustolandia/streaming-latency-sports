@@ -3815,9 +3815,15 @@ def tools_block_macros(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
         raise ValueError("the prose counts the tools timing within one process as those on one "
                          "clock but PerfKit, with %s; the tables say %s"
                          % (sorted(CLOCKS_BY_COUNT), in_one_process))
-    #: What the rule answered for the tools whose answer their count set, as the prose gives it.
+    #: What the rule answered for the tools whose answer their count set, as the prose gives it,
+    #: and what freeze 21's judge, which reads the figures alone, answered beside it. The paper
+    #: says most of their runs read as if the moved clock had cut what they kept.
     counted = [r for r in t2 if r["tool"] in CLOCKS_BY_COUNT]
     short = [int(r["sent"]) - int(r["kept"]) for r in counted if int(r["kept"]) < int(r["sent"])]
+    if 2 * sum(r["clocks"] == "two" for r in counted) <= len(counted):
+        raise ValueError("the paper says most runs of %s read as if the moved clock had cut what "
+                         "they kept; the tables say %s" % (sorted(CLOCKS_BY_COUNT),
+                                                           [r["clocks"] for r in counted]))
     #: And it says freeze 21's judge, whose noise allowance comes from a staircase PerfKit has
     #: none of, decided none of PerfKit's runs.
     if any(r["verdict"] != UNDECIDED_RUN for r in t2 if r["tool"] == "pkb"):
@@ -3835,6 +3841,14 @@ def tools_block_macros(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
         raise ValueError("the supplement says Xinfra Monitor and Strimzi Canary read one clock, "
                          "and that Trogdor read two at the smaller offset of each round and was "
                          "undecided at the larger; the tables disagree")
+    #: And of Quiver, that both judges left every one of its runs undecided, neither having a
+    #: behavior for a value that wraps, while version 34's answer from the offset alone was two
+    #: in every one.
+    quiver = [r for r in t2 if r["tool"] == "quiver"]
+    if not quiver or any(r["clocks"] != "two" or r["verdict"] != UNDECIDED_RUN
+                         or r["verdict_31"] != UNDECIDED_RUN for r in quiver):
+        raise ValueError("the supplement says both judges left every Quiver run undecided while "
+                         "version 34's answer from the offset alone was two; the tables disagree")
     return [
         ("toolsRunWord", _spell(len({r["tool"] for r in t1}))),
         ("toolsRoundsWord", _spell(len(rounds))),
@@ -3865,6 +3879,7 @@ def tools_block_macros(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
         ("toolsCountedOneWord", _spell(sum(r["clocks"] == "one" for r in counted))),
         ("toolsCountedShortLo", str(min(short))),
         ("toolsCountedShortHi", str(max(short))),
+        ("toolsCountedJudgedOneWord", _spell(sum(r["verdict"] == ONE_CLOCK for r in counted))),
     ]
 
 
@@ -4303,7 +4318,8 @@ QUIVER_WRAPPED_MS = 1e18
 def quiver_block_macros(v40_path=V40_CSV, verdicts_path=V40_VERDICTS):
     """Freeze 37's own prediction (scripts/block_v40.py), T2-q, as the supplement reports it: it
     failed in the rounds the verdict names, where at the smaller offset too few of Quiver's
-    transfers came out below zero for its average to wrap, though its maximum did; in the others,
+    transfers came out below zero for its average to wrap, its median staying at zero, though its
+    maximum did; in the others,
     and at the larger offset in every round, its summary wrapped as predicted, and no control held
     a value below zero or a wrapped figure. Each is checked before it is printed."""
     import csv as _csv
@@ -4341,15 +4357,21 @@ def quiver_block_macros(v40_path=V40_CSV, verdicts_path=V40_VERDICTS):
             or verdict["not_judged_in_rounds"]
             or any(float(r["max"]) < QUIVER_WRAPPED_MS for r in moved)
             or any(float(r["avg"]) < QUIVER_WRAPPED_MS for r in larger)
-            or any(float(r["avg"]) >= QUIVER_WRAPPED_MS for r in few)
+            or any(float(r["avg"]) >= QUIVER_WRAPPED_MS or float(r["p50"]) != 0.0 for r in few)
             or any(int(r["below_zero"]) or float(r["max"]) >= QUIVER_WRAPPED_MS for r in controls)):
-        raise ValueError("the prose says T2-q failed in some rounds, its average unwrapped at the "
-                         "smaller offset there while every maximum wrapped, the larger offset "
-                         "wrapped its average in every round, and no control wrapped; the tables "
-                         "say %s" % verdict)
+        raise ValueError("the prose says T2-q failed in some rounds, its average unwrapped and its "
+                         "median at zero at the smaller offset there while every maximum wrapped, "
+                         "the larger offset wrapped its average in every round, and no control "
+                         "wrapped; the tables say %s" % verdict)
+    #: How many transfers each run was asked for, quoted once for all of them.
+    sent = {r["sent"] for r in rows}
+    if len(sent) != 1:
+        raise ValueError("the supplement quotes one count of transfers Quiver was asked for in "
+                         "every run; the table says %s" % sorted(sent))
     ok_smaller = [int(smaller[rnd]["below_zero"]) for rnd in held]
     below = [int(r["below_zero"]) for r in larger]
     return [
+        ("toolsQuiverSent", _grouped(int(sent.pop()))),
         ("toolsQuiverFailedWord", _spell(len(failed))),
         ("toolsQuiverHeldWord", _spell(len(held))),
         ("toolsQuiverFewBelow", _grouped(max(int(r["below_zero"]) for r in few))),
@@ -4365,6 +4387,48 @@ def _grouped(count):
     """A count as the prose sets it, its thousands parted by a comma braced so that math mode
     adds no space after it: 2{,}308."""
     return "{:,}".format(count).replace(",", "{,}")
+
+
+def pravega_count_macros(t2_path=TOOLS_T2, v40_path=V40_CSV):
+    """What the supplement says of the counts of the tools whose answer their count set
+    (CLOCKS_BY_COUNT), read beside their controls': the controls fell as short of what was asked
+    for as the clock-moved runs did; version 34's rule answered two in each run whose count came
+    out below its control's, every one by the same amount; it left undecided each run whose
+    count matched its control's, and answered one only where the count was whole. The rule's
+    answers are in the T2 table and the controls' counts in version 40's, so the two are read
+    together here, and a table that says otherwise stops the build."""
+    import csv as _csv
+    if not (os.path.exists(t2_path) and os.path.exists(v40_path)):
+        print("note: the counted tools' tables absent")
+        return []
+    with open(t2_path, encoding="utf-8") as fh:
+        runs = [r for r in _csv.DictReader(fh) if r["tool"] in CLOCKS_BY_COUNT]
+    with open(v40_path, encoding="utf-8", newline="") as fh:
+        control = {(r["tool"], r["round"]): int(r["kept"]) for r in _csv.DictReader(fh)
+                   if r["tool"] in CLOCKS_BY_COUNT and r["run"] == "control"}
+    asked = {(r["tool"], r["round"]): int(r["sent"]) for r in runs}
+    short = [int(r["sent"]) - int(r["kept"]) for r in runs if int(r["kept"]) < int(r["sent"])]
+    wrong, below = [], set()
+    for r in runs:
+        key, kept = (r["tool"], r["round"]), int(r["kept"])
+        if key not in control:
+            wrong.append((key, "no control"))
+        elif r["clocks"] == "two" and kept < control[key]:
+            below.add(control[key] - kept)
+        elif not ((r["clocks"] == UNDECIDED_RUN and kept == control[key])
+                  or (r["clocks"] == "one" and kept >= int(r["sent"]))):
+            wrong.append((key, r["clocks"], kept, control[key]))
+    #: A control as short as the runs makes a run that matched it short too, and tables with no
+    #: such runs leave no amount below the controls, so neither needs a test of its own.
+    off = [(key, asked[key] - kept) for key, kept in control.items()
+           if key in asked and not (short and min(short) <= asked[key] - kept <= max(short))]
+    if wrong or off or len(below) != 1:
+        raise ValueError("the supplement says the controls of %s fell as short as their runs, "
+                         "each run answered two came out below its control's by one amount, each "
+                         "left undecided matched it, and the one answered one was whole; the "
+                         "tables say %s, controls %s, below by %s"
+                         % (sorted(CLOCKS_BY_COUNT), wrong, off, sorted(below)))
+    return [("toolsPravegaBelowControlWord", _spell(below.pop()))]
 
 
 K1_CSV = os.path.join("docs", "results", "tools", "k1.csv")
@@ -5154,6 +5218,7 @@ def _all_pairs(m):
             + deletion_macros() + literature_macros() + cliff_macros() + reach_macros()
             + tools_block_macros() + tools_load_macros() + ysb_flush_macros() + ysb_fit_macros()
             + k1_macros() + s1_macros() + brokers_block_macros() + quiver_block_macros()
+            + pravega_count_macros()
             + recv_wait_macros()
             + law_reading_macros()
             + s_window_macros() + rate_by_delivery_macros() + mechanism_interval_macros()

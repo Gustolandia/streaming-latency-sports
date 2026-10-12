@@ -2972,12 +2972,13 @@ class TestTheToolsBlock:
 
     KEPT = "it kept 2956 of the 3000 it was asked to send"
 
-    def _counted(self, why=KEPT, trip="in one process"):
+    def _counted(self, why=KEPT, trip="in one process", third=True):
         """The Pravega benchmark as freeze 37 left it, by what the prose says of it: it times
         within one process, and counts what arrives in its minute, 43 or 44 short of the 3,000
         asked for but in the run whose count was whole. Version 34's rule answered two by that
-        count in two runs, one in the whole one, and left the other undecided, its count no
-        shorter than its control's."""
+        count in most of its runs, one in the whole one, and left one undecided, its count no
+        shorter than its control's; freeze 21's judge read all but the whole one as one clock.
+        Without the `third` round, only half of its runs read two."""
         t1 = [("1", "pravega-benchmark", trip, "p50", "1", "1.0887"),
               ("2", "pravega-benchmark", trip, "p50", "1", "1.1411")]
         t2 = [self._t2("1", "pravega-benchmark", "2.0086", self.ONE, "two", kept="2956",
@@ -2987,11 +2988,24 @@ class TestTheToolsBlock:
               self._t2("2", "pravega-benchmark", "2.0219", self.ONE, "undecided", kept="2957",
                        why="its figures moved between a quarter and half the 2.022 ms offset"),
               self._t2("2", "pravega-benchmark", "4.0074", self.ONE, "two", kept="2956", why=why)]
+        if third:
+            t2 += [self._t2("3", "pravega-benchmark", offset, self.ONE, "two", kept="2956",
+                            why=self.KEPT) for offset in ("2.0076", "4.0104")]
+        return t1, t2
+
+    def _quiver(self, clocks="two", verdict="undecided", corrected="undecided"):
+        """Quiver as freeze 37 left it: on two clocks, both judges undecided in every run, neither
+        having a behavior for a value that wraps, while version 34's answer from the offset alone
+        is two."""
+        t1 = [("1", "quiver", "across two processes", "p50", "1", "1.0800")]
+        t2 = [self._t2("1", "quiver", "1.9971", verdict, clocks, kept="3000", corrected=corrected),
+              self._t2("1", "quiver", "4.0274", "undecided", "two", kept="3000",
+                       corrected="undecided")]
         return t1, t2
 
     def _tables(self, tmp_path, rdkafka_round2=KEEPS, slope="1.0084", drop_round2=False,
                 rdkafka_round1="undecided", wrk2_clocks="one", rdkafka_clocks="two",
-                pulsar=None, october=None, brokers=None, counted=None):
+                pulsar=None, october=None, brokers=None, counted=None, quiver=None):
         t1 = [("1", "wrk2", "round trip", "p50", "1", slope),
               ("1", "rdkafka_performance", "across two processes", "avg", "2", "1.9583"),
               ("1", "pulsar-perf", "across two processes", "p50", "1", "1.0285"),
@@ -3010,34 +3024,55 @@ class TestTheToolsBlock:
         more_t1, more_t2 = self._october() if october is None else october
         late_t1, late_t2 = self._brokers() if brokers is None else brokers
         own_t1, own_t2 = self._counted() if counted is None else counted
-        return self._write(tmp_path, t1 + more_t1 + late_t1 + own_t1,
-                           t2 + more_t2 + late_t2 + own_t2)
+        q_t1, q_t2 = self._quiver() if quiver is None else quiver
+        return self._write(tmp_path, t1 + more_t1 + late_t1 + own_t1 + q_t1,
+                           t2 + more_t2 + late_t2 + own_t2 + q_t2)
 
     def test_the_counts_the_section_quotes(self, tmp_path):
-        """Fifteen tools: six on one clock, held so in ten of their eleven runs, SBK's other run
-        undecided; seven on two, answered so in sixteen of their eighteen runs (Pulsar's undecided
+        """Sixteen tools: six on one clock, held so in ten of their eleven runs, SBK's other run
+        undecided; eight on two, answered so in eighteen of their twenty runs (Pulsar's undecided
         run and Trogdor's at the larger offset are the two); Artemis's perf client, on two
-        processes, whose two runs are counted apart; and the Pravega benchmark, whose four runs are
-        counted apart too, by what its count let the rule answer. Six tools take both timestamps in
-        one process, five of the one-clock tools and the Pravega benchmark, and PerfKit in two on
-        one host. YSB's slopes and RocketMQ's are their own, held outside the band and out of the
-        band's figures, and PerfKit, with none, adds nothing to them."""
+        processes, whose two runs are counted apart; and the Pravega benchmark, whose six runs are
+        counted apart too, by what its count let the rule answer, freeze 21's judge reading five
+        of them as one clock. Six tools take both timestamps in one process, five of the one-clock
+        tools and the Pravega benchmark, and PerfKit in two on one host. YSB's slopes and
+        RocketMQ's are their own, held outside the band and out of the band's figures, and
+        PerfKit, with none, adds nothing to them."""
         got = dict(epn.tools_block_macros(*self._tables(tmp_path)))
-        assert got == {"toolsRunWord": "15", "toolsRoundsWord": "two",
+        assert got == {"toolsRunWord": "16", "toolsRoundsWord": "two",
                        "toolsSlopeLo": "0.98", "toolsSlopeHi": "1.14",
                        "toolsOneClockWord": "six", "toolsOneProcessWord": "six",
                        "toolsOneClockOf": "11", "toolsOneClockHeld": "10",
-                       "toolsTwoClockWord": "seven", "toolsTwoClockRuns": "16",
-                       "toolsTwoClockOf": "18", "toolsKeepsRoundsWord": "one",
+                       "toolsTwoClockWord": "eight", "toolsTwoClockRuns": "18",
+                       "toolsTwoClockOf": "20", "toolsKeepsRoundsWord": "one",
                        "toolsPulsarKeptLo": "3", "toolsPulsarKeptHi": "7",
                        "toolsPulsarOneClockKept": "7", "toolsStreamKeptLo": "3",
                        "toolsStreamKeptHi": "4", "toolsYsbSlopeLo": "-0.2",
                        "toolsYsbSlopeHi": "236", "toolsYsbOneClockWord": "one",
                        "toolsYsbRunsWord": "two", "toolsAskedToSend": "3{,}000",
-                       "toolsArtemisRunsWord": "two", "toolsCountedRunsWord": "four",
-                       "toolsCountedTwoWord": "two", "toolsCountedUndecidedWord": "one",
+                       "toolsArtemisRunsWord": "two", "toolsCountedRunsWord": "six",
+                       "toolsCountedTwoWord": "four", "toolsCountedUndecidedWord": "one",
                        "toolsCountedOneWord": "one", "toolsCountedShortLo": "43",
-                       "toolsCountedShortHi": "44"}
+                       "toolsCountedShortHi": "44", "toolsCountedJudgedOneWord": "five"}
+
+    def test_half_the_pravega_runs_read_as_cut_stops_the_build(self, tmp_path):
+        """The paper says most of its runs read as if the moved clock had cut what it kept."""
+        with pytest.raises(ValueError, match="most runs of"):
+            epn.tools_block_macros(*self._tables(tmp_path, counted=self._counted(third=False)))
+
+    @pytest.mark.parametrize("change", [
+        None,
+        {"clocks": "undecided"},
+        {"verdict": "times against one clock"},
+        {"corrected": "drops the negatives"},
+    ], ids=["absent", "left undecided by the offset", "decided by freeze 21's judge",
+            "decided by version 34's judge"])
+    def test_quiver_otherwise_than_the_supplement_gives_stops_the_build(self, tmp_path, change):
+        """The supplement says both judges left every Quiver run undecided, while version 34's
+        answer from the offset alone was two in every one."""
+        tables = ([], []) if change is None else self._quiver(**change)
+        with pytest.raises(ValueError, match="left every Quiver run undecided"):
+            epn.tools_block_macros(*self._tables(tmp_path, quiver=tables))
 
     def test_tables_without_the_pravega_benchmark_stop_the_build(self, tmp_path):
         with pytest.raises(ValueError, match="answered two was answered by its count"):
@@ -3174,13 +3209,14 @@ class TestTheToolsBlock:
         assert rows == [
             "wrk2 & round trip & 1.01--1.04 & one & 3/3 \\\\",
             "\\kafka{} producer & to ack. & 1.14--1.14 & one & 1/1 \\\\",
-            "Pravega benchmark & one process & 1.09--1.14 & one & 1/4 \\\\",
+            "Pravega benchmark & one process & 1.09--1.14 & one & 1/6 \\\\",
             "SBK & one process & 1.01--1.01 & one & 1/2 \\\\",
             "Strimzi Canary & one process & 1.00--1.00 & one & 1/1 \\\\",
             "Xinfra Monitor & one process & 1.04--1.04 & one & 2/2 \\\\",
             "PerfKit messaging & one host & --- & one & 2/2 \\\\",
             "Artemis perf & two processes & 1.05--1.05 & two & 0/2 \\\\",
             "Pulsar perf. & two processes & 1.03--1.14 & two & 3/4 \\\\",
+            "Quiver & two processes & 1.08--1.08 & two & 2/2 \\\\",
             "librdkafka perf. & two processes & 0.98--0.98 & two & 2/2 \\\\",
             "RocketMQ benchmark & two processes & 1.78--4057.78 & two & 2/2 \\\\",
             "Stream PerfTest & two processes & 1.14--1.14 & two & 4/4 \\\\",
@@ -3364,6 +3400,7 @@ class TestFreezeThirtySevensOwnPrediction:
 
     def test_the_committed_tables_give_the_printed_numbers(self):
         assert dict(epn.quiver_block_macros()) == {
+            "toolsQuiverSent": "3{,}000",
             "toolsQuiverFailedWord": "one", "toolsQuiverHeldWord": "three",
             "toolsQuiverFewBelow": "1", "toolsQuiverSmallBelowLo": "2{,}308",
             "toolsQuiverSmallBelowHi": "2{,}992", "toolsQuiverLargeBelowLo": "2{,}995",
@@ -3390,16 +3427,24 @@ class TestFreezeThirtySevensOwnPrediction:
 
     @pytest.mark.parametrize("change", [
         ("1", "offset", "avg", WRAPPED, "2.000"),
+        ("1", "offset", "p50", "1.0", "2.000"),
         ("2", "offset", "max", "18.0", "2.000"),
         ("3", "offset", "avg", "1.5", "4.000"),
         ("4", "control", "below_zero", "1", None),
         ("2", "control", "max", WRAPPED, None),
-    ], ids=["the failed round's average wrapped", "a maximum unwrapped",
-            "a larger offset's average unwrapped", "a control below zero", "a control wrapped"])
+    ], ids=["the failed round's average wrapped", "the failed round's median off zero",
+            "a maximum unwrapped", "a larger offset's average unwrapped", "a control below zero",
+            "a control wrapped"])
     def test_a_quiver_run_other_than_the_prose_gives_stops_the_build(self, tmp_path, change):
         rnd, run, field, value, offset = change
         faulty = self._set(rnd, "quiver", run, field, value, offset)
         with pytest.raises(ValueError, match="T2-q failed in some rounds"):
+            epn.quiver_block_macros(*self._copy(tmp_path, rows=faulty))
+
+    def test_runs_asked_for_different_counts_stop_the_build(self, tmp_path):
+        """One count of transfers is quoted for every run."""
+        faulty = self._set("3", "quiver", "control", "sent", "2000")
+        with pytest.raises(ValueError, match="one count of transfers"):
             epn.quiver_block_macros(*self._copy(tmp_path, rows=faulty))
 
     def test_a_pravega_median_that_moved_with_the_clock_stops_the_build(self, tmp_path):
@@ -3412,6 +3457,92 @@ class TestFreezeThirtySevensOwnPrediction:
             return [r for r in rows if r["tool"] != "pravega-benchmark"]
         with pytest.raises(ValueError, match="median stayed where its control's was"):
             epn.quiver_block_macros(*self._copy(tmp_path, rows=drop))
+
+
+class TestThePravegaCounts:
+    """What the supplement says of the Pravega benchmark's counts beside its controls'
+    (pravega_count_macros): its controls fell as short as its clock-moved runs, each run version
+    34's rule answered two came out below its control's by one amount, each it left undecided
+    matched its control's, and the one it answered one was whole. The faulty tables are the
+    committed ones with one fault put in."""
+
+    def _copy(self, tmp_path, t2=None, v40=None):
+        src = Path(__file__).resolve().parents[2] / "docs" / "results" / "tools"
+        out = []
+        for name, change in (("tools_t2.csv", t2), ("v40.csv", v40)):
+            with (src / name).open(encoding="utf-8", newline="") as fh:
+                have = list(csv.DictReader(fh))
+            path = tmp_path / name
+            with path.open("w", encoding="utf-8", newline="") as fh:
+                w = csv.DictWriter(fh, fieldnames=list(have[0]), lineterminator="\n")
+                w.writeheader()
+                w.writerows(change(have) if change else have)
+            out.append(str(path))
+        return tuple(out)
+
+    def _pravega(self, rnd, field, value, offset=None, run=None):
+        """A change that puts one value into one of the Pravega benchmark's rows: a T2 run by its
+        offset, or a row of version 40's table by its run."""
+        def change(rows):
+            (row,) = [r for r in rows if r["tool"] == "pravega-benchmark" and r["round"] == rnd
+                      and (offset is None or r["offset_ms"] == offset)
+                      and (run is None or r["run"] == run)]
+            row[field] = value
+            return rows
+        return change
+
+    def test_the_committed_tables_give_the_printed_word(self):
+        assert epn.pravega_count_macros() == [("toolsPravegaBelowControlWord", "one")]
+
+    def test_a_copy_reads_the_same(self, tmp_path):
+        assert epn.pravega_count_macros(*self._copy(tmp_path)) == epn.pravega_count_macros()
+
+    def test_absent_tables_emit_nothing(self, tmp_path, capsys):
+        assert epn.pravega_count_macros(str(tmp_path / "a.csv"), str(tmp_path / "b.csv")) == []
+        assert "counted tools' tables absent" in capsys.readouterr().out
+
+    @pytest.mark.parametrize("t2, v40", [
+        # Round 3's runs were both answered two at 2,956 beside a control of 2,957.
+        (("3", "kept", "2957", "4.0104"), None),
+        (("3", "kept", "2955", "2.0076"), None),
+        (("2", "kept", "2955", "2.0219"), None),
+        (("1", "kept", "2999", "4.0300"), None),
+        (None, ("2", "run", "spare", None, "control")),
+    ], ids=["a run answered two at its control's count",
+            "two runs below their controls by different amounts",
+            "an undecided run below its control", "the run answered one short",
+            "a round with no control"])
+    def test_counts_otherwise_than_the_supplement_gives_stop_the_build(self, tmp_path, t2, v40):
+        t2 = None if t2 is None else self._pravega(t2[0], t2[1], t2[2], offset=t2[3])
+        v40 = None if v40 is None else self._pravega(v40[0], v40[1], v40[2], run=v40[4])
+        with pytest.raises(ValueError, match="fell as short as their runs"):
+            epn.pravega_count_macros(*self._copy(tmp_path, t2=t2, v40=v40))
+
+    def test_runs_answered_two_all_at_their_controls_count_stop_the_build(self, tmp_path):
+        """Were every run the rule answered two at its control's count, none could have read as
+        values dropped, and the amount below the controls the supplement quotes would be zero."""
+        def level(rows):
+            for r in rows:
+                if r["tool"] == "pravega-benchmark" and r["clocks"] == "two":
+                    r["kept"] = "2957"
+            return rows
+        with pytest.raises(ValueError, match="fell as short as their runs"):
+            epn.pravega_count_macros(*self._copy(tmp_path, t2=level))
+
+    def test_controls_less_short_than_every_run_stop_the_build(self, tmp_path):
+        """Without the runs left undecided, every run fell 44 short and every control 43: the
+        controls would no longer have fallen as short as the runs."""
+        def decided(rows):
+            return [r for r in rows
+                    if not (r["tool"] == "pravega-benchmark" and r["clocks"] == "undecided")]
+        with pytest.raises(ValueError, match="fell as short as their runs"):
+            epn.pravega_count_macros(*self._copy(tmp_path, t2=decided))
+
+    def test_tables_without_its_runs_stop_the_build(self, tmp_path):
+        def drop(rows):
+            return [r for r in rows if r["tool"] != "pravega-benchmark"]
+        with pytest.raises(ValueError, match="fell as short as their runs"):
+            epn.pravega_count_macros(*self._copy(tmp_path, t2=drop))
 
 
 class TestTheReceiverWaitIsEmitted:

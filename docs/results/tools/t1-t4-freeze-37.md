@@ -102,7 +102,11 @@ was 5,994 ms, a stall.
 | Pravega, final line printed | no | no | no | no | yes |
 
 Each Pravega stepped run printed the same exception six times, the trace from its main thread and
-again from its shutdown hook, each with its causes. Every stepped run made between 326 and 343 steps,
+again from its shutdown hook, each with its causes. S1-p as written also says the program still
+exits with status 0, which its source does after printing any exception (`PravegaPerfTest.java:171`,
+an unconditional `System.exit(0)` after the `catch` that printed the trace). `s1_block.py` judges
+only the missing total and the exception, and the S1 runner did not record the exit status, so
+that clause was predicted and not observed; the supplement says so. Every stepped run made between 326 and 343 steps,
 and the clock was put back within 0.05 ms of the PTP clock.
 
 ## Stalls on the second pair

@@ -5127,3 +5127,97 @@ class TestEveryPlannedFigureIsPlacedOrExcusedInWriting:
         assert "msGuardDeletedPct" in supp, (
             "the deletion figure is present but its headline is no longer stated in prose, "
             "so the number is readable only off the plot")
+
+
+class TestTableThreeMarksEveryToolRun:
+    """Table III's last column says which tools were read at source and which were run in the
+    registered campaign, and the Tools run subsection reports every tool the tools block ran.
+
+    Nothing read that column until 12 October 2026, when a reading of the paper found nine tools
+    of freezes 35 to 37 still marked "read" alone, two folds after they had run. Each row is mapped here to the
+    tools block's names, and a row marked "run" must name only tools the block ran, a row not
+    so marked none, and every tool the block ran must have a row. A new row with no entry below
+    fails too, so the mapping cannot fall behind the table either."""
+
+    #: A phrase only that row's first cell holds -> the tools block's names for its tools.
+    ROWS = {
+        "OpenMessaging Benchmark": ("omb",),
+        "Apache Pulsar's performance client": ("pulsar-perf",),
+        "emqtt-bench": ("emqtt-bench",),
+        "rdkafka": ("rdkafka_performance",),
+        "Trogdor": ("trogdor",),
+        "RabbitMQ Stream PerfTest": ("stream-perftest",),
+        "Yahoo Streaming Benchmark": ("ysb",),
+        "PerfKit Benchmarker": ("pkb",),
+        "Artemis": ("artemis-perf",),
+        "Pub/Sub": (),
+        "Quiver": ("quiver",),
+        "kgo-repeater": ("kgo-repeater", "rocketmq-benchmark"),
+        "end-to-end and producer tools": ("kafka-end-to-end", "kafka-producer-perf"),
+        "RabbitMQ PerfTest": ("rabbitmq-perftest",),
+        "NATS command-line latency test": ("nats-latency",),
+        "Xinfra Monitor": ("xinfra-monitor",),
+        "Strimzi Canary": ("strimzi-canary",),
+        "Storage Benchmark Kit": ("sbk",),
+        "Pravega benchmark": ("pravega-benchmark",),
+        "BookKeeper": ("bookkeeper-benchmark",),
+        "Sarama": ("sarama-producer-perf", "mqtt-benchmark"),
+        "wrk2": ("wrk2",),
+        "\\texttt{hey}": ("hey", "k6", "memtier_benchmark", "valkey-benchmark", "vegeta", "ycsb",
+                          "nats-bench"),
+        "fio": (),
+        "btt": (),
+        "Rezolus": (),
+    }
+
+    @staticmethod
+    def _rows(main_tex):
+        """(first cell, last cell) for every tool row of Table III."""
+        body = main_tex[main_tex.index("\\label{tab:tools}"):]
+        body = body[body.index("\\midrule"):body.index("\\end{tabular}")]
+        found = []
+        for chunk in body.split("\\\\"):
+            chunk = re.sub(r"\\(?:mid|bottom)rule", "", chunk).strip()
+            if not chunk or chunk.startswith("\\multicolumn"):
+                continue
+            cells = [c.strip() for c in chunk.split("&")]
+            found.append((" ".join(cells[0].split()), " ".join(cells[-1].split())))
+        return found
+
+    @staticmethod
+    def _block():
+        with (RESULTS / "tools" / "tools_t1.csv").open(encoding="utf-8") as fh:
+            return {r["tool"] for r in csv.DictReader(fh)}
+
+    def _tools(self, first):
+        keys = [k for k in self.ROWS if k in first]
+        assert len(keys) == 1, (
+            "Table III's row %r matches %s in ROWS; give it one entry naming its tools"
+            % (first, keys))
+        return self.ROWS[keys[0]]
+
+    def test_every_row_is_mapped_once_and_every_entry_used(self, main_tex):
+        rows = self._rows(main_tex)
+        used = [k for first, _ in rows for k in self.ROWS if k in first]
+        assert sorted(used) == sorted(self.ROWS), (
+            "ROWS and Table III have drifted apart: rows matched %s" % sorted(used))
+        for first, _ in rows:
+            self._tools(first)
+
+    def test_a_row_is_marked_run_exactly_when_the_block_ran_its_tools(self, main_tex):
+        block, wrong = self._block(), []
+        for first, last in self._rows(main_tex):
+            tools = self._tools(first)
+            ran = bool(tools) and set(tools) <= block
+            marked = "run" in [w.strip() for w in last.split(",")]
+            if marked != ran:
+                wrong.append((first, last, sorted(set(tools) - block)))
+        assert not wrong, (
+            "Table III marks these rows against the tools block (row, mark, tools the block "
+            "did not run): %s" % wrong)
+
+    def test_every_tool_the_block_ran_has_a_row(self):
+        block = self._block()
+        listed = {t for tools in self.ROWS.values() for t in tools}
+        assert block <= listed, (
+            "the tools block ran %s, which Table III does not list" % sorted(block - listed))

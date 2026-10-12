@@ -41,6 +41,15 @@ and freeze 36 (D39-5) one:
                         the pilot, and judged on new rounds (D39-5). Its consumer's AMQ132001
                         warnings are its count, shown beside it
 
+and freeze 37 (D40-5) two:
+
+  quiver                wraps them: its stepped run's transfers hold a difference below zero and
+                        its summary's maximum, from an unsigned subtraction, exceeds 10^18 ms; its
+                        control's transfers hold none and its maximum does not reach 10^18 ms
+  pravega-benchmark     dies on them: its stepped run prints no final line and prints the
+                        ArrayIndexOutOfBoundsException its one statistics task throws on the first
+                        value below zero; its control prints its final line and no such exception
+
 A stepped run is judged only if its steps were made and the clock was put back (S1-a); each
 prediction holds if it holds in every round.
 
@@ -61,6 +70,13 @@ TOOLS_V38 = ("sbk", "mqtt-benchmark", "sarama-producer-perf")
 #: Freeze 36's one (D39-5): Artemis's perf client, judged by its producer stopping short; its
 #: consumer's AMQ132001 warnings, a value below zero refused for each, are its count.
 TOOLS_V39 = ("artemis-perf",)
+#: Freeze 37's two (D40-5): Quiver, judged by the values below zero in its transfers and its
+#: maximum wrapped past WRAPPED_MS; the Pravega benchmark, by its final line and the exception.
+TOOLS_V40 = ("quiver", "pravega-benchmark")
+#: S1-q's bound, ms: a maximum past it is one an unsigned subtraction wrapped; the control is held
+#: under it alone, since a stall on the receiver's path can lift a control's maximum to seconds
+#: (D40-5).
+WRAPPED_MS = 1e18
 #: The tools on a monotonic clock, judged by their figures staying where their control's were,
 #: within one printed step (D37-4, D38-5).
 STEADY = ("kafka-end-to-end", "sarama-producer-perf")
@@ -72,7 +88,7 @@ STEP_SLACK_MS = 5.0
 
 FIELDS = ("round", "tool", "run", "steps", "stepped_back_ms", "clock_after_ms", "instrument_ok",
           "below_zero", "p50", "p99", "kept", "received", "avg", "min", "sent", "asked",
-          "producer_result")
+          "producer_result", "max", "final", "thrown")
 
 
 def _asked(folder):
@@ -142,6 +158,10 @@ def below_zero(tool, reading):
         return reading.get("invalid")
     if tool == "artemis-perf":
         return reading.get("refused")
+    if tool == "quiver":
+        return reading.get("below_zero")
+    if tool == "pravega-benchmark":
+        return len(reading.get("thrown_at") or [])
     return None
 
 
@@ -155,7 +175,9 @@ def run_row(rnd, tool, folder, run):
            "received": "" if reading.get("received") is None else reading["received"],
            "avg": figures.get("avg", ""), "min": figures.get("min", ""),
            "sent": "" if reading.get("producer_sent") is None else reading["producer_sent"],
-           "asked": _asked(folder), "producer_result": reading.get("producer_result") or ""}
+           "asked": _asked(folder), "producer_result": reading.get("producer_result") or "",
+           "max": figures.get("max", ""), "final": reading.get("final", ""),
+           "thrown": reading.get("thrown", "")}
     found = below_zero(tool, reading)
     if found is not None:
         row["below_zero"] = found
@@ -185,7 +207,7 @@ def _num(value):
 
 
 def judge(rows, rounds, tools=TOOLS):
-    """Each prediction of D37-4 and D38-5, round by round, as K1's are judged
+    """Each prediction of D37-4, D38-5, D39-5 and D40-5, round by round, as K1's are judged
     (kafka_clamp.verdicts): it holds or fails only where every round was judged, holding if it
     held in all of them, and is otherwise undecided, with the rounds that were not."""
     by = {(r["round"], r["tool"], r["run"]): r for r in rows}
@@ -210,6 +232,19 @@ def judge(rows, rounds, tools=TOOLS):
                 ok = (int(stepped["sent"]) < int(stepped["asked"])
                       and stepped["producer_result"] == "success"
                       and int(control["sent"]) == int(control["asked"]))
+            elif tool == "pravega-benchmark":
+                if "" in (stepped["final"], stepped["thrown"], control["final"], control["thrown"]):
+                    unjudged.append(rnd)
+                    continue
+                ok = (stepped["final"] is False and int(stepped["thrown"]) >= 1
+                      and control["final"] is True and int(control["thrown"]) == 0)
+            elif tool == "quiver":
+                if "" in (stepped["below_zero"], stepped["max"], control["below_zero"],
+                          control["max"]):
+                    unjudged.append(rnd)
+                    continue
+                ok = (int(stepped["below_zero"]) >= 1 and _num(stepped["max"]) > WRAPPED_MS
+                      and int(control["below_zero"]) == 0 and _num(control["max"]) < WRAPPED_MS)
             elif tool == "mqtt-benchmark":
                 lows = (_num(stepped["min"]), _num(control["min"]))
                 means = (_num(stepped["avg"]), _num(control["avg"]))
@@ -241,7 +276,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     rounds = [tuple(part.split(":", 1)) for part in args.rounds.split(",")]
     tools = tuple(args.tools.split(","))
-    unknown = sorted(set(tools) - set(TOOLS + TOOLS_V38 + TOOLS_V39))
+    unknown = sorted(set(tools) - set(TOOLS + TOOLS_V38 + TOOLS_V39 + TOOLS_V40))
     if unknown:
         print("no S1 prediction for %s" % ", ".join(unknown))
         return 2

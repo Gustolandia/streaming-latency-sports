@@ -739,11 +739,14 @@ class TestTheToolsBlock:
         service T1 cannot reach; and S1's control and its stepped run, both in the namespace and
         neither otherwise wrapped, since what differs between them is the machine's clock. And one
         more since freeze 36: the reference of each of its three, the tool itself at no offset, in
-        the namespace as T1's zero step runs it (D39-3).
+        the namespace as T1's zero step runs it (D39-3); freeze 37's Quiver there under
+        libfaketime at no offset, since libfaketime alone lengthens its receiver's trip (D40-3).
         """
         code = self.tools()
         assert code.count("bash cloud/azure/tools_run.sh") == 11
-        assert 'SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh "$tool" "$out/reference_tool"' in code
+        assert 'SBL_TOOL_WRAP="$wrap" bash cloud/azure/tools_run.sh "$tool" "$out/reference_tool"' in code
+        assert 'local wrap="$NETNS"' in code
+        assert 'if [ "$tool" = quiver ]; then wrap="$NETNS faketime -f -0.000000000"; fi' in code
         assert 'SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh ysb' in code
         assert 'bash cloud/azure/tools_run.sh pkb "$out/reference_pkb"' in code
         assert code.count('SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh "$tool" "$control"') == 1
@@ -1877,9 +1880,9 @@ class TestEveryPinnedToolHasSomethingThatInstallsIt:
         """Eleven for the first block (ten runnable, Kafka's two bundled tools apart), the five
         freeze 30 adds (D33-1), the four freeze 32 adds (D35-1), YSB (D36-1), freeze 34's
         PerfKit and Stream PerfTest as one instance, which shares its jar with the two-instance
-        runs but is its own way of running it, freeze 35's four (D38-1), and freeze 36's three
-        (D39-1)."""
-        assert len(self._tools()) == 30
+        runs but is its own way of running it, freeze 35's four (D38-1), freeze 36's three
+        (D39-1), and freeze 37's two (D40-1)."""
+        assert len(self._tools()) == 32
 
     @pytest.mark.parametrize("tool", ["vegeta", "hey", "k6", "wrk2", "valkey-benchmark",
                                       "memtier_benchmark", "rdkafka_performance",
@@ -2528,3 +2531,60 @@ def test_no_stop_run_through_sudo_finds_its_own_sudo():
         started = "sudo ip netns exec sblrecv " + pattern.replace("[t]", "t") + " host 10.1.1.21"
         assert re.search(pattern, started), pattern
         assert not re.search(pattern, "%s -f %s" % (how, pattern)), pattern
+
+
+class TestFreeze37sTwoTools:
+    """Quiver and the Pravega benchmark (D40-1, D40-2): each built from the version the reading
+    read, with what each build fetches checked against its publisher's checksum, each run as its
+    own documentation runs it, and the rest of the wrap on the process that subtracts."""
+
+    def tools(self):
+        return (KIT / "tools.sh").read_text(encoding="utf-8")
+
+    def case(self, tool):
+        runner = (KIT / "tools_run.sh").read_text(encoding="utf-8")
+        return runner.split("\n  %s)" % tool, 1)[1].split(";;", 1)[0]
+
+    def test_what_their_builds_fetch_is_checked_against_a_published_checksum(self):
+        text = self.tools()
+        for name, bits in (("PROTON_SHA512", 128), ("GRADLE4_SHA256", 64), ("PRAVEGA_SHA512", 128)):
+            assert re.search(r'%s="[0-9a-f]{%d}"' % (name, bits), text), name
+        assert 'gradle4.zip 256 "$GRADLE4_SHA256"' in text
+        assert 'proton.tgz "$PROTON_SHA512"' in text and 'pravega.tgz "$PRAVEGA_SHA512"' in text
+
+    def test_each_is_built_at_the_commit_its_pin_names(self):
+        text = self.tools()
+        table = dict(line.split("|")[0::2] for line in
+                     text.split("PINNED='", 1)[1].split("'", 1)[0].strip().splitlines())
+        install = text.split("\ninstall_for () {", 1)[1].split("\n}\n", 1)[0]
+        assert "get_quiver %s" % table["quiver"] in install
+        assert "get_pravega_benchmark %s" % table["pravega-benchmark"] in install
+
+    def test_both_take_the_offset_on_the_process_that_subtracts(self):
+        """Quiver's receiver under libfaketime; the Pravega benchmark, one JVM that libfaketime
+        slows, by the machine's own clock, as the Go tools are (D40-2)."""
+        text = self.tools()
+        fakeable = text.split('FAKEABLE="', 1)[1].split('"', 1)[0].split()
+        stepped = text.split('CLOCK_T2="', 1)[1].split('"', 1)[0].split()
+        assert "quiver" in fakeable and "pravega-benchmark" not in fakeable
+        assert stepped == ["pravega-benchmark"]
+        assert 'case " $GO_TOOLS $CLOCK_T2 " in' in text.split("\nt2 () {", 1)[1]
+        quiver = self.case("quiver")
+        assert '$NS $REST quiver-arrow receive "$q_url"' in quiver, "the receiver subtracts"
+        assert '$NS quiver-arrow send "$q_url" "${q_args[@]}" --rate "$RATE"' in quiver
+        assert "--duration 0" in quiver and "--timeout 120" in quiver
+        assert '$WRAP env JAVA_HOME="$JAVA8"' in self.case("pravega-benchmark"), "one process"
+
+    def test_quivers_leftovers_are_found_by_its_queue_and_not_by_the_pkill_that_finds_them(self):
+        quiver = self.case("quiver")
+        pattern = re.search(r'OWN_PATTERN="([^"]+)"', quiver).group(1).replace("$q_id", "17602")
+        assert re.search(pattern, "java -classpath q.jar net.ssorj.quiver.QuiverArrowJms path=sbl-quiver-17602")
+        assert re.search(pattern, "python3 /usr/local/bin/quiver-arrow receive amqp://h:61616/sbl-quiver-17602")
+        assert not re.search(pattern, "sudo pkill -f -- " + pattern)
+
+    def test_pravegas_server_is_started_as_its_documentation_starts_it_with_its_address(self):
+        server = self.tools().split("\nserver36 () {", 1)[1].split("\n}\n", 1)[0]
+        assert "bin/pravega-standalone" in server
+        assert "-Dpravegaservice.service.published.host.nameOrIp=$BROKER_PRIV" in server
+        assert "-Xmx2g" in server and "Pravega Sandbox is running locally now" in server
+        assert "pkill -f -- 'io.pravega.local.LocalPravegaEmulator'" in server

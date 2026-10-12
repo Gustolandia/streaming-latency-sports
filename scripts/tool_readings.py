@@ -1166,6 +1166,92 @@ def read_bookkeeper_benchmark(text):
                     sent=int(sent.group(1)) if sent else None)
 
 
+QUIVER_RECEIVER = "# quiver receiver's console"
+QUIVER_SENDER = "# quiver sender's console"
+QUIVER_SUMMARY = "# quiver receiver's summary"
+QUIVER_SENT = "# quiver sender's summary"
+QUIVER_TRANSFERS = "# quiver receiver's transfers"
+_QUIVER_PARTS = (QUIVER_RECEIVER, QUIVER_SENDER, QUIVER_SUMMARY, QUIVER_SENT, QUIVER_TRANSFERS)
+#: A figure past 10^18 ms, some thirty million years, is one Quiver's unsigned subtraction wrapped:
+#: a value below zero lands at 2^64 less its size, about 1.8 x 10^19 ms. block_v40.py and
+#: s1_block.py judge by the same bound.
+QUIVER_WRAPPED_MS = 1e18
+
+
+def _part(text, head, heads):
+    """What follows one of a run's headers, up to whichever of the others comes next."""
+    if head not in text:
+        return ""
+    part = text.split(head, 1)[1]
+    for other in heads:
+        part = part.split(other, 1)[0]
+    return part
+
+
+def read_quiver(text):
+    """Quiver's receiving arrow: the summary its wrapper wrote (arrow.py:310-346) -- the average,
+    the quartiles (0, 25, 50, 75 and 100 per cent) and the nines (90 to 99.999 per cent), whole
+    milliseconds but for the average -- from the transfers its JMS arrow wrote, the sender's
+    System.currentTimeMillis() carried in the message beside its own at receipt
+    (QuiverArrowJms.java:233, 274), subtracted as unsigned 64-bit integers (arrow.py:264-265, 301),
+    so that a value below zero becomes 2^64 less its size. The transfers are read again here with
+    their sign, which is what samples_ms and below_zero count, and the figures that wrapped are named.
+    The sender's summary gives how many it sent."""
+    text = text or ""
+    summary = next(iter(_artemis_objects(_part(text, QUIVER_SUMMARY, _QUIVER_PARTS))), None) or {}
+    sender = next(iter(_artemis_objects(_part(text, QUIVER_SENT, _QUIVER_PARTS))), None) or {}
+    transfers = _part(text, QUIVER_TRANSFERS, _QUIVER_PARTS)
+    samples = [int(got) - int(left) for left, got in re.findall(r"^(\d+),(\d+)$", transfers, re.M)]
+    results = summary.get("results") or {}
+    got, steps = {}, {}
+    if results.get("latency_average") is not None:
+        got["avg"], steps["avg"] = float(results["latency_average"]), 1e-3
+    named = list(zip(("min", "p25", "p50", "p75", "max"), results.get("latency_quartiles") or []))
+    named += list(zip(("p90", "p99", "p999", "p9999", "p99999"), results.get("latency_nines") or []))
+    for key, value in named:
+        got[key], steps[key] = float(value), 1.0
+    return _reading("quiver", got, steps, samples_ms=samples,
+                    below_zero=sum(1 for v in samples if v < 0) if samples else None,
+                    wrapped=sorted(k for k, v in got.items() if v >= QUIVER_WRAPPED_MS),
+                    kept=results.get("message_count"), received=results.get("message_count"),
+                    sent=(sender.get("results") or {}).get("message_count"))
+
+
+PRAVEGA_TOTAL = (r"(\d+) records Write/Reading, [\d.]+ records/sec, \d+ bytes record size, [\d.]+ "
+                 r"MiB/sec, (-?[\d.]+|NaN) ms avg latency, (-?[\d.]+) ms max latency, (-?\d+) ms "
+                 r"50th, (-?\d+) ms 75th, (-?\d+) ms 95th, (-?\d+) ms 99th, (-?\d+) ms 99\.9th, "
+                 r"(-?\d+) ms 99\.99th")
+PRAVEGA_WINDOW = (r"(\d+) records Write/Reading, +[\d.]+ records/sec, +[\d.]+ MiB/sec, +"
+                  r"(-?[\d.]+|NaN) ms avg latency, +(-?[\d.]+) ms max latency$")
+#: Java 8 prints the index after a colon; Java 11 and later as "Index <i> out of bounds".
+PRAVEGA_THROWN = r"ArrayIndexOutOfBoundsException(?:: (?:Index )?(-?\d+))?"
+
+
+def read_pravega_benchmark(text):
+    """The Pravega benchmark in its End to End mode: its final line (PerfStats.java:351-355) -- the
+    records it counted, their average and maximum to a tenth of a millisecond and six percentiles in
+    whole milliseconds -- each the reader's System.currentTimeMillis() less the writer's, carried in
+    the event (WriterWorker.java:207-208, ReaderWorker.java:135-141), counted into an array indexed by
+    the value (PerfStats.java:123-126, 334-337); and its window lines (:233-234). A value below zero
+    throws there, in its one statistics task, which then prints neither another window nor its total:
+    the exceptions it printed are counted, with the indices they name."""
+    text = text or ""
+    total = _last(text, PRAVEGA_TOTAL)
+    got, steps = {}, {}
+    if total and total.group(2) != "NaN":
+        got["avg"], got["max"] = float(total.group(2)), float(total.group(3))
+        steps.update(avg=0.1, max=0.1)
+        for key, at in (("p50", 4), ("p75", 5), ("p95", 6), ("p99", 7), ("p999", 8), ("p9999", 9)):
+            got[key], steps[key] = float(total.group(at)), 1.0
+    windows = [[int(m.group(1)), None if m.group(2) == "NaN" else float(m.group(2)), float(m.group(3))]
+               for m in re.finditer(PRAVEGA_WINDOW, text, re.M)]
+    thrown = list(re.finditer(PRAVEGA_THROWN, text))
+    return _reading("pravega-benchmark", got, steps, final=total is not None,
+                    kept=int(total.group(1)) if total else None, windows=len(windows),
+                    window_rows=windows, thrown=len(thrown),
+                    thrown_at=sorted({int(m.group(1)) for m in thrown if m.group(1)}))
+
+
 #: Every tool this reads, by the name a campaign calls it.
 READERS = {
     "vegeta": read_vegeta,
@@ -1206,6 +1292,9 @@ READERS = {
     "artemis-perf": read_artemis_perf,
     "rocketmq-benchmark": read_rocketmq_benchmark,
     "bookkeeper-benchmark": read_bookkeeper_benchmark,
+    # Freeze 37's two (D40-2), each read where its own source says it reports.
+    "quiver": read_quiver,
+    "pravega-benchmark": read_pravega_benchmark,
 }
 
 

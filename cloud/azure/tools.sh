@@ -129,6 +129,8 @@ kgo-repeater|git|6567f2f5a16388a13b71296c60a0260534e19216
 artemis-perf|tarball|2.57.0
 rocketmq-benchmark|tarball|5.5.1
 bookkeeper-benchmark|tarball|4.18.1
+quiver|git|ba4e5766b3b18e8456eefe8c8754894586ac58dc
+pravega-benchmark|git|3807aeddfa64b65ced8d332558c80ec0ca6e4d47
 '
 #: The last five are the tools the plan registered and version 15 left unrun (D15-6), run under
 #: freeze 30 (D33-1), each at the version the audit read (data/tools_audit/batch_01, 03, 04 and
@@ -188,6 +190,23 @@ ROCKETMQ_SHA512="21555d9bd79792ac89f246566f19f58e300784c59b96289fd0c74db14787861
 BOOKKEEPER_VERSION="4.18.1"
 BOOKKEEPER_SHA512="26e0568b4e7fb5e22e78b3d0b5788cffbdfca3cbe7ea3364579872f18d4f95b498ae717cbd1bc965ce6d3fd02472f9f608f313b727302f0f83296dc9e33c75fb"
 
+#: Freeze 37 (D40-1): the two tools of the second October reading that build from source on older
+#: toolchains, each at the version whose code that reading read. Quiver at the commit it read, its
+#: last release being six years and 109 commits older, built as its README builds it against the
+#: Qpid Proton C it links, from the Apache release: Ubuntu 22.04 ships Proton 0.22, without the two
+#: libraries Quiver's C arrow links, and its build ends by running that arrow (Makefile:120-123,
+#: 185-187; scripts/smoke-test). The Pravega benchmark at its v0.13.0 tag, whose Java sources are the
+#: master the reading read and which builds against the released Pravega 0.13.0, where master names an
+#: unreleased snapshot (gradle.properties:15); built by the Gradle its wrapper names, on Java 8, since
+#: that Gradle cannot run on 11. Its server is Pravega 0.13.0's standalone. Each archive is checked
+#: against the checksum its publisher gives beside it, read again on 11 October 2026.
+PROTON_VERSION="0.40.0"
+PROTON_SHA512="3e7fe56ca1423f45f71d81f5e1d6ec5f21c073cc580628e12a8dbd545a86805b7312834e0d1234dde43797633d575ed639f21a96239b217500cc0a824482aae3"
+GRADLE4_VERSION="4.10.2"
+GRADLE4_SHA256="b49c6da1b2cb67a0caf6c7480630b51c70a11ca2016ff2f555eaeda863143a29"
+PRAVEGA_VERSION="0.13.0"
+PRAVEGA_SHA512="8c21701193c506122673868ed23b1d3b6f81eaebc8b36e6d1ba85d7817906c0fcf68010e31bf300afc150ea08d27b7428ffdbe0530471d77648a7f7739265d2d"
+
 #: What those five are built and run with, pinned like them and checked against the checksums
 #: their publishers give, because each is part of what produced the program whose behaviour the
 #: block reports. OMB needs a newer Maven than Ubuntu's 3.6.3 (its enforcer asks for 3.8.6), and
@@ -207,12 +226,19 @@ PULSAR_SHA512="8c0a63cc6421c8eb3c4a55b8895ca08a38a1c6771758251fc7a82edbc4c6a42bb
 FAKEABLE="wrk2 valkey-benchmark memtier_benchmark rdkafka_performance kafka-end-to-end \
 kafka-producer-perf rabbitmq-perftest omb pulsar-perf emqtt-bench ycsb \
 xinfra-monitor trogdor stream-perftest ysb pkb stream-perftest-one sbk \
-artemis-perf rocketmq-benchmark bookkeeper-benchmark"
+artemis-perf rocketmq-benchmark bookkeeper-benchmark quiver"
 #: The tools it cannot: Go does not go through the C library for the clock. kgo-repeater's
 #: producing repeater runs on the broker, so stepping this machine's clock moves its consumer's
 #: alone (D38-2).
 GO_TOOLS="vegeta hey k6 nats-latency nats-bench strimzi-canary mqtt-benchmark \
 sarama-producer-perf kgo-repeater"
+#: Freeze 37 (D40-2): a tool libfaketime reaches but slows, whose T2 moves this machine's own clock
+#: as the Go tools' does. The Pravega benchmark takes both its stamps in one JVM, and in the pilots
+#: of 12 October that JVM under libfaketime, at a 5 ms offset, ran its median from 1 to 2 ms and
+#: twice waited out its reader's one-second timeout, whether or not the monotonic clock was moved
+#: with the wall clock; with no libfaketime it did neither. Stepping the machine's clock moves both
+#: of its stamps with nothing between the JVM and the clock.
+CLOCK_T2="pravega-benchmark"
 
 #: The Go toolchain the three Go tools are built with. Ubuntu 22.04 ships Go 1.18 and k6 needs
 #: newer, so it is fetched rather than apt-installed -- and pinned, because the compiler is part
@@ -715,11 +741,82 @@ get_bookkeeper_benchmark () {
   sha512sum "$WORK/bookkeeper.tgz" > "$DIR/sha512_bookkeeper.txt"
 }
 
+#: Freeze 37's Quiver (D40-1). Qpid Proton C first, from its Apache release, into /usr/local without
+#: its language bindings, tools or examples, none of which Quiver uses; then Quiver at the commit the
+#: reading read, `make build` and `sudo make install` as its README has them, with Maven on the path
+#: so that its Java arrows are built as well (Makefile:37-38, 75-81): the qpid-jms arrow is the one
+#: of its arrows that keeps a rate (QuiverArrowJms.java:120-124). Its wrapper imports numpy, and
+#: runs zstd on each run's transfers.
+get_quiver () {
+  local src="$WORK/src/quiver" proton
+  if have quiver-arrow && [ -x /usr/local/lib/quiver/impls/quiver-arrow-qpid-jms ] \
+      && [ "$(git -C "$src" rev-parse HEAD 2>/dev/null)" = "$1" ]; then
+    log "   Quiver already here, at $1"
+  else
+    get_java17 && get_maven || return 1
+    sudo apt-get install -y -qq cmake uuid-dev python3-numpy zstd >/dev/null 2>&1 \
+      || { log "   WARN: the packages Quiver's build needs could not be installed"; return 1; }
+    if [ ! -e /usr/local/include/proton/proactor.h ]; then
+      proton=$(apache_release "https://archive.apache.org/dist/qpid/proton/$PROTON_VERSION/qpid-proton-$PROTON_VERSION.tar.gz" \
+        proton.tgz "$PROTON_SHA512") || return 1
+      ( mkdir -p "$proton/build" && cd "$proton/build" \
+        && cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local -DLIB_SUFFIX= -DBUILD_BINDINGS= \
+             -DBUILD_TOOLS=OFF -DBUILD_EXAMPLES=OFF -DENABLE_WARNING_ERROR=OFF \
+        && make -j"$(nproc)" && sudo make install && sudo ldconfig ) > "$DIR/build_proton.log" 2>&1 \
+        || { log "   WARN: Qpid Proton C did not build; see $DIR/build_proton.log"; return 1; }
+    fi
+    rm -rf "$src"; mkdir -p "$WORK/src"
+    ( git clone -q https://github.com/ssorj/quiver "$src" && cd "$src" && git checkout -q "$1" \
+        && PATH="$WORK/apache-maven-$MAVEN_VERSION/bin:$PATH" JAVA_HOME="$JAVA17" \
+             make build PREFIX=/usr/local \
+        && sudo make install ) > "$DIR/build_quiver.log" 2>&1 \
+      || { log "   WARN: Quiver did not build; see $DIR/build_quiver.log"; return 1; }
+  fi
+  #: Written whether it was built now or before, so that every block's own folder says what ran.
+  sha512sum "$WORK/proton.tgz" > "$DIR/sha512_proton.txt" 2>/dev/null
+  ( cd "$src" && git rev-parse HEAD && quiver-arrow --impl qpid-jms --info 2>&1 | head -5 ) \
+    > "$DIR/commit_quiver.txt" 2>/dev/null
+  return 0
+}
+
+#: Freeze 37's Pravega benchmark (D40-1): Ubuntu's Java 8, and the Gradle its wrapper names,
+#: fetched and checked here because the wrapper checks nothing (gradle-wrapper.properties carries no
+#: checksum); then `gradle installDist`, as its Dockerfile builds it (Dockerfile:28-29).
+JAVA8="/usr/lib/jvm/java-8-openjdk-amd64"
+get_pravega_benchmark () {
+  local src="$WORK/src/pravega-benchmark" gradle="$WORK/gradle-$GRADLE4_VERSION"
+  if [ -x "$src/build/install/pravega-benchmark/bin/pravega-benchmark" ] \
+      && [ "$(git -C "$src" rev-parse HEAD 2>/dev/null)" = "$1" ]; then
+    log "   the Pravega benchmark already built, at $1"
+  else
+    [ -x "$JAVA8/bin/javac" ] || sudo apt-get install -y -qq openjdk-8-jdk-headless >/dev/null 2>&1 \
+      || { log "   WARN: Java 8 could not be installed"; return 1; }
+    #: Java 11 stays the default the first tools ran on; installing 8 must not take its place.
+    get_java17 || return 1
+    if [ ! -x "$gradle/bin/gradle" ]; then
+      fetch_checked "https://services.gradle.org/distributions/gradle-$GRADLE4_VERSION-bin.zip" \
+          gradle4.zip 256 "$GRADLE4_SHA256" && (cd "$WORK" && unzip -q -o gradle4.zip) \
+        || { log "   WARN: Gradle $GRADLE4_VERSION could not be fetched, or did not match its checksum"; return 1; }
+    fi
+    rm -rf "$src"; mkdir -p "$WORK/src"
+    ( git clone -q https://github.com/pravega/pravega-benchmark "$src" && cd "$src" \
+        && git checkout -q "$1" \
+        && JAVA_HOME="$JAVA8" "$gradle/bin/gradle" --no-daemon -q installDist ) \
+        > "$DIR/build_pravega-benchmark.log" 2>&1 \
+      || { log "   WARN: the Pravega benchmark did not build; see $DIR/build_pravega-benchmark.log"; return 1; }
+  fi
+  sha256sum "$WORK/gradle4.zip" > "$DIR/sha256_gradle4.txt" 2>/dev/null
+  ( cd "$src" && git rev-parse HEAD && "$JAVA8/bin/java" -version 2>&1 | head -1 \
+      && ls build/install/pravega-benchmark/lib ) > "$DIR/commit_pravega-benchmark.txt" 2>/dev/null
+  return 0
+}
+
 #: The broker side of freeze 36's three, on the broker machine: each installed from the same archive
 #: and started alone, the others stopped, since the broker's memory holds one of them beside the
 #: servers already there. From anywhere else this asks the broker to do it, as `brokers` does.
-server36 () {  # up|down, artemis|rocketmq|bookkeeper
-  local how="${1:?up or down}" which="${2:?artemis, rocketmq or bookkeeper}"
+#: Freeze 37 (D40-1) adds Pravega 0.13.0's standalone server; its Quiver speaks to the Artemis here.
+server36 () {  # up|down, artemis|rocketmq|bookkeeper|pravega
+  local how="${1:?up or down}" which="${2:?artemis, rocketmq, bookkeeper or pravega}"
   if [ -n "${BROKER_PRIV:-}" ] && ! ip -o -4 addr show 2>/dev/null | grep -q " ${BROKER_PRIV}/"; then
     remote_broker "cd sbl && BROKER_PRIV=$BROKER_PRIV bash cloud/azure/tools.sh server36 $how $which" \
       || stop "the broker could not bring $which $how; see above"
@@ -736,8 +833,9 @@ server36 () {  # up|down, artemis|rocketmq|bookkeeper
   pkill -f -- '-Dartemis.instance=' 2>/dev/null
   pkill -f -- 'org.apache.rocketmq.(broker.BrokerStartup|namesrv.NamesrvStartup)' 2>/dev/null
   pkill -f -- 'org.apache.bookkeeper.util.LocalBookKeeper' 2>/dev/null
+  pkill -f -- 'io.pravega.local.LocalPravegaEmulator' 2>/dev/null
   sleep 3
-  [ "$how" = down ] && { log "   $which and the others of freeze 36 stopped"; return 0; }
+  [ "$how" = down ] && { log "   $which and the others of freezes 36 and 37 stopped"; return 0; }
   case "$which" in
     artemis)
       home=$(apache_release "$ARTEMIS_URL" artemis.tgz "$ARTEMIS_SHA512") || stop "no Artemis here"
@@ -782,7 +880,29 @@ server36 () {  # up|down, artemis|rocketmq|bookkeeper
         sleep 1; n=$((n + 1))
       done
       [ "$n" -lt 60 ] || stop "BookKeeper's three bookies did not start; see $WORK/bookkeeper-run.log" ;;
-    *) stop "server36 knows artemis, rocketmq and bookkeeper, not $which" ;;
+    pravega)
+      #: Pravega 0.13.0 standalone as its documentation starts it (run-local.md:66-73), on the Java 11
+      #: its README asks for, its heap cut to 2 GB from the 4 GB its script asks for: its script puts
+      #: JAVA_OPTS after its own (unixApplicationStartupScript.txt:192), so this one wins. Its segment
+      #: store tells clients the address it listens on, 0.0.0.0, unless told this machine's own
+      #: (ServiceConfig.java:381-386), which system properties can do (InProcPravegaCluster.java:348),
+      #: as Pravega's own image does (init_standalone.sh:19).
+      local j11="/usr/lib/jvm/java-11-openjdk-amd64"
+      [ -x "$j11/bin/java" ] || sudo apt-get install -y -qq openjdk-11-jre-headless >/dev/null 2>&1
+      home=$(apache_release "https://github.com/pravega/pravega/releases/download/v$PRAVEGA_VERSION/pravega-$PRAVEGA_VERSION.tgz" \
+        pravega.tgz "$PRAVEGA_SHA512") || stop "no Pravega here"
+      ( cd "$home" && exec env JAVA_HOME="$j11" PATH="$j11/bin:$PATH" \
+          JAVA_OPTS="-Xmx2g -Dpravegaservice.service.published.host.nameOrIp=$BROKER_PRIV" \
+          nohup bin/pravega-standalone ) > "$WORK/pravega-run.log" 2>&1 < /dev/null &
+      wait_port "$BROKER_PRIV" 9090 || stop "Pravega's controller did not answer on 9090; see $WORK/pravega-run.log"
+      wait_port "$BROKER_PRIV" 6000 || stop "Pravega's segment store did not answer on 6000; see $WORK/pravega-run.log"
+      #: Its own word that it is ready (LocalPravegaEmulator.java:161), which comes after both ports.
+      local n=0
+      until grep -q "Pravega Sandbox is running locally now" "$WORK/pravega-run.log" || [ "$n" -ge 120 ]; do
+        sleep 1; n=$((n + 1))
+      done
+      [ "$n" -lt 120 ] || stop "Pravega did not say it was running; see $WORK/pravega-run.log" ;;
+    *) stop "server36 knows artemis, rocketmq, bookkeeper and pravega, not $which" ;;
   esac
   log "   $which up on $BROKER_PRIV"
 }
@@ -836,6 +956,12 @@ install_for () {
       get_rocketmq_benchmark || stop "RocketMQ's release is not here" ;;
     bookkeeper-benchmark)
       get_bookkeeper_benchmark || stop "BookKeeper's release is not here" ;;
+    quiver)
+      get_quiver ba4e5766b3b18e8456eefe8c8754894586ac58dc \
+        || stop "Quiver is not built; see $DIR/build_proton.log and $DIR/build_quiver.log" ;;
+    pravega-benchmark)
+      get_pravega_benchmark 3807aeddfa64b65ced8d332558c80ec0ca6e4d47 \
+        || stop "the Pravega benchmark is not built; see $DIR/build_pravega-benchmark.log" ;;
     *) stop "$tool has no install of its own; run the whole install" ;;
   esac
   log "CAMPAIGN_COMPLETE: $tool installed alone"
@@ -1292,9 +1418,17 @@ reference_for () {
     #: BookKeeper's, so each tool is its own reference, once more at no offset, as PerfKit and
     #: YSB are (D36-3, D37-1): BookKeeper's every latency from the dump it writes; Artemis's
     #: transfer-time median and RocketMQ's B2C average, the finest each prints of every message.
-    artemis-perf|rocketmq-benchmark|bookkeeper-benchmark)
+    #: Freeze 37 (D40-3): no client of ours speaks AMQP 1.0 or Pravega's protocol either: Quiver's
+    #: every difference from the transfers file its receiver writes, and the Pravega benchmark's
+    #: median from its final line. Quiver's receiver is timed under libfaketime at no offset, since
+    #: T2 holds it under libfaketime and libfaketime alone lengthened its trip in the pilots of
+    #: 12 October, from 1 ms to 2: T2's offsets, its trip plus one and plus three milliseconds, are
+    #: taken from the trip its receiver has under them.
+    artemis-perf|rocketmq-benchmark|bookkeeper-benchmark|quiver|pravega-benchmark)
       log "   $tool itself, once more, for the reference: no client of ours speaks its protocol"
-      SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh "$tool" "$out/reference_tool" \
+      local wrap="$NETNS"
+      if [ "$tool" = quiver ]; then wrap="$NETNS faketime -f -0.000000000"; fi
+      SBL_TOOL_WRAP="$wrap" bash cloud/azure/tools_run.sh "$tool" "$out/reference_tool" \
         > "$out/reference.log" 2>&1
       python3 -c 'import json, sys
 sys.path.insert(0, "scripts")
@@ -1499,10 +1633,16 @@ server_answers () {
         || { echo "Pulsar at $host:8090 named its clusters as '$got'"; return 1; }
       timeout 5 bash -c "echo > /dev/tcp/$host/6650" 2>/dev/null \
         || { echo "nothing listens for Pulsar's protocol at $host:6650"; return 1; } ;;
-    artemis-perf)
-      #: Freeze 36 (D39-2): the Artemis instance `server36 up artemis` starts, on its one port.
+    artemis-perf|quiver)
+      #: Freeze 36 (D39-2): the Artemis instance `server36 up artemis` starts, on its one port; its
+      #: main acceptor speaks AMQP 1.0 beside core there, which is what freeze 37's Quiver uses.
       timeout 5 bash -c "echo > /dev/tcp/$host/61616" 2>/dev/null \
         || { echo "nothing listens for Artemis at $host:61616"; return 1; } ;;
+    pravega-benchmark)
+      #: Freeze 37 (D40-2): Pravega's standalone controller, and the segment store it sends clients to.
+      timeout 5 bash -c "echo > /dev/tcp/$host/9090" 2>/dev/null \
+        && timeout 5 bash -c "echo > /dev/tcp/$host/6000" 2>/dev/null \
+        || { echo "Pravega's controller or segment store does not answer at $host:9090/6000"; return 1; } ;;
     rocketmq-benchmark)
       timeout 5 bash -c "echo > /dev/tcp/$host/9876" 2>/dev/null \
         && timeout 5 bash -c "echo > /dev/tcp/$host/10911" 2>/dev/null \
@@ -1730,11 +1870,11 @@ t2 () {
   have_tool "$tool"
   needs_server "$tool"
   not_run_yet T2 "$tool" "t2-$tool-*/tool.txt"
-  case " $GO_TOOLS " in
+  case " $GO_TOOLS $CLOCK_T2 " in
     *" $tool "*)
       how=clock
       machine_is_quiet \
-        || stop "$tool is a Go program, so T2 moves this machine's own clock, and a campaign is running here; every process on the machine would see the step"
+        || stop "T2 moves this machine's own clock for $tool, and a campaign is running here; every process on the machine would see the step"
       trap unstep_clock EXIT ;;
     *)
       case " $FAKEABLE " in

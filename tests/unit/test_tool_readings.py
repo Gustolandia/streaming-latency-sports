@@ -1706,3 +1706,141 @@ class TestFreeze36sToolsAsTheyRan:
         assert got["reported_ms"]["p50"] == pytest.approx(25.2338, abs=1e-4)
         assert (got["reported_ms"]["p95"], got["reported_ms"]["p99"]) == (pytest.approx(28.3125), pytest.approx(36.4701))
         assert (got["completions"], got["sent"], len(got["samples_ms"])) == (3001, 3002, 3001)
+
+
+def _quiver(quartiles=(1, 1, 1, 2, 9), nines=(2, 3, 9, 9, 9), average=1.4, received=3000, sent=3000,
+            transfers=((10, 11), (20, 22), (30, 30))):
+    """A Quiver run's output as tools_run.sh prints it: the two consoles, the two summaries and the
+    receiver's transfers, each under its header."""
+    import json
+    results = {"message_count": received, "latency_average": average,
+               "latency_quartiles": list(quartiles), "latency_nines": list(nines)}
+    parts = [tr.QUIVER_RECEIVER, "RESULTS", tr.QUIVER_SENDER, "", tr.QUIVER_SUMMARY,
+             json.dumps({"config": {"impl": "qpid-jms"}, "results": results}, indent=2),
+             tr.QUIVER_SENT, json.dumps({"results": {"message_count": sent}}), tr.QUIVER_TRANSFERS]
+    parts += ["%d,%d" % (1760000000000 + s, 1760000000000 + r) for s, r in transfers]
+    return "\n".join(parts) + "\n"
+
+
+def _pravega(windows=((50, "2.3", "5.0"),), final=True, thrown=()):
+    """A Pravega benchmark run as it prints: SimpleLogger's prefix, its window lines, its final line
+    and whatever exceptions it printed."""
+    head = "2026-10-11 22:00:01:123 +0000 [pool-2-thread-1] INFO io.pravega.perf.PerfStats - "
+    lines = [head + "%8d records Write/Reading, %9.1f records/sec, %6.2f MiB/sec, %7s ms avg latency, "
+             "%7s ms max latency" % (n, n / 1.0, 0.02, avg, top) for n, avg, top in windows]
+    if final:
+        lines.append(head + "2950 records Write/Reading, 49.153 records/sec, 512 bytes record size, 0.02 "
+                     "MiB/sec, 2.4 ms avg latency, 31.0 ms max latency, 2 ms 50th, 3 ms 75th, 4 ms 95th, "
+                     "6 ms 99th, 20 ms 99.9th, 31 ms 99.99th.")
+    lines += list(thrown)
+    return "\n".join(lines) + "\n"
+
+
+class TestFreeze37sTwoTools:
+    """Quiver's receiving arrow and the Pravega benchmark, each read where its source says it
+    reports (freeze 37, D40-2)."""
+
+    def test_quiver_reads_its_summary_and_its_transfers_with_their_sign(self):
+        got = tr.read_tool("quiver", _quiver())
+        assert got["reported_ms"] == {"avg": 1.4, "min": 1.0, "p25": 1.0, "p50": 1.0, "p75": 2.0,
+                                      "max": 9.0, "p90": 2.0, "p99": 3.0, "p999": 9.0, "p9999": 9.0,
+                                      "p99999": 9.0}
+        assert got["samples_ms"] == [1, 2, 0] and got["below_zero"] == 0 and got["wrapped"] == []
+        assert (got["kept"], got["received"], got["sent"]) == (3000, 3000, 3000)
+        assert got["steps_ms"]["avg"] == 1e-3 and got["step_ms"] == 1.0
+
+    def test_quiver_names_the_figures_its_unsigned_subtraction_wrapped(self):
+        """As its wrapper computes them for the rows -5, +1 and 0: the value below zero lands at
+        2^64 - 5, and numpy's percentiles of it at 2^64 after rounding (arrow.py:301-305)."""
+        top = 2 ** 64
+        got = tr.read_tool("quiver", _quiver(quartiles=(0, 0, 1, 2 ** 63, top), nines=(top,) * 5,
+                                             average=6.148914691236517e18, received=3,
+                                             transfers=((10, 5), (20, 21), (30, 30))))
+        assert got["below_zero"] == 1 and got["samples_ms"] == [-5, 1, 0]
+        assert got["reported_ms"]["max"] == float(top)
+        assert got["wrapped"] == ["avg", "max", "p75", "p90", "p99", "p999", "p9999", "p99999"]
+
+    def test_quiver_without_its_summary_or_transfers_reads_nothing(self):
+        text = _quiver().split(tr.QUIVER_SUMMARY, 1)[0]
+        got = tr.read_tool("quiver", text)
+        assert got["reported_ms"] == {} and got["below_zero"] is None and got["samples_ms"] == []
+        assert got["sent"] is None and got["kept"] is None
+
+    def test_pravega_reads_its_final_line_and_its_windows(self):
+        got = tr.read_tool("pravega-benchmark", _pravega(windows=((50, "2.3", "5.0"), (0, "NaN", "0.0"))))
+        assert got["reported_ms"] == {"avg": 2.4, "max": 31.0, "p50": 2.0, "p75": 3.0, "p95": 4.0,
+                                      "p99": 6.0, "p999": 20.0, "p9999": 31.0}
+        assert (got["final"], got["kept"], got["windows"], got["thrown"]) == (True, 2950, 2, 0)
+        assert got["window_rows"] == [[50, 2.3, 5.0], [0, None, 0.0]]
+        assert got["steps_ms"]["avg"] == 0.1 and got["step_ms"] == 1.0
+
+    def test_pravega_whose_statistics_died_on_a_value_below_zero(self):
+        """Java 8 names the index after a colon; Java 11 and later say "Index -19 out of bounds"."""
+        thrown = ("java.util.concurrent.ExecutionException: java.lang.ArrayIndexOutOfBoundsException: -18",
+                  "Caused by: java.lang.ArrayIndexOutOfBoundsException: -18",
+                  "java.lang.ArrayIndexOutOfBoundsException: Index -19 out of bounds for length 3600000")
+        got = tr.read_tool("pravega-benchmark", _pravega(final=False, thrown=thrown))
+        assert got["reported_ms"] == {} and got["final"] is False and got["kept"] is None
+        assert got["thrown"] == 3 and got["thrown_at"] == [-19, -18] and got["windows"] == 1
+
+    def test_pravega_with_no_records_at_all_reports_no_figure(self):
+        text = _pravega(windows=()).replace("2.4 ms avg latency", "NaN ms avg latency")
+        got = tr.read_tool("pravega-benchmark", text)
+        assert got["reported_ms"] == {} and got["final"] is True and got["kept"] == 2950
+
+
+F37 = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fixtures", "tools_f37")
+
+
+def _ran37(name):
+    with open(os.path.join(F37, name), encoding="utf-8") as fh:
+        return fh.read()
+
+
+class TestFreeze37sToolsAsTheyRan:
+    """The two as they printed in the pilots of 12 October on the second x86 pair. Quiver's outputs
+    whole; the Pravega benchmark's without its client library's lines about its own connections."""
+
+    def test_quiver_at_no_offset(self):
+        got = tr.read_tool("quiver", _ran37("quiver_t4.txt"))
+        assert (got["reported_ms"]["p50"], got["reported_ms"]["max"]) == (1.0, 48.0)
+        assert got["reported_ms"]["avg"] == pytest.approx(1.141)
+        assert (got["below_zero"], got["kept"], got["sent"], got["wrapped"]) == (0, 3000, 3000, [])
+        assert min(got["samples_ms"]) == 1 and len(got["samples_ms"]) == 3000
+
+    def test_quiver_with_its_receivers_clock_five_milliseconds_behind(self):
+        """2,998 of 3,000 below zero, and every figure of its summary but the smallest wrapped."""
+        got = tr.read_tool("quiver", _ran37("quiver_receiver_5ms_behind.txt"))
+        assert got["below_zero"] == 2998 and got["reported_ms"]["min"] == 0.0
+        assert got["reported_ms"]["p50"] == got["reported_ms"]["max"] == float(2 ** 64)
+        assert got["reported_ms"]["avg"] == pytest.approx(1.8434446e19, rel=1e-6)
+        assert "min" not in got["wrapped"] and len(got["wrapped"]) == 10
+
+    def test_quiver_under_the_steps(self):
+        """Seventeen transfers caught across a step, each 19 or 20 ms below zero: the maximum
+        wraps, the median does not, and the average, over seventeen of 3,000, stays under 10^18."""
+        got = tr.read_tool("quiver", _ran37("quiver_s1_stepped.txt"))
+        assert got["below_zero"] == 17 and sorted(set(v for v in got["samples_ms"] if v < 0)) == [-20, -19]
+        assert got["reported_ms"]["max"] == float(2 ** 64) and got["reported_ms"]["p50"] == 1.0
+        assert 1e17 < got["reported_ms"]["avg"] < tr.QUIVER_WRAPPED_MS
+        assert got["wrapped"] == ["max", "p999", "p9999", "p99999"]
+
+    def test_pravega_at_no_offset(self):
+        got = tr.read_tool("pravega-benchmark", _ran37("pravega-benchmark_t4.txt"))
+        assert got["reported_ms"] == {"avg": 1.4, "max": 23.0, "p50": 1.0, "p75": 2.0, "p95": 2.0,
+                                      "p99": 4.0, "p999": 5.0, "p9999": 7.0}
+        assert (got["final"], got["kept"], got["windows"], got["thrown"]) == (True, 2862, 56, 0)
+
+    def test_pravega_whose_statistics_died_under_the_steps(self):
+        """One window, then nothing: no final line, and the exception its shutdown prints twice,
+        from main and from its shutdown hook, each with its cause, naming the value, -18."""
+        got = tr.read_tool("pravega-benchmark", _ran37("pravega-benchmark_s1_stepped.txt"))
+        assert got["reported_ms"] == {} and got["final"] is False and got["windows"] == 1
+        assert got["thrown"] == 6 and got["thrown_at"] == [-18]
+
+    def test_pravega_under_libfaketime_waits_out_its_readers_timeout(self):
+        """The instrument the second pilot replaced for this tool's T2 (D40-2): four windows hold a
+        maximum of a second or near it, its reader's timeout, where the run without it held none."""
+        got = tr.read_tool("pravega-benchmark", _ran37("pravega-benchmark_under_libfaketime.txt"))
+        assert got["reported_ms"]["max"] == 1009.0 and got["reported_ms"]["avg"] == 19.9
+        assert sum(1 for w in got["window_rows"] if w[2] > 500) == 4 and got["final"] is True

@@ -1,0 +1,55 @@
+2026-10-11 23:45:32:002 +0000 [main] INFO io.pravega.perf.PravegaPerfTest - Test Parameters: streamName='sbl-1791762331878146500', rdGrpName='sbl-17917623318781465001791762331995', scopeName='sbl', recreate=true, writeAndRead=true, producerCount=1, consumerCount=1, segmentCount=1, segmentScaleKBps=0, segmentScaleEventsPerSecond=0, scaleFactor=2, events=50, eventsPerSec=50, eventsPerProducer=50, eventsPerConsumer=50, EventsPerFlush=2147483647, transactionPerCommit=0, runtimeSec=60, throughput=-1.0, writeFile='null', readFile='null', startTime=1791762331995, enableConnectionPooling=false, writeWatermarkPeriodMillis=-1, readWatermarkPeriodMillis=-1
+2026-10-11 23:45:32:355 +0000 [clientInternal-1-2] WARN io.pravega.client.control.impl.ControllerImpl - [requestId=-6506555947256694907] Scope already exists: sbl
+retentionPolicy = null
+timestampAggregationTimeout = 0
+tags = []
+rolloverSizeBytes = 0
+2026-10-11 23:45:32:833 +0000 [ForkJoinPool-2-worker-2] INFO io.pravega.perf.WriterWorker - EventsWriterTimeRW: Running
+2026-10-11 23:45:33:843 +0000 [ForkJoinPool-1-worker-1] INFO io.pravega.perf.PerfStats -       54 records Write/Reading,      53.5 records/sec,   0.03 MiB/sec,     2.1 ms avg latency,    21.0 ms max latency
+java.util.concurrent.ExecutionException: java.lang.ArrayIndexOutOfBoundsException
+	at java.util.concurrent.ForkJoinTask.get(ForkJoinTask.java:1006)
+	at io.pravega.perf.PerfStats.shutdown(PerfStats.java:427)
+	at io.pravega.perf.PravegaPerfTest$Test.shutdown(PravegaPerfTest.java:388)
+	at io.pravega.perf.PravegaPerfTest.main(PravegaPerfTest.java:160)
+Caused by: java.lang.ArrayIndexOutOfBoundsException
+	at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+	at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:62)
+	at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
+	at java.lang.reflect.Constructor.newInstance(Constructor.java:423)
+	at java.util.concurrent.ForkJoinTask.getThrowableException(ForkJoinTask.java:598)
+	at java.util.concurrent.ForkJoinTask.get(ForkJoinTask.java:1005)
+	... 3 more
+Caused by: java.lang.ArrayIndexOutOfBoundsException: -18
+	at io.pravega.perf.PerfStats$LatencyWriter.record(PerfStats.java:337)
+	at io.pravega.perf.PerfStats$LatencyWriter.record(PerfStats.java:341)
+	at io.pravega.perf.PerfStats$QueueProcessor.call(PerfStats.java:126)
+	at io.pravega.perf.PerfStats$QueueProcessor.call(PerfStats.java:91)
+	at java.util.concurrent.ForkJoinTask$AdaptedCallable.exec(ForkJoinTask.java:1424)
+	at java.util.concurrent.ForkJoinTask.doExec(ForkJoinTask.java:289)
+	at java.util.concurrent.ForkJoinPool$WorkQueue.runTask(ForkJoinPool.java:1056)
+	at java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1692)
+	at java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:175)
+
+java.util.concurrent.ExecutionException: java.lang.ArrayIndexOutOfBoundsException
+	at java.util.concurrent.ForkJoinTask.get(ForkJoinTask.java:1006)
+	at io.pravega.perf.PerfStats.shutdown(PerfStats.java:427)
+	at io.pravega.perf.PravegaPerfTest$Test.shutdown(PravegaPerfTest.java:388)
+	at io.pravega.perf.PravegaPerfTest$1.run(PravegaPerfTest.java:143)
+Caused by: java.lang.ArrayIndexOutOfBoundsException
+	at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+	at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:62)
+	at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
+	at java.lang.reflect.Constructor.newInstance(Constructor.java:423)
+	at java.util.concurrent.ForkJoinTask.getThrowableException(ForkJoinTask.java:598)
+	at java.util.concurrent.ForkJoinTask.get(ForkJoinTask.java:1005)
+	... 3 more
+Caused by: java.lang.ArrayIndexOutOfBoundsException: -18
+	at io.pravega.perf.PerfStats$LatencyWriter.record(PerfStats.java:337)
+	at io.pravega.perf.PerfStats$LatencyWriter.record(PerfStats.java:341)
+	at io.pravega.perf.PerfStats$QueueProcessor.call(PerfStats.java:126)
+	at io.pravega.perf.PerfStats$QueueProcessor.call(PerfStats.java:91)
+	at java.util.concurrent.ForkJoinTask$AdaptedCallable.exec(ForkJoinTask.java:1424)
+	at java.util.concurrent.ForkJoinTask.doExec(ForkJoinTask.java:289)
+	at java.util.concurrent.ForkJoinPool$WorkQueue.runTask(ForkJoinPool.java:1056)
+	at java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1692)
+	at java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:175)

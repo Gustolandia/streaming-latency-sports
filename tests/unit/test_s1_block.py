@@ -338,3 +338,85 @@ class TestFreeze36sOne:
         assert sb.main(["--root", str(tmp_path), "--rounds", "1:tools_v39", "--tools", "artemis-perf",
                         "--out", str(tmp_path / "s.csv"), "--verdicts", str(tmp_path / "v.json")]) == 0
         assert "artemis-perf         holds" in capsys.readouterr().out
+
+
+class TestFreeze37sTwo:
+    """Quiver and the Pravega benchmark under S1 (D40-5): Quiver keeps the values below zero in its
+    transfers and wraps them in its summary; the Pravega benchmark's statistics die on the first."""
+
+    TOP = float(2 ** 64)
+    QUIVER = {"control": {"below_zero": 0, "reported_ms": {"max": 9.0, "p50": 1.0}},
+              "stepped": {"below_zero": 14, "reported_ms": {"max": float(2 ** 64), "p50": 1.0}}}
+    PRAVEGA = {"control": {"final": True, "thrown": 0, "thrown_at": [], "reported_ms": {"p50": 2.0}},
+               "stepped": {"final": False, "thrown": 2, "thrown_at": [-18], "reported_ms": {}}}
+
+    def _pairs(self, root, folder, quiver=None, pravega=None):
+        for run in ("control", "stepped"):
+            _run(root, folder, "quiver", run, (quiver or self.QUIVER)[run])
+            _run(root, folder, "pravega-benchmark", run, (pravega or self.PRAVEGA)[run])
+
+    def test_what_each_shows_below_zero(self):
+        assert sb.below_zero("quiver", self.QUIVER["stepped"]) == 14
+        assert sb.below_zero("pravega-benchmark", self.PRAVEGA["stepped"]) == 1
+        assert sb.below_zero("pravega-benchmark", {"final": True}) == 0
+
+    def test_both_hold_where_every_round_shows_them(self, tmp_path):
+        self._pairs(tmp_path, "tools_v40")
+        self._pairs(tmp_path, "tools_v40_round2")
+        rounds = [("1", "tools_v40"), ("2", "tools_v40_round2")]
+        rows = sb.block_rows(str(tmp_path), rounds, sb.TOOLS_V40)
+        stepped = [r for r in rows if r["tool"] == "pravega-benchmark" and r["run"] == "stepped"][0]
+        assert (stepped["final"], stepped["thrown"], stepped["below_zero"]) == (False, 2, 1)
+        assert rows[1]["max"] == self.TOP
+        found = sb.judge(rows, ["1", "2"], sb.TOOLS_V40)
+        assert {t: v["verdict"] for t, v in found.items()} == {"quiver": "holds",
+                                                                "pravega-benchmark": "holds"}
+
+    @pytest.mark.parametrize("quiver", [
+        {"control": {"below_zero": 0, "reported_ms": {"max": 9.0}},
+         "stepped": {"below_zero": 14, "reported_ms": {"max": -19.0}}},
+        {"control": {"below_zero": 0, "reported_ms": {"max": 9.0}},
+         "stepped": {"below_zero": 0, "reported_ms": {"max": float(2 ** 64)}}},
+        {"control": {"below_zero": 0, "reported_ms": {"max": float(2 ** 64)}},
+         "stepped": {"below_zero": 14, "reported_ms": {"max": float(2 ** 64)}}},
+        {"control": {"below_zero": 1, "reported_ms": {"max": 9.0}},
+         "stepped": {"below_zero": 14, "reported_ms": {"max": float(2 ** 64)}}}])
+    def test_quiver_fails_where_a_part_of_it_is_missing(self, tmp_path, quiver):
+        self._pairs(tmp_path, "tools_v40", quiver=quiver)
+        rows = sb.block_rows(str(tmp_path), [("1", "tools_v40")], sb.TOOLS_V40)
+        assert sb.judge(rows, ["1"], sb.TOOLS_V40)["quiver"]["verdict"] == "fails"
+
+    @pytest.mark.parametrize("pravega", [
+        {"control": {"final": True, "thrown": 0}, "stepped": {"final": True, "thrown": 0}},
+        {"control": {"final": True, "thrown": 0}, "stepped": {"final": False, "thrown": 0}},
+        {"control": {"final": False, "thrown": 0}, "stepped": {"final": False, "thrown": 2}},
+        {"control": {"final": True, "thrown": 1}, "stepped": {"final": False, "thrown": 2}}])
+    def test_pravega_fails_where_a_part_of_it_is_missing(self, tmp_path, pravega):
+        self._pairs(tmp_path, "tools_v40", pravega=pravega)
+        rows = sb.block_rows(str(tmp_path), [("1", "tools_v40")], sb.TOOLS_V40)
+        assert sb.judge(rows, ["1"], sb.TOOLS_V40)["pravega-benchmark"]["verdict"] == "fails"
+
+    def test_a_control_that_stalled_still_holds_nothing_wrapped(self, tmp_path):
+        """A stall lifts a control's maximum to seconds, as in the third pilot (D40-5); only a
+        wrapped value fails it."""
+        stalled = {"control": {"below_zero": 0, "reported_ms": {"max": 17304.0}},
+                   "stepped": self.QUIVER["stepped"]}
+        self._pairs(tmp_path, "tools_v40", quiver=stalled)
+        rows = sb.block_rows(str(tmp_path), [("1", "tools_v40")], sb.TOOLS_V40)
+        assert sb.judge(rows, ["1"], sb.TOOLS_V40)["quiver"]["verdict"] == "holds"
+
+    def test_runs_without_what_they_are_judged_by_are_not_judged(self, tmp_path):
+        self._pairs(tmp_path, "tools_v40", quiver={"control": {"below_zero": 0}, "stepped": {}},
+                    pravega={"control": {"final": True}, "stepped": {"thrown": 1}})
+        rows = sb.block_rows(str(tmp_path), [("1", "tools_v40")], sb.TOOLS_V40)
+        found = sb.judge(rows, ["1"], sb.TOOLS_V40)
+        assert found["quiver"]["verdict"] == "undecided"
+        assert found["pravega-benchmark"]["verdict"] == "undecided"
+
+    def test_main_accepts_them_by_name(self, tmp_path, capsys):
+        self._pairs(tmp_path, "tools_v40")
+        assert sb.main(["--root", str(tmp_path), "--rounds", "1:tools_v40",
+                        "--tools", "quiver,pravega-benchmark", "--out", str(tmp_path / "s.csv"),
+                        "--verdicts", str(tmp_path / "v.json")]) == 0
+        out = capsys.readouterr().out
+        assert "quiver               holds" in out and "pravega-benchmark    holds" in out

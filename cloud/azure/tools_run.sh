@@ -65,6 +65,10 @@ SSH_KEY="${SSH_KEY:-$HOME/.ssh/azure_sbl}"
 ARTEMIS_CLIENT="${SBL_ARTEMIS_CLIENT:-$HOME/tools/artemis-client}"
 ROCKETMQ_HOME="${SBL_ROCKETMQ_HOME:-$(ls -d "$HOME"/tools/rocketmq-all-5.5.1* 2>/dev/null | head -1)}"
 BOOKKEEPER_HOME="${SBL_BOOKKEEPER_HOME:-$(ls -d "$HOME"/tools/bookkeeper-all-4.18.1* 2>/dev/null | head -1)}"
+#: Freeze 37's two (D40-2): Quiver is on the path, where `make install` puts it; the Pravega
+#: benchmark where `tools.sh install-for` builds it, on the Java 8 it is built with.
+PRAVEGA_BENCH="${SBL_PRAVEGA_BENCH:-$HOME/tools/src/pravega-benchmark/build/install/pravega-benchmark}"
+JAVA8="${SBL_JAVA8:-/usr/lib/jvm/java-8-openjdk-amd64}"
 #: The one address here that is not across the pair. Two of these tools are made of processes
 #: that talk to one another -- OMB's coordinator to its two workers, emqtt-bench's subscriber
 #: serving its own metrics -- and they do it on the machine's loopback. It names the tool's own
@@ -769,6 +773,57 @@ XM
       -skipwarmup -latencyFile "$here/latencyDump.dat"
     echo "# bookkeeper benchmark's latency dump"
     cat "$here/latencyDump.dat" 2>/dev/null ;;
+  quiver)
+    # Quiver at the reading's commit (D40-2): its receiving arrow first, then its sending arrow, each
+    # a `quiver-arrow` with the qpid-jms implementation, the one of its arrows that keeps a rate,
+    # against the broker's Artemis on 61616, whose main acceptor speaks AMQP 1.0: a queue of the
+    # run's own, which Artemis makes on first use, and the block's count of 512-byte messages at RATE
+    # a second. --duration 0, since its default of 30 s would end a minute's run halfway; --timeout
+    # 120, since its JMS arrow writes its transfers through a buffer it empties only when full or at
+    # the end (QuiverArrowJms.java:180-182, 252, 288) and its wrapper stops an arrow whose file has
+    # not grown for that long (arrow.py:251-258), ten seconds unless told: at 50 a second the
+    # sender's lines fill the buffer once in ten seconds. The receiving arrow subtracts, so the rest
+    # of the wrap is on it alone; its own wrapper computes the run's statistics from the transfers it
+    # wrote (arrow.py:263-308), and those transfers are printed beside its summary.
+    here="$(cd "$OUT" && pwd)"
+    q_id="$(date -u +%s%N)"
+    q_url="amqp://$BROKER_PRIV:61616/sbl-quiver-$q_id"
+    q_args=(--impl qpid-jms --count $((RATE * SECONDS_TO_RUN)) --duration 0 --body-size 512
+            --timeout 120 --output "$here/quiver" --summary)
+    #: The queue's name is on each arrow's command line and on the JVM each starts (path=...), so
+    #: this finds all four. The bracket keeps it from finding the sudo that runs pkill, whose own
+    #: command line holds the pattern.
+    OWN_PATTERN="[s]bl-quiver-$q_id"
+    $NS $REST quiver-arrow receive "$q_url" "${q_args[@]}" > "$here/receiver.txt" 2>&1 &
+    q_receiver=$!
+    OWN_PIDS="$OWN_PIDS $q_receiver"
+    sleep 5
+    $NS quiver-arrow send "$q_url" "${q_args[@]}" --rate "$RATE" > "$here/sender.txt" 2>&1
+    wait "$q_receiver" 2>/dev/null
+    stop_own
+    echo "# quiver receiver's console"
+    cat "$here/receiver.txt"
+    echo "# quiver sender's console"
+    cat "$here/sender.txt"
+    echo "# quiver receiver's summary"
+    cat "$here/quiver/receiver-summary.json" 2>/dev/null
+    echo
+    echo "# quiver sender's summary"
+    cat "$here/quiver/sender-summary.json" 2>/dev/null
+    echo
+    echo "# quiver receiver's transfers"
+    zstd -dcq "$here/quiver/receiver-transfers.csv.zst" 2>/dev/null ;;
+  pravega-benchmark)
+    # The Pravega benchmark at its v0.13.0 tag (D40-2), in its End to End mode: one writer and one
+    # reader in one JVM, against Pravega 0.13.0's standalone on the broker, a stream of the run's own
+    # in one segment, 512-byte events at RATE a second for the block's length, reporting each second.
+    # Its writer puts System.currentTimeMillis() in each event's first eight bytes and its reader
+    # subtracts that from its own (WriterWorker.java:207-208, ReaderWorker.java:135-141): one
+    # process, so the whole wrap is on it.
+    $WRAP env JAVA_HOME="$JAVA8" PATH="$JAVA8/bin:/usr/bin:/bin" \
+      "$PRAVEGA_BENCH/bin/pravega-benchmark" -controller "tcp://$BROKER_PRIV:9090" -scope sbl \
+      -stream "sbl-$(date -u +%s%N)" -segments 1 -producers 1 -consumers 1 -size 512 \
+      -events "$RATE" -time "$SECONDS_TO_RUN" -reportingIntervalMillis 1000 2>&1 ;;
   *)
     echo "no such tool here: $TOOL" >&2; exit 2 ;;
 esac

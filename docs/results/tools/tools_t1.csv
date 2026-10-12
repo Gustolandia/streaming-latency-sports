@@ -87,3 +87,31 @@ round,tool,trip,figure,crossings,slope
 2,pkb,"two processes, one clock",p50,1,
 3,pkb,"two processes, one clock",p50,1,
 4,pkb,"two processes, one clock",p50,1,
+1,kgo-repeater,across two machines,p50,1,0.9947
+1,mqtt-benchmark,send to acknowledgment,avg,1,1.0036
+1,sarama-producer-perf,send to acknowledgment,p50,1,1.2824
+1,sbk,in one process,p50,1,0.6674
+2,kgo-repeater,across two machines,p50,1,1.0639
+2,mqtt-benchmark,send to acknowledgment,avg,1,1.0102
+2,sarama-producer-perf,send to acknowledgment,p50,1,1.2719
+2,sbk,in one process,p50,1,0.9108
+3,kgo-repeater,across two machines,p50,1,1.0880
+3,mqtt-benchmark,send to acknowledgment,avg,1,1.0017
+3,sarama-producer-perf,send to acknowledgment,p50,1,1.3426
+3,sbk,in one process,p50,1,0.5784
+4,kgo-repeater,across two machines,p50,1,0.9661
+4,mqtt-benchmark,send to acknowledgment,avg,1,1.0073
+4,sarama-producer-perf,send to acknowledgment,p50,1,1.0076
+4,sbk,in one process,p50,1,0.6072
+1,artemis-perf,across two processes,p50,1,0.9708
+1,bookkeeper-benchmark,send to acknowledgment,p50,1,0.7265
+1,rocketmq-benchmark,across two processes,avg,1,4057.7830
+2,artemis-perf,across two processes,p50,1,0.9618
+2,bookkeeper-benchmark,send to acknowledgment,p50,1,0.8706
+2,rocketmq-benchmark,across two processes,avg,1,4375.2410
+3,artemis-perf,across two processes,p50,1,1.0582
+3,bookkeeper-benchmark,send to acknowledgment,p50,1,1.1352
+3,rocketmq-benchmark,across two processes,avg,1,899.7267
+4,artemis-perf,across two processes,p50,1,1.0440
+4,bookkeeper-benchmark,send to acknowledgment,p50,1,1.2033
+4,rocketmq-benchmark,across two processes,avg,1,1.7788

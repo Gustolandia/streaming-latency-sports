@@ -1,0 +1,35 @@
+{
+  "mqtt-benchmark": {
+    "failed_in_rounds": [],
+    "held_in_rounds": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "not_judged_in_rounds": [],
+    "verdict": "holds"
+  },
+  "sarama-producer-perf": {
+    "failed_in_rounds": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "held_in_rounds": [],
+    "not_judged_in_rounds": [],
+    "verdict": "fails"
+  },
+  "sbk": {
+    "failed_in_rounds": [],
+    "held_in_rounds": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "not_judged_in_rounds": [],
+    "verdict": "holds"
+  }
+}

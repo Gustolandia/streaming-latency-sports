@@ -1257,13 +1257,18 @@ but its version 15 left them unrun. They ran in October as a second block, under
 source in October, ran under versions 35 and 36 (\brk{freezes/32-experiment-plan},
 \brk{freezes/33-experiment-plan}), each public before its runs: Xinfra Monitor, Strimzi Canary,
 \kafka{}'s Trogdor and RabbitMQ Stream PerfTest on the same pair, and the Yahoo Streaming
-Benchmark on the second x86 pair, of the same machine type and processor. The last, PerfKit
+Benchmark on the second x86 pair, of the same machine type and processor. The next, PerfKit
 Benchmarker's messaging benchmark, ran under version 37 (\brk{freezes/34-experiment-plan}),
 public before its runs, from the first pair's driver against an Azure Service Bus queue made for
-it and deleted once its runs were home. Table~\ref{stab:toolsrun} lists all of them. A delay added
-in steps cannot reach the managed queue's path, so PerfKit's T1 was its zero step alone. Of the
-others, every tool's figure but one followed the delay at a slope inside the band the plan fixed in
-advance. The Yahoo Streaming
+it and deleted once its runs were home. Seven more of the second October reading ran under
+versions 38 and 39 (\brk{freezes/35-experiment-plan}, \brk{freezes/36-experiment-plan}), each
+public before its runs: \texttt{mqtt-benchmark}, IBM Sarama's producer tool, SBK and Redpanda's
+\texttt{kgo-repeater} on the first pair, and Apache Artemis's perf client, RocketMQ's benchmark
+and BookKeeper's benchmark on the second, each of the last three against a broker of its own,
+started alone on that pair's broker machine. Table~\ref{stab:toolsrun} lists all of them. A delay
+added in steps cannot reach the managed queue's path, so PerfKit's T1 was its zero step alone. Of
+the others, every tool's figure but two followed the delay at a slope inside the band the plan
+fixed in advance. The Yahoo Streaming
 Benchmark's did not, as version 36 predicted: its slopes ran from $\toolsYsbSlopeLo$ to
 $\toolsYsbSlopeHi$~ms per millisecond added. The prediction's reason, read again after the runs,
 was wrong. It took a window's figure, the time of the window's last write to Redis less the
@@ -1277,6 +1282,24 @@ $\toolsYsbGapRuns$ of its $\toolsYsbGapOf$ staircase runs whose collected file h
 windows for every campaign, by \brk{scripts/ysb_post_hoc.py}.) The later a campaign's place in the
 flush, the later its window's figure, so a millisecond added could move the figure by hundreds of
 milliseconds.
+
+RocketMQ's benchmark did not follow the delay in any round, against version 39's prediction.
+Read after the runs (\brk{scripts/rocketmq_post_hoc.py}), two things had happened. Its producer
+has no rate of its own and published its 3,000 messages in about three seconds, while its consumer is
+given the run's new queue only when its client next balances its queues, every 20~s. In
+\toolsRocketWaitedWord{} of its $\toolsRocketRunsOf$ runs the producer finished first and the
+broker held the messages until then: \toolsRocketLongWaitsWord{} staircase runs averaged
+$\toolsRocketLongWaitLo$ to $\toolsRocketLongWaitHi$~s, where no run that did not wait averaged
+more than $\toolsRocketRestHi$~ms. The tool also prints the time from the broker's store of each
+message to the consumer, and in those runs it equaled the whole, so the wait came after the broker
+had the messages. The other steps still rose by $\toolsRocketSlopeLo$ to $\toolsRocketSlopeHi$~ms
+per millisecond added, and the store-to-consumer time by $\toolsRocketSTwoCLo$ to
+$\toolsRocketSTwoCHi$, which leaves the producer out. The consumer asks the broker for messages
+and asks again when the answer comes. A message stored just after an answer has left therefore
+waits for the next request, which follows that answer across the delay, and then crosses it
+itself. The prediction counted one crossing where the consumer makes about two. Round~4's reference
+run, from which T2 takes its offsets, waited too, $\toolsRocketRefWaitMs$~ms, so that round's
+offsets were longer than the others' by about as much.
 
 A second test, T2, moved back the clock of the process that subtracts, at two offsets longer than
 the interval the tool times. A program registered with the plan, the judge, then chose for each
@@ -1299,18 +1322,28 @@ negatives''.
 
 Table~\ref{stab:toolsrun} gives each tool's answer in its Clocks column. Of the tools run,
 \toolsOneClockWord{} read both timestamps from one clock, and moving the clock left their figures
-within a quarter of the offset in every one of their $\toolsOneClockOf$ runs. Xinfra Monitor and
+within a quarter of the offset in $\toolsOneClockHeld$ of their $\toolsOneClockOf$ runs. In the
+other, SBK's minimum, which it prints in whole milliseconds, moved by one, more than a quarter of
+that run's offset. Xinfra Monitor and
 Strimzi Canary are among them: each runs its producer and its consumer in one process. All but
 PerfKit Benchmarker take both timestamps in one process; PerfKit's publisher and receiver are two
 processes of one program on one machine, and T2's offset moved the clock of both. Freeze 21's judge
 left all of PerfKit's clock-moved runs undecided, because its allowance for noise comes from a
 staircase, which PerfKit has none of; version 34's answer from the offset alone is one clock in
-every one of them, as version 37 predicted. The other
-\toolsTwoClockWord{} timestamp a message in one process and subtract in another. The judge read
+every one of them, as version 37 predicted. BookKeeper's benchmark, which times each add on a
+monotonic clock, is among them, and its own rate limiter enters every latency it keeps. At 50 adds
+a second each add waits about a fiftieth of a second for its permit, inside the call the benchmark
+times, and its median was $\toolsBookkeeperMedianLo$ to $\toolsBookkeeperMedianHi$~ms in every
+round, above the 15~ms version 39 predicted. The other \toolsTwoClockWord{} timestamp a message
+in one process and subtract in another, \texttt{kgo-repeater} on another machine. The judge read
 librdkafka's \texttt{rdkafka\_performance} as keeping every value in \toolsKeepsRoundsWord{} of
 its \toolsRoundsWord{} rounds, but its consumer drops any value at or below zero and prints a line
 for each. No such line appears in any of its runs, and none of its own values came near zero, so
-that verdict tested nothing. Pulsar's client drops a value below zero and keeps a zero. Under the
+that verdict tested nothing. \texttt{kgo-repeater} keeps every value: its median fell by the
+offset in every run, below zero once the offset passed its trip. RocketMQ's benchmark adds every
+value to the average it prints, which fell by the offset in every round as version 39 predicted,
+while its maximum, which starts at zero and rises only past it, cannot show a value below zero.
+Pulsar's client drops a value below zero and keeps a zero. Under the
 larger offset it kept $\toolsPulsarKeptLo$ to $\toolsPulsarKeptHi$ of $\toolsAskedToSend$
 latencies, yet its summary printed $\toolsAskedToSend$ records received beside latency figures
 computed from those few. The OpenMessaging Benchmark drops every value at or below zero (S4.5).
@@ -1321,6 +1354,18 @@ zero: under the larger offset it kept $\toolsStreamKeptLo$ to $\toolsStreamKeptH
 $\toolsAskedToSend$ latencies. \kafka{}'s Trogdor replaces it with zero, so a moved clock can lower
 its figures only as far as zero, that is by its own latency. That is more than half the smaller
 offset and less than half the larger, and so its runs at the larger offset are undecided.
+
+Apache Artemis's perf client reads two clocks as well, and its consumer refuses a value below
+zero. Its histogram throws before it counts such a value, the client logs AMQ132001 and rolls the
+message back, and the broker delivers it again, up to ten times, until it comes out at or above
+zero. Under the offsets it received $\toolsArtemisReceivedLo$ to $\toolsArtemisReceivedHi$
+messages for $\toolsAskedToSend$ published, logged $\toolsArtemisRefusedLo$ to $\toolsArtemisRefusedHi$
+such warnings and reported success, in every round, as version 39 predicted. What its histogram
+kept were the deliveries that came out above zero, many a little above, so its median moved by
+less than half the offset. Version 34's rule therefore answered one or undecided in all
+\toolsArtemisRunsWord{} of its runs, never two. Version 39 had declined to predict that answer, for
+this reason, and Table~\ref{stab:toolsrun} lists the tool as two clocks with none of its runs so
+answered.
 
 The Yahoo Streaming Benchmark is the one tool whose notebook drops values with no clock moved:
 $\toolsYsbControlDropLo$--$\toolsYsbControlDropHi\%$ of its windows, those whose last write came
@@ -1344,9 +1389,11 @@ lengthened the tail of every tool that prints a 99th percentile and barely moved
 (Table~\ref{stab:toolsload}). Taking the median over the four rounds, the 99th percentile of each
 of the \toolsTailToolsWord{} rose by $\toolsTailRiseLo$--$\toolsTailRiseHi$~ms, of the order of the
 $\baseSliceMs$~ms slice a thread can wait for a core (Section~\ref{P-sec:tail}), while the median
-moved by at most $\toolsMedianMoveHi$~ms, except Trogdor's, which moved by one step of the whole
-milliseconds it prints. Real-time priority took at least nine tenths of the rise back in
-\toolsTailBackWord{} of them. A tool times the wait for a core together with everything else it
+moved by at most $\toolsMedianMoveHi$~ms, except in two tools that print whole milliseconds.
+Trogdor's moved by one step, and SBK's from $\toolsSbkMedianIdle$~ms idle to
+$\toolsSbkMedianUnderLo$ to $\toolsSbkMedianUnderHi$~ms under the load, back to
+$\toolsSbkMedianIdle$~ms at real-time priority in every round. Real-time priority took at least
+nine tenths of the rise back in \toolsTailBackWord{} of them. A tool times the wait for a core together with everything else it
 times, so the wait reads as latency. The Yahoo Streaming Benchmark is left out of these figures,
 because its figure is set by its flush, as above, and not by the trip a waiting thread lengthens.
 So is PerfKit Benchmarker: its trip goes to a managed queue in a data center, and its 99th
@@ -1387,7 +1434,18 @@ $\sOneStreamHi$ fewer latencies than the messages it consumed, and said nothing.
 metrics library pinned $\sOneXinfraLo$ to $\sOneXinfraHi$ values to the floor of its percentiles,
 which only its debug line shows: its printed 99th percentile was the control's in every round.
 None of them showed such a value in its control, and \kafka{}'s end-to-end tool, which times with
-a monotonic clock, did not see the steps. Once the steps were undone, the wall clock was within
+a monotonic clock, did not see the steps. Versions 38 and 39 added four tools to S1. SBK counted
+$\sOneSbkLo$ to $\sOneSbkHi$ of its latencies as invalid in each stepped run, and none in its
+controls. \texttt{mqtt-benchmark}, on a monotonic clock, kept its minimum above zero and its mean
+within a millisecond of its control's. Sarama's producer tool, also on a monotonic clock, kept its
+median, but its stepped 99th percentile fell $\sOneSaramaGapLo$ to $\sOneSaramaGapHi$~ms below its
+control's, so S1-i, which allowed a millisecond either way, failed in every round. The steps cannot
+reach its clock, and the figure fell rather than rose: the millisecond allowed was narrower than
+that figure's spread from one run to the next. Artemis's producer, which reads two clocks with its
+consumer, published $\sOneArtemisSentLo$ to $\sOneArtemisSentHi$ of its $\toolsAskedToSend$ messages in
+each stepped run, stopped, and reported success, as version 39 predicted after its pilot. A step
+inside one of its own timed publishes makes a value below zero that its histogram refuses, in a thread
+that catches only the messaging library's own exceptions. Once the steps were undone, the wall clock was within
 $\sOneClockBackMs$~ms of the hypervisor's PTP clock. Stream PerfTest's
 handling is the one T2 showed of it run as two instances; the other three could not have been seen
 without the steps.
@@ -1395,20 +1453,25 @@ without the steps.
 The per-run verdicts and figures are in \brk{docs/results/tools/tools_t1.csv},
 \brk{tools_t2.csv} and \brk{tools_t3.csv}, folded by \brk{scripts/tools_block.py} from the runs;
 K1's are in \brk{docs/results/tools/k1.csv}, judged by \brk{scripts/kafka_clamp.py}; S1's in
-\brk{docs/results/tools/s1.csv}, judged by \brk{scripts/s1_block.py}; and the Yahoo Streaming
-Benchmark's readings after its runs in \brk{docs/results/tools/ysb_flush.csv} and
-\brk{ysb_t2_fit.csv}. The write-ups are
-\brk{docs/results/tools/t1-t4-eleven-tools.md}, with its five recorded faults,
+\brk{docs/results/tools/s1.csv}, \brk{s1_v38.csv} and \brk{s1_v39.csv}, judged by
+\brk{scripts/s1_block.py}; version 39's own predictions in \brk{docs/results/tools/v39.csv},
+judged by \brk{scripts/block_v39.py}; and the readings after the runs, of the Yahoo Streaming
+Benchmark in \brk{docs/results/tools/ysb_flush.csv} and \brk{ysb_t2_fit.csv}, and of RocketMQ's
+benchmark in \brk{docs/results/tools/rocketmq_waits.csv} and \brk{rocketmq_t1.csv}. The write-ups
+are \brk{docs/results/tools/t1-t4-eleven-tools.md}, with its five recorded faults,
 \brk{docs/results/tools/t1-t4-five-tools.md},
-\brk{docs/results/tools/t1-t4-october-tools.md} and
-\brk{docs/results/tools/t1-t4-perfkit-and-s1.md}.
+\brk{docs/results/tools/t1-t4-october-tools.md},
+\brk{docs/results/tools/t1-t4-perfkit-and-s1.md} and
+\brk{docs/results/tools/t1-t4-freezes-35-36.md}.
 
 \begin{table}[tb]
 \caption{\textbf{Of the tools run, \toolsOneClockWord{} time on one clock and \toolsTwoClockWord{}
 on two.} The registered campaign's tools block, \toolsRoundsWord{} rounds per tool, eleven tools
-in September and eleven in October, each on one pair of machines and the Yahoo Streaming Benchmark
-on a second pair of the same type; PerfKit Benchmarker timed a managed queue, which the staircase
-cannot reach, so it has no slope (---), and its two processes share one host. Interval: what
+in September and eighteen in October, each on one of two pairs of machines of the same type;
+PerfKit Benchmarker timed a managed queue, which the staircase cannot reach, so it has no slope
+(---), and its two processes share one host. \texttt{kgo-repeater} times across two hosts.
+RocketMQ's slope missed the band in every round, and Artemis's perf client, on two clocks, kept the
+offset out of its figures by having each refused value delivered again (text). Interval: what
 the tool times, as its invocation was read before any run. Slope: how far its figure moved per
 millisecond of delay, divided by the number of times the interval crosses the delay, in its
 lowest and highest round. Clocks: how many clocks its two timestamps come from, answered from the
@@ -1451,13 +1514,14 @@ message's start to its arrival, each the median over the rounds.}
 \end{table}
 
 \begin{table}[tb]
-\caption{\textbf{With the clock stepped back under them, four tools that read one clock each
+\caption{\textbf{With the clock stepped back under them, five tools that read one clock each
 handled a value below zero their own way.} S1: each tool once as it is and once while the driver's
 wall clock stepped back by the step shown at gaps drawn around a fifth of a second,
 \sOneRoundsWord{} rounds. Steps: how many a stepped run made, lowest and highest round. Below zero:
 how many values below zero the tool's own output showed in a stepped run, lowest and highest round,
-and the most it showed in any control. \kafka{}'s end-to-end tool times with a monotonic clock and
-is the control.}
+and the most it showed in any control. \kafka{}'s end-to-end tool, \texttt{mqtt-benchmark} and
+Sarama's producer tool time with a monotonic clock; Sarama's prediction failed (text). Artemis's
+perf client reads two clocks, and its row shows what its producer did.}
 \label{stab:sone}
 \centering
 \footnotesize

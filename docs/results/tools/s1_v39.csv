@@ -1,0 +1,9 @@
+round,tool,run,steps,stepped_back_ms,clock_after_ms,instrument_ok,below_zero,p50,p99,kept,received,avg,min,sent,asked,producer_result,max,final,thrown
+1,artemis-perf,control,,,,,0,1.223,1.687,3000,3000,1.2698399999999999,,3000,3000,success,22.015,,
+1,artemis-perf,stepped,459,9180.0,0.003,True,0,6.047,23.295,3,3,10.26,,3,3000,success,23.295,,
+2,artemis-perf,control,,,,,0,1.231,1.719,3000,3000,1.27905,,3000,3000,success,21.119,,
+2,artemis-perf,stepped,451,9020.0,0.035,True,0,2.991,20.863,3,3,8.41733,,3,3000,success,20.863,,
+3,artemis-perf,control,,,,,0,0.983,1.399,3000,3000,1.02872,,3000,3000,success,21.503,,
+3,artemis-perf,stepped,466,9320.0,-0.036,True,0,1.487,21.247,10,10,3.6408,,10,3000,success,21.247,,
+4,artemis-perf,control,,,,,0,0.743,1.319,3000,3000,0.79848,,3000,3000,success,23.679,,
+4,artemis-perf,stepped,457,9140.0,0.013,True,0,4.287,6.399,2,2,5.328,,2,3000,success,6.399,,

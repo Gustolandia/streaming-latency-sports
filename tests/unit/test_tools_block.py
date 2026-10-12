@@ -362,6 +362,17 @@ class TestCollect:
                    for r in tb.ROUNDS_V37)
         assert tb.TRIPS["pkb"] == "two processes, one clock"
 
+    def test_freezes_35_and_36_are_folded_from_their_own_pairs(self):
+        """Freeze 35's four on the first pair, freeze 36's three on the second, whose folder sits
+        beside the first pair's; kgo-repeater's two repeaters are on two machines (D38-4)."""
+        assert [r[0] for r in tb.ROUNDS_V38] == ["1", "2", "3", "4"]
+        assert all(r[1].startswith("v38_20261011T234032Z/x/runs/azure/tools_v38")
+                   for r in tb.ROUNDS_V38)
+        assert all(r[1].startswith("../matched-b/v39_20261011T232744Z/x/runs/azure/tools_v39")
+                   for r in tb.ROUNDS_V39)
+        assert tb.TRIPS["kgo-repeater"] == "across two machines"
+        assert {tb.TRIPS[t] for t in ("artemis-perf", "rocketmq-benchmark")} == {"across two processes"}
+
 
 class TestMain:
 
@@ -391,16 +402,17 @@ class TestMain:
         assert not out.exists()
 
     def test_the_committed_tables_are_what_the_paper_reads(self):
-        """Twenty-two tools, four rounds, two offsets each, every T2 run judged again: the shape
+        """Twenty-nine tools, four rounds, two offsets each, every T2 run judged again: the shape
         Section V-B and the supplement's S5 describe. 11 October folded the five tools freezes 32
-        and 33 ran into them, then freeze 34's PerfKit Benchmarker."""
+        and 33 ran into them, then freeze 34's PerfKit Benchmarker; 12 October freeze 35's four and
+        freeze 36's three."""
         repo = Path(__file__).resolve().parents[2]
         with (repo / "docs" / "results" / "tools" / "tools_t1.csv").open(encoding="utf-8") as fh:
             t1 = list(csv.DictReader(fh))
         with (repo / "docs" / "results" / "tools" / "tools_t2.csv").open(encoding="utf-8") as fh:
             t2 = list(csv.DictReader(fh))
-        assert len({r["tool"] for r in t1}) == 22 and len({r["round"] for r in t1}) == 4
-        assert len(t1) == 88 and len(t2) == 176
+        assert len({r["tool"] for r in t1}) == 29 and len({r["round"] for r in t1}) == 4
+        assert len(t1) == 116 and len(t2) == 232
         #: PerfKit's queue is out of the staircase's reach, so its T1 is the zero step alone and
         #: carries no slope; every other tool's does (D37-1).
         assert {r["tool"] for r in t1 if not r["slope"]} == {"pkb"}
@@ -411,6 +423,6 @@ class TestMain:
         #: T3: every tool, every round, idle and loaded, each with and without go-first.
         with (repo / "docs" / "results" / "tools" / "tools_t3.csv").open(encoding="utf-8") as fh:
             t3 = list(csv.DictReader(fh))
-        assert len(t3) == 352 and {r["tool"] for r in t3} == set(tb.TRIPS)
+        assert len(t3) == 464 and {r["tool"] for r in t3} == set(tb.TRIPS)
         assert {(r["load_pct"], r["go_first"]) for r in t3} == {
             ("0", "no"), ("0", "yes"), ("88", "no"), ("88", "yes")}

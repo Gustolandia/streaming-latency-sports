@@ -67,6 +67,11 @@ ALLOWED = {
     ("postmortem.tex", "recOwnWaitRatioLo", r"($0.43$, $1.11$, $100.00$ at ten"):
         "a branch retention at ten minutes in the drift test, equal to the lowest median ratio "
         "of the registered acknowledgment-wait prediction",
+    # 12 Oct 2026: the tools block's least tail rise, 0.9 ms once freezes 35 and 36 were folded.
+    ("supplement.tex", "toolsTailRiseLo", r"times its value at 0.9 of the slice"):
+        "a fraction of the scheduler slice at which the rate is read in S6.3, equal to the least "
+        "rise of a tool's 99th percentile under load in milliseconds; a fraction and a latency "
+        "sharing a digit",
     ("supplement.tex", "placeRedisRepl", r"width=0.62\columnwidth"):
         "a figure's printed width as a fraction of the column, equal to the Redis placement "
         "factor in the replication",

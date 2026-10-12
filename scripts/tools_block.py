@@ -48,6 +48,11 @@ Which judged file stands for which round is the write-up's decision, not this sc
               pair as each ran (freeze 32).
   YSB         ../matched-b/v36_20261011T063738Z, tools_v36 and tools_v36_round2 to _round4,
               judged on the second x86 pair as each ran (freeze 33).
+  PerfKit     v37_20261011T142007Z, tools_v37 and tools_v37_round2 to _round4 (freeze 34).
+  the four    v38_20261011T234032Z, tools_v38 and tools_v38_round2 to _round4, judged on the
+              first pair as each ran (freeze 35).
+  the three   ../matched-b/v39_20261011T232744Z, tools_v39 and tools_v39_round2 to _round4,
+              judged on the second x86 pair as each ran (freeze 36).
 
     python scripts/tools_block.py --collected runs/azure/collected/matched
 """
@@ -109,6 +114,21 @@ ROUNDS_V37 = tuple(
     for rnd, folder in (("1", "tools_v37"), ("2", "tools_v37_round2"), ("3", "tools_v37_round3"),
                         ("4", "tools_v37_round4")))
 
+#: Freeze 35's block (D38-1): mqtt-benchmark, Sarama's producer tool, SBK and kgo-repeater, judged
+#: on the first pair as each ran. S1, which ran in the same folders, is folded by s1_block.py.
+ROUNDS_V38 = tuple(
+    (rnd, "v38_20261011T234032Z/x/runs/azure/" + folder, None, {})
+    for rnd, folder in (("1", "tools_v38"), ("2", "tools_v38_round2"), ("3", "tools_v38_round3"),
+                        ("4", "tools_v38_round4")))
+
+#: Freeze 36's block (D39-1): Artemis's perf client, RocketMQ's benchmark and BookKeeper's
+#: benchmark, judged on the second x86 pair as each ran. Its own predictions are judged by
+#: block_v39.py, and S1 on Artemis's by s1_block.py.
+ROUNDS_V39 = tuple(
+    (rnd, "../matched-b/v39_20261011T232744Z/x/runs/azure/" + folder, None, {})
+    for rnd, folder in (("1", "tools_v39"), ("2", "tools_v39_round2"), ("3", "tools_v39_round3"),
+                        ("4", "tools_v39_round4")))
+
 #: The interval each tool times, as the plan read its invocation before any run (the addendum
 #: of freeze 21, "How each tool keeps time"). It is how the tool was run, not a measurement, and
 #: T2 is its test: every tool read as one clock was found on one, and the tool read as spanning
@@ -142,6 +162,18 @@ TRIPS = {
     # Freeze 34's PerfKit Benchmarker (D37-2): its publisher and its receiver are two processes
     # of one program on the driver, both reading the driver's wall clock.
     "pkb": "two processes, one clock",
+    # Freeze 35's four (D38-4): mqtt-benchmark and Sarama's tool time a publish to its
+    # acknowledgment, SBK its writer to its reader in one JVM, and kgo-repeater a record produced
+    # by one repeater on the broker and consumed by another on the driver.
+    "mqtt-benchmark": "send to acknowledgment",
+    "sarama-producer-perf": "send to acknowledgment",
+    "sbk": "in one process",
+    "kgo-repeater": "across two machines",
+    # Freeze 36's three (D39-4): Artemis's and RocketMQ's consumers subtract their producer's
+    # stamp, and BookKeeper's benchmark times an add to its completion.
+    "artemis-perf": "across two processes",
+    "rocketmq-benchmark": "across two processes",
+    "bookkeeper-benchmark": "send to acknowledgment",
 }
 
 _STEP = re.compile(r"t1-(.+)-step\.json$")
@@ -298,7 +330,7 @@ def collect(collected, rounds=None):
     """The three tables, every round, from the folders the write-up names."""
     t1, t2, t3 = [], [], []
     for rnd, runs, verdicts, read_again in (ROUNDS + ROUNDS_V33 + ROUNDS_V35 + ROUNDS_V36
-                                            + ROUNDS_V37
+                                            + ROUNDS_V37 + ROUNDS_V38 + ROUNDS_V39
                                             if rounds is None else rounds):
         again = {tool: os.path.join(collected, d, "t1-%s-step.json" % tool)
                  for tool, d in read_again.items()}

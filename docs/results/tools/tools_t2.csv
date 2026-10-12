@@ -175,3 +175,59 @@ round,tool,offset_ms,verdict,standing,sent,kept,verdict_31,clocks,clocks_why
 3,pkb,24.9979,undecided,,100,100,undecided,one,"its figures stayed within a quarter of the 24.998 ms offset (avg +3.860, p50 +2.000, min +0.000)"
 4,pkb,22.0134,undecided,,100,100,undecided,one,"its figures stayed within a quarter of the 22.013 ms offset (avg -1.350, p50 +0.000, min +0.000)"
 4,pkb,24.0034,undecided,,100,100,undecided,one,"its figures stayed within a quarter of the 24.003 ms offset (avg +1.890, p50 +0.000, min -1.000)"
+1,kgo-repeater,2.6947,undecided,,3000,,undecided,two,its figures moved by more than half the 2.695 ms offset (p50 -2.697)
+1,kgo-repeater,4.6971,undecided,,3000,,undecided,two,its figures moved by more than half the 4.697 ms offset (p50 -4.817)
+1,mqtt-benchmark,1.6096,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.610 ms offset (avg -0.011, min +0.017)"
+1,mqtt-benchmark,3.6127,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.613 ms offset (avg +0.001, min +0.012)"
+1,sarama-producer-perf,2.8586,undecided,drops the negatives; drops zero and below; replaces the negatives with zero; times against one clock,3000,,undecided,one,"its figures stayed within a quarter of the 2.859 ms offset (avg +0.200, p50 +0.000)"
+1,sarama-producer-perf,4.8557,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 4.856 ms offset (avg +0.500, p50 +0.000)"
+1,sbk,2.7305,undecided,drops the negatives; drops zero and below; replaces the negatives with zero; times against one clock,3000,,undecided,one,"its figures stayed within a quarter of the 2.731 ms offset (avg +0.100, p50 +0.000, min +0.000)"
+1,sbk,4.7169,undecided,replaces the negatives with zero; times against one clock,3000,,undecided,one,"its figures stayed within a quarter of the 4.717 ms offset (avg -0.500, p50 +0.000, min -1.000)"
+2,kgo-repeater,2.7210,undecided,,3000,,undecided,two,its figures moved by more than half the 2.721 ms offset (p50 -2.644)
+2,kgo-repeater,4.7224,undecided,,3000,,undecided,two,its figures moved by more than half the 4.722 ms offset (p50 -4.686)
+2,mqtt-benchmark,1.6627,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.663 ms offset (avg -0.001, min +0.003)"
+2,mqtt-benchmark,3.6608,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.661 ms offset (avg +0.011, min +0.027)"
+2,sarama-producer-perf,2.6994,undecided,drops the negatives; replaces the negatives with zero; times against one clock,3000,,undecided,one,"its figures stayed within a quarter of the 2.699 ms offset (avg +0.200, p50 +0.000)"
+2,sarama-producer-perf,4.6983,undecided,replaces the negatives with zero; times against one clock,3000,,undecided,one,"its figures stayed within a quarter of the 4.698 ms offset (avg +0.500, p50 +0.000)"
+2,sbk,2.6833,undecided,drops the negatives; replaces the negatives with zero; times against one clock,3000,,undecided,one,"its figures stayed within a quarter of the 2.683 ms offset (avg +0.000, p50 +0.000, min +0.000)"
+2,sbk,4.6959,undecided,replaces the negatives with zero; times against one clock,3000,,undecided,one,"its figures stayed within a quarter of the 4.696 ms offset (avg -0.500, p50 -1.000, min +1.000)"
+3,kgo-repeater,2.6433,undecided,,3000,,undecided,two,its figures moved by more than half the 2.643 ms offset (p50 -2.693)
+3,kgo-repeater,4.6430,undecided,,3000,,undecided,two,its figures moved by more than half the 4.643 ms offset (p50 -4.747)
+3,mqtt-benchmark,1.6556,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.656 ms offset (avg -0.015, min -0.000)"
+3,mqtt-benchmark,3.6561,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.656 ms offset (avg -0.008, min -0.019)"
+3,sarama-producer-perf,2.7949,undecided,drops the negatives; replaces the negatives with zero; times against one clock,3000,,undecided,one,"its figures stayed within a quarter of the 2.795 ms offset (avg +0.000, p50 +0.000)"
+3,sarama-producer-perf,4.7940,undecided,replaces the negatives with zero; times against one clock,3000,,undecided,one,"its figures stayed within a quarter of the 4.794 ms offset (avg +0.000, p50 +0.000)"
+3,sbk,2.6904,undecided,drops the negatives; replaces the negatives with zero; times against one clock,3000,,undecided,undecided,"its figures moved between a quarter and half the 2.690 ms offset (avg -0.100, p50 +0.000, min -1.000)"
+3,sbk,4.6885,undecided,replaces the negatives with zero; times against one clock,3000,,undecided,one,"its figures stayed within a quarter of the 4.689 ms offset (avg -0.800, p50 -1.000, min +0.000)"
+4,kgo-repeater,2.6908,undecided,,3000,,undecided,two,its figures moved by more than half the 2.691 ms offset (p50 -2.733)
+4,kgo-repeater,4.6881,undecided,,3000,,undecided,two,its figures moved by more than half the 4.688 ms offset (p50 -4.716)
+4,mqtt-benchmark,1.7256,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.726 ms offset (avg -0.004, min -0.012)"
+4,mqtt-benchmark,3.7247,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 3.725 ms offset (avg +0.002, min -0.006)"
+4,sarama-producer-perf,2.7344,undecided,drops the negatives; replaces the negatives with zero; times against one clock,3000,,undecided,one,"its figures stayed within a quarter of the 2.734 ms offset (avg +0.000, p50 +0.000)"
+4,sarama-producer-perf,4.7370,undecided,replaces the negatives with zero; times against one clock,3000,,undecided,one,"its figures stayed within a quarter of the 4.737 ms offset (avg +0.200, p50 +0.000)"
+4,sbk,2.6287,undecided,drops the negatives; replaces the negatives with zero; times against one clock,3000,,undecided,one,"its figures stayed within a quarter of the 2.629 ms offset (avg +0.200, p50 +0.000, min +0.000)"
+4,sbk,4.6662,undecided,replaces the negatives with zero; times against one clock,3000,,undecided,one,"its figures stayed within a quarter of the 4.666 ms offset (avg -0.600, p50 -1.000, min +0.000)"
+1,artemis-perf,1.9216,undecided,keeps every value; replaces the negatives with zero; times against one clock,3000,3000,undecided,undecided,"its figures moved between a quarter and half the 1.922 ms offset (avg -0.812, p50 -0.868)"
+1,artemis-perf,3.9302,undecided,replaces the negatives with zero; times against one clock,3000,3000,undecided,one,"its figures stayed within a quarter of the 3.930 ms offset (avg -0.573, p50 -0.632)"
+1,bookkeeper-benchmark,26.7099,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 26.710 ms offset (avg -0.549, p50 -0.513, min -0.257)"
+1,bookkeeper-benchmark,28.6289,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 28.629 ms offset (avg -0.533, p50 -0.187, min -0.985)"
+1,rocketmq-benchmark,2.7730,undecided,keeps every value; replaces the negatives with zero; times against one clock,3000,,undecided,two,its figures moved by more than half the 2.773 ms offset (avg -2.732)
+1,rocketmq-benchmark,4.8126,undecided,keeps every value; replaces the negatives with zero; times against one clock,3000,,undecided,two,its figures moved by more than half the 4.813 ms offset (avg -4.983)
+2,artemis-perf,2.0418,replaces the negatives with zero,replaces the negatives with zero,3000,3000,replaces the negatives with zero,undecided,"its figures moved between a quarter and half the 2.042 ms offset (avg -0.878, p50 -0.955)"
+2,artemis-perf,4.0051,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 4.005 ms offset (avg +0.141, p50 +0.120)"
+2,bookkeeper-benchmark,26.6458,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 26.646 ms offset (avg -0.787, p50 -0.605, min -0.314)"
+2,bookkeeper-benchmark,28.6413,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 28.641 ms offset (avg -0.468, p50 -0.332, min -0.060)"
+2,rocketmq-benchmark,2.3523,undecided,keeps every value; replaces the negatives with zero; times against one clock,3000,,undecided,two,its figures moved by more than half the 2.352 ms offset (avg -2.384)
+2,rocketmq-benchmark,4.3367,undecided,keeps every value; replaces the negatives with zero; times against one clock,3000,,undecided,two,its figures moved by more than half the 4.337 ms offset (avg -4.224)
+3,artemis-perf,1.9035,undecided,replaces the negatives with zero; times against one clock,3000,3000,undecided,one,"its figures stayed within a quarter of the 1.903 ms offset (avg -0.246, p50 -0.316)"
+3,artemis-perf,3.9131,undecided,,3000,3000,undecided,undecided,"its figures moved between a quarter and half the 3.913 ms offset (avg +0.785, p50 +1.444)"
+3,bookkeeper-benchmark,26.0252,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 26.025 ms offset (avg -0.409, p50 -0.378, min +0.907)"
+3,bookkeeper-benchmark,28.0489,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 28.049 ms offset (avg -0.402, p50 -0.340, min -0.981)"
+3,rocketmq-benchmark,2.4592,undecided,keeps every value; replaces the negatives with zero; times against one clock,3000,,undecided,two,its figures moved by more than half the 2.459 ms offset (avg -2.653)
+3,rocketmq-benchmark,4.4856,undecided,keeps every value; replaces the negatives with zero; times against one clock,3000,,undecided,two,its figures moved by more than half the 4.486 ms offset (avg -4.878)
+4,artemis-perf,1.9700,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 1.970 ms offset (avg -0.171, p50 -0.216)"
+4,artemis-perf,4.0056,times against one clock,times against one clock,3000,3000,times against one clock,one,"its figures stayed within a quarter of the 4.006 ms offset (avg -0.254, p50 -0.284)"
+4,bookkeeper-benchmark,26.7038,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 26.704 ms offset (avg +0.730, p50 +0.703, min +0.039)"
+4,bookkeeper-benchmark,28.7425,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 28.742 ms offset (avg +0.760, p50 +0.654, min +0.015)"
+4,rocketmq-benchmark,139.9162,keeps every value,keeps every value,3000,,keeps every value,two,its figures moved by more than half the 139.916 ms offset (avg -140.137)
+4,rocketmq-benchmark,141.9269,keeps every value,keeps every value,3000,,keeps every value,two,its figures moved by more than half the 141.927 ms offset (avg -141.773)

@@ -535,39 +535,50 @@ sampler since August 2026~\cite{rezolus}.
 Reading a tool shows what it does with a value below zero, not whether it ever meets one. The
 registered campaign therefore ran \toolsRunWord{} benchmarking tools against a broker on a second
 machine, PerfKit Benchmarker against a managed queue, \toolsRoundsWord{} rounds each, with
-predictions fixed from their source before any run. Eleven of them ran later, in blocks of their
-own: five that one version of the plan had left out, and six read in October (Supplement~S5). A
-delay added to the path in steps, which cannot reach the managed queue's, moved the figure of
-every other tool but one $\toolsSlopeLo$--$\toolsSlopeHi$~ms per millisecond added and per crossing
-of the delay, so those tools measure the path. The Yahoo Streaming Benchmark's did not, as
-predicted, though for another reason: each write of its results waits for four replies that cross
-the delay (Supplement~S5). Moving back the clock of the process that subtracts, at two offsets
+predictions fixed from their source before any run. Eighteen of them ran later, in blocks of their
+own: five that one version of the plan had left out, and thirteen read in October
+(Supplement~S5). A delay added to the path in steps, which cannot reach the managed queue's, moved
+the figure of every other tool but two $\toolsSlopeLo$--$\toolsSlopeHi$~ms per millisecond added
+and per crossing of the delay, so those tools measure the path. The Yahoo Streaming Benchmark's
+did not, as predicted, though for another reason: each write of its results waits for four replies
+that cross the delay. RocketMQ's benchmark's did not either, against its prediction. Some of its
+runs waited about 20~s in the broker until their consumer was given its queue, and in the rest its
+consumer, which asks the broker for each batch, met the delay about twice (Supplement~S5). Moving back the clock of the process that subtracts, at two offsets
 longer than the interval the tool times, separated the tools that read one clock from those that
-read two. The figures of \toolsOneClockWord{} tools stayed within a quarter of the offset in every
-one of their $\toolsOneClockOf$ runs, because each reads both timestamps from one clock. All but
+read two. The figures of \toolsOneClockWord{} tools stayed within a quarter of the offset in
+$\toolsOneClockHeld$ of their $\toolsOneClockOf$ runs, because each reads both timestamps from one
+clock; in the other, SBK's minimum, which it prints in whole milliseconds, moved by one. All but
 PerfKit Benchmarker, whose two processes share one machine, take them in one process, timing a
 round trip or a message they publish and receive themselves, so they cannot measure the one-way
 latency of the delivery a broker exists to provide. A constant offset cannot make a value below
-zero in any of these tools, but a step of the clock can. Stepping the wall clock back under four
+zero in any of these tools, but a step of the clock can. Stepping the wall clock back under five
 tools that time on one clock showed, in all \sOneRoundsWord{} rounds and as their sources predicted,
-what each does with such a value. PerfKit Benchmarker keeps it, Strimzi Canary logs it, Stream
-PerfTest, run as one process, drops it uncounted, and Xinfra Monitor's metrics library pins it to
+what each does with such a value. PerfKit Benchmarker keeps it, Strimzi Canary logs it, SBK counts
+it, Stream PerfTest, run as one process, drops it uncounted, and Xinfra Monitor's metrics library pins it to
 the floor of its percentiles, saying so only at debug level (Supplement~S5).
-The other \toolsTwoClockWord{} timestamp a message in one process and subtract in another. In
-$\toolsTwoClockRuns$ of their $\toolsTwoClockOf$ runs the moved clock shifted their figures or cut
-what they kept, and the rest were undecided. Of the \toolsTwoClockWord{}, librdkafka's
-\texttt{rdkafka\_performance} adds the clocks' offset to the path's latency. Pulsar's client, the
+The other \toolsTwoClockWord{} timestamp a message in one process and subtract in another,
+Redpanda's \texttt{kgo-repeater} on another machine. In $\toolsTwoClockRuns$ of their
+$\toolsTwoClockOf$ runs the moved clock shifted their figures or cut what they kept, and the rest
+were undecided. Of these, librdkafka's \texttt{rdkafka\_performance}, \texttt{kgo-repeater} and
+RocketMQ's benchmark add the clocks' offset to the path's latency. Pulsar's client, the
 OpenMessaging Benchmark, RabbitMQ Stream PerfTest and the Yahoo Streaming Benchmark drop what comes
 out below zero, uncounted, and \kafka{}'s Trogdor replaces it with zero. Under the larger offset
 Pulsar's client kept $\toolsPulsarKeptLo$ to $\toolsPulsarKeptHi$ of $\toolsAskedToSend$
-latencies, and Stream PerfTest $\toolsStreamKeptLo$ to $\toolsStreamKeptHi$.
+latencies, and Stream PerfTest $\toolsStreamKeptLo$ to $\toolsStreamKeptHi$. Apache Artemis's perf
+client also subtracts in a second process, but its consumer refuses a value below zero and has the
+message delivered again until it comes out above zero. Its figures therefore hid the offset, while
+it received $\toolsArtemisReceivedLo$ to $\toolsArtemisReceivedHi$ messages from the
+$\toolsAskedToSend$ its producer publishes in a run, and reported success. With the clock stepped,
+its producer stopped after
+$\sOneArtemisSentLo$ to $\sOneArtemisSentHi$ messages and again reported success (Supplement~S5).
 \texttt{emqtt-bench}'s histogram keeps values below zero, but its console printed no
 latency under either offset (Supplement~S5). Waiting for a core shows in these tools as time added
 rather than as a value below zero. With every core $\toolsLoadPct\%$ busy, the 99th percentile of
 each of the \toolsTailToolsWord{} tools that print one rose by $\toolsTailRiseLo$--$\toolsTailRiseHi$~ms
-while its median moved by at most $\toolsMedianMoveHi$~ms (Trogdor's, in whole milliseconds, by one),
-and real-time priority took nearly all of that rise back in \toolsTailBackWord{} of them
-(Supplement~S5).
+while its median moved by at most $\toolsMedianMoveHi$~ms, but in two that print whole
+milliseconds: Trogdor's by one, and SBK's from $\toolsSbkMedianIdle$ to
+$\toolsSbkMedianUnderLo$--$\toolsSbkMedianUnderHi$~ms. Real-time priority took nearly all of that
+rise back in \toolsTailBackWord{} of them, and SBK's median with it (Supplement~S5).
 
 \subsection{A positivity filter on a millisecond clock}
 \label{sec:extmethod}

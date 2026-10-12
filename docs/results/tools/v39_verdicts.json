@@ -1,0 +1,38 @@
+{
+  "T2-a": {
+    "failed_in_rounds": [],
+    "held_in_rounds": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "not_judged_in_rounds": [],
+    "tool": "artemis-perf",
+    "verdict": "holds"
+  },
+  "T2-r": {
+    "failed_in_rounds": [],
+    "held_in_rounds": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "not_judged_in_rounds": [],
+    "tool": "rocketmq-benchmark",
+    "verdict": "holds"
+  },
+  "T4-b": {
+    "failed_in_rounds": [],
+    "held_in_rounds": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "not_judged_in_rounds": [],
+    "tool": "bookkeeper-benchmark",
+    "verdict": "holds"
+  }
+}

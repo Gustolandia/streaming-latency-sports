@@ -3577,6 +3577,28 @@ SLOPE_BAND = (0.5, 1.5)
 #: opposite of the band, so the prose's exception is checked as hard as the rule.
 SLOPE_PREDICTED_OUTSIDE = {"ysb": "D36-5"}
 
+#: The tools whose staircase missed the band in every round although their freeze predicted it would
+#: hold, by the change that predicted it: RocketMQ's benchmark (freeze 36, D39-4). Why was read
+#: after the runs (scripts/rocketmq_post_hoc.py): some runs waited in the broker for the consumer's
+#: queue, and the rest rose by about two crossings, its consumer pulling. Each is held to having
+#: missed in every round, so the prose's failure is checked as hard as the rule.
+SLOPE_FAILED = {"rocketmq-benchmark": "D39-4"}
+
+#: The intervals whose two timestamps come from two clocks: two processes on one machine, or two
+#: machines (kgo-repeater's two repeaters, freeze 35).
+TWO_CLOCK_TRIPS = ("across two processes", "across two machines")
+
+#: The tools on two clocks whose answer from the offset their freeze declined to predict, by the
+#: change that declined: Artemis's perf client (freeze 36, D39-4), whose consumer refuses a value
+#: below zero and has the message delivered again until it comes out above zero, so that its
+#: figures cannot show the offset while its count of messages received does. Each is held to never
+#: having been answered two, which is what the prose says of it.
+CLOCKS_NOT_PREDICTED = {"artemis-perf": "D39-4"}
+
+#: The one-clock tools with a clock-moved run answered undecided, by how many, as the prose names
+#: them: one run of SBK, whose minimum, printed in whole milliseconds, moved by one step (freeze 35).
+ONE_CLOCK_UNDECIDED = {"sbk": 1}
+
 #: The tools by the names a reader knows them by, short enough for a column-wide table.
 TOOL_NAMES = {
     "valkey-benchmark": "Valkey benchmark",
@@ -3601,15 +3623,22 @@ TOOL_NAMES = {
     "stream-perftest": "Stream PerfTest",
     "ysb": "Yahoo Streaming Bench.",
     "pkb": "PerfKit messaging",
+    "mqtt-benchmark": "mqtt-benchmark",
+    "sarama-producer-perf": "Sarama producer",
+    "sbk": "SBK",
+    "kgo-repeater": "kgo-repeater",
+    "artemis-perf": "Artemis perf",
+    "rocketmq-benchmark": "RocketMQ benchmark",
+    "bookkeeper-benchmark": "BookKeeper benchmark",
 }
 
 #: The table's row order: by the interval timed, one-clock intervals first; and how each is set
 #: in a column-wide table.
 TRIP_ORDER = ("round trip", "send to acknowledgment", "in one process", "two processes, one clock",
-              "across two processes")
+              "across two processes", "across two machines")
 TRIP_CELLS = {"round trip": "round trip", "send to acknowledgment": "to ack.",
               "in one process": "one process", "two processes, one clock": "one host",
-              "across two processes": "two processes"}
+              "across two processes": "two processes", "across two machines": "two hosts"}
 
 
 def _tools_rows(t1_path, t2_path):
@@ -3635,7 +3664,8 @@ def _tools_judged(t1, t2):
     was read to time before any run, each stops the build instead of leaving the prose behind.
     """
     per_crossing = [float(r["slope"]) / int(r["crossings"]) for r in t1
-                    if r["slope"] and r["tool"] not in SLOPE_PREDICTED_OUTSIDE]
+                    if r["slope"] and r["tool"] not in SLOPE_PREDICTED_OUTSIDE
+                    and r["tool"] not in SLOPE_FAILED]
     if not per_crossing or not all(SLOPE_BAND[0] <= s <= SLOPE_BAND[1] for s in per_crossing):
         raise ValueError("a staircase slope lies outside the band frozen for it, so 'every "
                          "tool measures the path' no longer holds")
@@ -3645,22 +3675,35 @@ def _tools_judged(t1, t2):
         raise ValueError("a tool predicted not to follow the staircase (%s) followed it in a "
                          "round, so the prose's exception no longer holds"
                          % sorted(SLOPE_PREDICTED_OUTSIDE))
+    missed = {t: [float(r["slope"]) / int(r["crossings"]) for r in t1 if r["tool"] == t and r["slope"]]
+              for t in SLOPE_FAILED}
+    if any(not v or any(SLOPE_BAND[0] <= x <= SLOPE_BAND[1] for x in v) for v in missed.values()):
+        raise ValueError("the prose says %s missed the band in every round, against its "
+                         "prediction; the tables say %s" % (sorted(SLOPE_FAILED), missed))
     trip = {r["tool"]: r["trip"] for r in t1}
     answered = {tool: set() for tool in trip}
     for r in t2:
         if r["clocks"] in ("one", "two"):
             answered[r["tool"]].add(r["clocks"])
-    wrong = {t: sorted(a) for t, a in answered.items()
-             if len(a) != 1 or (a == {"two"}) != (trip[t] == "across two processes")}
+    wrong = {t: sorted(a) for t, a in answered.items() if t not in CLOCKS_NOT_PREDICTED
+             and (len(a) != 1 or (a == {"two"}) != (trip[t] in TWO_CLOCK_TRIPS))}
     if wrong:
         raise ValueError("each tool must be answered one way, and the way its invocation was read "
                          "to time: %s" % wrong)
-    one = sorted(t for t, a in answered.items() if a == {"one"})
-    two = sorted(t for t, a in answered.items() if a == {"two"})
-    #: The prose says the one-clock tools' figures stayed put in every one of their runs.
-    if any(r["clocks"] != "one" for r in t2 if r["tool"] in one):
-        raise ValueError("a run of a one-clock tool was not answered one, so 'every one of their "
-                         "runs' no longer holds")
+    shown = {t: sorted(answered.get(t, ())) for t in CLOCKS_NOT_PREDICTED}
+    if any("two" in a or trip.get(t) not in TWO_CLOCK_TRIPS for t, a in shown.items()):
+        raise ValueError("the prose says %s spans two clocks and that no run of it was answered "
+                         "two; the tables say %s" % (sorted(CLOCKS_NOT_PREDICTED), shown))
+    one = sorted(t for t, a in answered.items() if a == {"one"} and t not in CLOCKS_NOT_PREDICTED)
+    two = sorted(t for t, a in answered.items() if a == {"two"} and t not in CLOCKS_NOT_PREDICTED)
+    #: The prose says the one-clock tools' figures stayed put in every run but the ones it names.
+    undecided = {}
+    for r in t2:
+        if r["tool"] in one and r["clocks"] != "one":
+            undecided[r["tool"]] = undecided.get(r["tool"], 0) + 1
+    if undecided != ONE_CLOCK_UNDECIDED:
+        raise ValueError("the prose names %s as the one-clock runs not answered one; the tables "
+                         "say %s" % (ONE_CLOCK_UNDECIDED, undecided))
     return per_crossing, one, two
 
 
@@ -3766,6 +3809,7 @@ def tools_block_macros(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
         ("toolsOneClockWord", _spell(len(one))),
         ("toolsOneProcessWord", _spell(len(one) - len(one_host))),
         ("toolsOneClockOf", str(len(one_runs))),
+        ("toolsOneClockHeld", str(sum(r["clocks"] == "one" for r in one_runs))),
         ("toolsTwoClockWord", _spell(len(two))),
         ("toolsTwoClockRuns", str(sum(r["clocks"] == "two" for r in two_runs))),
         ("toolsTwoClockOf", str(len(two_runs))),
@@ -3780,6 +3824,7 @@ def tools_block_macros(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
         ("toolsYsbOneClockWord", _spell(ysb_one)),
         ("toolsYsbRunsWord", _spell(len(ysb_t2))),
         ("toolsAskedToSend", "{:,}".format(int(wrong["sent"])).replace(",", "{,}")),
+        ("toolsArtemisRunsWord", _spell(sum(1 for r in t2 if r["tool"] in CLOCKS_NOT_PREDICTED))),
     ]
 
 
@@ -3803,6 +3848,12 @@ T3_APART = {"ysb": "its figure is set by its flush",
 #: quotes the largest move of the others beside it, rather than let one printed step stand as
 #: how far every median moved.
 MEDIAN_ONE_STEP = {"trogdor": 1.0}
+
+#: The tools whose median the load moved by more than one step of what they print, which the prose
+#: names with each round's figures: SBK prints whole milliseconds, and its median went from 5 ms
+#: idle to 6 to 9 ms under the load, and back to 5 at real-time priority in every round (freeze 35).
+#: Held to that: the same median idle in every round, and back to it at real-time priority.
+MEDIAN_MOVED = ("sbk",)
 
 
 def _tools_load(t3_path=TOOLS_T3):
@@ -3868,14 +3919,28 @@ def tools_load_macros(t3_path=TOOLS_T3):
         raise ValueError("the prose says the load moved the median of %s by exactly one step of "
                          "what it prints; the table says %s"
                          % (sorted(MEDIAN_ONE_STEP), {t: moves.get(t) for t in MEDIAN_ONE_STEP}))
+    import csv as _csv
+    with open(t3_path, encoding="utf-8") as fh:
+        cells = [r for r in _csv.DictReader(fh) if r["tool"] in MEDIAN_MOVED and r["p50"]]
+    idle = {float(r["p50"]) for r in cells if r["load_pct"] == "0"}
+    ahead = {float(r["p50"]) for r in cells if r["load_pct"] == busy and r["go_first"] == "yes"}
+    under = [float(r["p50"]) for r in cells if r["load_pct"] == busy and r["go_first"] == "no"]
+    if len(idle) != 1 or ahead != idle or not under or min(under) <= max(idle):
+        raise ValueError("the prose says the load raised the median of %s in every round from one "
+                         "idle figure, and real-time priority put it back; the table says idle %s, "
+                         "under %s, ahead %s" % (list(MEDIAN_MOVED), sorted(idle), under,
+                                                 sorted(ahead)))
     return [
         ("toolsLoadPct", busy),
         ("toolsTailToolsWord", _spell(len(fold))),
         ("toolsTailRiseLo", "%.1f" % min(rises)),
         ("toolsTailRiseHi", "%.1f" % max(rises)),
         ("toolsMedianMoveHi", "%.1f" % max(m for t, m in moves.items()
-                                           if t not in MEDIAN_ONE_STEP)),
+                                           if t not in MEDIAN_ONE_STEP and t not in MEDIAN_MOVED)),
         ("toolsTailBackWord", _spell(len(back))),
+        ("toolsSbkMedianIdle", "%g" % idle.pop()),
+        ("toolsSbkMedianUnderLo", "%g" % min(under)),
+        ("toolsSbkMedianUnderHi", "%g" % max(under)),
     ]
 
 
@@ -3989,6 +4054,19 @@ def ysb_fit_macros(csv_path=YSB_FIT_CSV):
 S1_CSV = os.path.join("docs", "results", "tools", "s1.csv")
 S1_VERDICTS = os.path.join("docs", "results", "tools", "s1_verdicts.json")
 DEFAULT_S1_TABLE = os.path.join("docs", "generated", "s1_table.tex")
+#: The S1 tables of the blocks after freeze 34's, each judged by scripts/s1_block.py on its own
+#: block's root: freeze 35's three on the first pair (D38-5), freeze 36's one on the second
+#: (D39-5). Read beside freeze 34's as one table, the tools of each being its own.
+S1_MORE = (
+    (os.path.join("docs", "results", "tools", "s1_v38.csv"),
+     os.path.join("docs", "results", "tools", "s1_v38_verdicts.json")),
+    (os.path.join("docs", "results", "tools", "s1_v39.csv"),
+     os.path.join("docs", "results", "tools", "s1_v39_verdicts.json")),
+)
+#: The S1 predictions that failed, by the change that made them, as the prose reports them: Sarama's
+#: producer tool, whose 99th percentile in its stepped runs fell below its control's by more than
+#: the millisecond S1-i allowed, its clock monotonic (freeze 35, D38-5).
+S1_FAILED = {"sarama-producer-perf": "D38-5"}
 #: S1's tools in the table's order, as the documents name them, with what each one's own output
 #: shows of a value below zero (freeze 34, D37-4); the control tool shows none by design.
 S1_TOOLS = (("pkb", "PerfKit messaging", "samples below zero, in its mean and percentiles"),
@@ -3997,21 +4075,29 @@ S1_TOOLS = (("pkb", "PerfKit messaging", "samples below zero, in its mean and pe
              "latencies not kept, uncounted"),
             ("xinfra-monitor", "Xinfra Monitor", "values pinned to zero, in a debug line"),
             ("kafka-end-to-end", "\\kafka{} end-to-end",
-             "median and 99th percentile within 1~ms of its control's"))
+             "median and 99th percentile within 1~ms of its control's"),
+            ("sbk", "SBK", "latencies it calls invalid, counted"),
+            ("mqtt-benchmark", "mqtt-benchmark", "minimum above zero, mean within 1~ms of its control's"),
+            ("sarama-producer-perf", "Sarama producer",
+             "median as its control's, 99th percentile below it"),
+            ("artemis-perf", "Artemis perf", "its producer stopped short, saying success"))
 
 
-def _s1(csv_path=S1_CSV, verdicts_path=S1_VERDICTS):
-    """S1's runs and verdicts (scripts/s1_block.py), checked against what the prose says: that
-    every stepped run passed S1-a, and that each tool's prediction held in every round."""
+def _s1(csv_path=S1_CSV, verdicts_path=S1_VERDICTS, more=S1_MORE):
+    """S1's runs and verdicts (scripts/s1_block.py), every block's, checked against what the prose
+    says: that every stepped run passed S1-a, and that each tool's prediction held in every round
+    but the ones S1_FAILED names, which failed."""
     import csv as _csv
-    with open(csv_path, encoding="utf-8", newline="") as fh:
-        rows = list(_csv.DictReader(fh))
-    with open(verdicts_path, encoding="utf-8") as fh:
-        verdicts = json.load(fh)
+    rows, verdicts = [], {}
+    for rows_path, judged_path in ((csv_path, verdicts_path),) + tuple(more):
+        with open(rows_path, encoding="utf-8", newline="") as fh:
+            rows += list(_csv.DictReader(fh))
+        with open(judged_path, encoding="utf-8") as fh:
+            verdicts.update(json.load(fh))
     failing = {t: v["verdict"] for t, v in verdicts.items() if v["verdict"] != "holds"}
-    if failing:
-        raise ValueError("the prose says each tool's S1 prediction held in every round; the "
-                         "verdicts say %s" % failing)
+    if failing != {t: "fails" for t in S1_FAILED}:
+        raise ValueError("the prose says each tool's S1 prediction held in every round but %s's, "
+                         "which failed; the verdicts say %s" % (sorted(S1_FAILED), failing))
     if {t for t, _, _ in S1_TOOLS} != set(verdicts):
         raise ValueError("the documents name S1's tools as %s; the verdicts judge %s"
                          % (sorted(t for t, _, _ in S1_TOOLS), sorted(verdicts)))
@@ -4027,29 +4113,57 @@ def _below(rows, tool, run="stepped"):
             if r["tool"] == tool and r["run"] == run and r["below_zero"] != ""]
 
 
-def s1_macros(csv_path=S1_CSV, verdicts_path=S1_VERDICTS):
+def _figure(rows, tool, field, run="stepped"):
+    """One figure of a tool's S1 runs, round by round, as numbers; the rows that lack it left out."""
+    return [float(r[field]) for r in rows
+            if r["tool"] == tool and r["run"] == run and r.get(field, "") != ""]
+
+
+def _span(values, fmt="%d"):
+    """A range as the S1 table prints it: one figure where the rounds agree."""
+    lo, hi = fmt % min(values), fmt % max(values)
+    return lo if lo == hi else "%s--%s" % (lo, hi)
+
+
+def s1_macros(csv_path=S1_CSV, verdicts_path=S1_VERDICTS, more=S1_MORE):
     """The step test's sentences: how many values below zero each tool's own output showed in its
     stepped runs, and how close to the PTP clock the steps left the wall clock."""
     if not (os.path.exists(csv_path) and os.path.exists(verdicts_path)):
         print("note: S1 tables absent")
         return []
-    rows, stepped = _s1(csv_path, verdicts_path)
+    rows, stepped = _s1(csv_path, verdicts_path, more)
     out = [("sOneRoundsWord", _spell(len({r["round"] for r in rows})))]
     for tool, stem in (("pkb", "Pkb"), ("strimzi-canary", "Canary"),
-                       ("stream-perftest-one", "Stream"), ("xinfra-monitor", "Xinfra")):
+                       ("stream-perftest-one", "Stream"), ("xinfra-monitor", "Xinfra"),
+                       ("sbk", "Sbk")):
         found = _below(rows, tool)
         out += [("sOne%sLo" % stem, str(min(found))), ("sOne%sHi" % stem, str(max(found)))]
+    #: Sarama's failure, as the prose gives it: how far its stepped 99th percentile fell below its
+    #: control's, round by round, its median the same in each.
+    nines = [c - t for c, t in zip(_figure(rows, "sarama-producer-perf", "p99", "control"),
+                                   _figure(rows, "sarama-producer-perf", "p99"))]
+    medians = set(_figure(rows, "sarama-producer-perf", "p50", "control")
+                  + _figure(rows, "sarama-producer-perf", "p50"))
+    if not nines or min(nines) <= 1.0 or len(medians) != 1:
+        raise ValueError("the prose says Sarama's stepped 99th percentile fell below its control's "
+                         "by more than a millisecond in every round, its median unchanged; the "
+                         "table says %s, medians %s" % (nines, sorted(medians)))
+    #: Artemis's producer under the steps: what it sent of what it was asked to.
+    sent = _figure(rows, "artemis-perf", "sent")
+    out += [("sOneSaramaGapLo", "%.1f" % min(nines)), ("sOneSaramaGapHi", "%.1f" % max(nines)),
+            ("sOneArtemisSentLo", "%d" % min(sent)), ("sOneArtemisSentHi", "%d" % max(sent))]
     out.append(("sOneClockBackMs",
                 "%.1f" % max(abs(float(r["clock_after_ms"])) for r in stepped)))
     return out
 
 
-def render_s1_table(csv_path=S1_CSV, verdicts_path=S1_VERDICTS):
+def render_s1_table(csv_path=S1_CSV, verdicts_path=S1_VERDICTS, more=S1_MORE):
     """The supplement's S1 table: each tool's step, the steps a stepped run made, the values below
     zero its own output showed in its stepped runs and in its controls, and what that output is."""
-    rows, stepped = _s1(csv_path, verdicts_path)
+    rows, stepped = _s1(csv_path, verdicts_path, more)
     lines = [
-        "% Generated by scripts/emit_paper_numbers.py from docs/results/tools/s1.csv.",
+        "% Generated by scripts/emit_paper_numbers.py from docs/results/tools/s1.csv, s1_v38.csv",
+        "% and s1_v39.csv.",
         "% Do not edit by hand.",
         "\\begin{tabular}{@{}lrrrrl@{}}",
         "\\toprule",
@@ -4063,12 +4177,78 @@ def render_s1_table(csv_path=S1_CSV, verdicts_path=S1_VERDICTS):
         steps = [int(r["steps"]) for r in runs]
         step = float(runs[0]["stepped_back_ms"]) / steps[0]
         hit, ctl = _below(rows, tool), _below(rows, tool, "control")
-        cells = (("%d--%d" % (min(hit), max(hit)), str(max(ctl))) if hit and ctl
-                 else ("---", "---"))
-        lines.append("%s & %g & %d--%d & %s & %s & %s \\\\" % (
-            name, step, min(steps), max(steps), cells[0], cells[1], shows))
+        cells = (_span(hit), str(max(ctl))) if hit and ctl else ("---", "---")
+        lines.append("%s & %g & %s & %s & %s & %s \\\\" % (
+            name, step, _span(steps), cells[0], cells[1], shows))
     lines += ["\\bottomrule", "\\end{tabular}"]
     return "\n".join(lines) + "\n"
+
+
+V39_CSV = os.path.join("docs", "results", "tools", "v39.csv")
+V39_VERDICTS = os.path.join("docs", "results", "tools", "v39_verdicts.json")
+ROCKET_RUNS = os.path.join("docs", "results", "tools", "rocketmq_waits.csv")
+ROCKET_SLOPES = os.path.join("docs", "results", "tools", "rocketmq_t1.csv")
+
+
+def brokers_block_macros(v39_path=V39_CSV, verdicts_path=V39_VERDICTS, rocket_runs=ROCKET_RUNS,
+                         rocket_slopes=ROCKET_SLOPES):
+    """Freeze 36's own predictions (scripts/block_v39.py) and RocketMQ's staircase read after its
+    runs (scripts/rocketmq_post_hoc.py), as the supplement quotes them: what Artemis's consumer
+    received and refused under the offsets, BookKeeper's median at 50 entries a second, and which of
+    RocketMQ's runs waited in the broker and how the rest rose. Each figure is checked against the
+    sentence it sits in before it is printed."""
+    import csv as _csv
+    paths = (v39_path, verdicts_path, rocket_runs, rocket_slopes)
+    if not all(os.path.exists(p) for p in paths):
+        print("note: freeze 36's tables absent")
+        return []
+    with open(v39_path, encoding="utf-8", newline="") as fh:
+        rows = list(_csv.DictReader(fh))
+    with open(verdicts_path, encoding="utf-8") as fh:
+        verdicts = json.load(fh)
+    with open(rocket_runs, encoding="utf-8", newline="") as fh:
+        rocket = list(_csv.DictReader(fh))
+    with open(rocket_slopes, encoding="utf-8", newline="") as fh:
+        slopes = list(_csv.DictReader(fh))
+    if any(v["verdict"] != "holds" for v in verdicts.values()):
+        raise ValueError("the prose says T2-a, T2-r and T4-b held in every round; the verdicts say "
+                         "%s" % {k: v["verdict"] for k, v in verdicts.items()})
+    moved = [r for r in rows if r["tool"] == "artemis-perf" and r["run"] == "offset"]
+    if not moved or any(r["result"] != "success" or int(r["received"]) <= int(r["sent"])
+                        for r in moved):
+        raise ValueError("the prose says Artemis's consumer received more than was sent under "
+                         "every offset and still said success; the table disagrees")
+    median = [float(r["p50"]) for r in rows if r["tool"] == "bookkeeper-benchmark"]
+    waited = [r for r in rocket if r["waited"] == "True"]
+    long_waits = [float(r["b2c_avg_ms"]) / 1000.0 for r in waited if r["stage"] == "t1"]
+    others = [r for r in rocket if r["waited"] == "False"]
+    #: A run that waited waited after the broker stored its messages: its B2C and S2C agree.
+    if (not waited or not long_waits or any(abs(float(r["b2c_avg_ms"]) - float(r["s2c_avg_ms"])) > 1.0
+                                             for r in waited)):
+        raise ValueError("the prose says RocketMQ's runs that waited show it in B2C and S2C alike; "
+                         "the table disagrees")
+    b2c, s2c = ([float(r[f]) for r in slopes] for f in ("slope_b2c", "slope_s2c"))
+    #: The one reference run that waited, round 4's, from which that round's T2 offsets came.
+    (reference,) = [float(r["b2c_avg_ms"]) for r in waited if r["stage"] == "reference"]
+    return [
+        ("toolsArtemisReceivedLo", "{:,}".format(min(int(r["received"]) for r in moved)).replace(",", "{,}")),
+        ("toolsArtemisReceivedHi", "{:,}".format(max(int(r["received"]) for r in moved)).replace(",", "{,}")),
+        ("toolsArtemisRefusedLo", "{:,}".format(min(int(r["refused"]) for r in moved)).replace(",", "{,}")),
+        ("toolsArtemisRefusedHi", "{:,}".format(max(int(r["refused"]) for r in moved)).replace(",", "{,}")),
+        ("toolsBookkeeperMedianLo", "%.1f" % min(median)),
+        ("toolsBookkeeperMedianHi", "%.1f" % max(median)),
+        ("toolsRocketRunsOf", str(len(rocket))),
+        ("toolsRocketWaitedWord", _spell(len(waited))),
+        ("toolsRocketLongWaitsWord", _spell(len(long_waits))),
+        ("toolsRocketLongWaitLo", "%.1f" % min(long_waits)),
+        ("toolsRocketLongWaitHi", "%.1f" % max(long_waits)),
+        ("toolsRocketRestHi", "%.1f" % max(float(r["b2c_avg_ms"]) for r in others)),
+        ("toolsRocketSlopeLo", "%.2f" % min(b2c)),
+        ("toolsRocketSlopeHi", "%.2f" % max(b2c)),
+        ("toolsRocketSTwoCLo", "%.2f" % min(s2c)),
+        ("toolsRocketSTwoCHi", "%.2f" % max(s2c)),
+        ("toolsRocketRefWaitMs", "%.0f" % reference),
+    ]
 
 
 K1_CSV = os.path.join("docs", "results", "tools", "k1.csv")
@@ -4186,6 +4366,8 @@ def render_tools_table(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
                   for r in t1 if r["tool"] == tool and r["slope"]]
         runs = [r for r in t2 if r["tool"] == tool]
         label = "one" if tool in one else "two"
+        #: Artemis's perf client spans two processes, but its figures cannot show the offset
+        #: (CLOCKS_NOT_PREDICTED): it is listed as two, with the runs so answered, none.
         #: A tool whose T1 is the zero step alone has no slope: PerfKit, whose managed queue the
         #: staircase cannot reach (D37-1).
         slope = "%s--%s" % (_signed(min(slopes)), _signed(max(slopes))) if slopes else "---"
@@ -4853,7 +5035,7 @@ def _all_pairs(m):
             + arm_macros() + manipulation_macros()
             + deletion_macros() + literature_macros() + cliff_macros() + reach_macros()
             + tools_block_macros() + tools_load_macros() + ysb_flush_macros() + ysb_fit_macros()
-            + k1_macros() + s1_macros() + recv_wait_macros()
+            + k1_macros() + s1_macros() + brokers_block_macros() + recv_wait_macros()
             + law_reading_macros()
             + s_window_macros() + rate_by_delivery_macros() + mechanism_interval_macros()
             + traced_pooled_macros() + workload_macros() + backlog_macros()

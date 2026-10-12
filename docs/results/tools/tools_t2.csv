@@ -231,3 +231,19 @@ round,tool,offset_ms,verdict,standing,sent,kept,verdict_31,clocks,clocks_why
 4,bookkeeper-benchmark,28.7425,times against one clock,times against one clock,3000,,times against one clock,one,"its figures stayed within a quarter of the 28.742 ms offset (avg +0.760, p50 +0.654, min +0.015)"
 4,rocketmq-benchmark,139.9162,keeps every value,keeps every value,3000,,keeps every value,two,its figures moved by more than half the 139.916 ms offset (avg -140.137)
 4,rocketmq-benchmark,141.9269,keeps every value,keeps every value,3000,,keeps every value,two,its figures moved by more than half the 141.927 ms offset (avg -141.773)
+1,pravega-benchmark,2.0086,times against one clock,times against one clock,3000,2956,undecided,two,it kept 2956 of the 3000 it was asked to send
+1,pravega-benchmark,4.0300,undecided,replaces the negatives with zero; times against one clock,3000,4298,undecided,one,"its figures stayed within a quarter of the 4.030 ms offset (avg +0.100, p50 +0.000)"
+1,quiver,1.9971,undecided,,3000,3000,undecided,two,"its figures moved by more than half the 1.997 ms offset (avg +6148914691236516.000, p50 -1.000, min -1.000)"
+1,quiver,4.0274,undecided,,3000,3000,undecided,two,"its figures moved by more than half the 4.027 ms offset (avg +18415999500253368320.000, p50 +18446744073709551616.000, min -1.000)"
+2,pravega-benchmark,2.0219,times against one clock,times against one clock,3000,2957,undecided,undecided,"its figures moved between a quarter and half the 2.022 ms offset (avg +0.000, p50 +0.000)"
+2,pravega-benchmark,4.0074,times against one clock,times against one clock,3000,2956,undecided,two,it kept 2956 of the 3000 it was asked to send
+2,quiver,2.0008,undecided,,3000,3000,undecided,two,"its figures moved by more than half the 2.001 ms offset (avg +14191695107373881344.000, p50 +18446744073709551616.000, min -1.000)"
+2,quiver,4.0202,undecided,,3000,3000,undecided,two,"its figures moved by more than half the 4.020 ms offset (avg +18440595159018315776.000, p50 +18446744073709551616.000, min +14.000)"
+3,pravega-benchmark,2.0076,times against one clock,times against one clock,3000,2956,undecided,two,it kept 2956 of the 3000 it was asked to send
+3,pravega-benchmark,4.0104,times against one clock,times against one clock,3000,2956,undecided,two,it kept 2956 of the 3000 it was asked to send
+3,quiver,1.9994,undecided,,3000,3000,undecided,two,"its figures moved by more than half the 1.999 ms offset (avg +14695906112055275520.000, p50 +18446744073709551616.000, min +0.000)"
+3,quiver,4.0194,undecided,,3000,3000,undecided,two,"its figures moved by more than half the 4.019 ms offset (avg +18440595159018315776.000, p50 +18446744073709551616.000, min +15.000)"
+4,pravega-benchmark,2.0077,times against one clock,times against one clock,3000,2957,undecided,undecided,"its figures moved between a quarter and half the 2.008 ms offset (avg +0.100, p50 +0.000)"
+4,pravega-benchmark,4.0075,times against one clock,times against one clock,3000,2956,undecided,two,it kept 2956 of the 3000 it was asked to send
+4,quiver,1.9901,undecided,,3000,3000,undecided,two,"its figures moved by more than half the 1.990 ms offset (avg +18397552756179658752.000, p50 +18446744073709551616.000, min -1.000)"
+4,quiver,4.0178,undecided,,3000,3000,undecided,two,"its figures moved by more than half the 4.018 ms offset (avg +18440595159018315776.000, p50 +18446744073709551616.000, min +13.000)"

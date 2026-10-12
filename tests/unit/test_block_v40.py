@@ -44,8 +44,9 @@ class TestTheRows:
     def test_each_run_becomes_a_row_with_its_offset(self, tmp_path):
         _block(tmp_path)
         rows = bv.block_rows(str(tmp_path), ROUNDS[:1])
-        assert [(r["run"], r["offset_ms"]) for r in rows] == [
-            ("control", ""), ("offset", "2.000"), ("offset", "4.000")]
+        assert [(r["tool"], r["run"], r["offset_ms"]) for r in rows] == [
+            ("quiver", "control", ""), ("quiver", "offset", "2.000"), ("quiver", "offset", "4.000"),
+            ("pravega-benchmark", "offset", "4.000")]
         assert (rows[1]["below_zero"], rows[1]["max"], rows[1]["wrapped"]) == (2400, TOP, "avg+max+p50")
         assert rows[0]["wrapped"] == "" and rows[0]["sent"] == 3000
 
@@ -116,7 +117,7 @@ class TestTheCommand:
                         "--out", str(out), "--verdicts", str(verdicts)]) == 0
         with open(out, encoding="utf-8", newline="") as fh:
             rows = list(csv.DictReader(fh))
-        assert len(rows) == 6 and tuple(rows[0]) == bv.FIELDS
+        assert len(rows) == 8 and tuple(rows[0]) == bv.FIELDS
         assert json.loads(verdicts.read_text(encoding="utf-8"))["T2-q"]["verdict"] == "holds"
         assert "T2-q  quiver   holds" in capsys.readouterr().out
 
@@ -124,3 +125,19 @@ class TestTheCommand:
         assert bv.main(["--root", str(tmp_path), "--out", str(tmp_path / "a.csv"),
                         "--verdicts", str(tmp_path / "a.json")]) == 1
         assert "no T2 runs of Quiver" in capsys.readouterr().out
+
+
+class TestThePravegaRuns:
+    """The Pravega benchmark's T2 runs, written beside Quiver's for the supplement and judged by
+    nothing here: T2-q reads Quiver's rows alone."""
+
+    def test_its_runs_carry_their_count_and_leave_the_verdict_alone(self, tmp_path):
+        _block(tmp_path)
+        counted = {"kept": 2956, "reported_ms": {"avg": 1.1, "p50": 1.0, "max": 18.0}}
+        _run(tmp_path, "tools_v40", "t2-pravega-benchmark-control", counted)
+        rows = bv.block_rows(str(tmp_path), ROUNDS)
+        mine = [r for r in rows if r["tool"] == "pravega-benchmark"]
+        assert [(r["round"], r["run"]) for r in mine] == [
+            ("1", "control"), ("1", "offset"), ("2", "offset")]
+        assert mine[0]["kept"] == 2956 and mine[0]["below_zero"] == ""
+        assert bv.judge(rows, ["1", "2"])["T2-q"]["verdict"] == "holds"

@@ -2598,18 +2598,39 @@ class TestToolsUnderLoad:
                 (rnd, tool, load, "no", "%.4f" % p50[1], "%.4f" % under, ""),
                 (rnd, tool, load, "yes", "%.4f" % p50[1], "%.4f" % ahead, "")]
 
-    def _sbk(self, ahead=5.0):
-        """SBK as 12 October left it: whole milliseconds, its median 5 ms idle, 6 and 9 under the
-        load, and back to 5 at real-time priority; its tail's rise in the middle of the others'."""
+    def _whole(self, tool, idle, unders, ahead=None, p99=(3.0, 6.0, 4.0), first=1):
+        """A tool that prints whole milliseconds, one round for each median under the load: its
+        median idle, under the load, and at real-time priority, back at idle unless said
+        otherwise."""
+        ahead = idle if ahead is None else ahead
         rows = []
-        for rnd, under in (("1", 6.0), ("2", 9.0)):
-            rows += [(rnd, "sbk", "0", "no", "5.0000", "17.0000", ""),
-                     (rnd, "sbk", "0", "yes", "5.0000", "16.0000", ""),
-                     (rnd, "sbk", "88", "no", "%.4f" % under, "21.0000", ""),
-                     (rnd, "sbk", "88", "yes", "%.4f" % ahead, "17.5000", "")]
+        for rnd, under in enumerate(unders, first):
+            rows += [(str(rnd), tool, "0", "no", "%.4f" % idle, "%.4f" % p99[0], ""),
+                     (str(rnd), tool, "0", "yes", "%.4f" % idle, "%.4f" % p99[0], ""),
+                     (str(rnd), tool, "88", "no", "%.4f" % under, "%.4f" % p99[1], ""),
+                     (str(rnd), tool, "88", "yes", "%.4f" % ahead, "%.4f" % p99[2], "")]
         return rows
 
-    def _table(self, tmp_path, extra=(), trogdor=None, sbk=None):
+    def _trogdor(self):
+        """Trogdor as 11 October left it: its median one step up under load, from 2 ms to 3."""
+        return self._whole("trogdor", 2.0, (3.0, 3.0), p99=(3.0, 8.0, 6.0))
+
+    def _sbk(self, ahead=5.0):
+        """SBK as 12 October left it: its median 5 ms idle, 6 and 9 under the load, and back to 5
+        at real-time priority; its tail's rise in the middle of the others'."""
+        return self._whole("sbk", 5.0, (6.0, 9.0), ahead=ahead, p99=(17.0, 21.0, 17.5))
+
+    def _quiver(self):
+        """Quiver as freeze 37 left it: its median 1 ms idle, 3 and 2 under the load."""
+        return self._whole("quiver", 1.0, (3.0, 2.0), p99=(2.0, 6.0, 4.0))
+
+    def _pravega(self):
+        """The Pravega benchmark as freeze 37 left it: its median 1 ms idle, and under the load 1
+        in one round and 2 in the other."""
+        return self._whole("pravega-benchmark", 1.0, (1.0, 2.0))
+
+    def _table(self, tmp_path, extra=(), whole=None):
+        """The table, with any of the four whole-millisecond tools' rows replaced by `whole`'s."""
         rows = (self._cells("1", "k6", 0.86, 2.92, 0.85) + self._cells("2", "k6", 0.84, 2.94, 0.85)
                 + self._cells("1", "nats-bench", 1.39, 4.21, 3.94, p50=(1.31, 1.38))
                 + self._cells("2", "nats-bench", 1.43, 4.02, 3.96, p50=(1.35, 1.26))
@@ -2619,41 +2640,67 @@ class TestToolsUnderLoad:
                 # emqtt-bench prints no percentile and stays out of every figure.
                 + [("1", "emqtt-bench", "0", "no", "", "", "1.0000"),
                    ("1", "emqtt-bench", "88", "no", "", "", "1.8500")])
-        return self._write(tmp_path, rows + list(self._trogdor() if trogdor is None else trogdor)
-                           + list(self._sbk() if sbk is None else sbk) + list(extra))
-
-    def _trogdor(self, p50=(2.0, 3.0)):
-        """Trogdor as 11 October left it: whole milliseconds, its median one step up under load."""
-        return (self._cells("1", "trogdor", 3.0, 8.0, 6.0, p50=p50)
-                + self._cells("2", "trogdor", 3.0, 8.0, 6.0, p50=p50))
+        tools = {"trogdor": self._trogdor(), "sbk": self._sbk(), "quiver": self._quiver(),
+                 "pravega-benchmark": self._pravega()}
+        tools.update(whole or {})
+        for tool in sorted(tools):
+            rows += list(tools[tool])
+        return self._write(tmp_path, rows + list(extra))
 
     def test_the_figures_the_sentence_quotes(self, tmp_path):
-        """Trogdor's tail rose by 5 ms and real-time priority took back two fifths of it; its
-        median's one printed step is named in the prose, not quoted as the largest move."""
+        """Trogdor's tail rose by 5 ms and real-time priority took back two fifths of it. The four
+        medians printed in whole milliseconds are named apart, the largest step SBK's 9 ms over its
+        idle 5, and stay out of the largest move quoted for the others."""
         got = dict(epn.tools_load_macros(self._table(tmp_path)))
-        assert got == {"toolsLoadPct": "88", "toolsTailToolsWord": "four",
+        assert got == {"toolsLoadPct": "88", "toolsTailToolsWord": "six",
                        "toolsTailRiseLo": "2.1", "toolsTailRiseHi": "5.0",
                        "toolsMedianMoveHi": "0.1", "toolsTailBackWord": "one",
-                       "toolsSbkMedianIdle": "5", "toolsSbkMedianUnderLo": "6",
-                       "toolsSbkMedianUnderHi": "9"}
+                       "toolsWholeMsWord": "four", "toolsWholeStepsHi": "four"}
 
-    def test_sbks_median_left_up_at_real_time_priority_stops_the_build(self, tmp_path):
-        """The prose says real-time priority put SBK's median back where it was idle."""
+    def test_the_largest_step_is_the_tables(self, tmp_path):
+        """With SBK's median up by two steps at most, the largest is Quiver's, from 1 ms to 3."""
+        got = dict(epn.tools_load_macros(self._table(
+            tmp_path, whole={"sbk": self._whole("sbk", 5.0, (6.0, 7.0))})))
+        assert got["toolsWholeStepsHi"] == "two"
+
+    def test_a_whole_millisecond_median_left_up_at_real_time_priority_stops_the_build(
+            self, tmp_path):
+        """The prose says real-time priority put those medians back where they were idle."""
         with pytest.raises(ValueError, match="real-time priority put it back"):
-            epn.tools_load_macros(self._table(tmp_path, sbk=self._sbk(ahead=6.0)))
+            epn.tools_load_macros(self._table(tmp_path, whole={"sbk": self._sbk(ahead=6.0)}))
 
-    def test_a_table_without_sbk_stops_the_build(self, tmp_path):
-        with pytest.raises(ValueError, match="real-time priority put it back"):
-            epn.tools_load_macros(self._table(tmp_path, sbk=()))
+    @pytest.mark.parametrize("tool", ["trogdor", "sbk", "quiver", "pravega-benchmark"])
+    def test_a_table_without_a_tool_named_apart_stops_the_build(self, tmp_path, tool):
+        with pytest.raises(ValueError, match="whole steps from one idle figure"):
+            epn.tools_load_macros(self._table(tmp_path, whole={tool: ()}))
 
-    def test_a_median_named_as_one_printed_step_that_moved_otherwise_stops_the_build(self,
-                                                                                    tmp_path):
-        with pytest.raises(ValueError, match="exactly one step"):
-            epn.tools_load_macros(self._table(tmp_path, trogdor=self._trogdor(p50=(2.0, 2.0))))
+    def test_a_whole_millisecond_median_the_load_left_alone_stops_the_build(self, tmp_path):
+        """The prose says the load raised it, so it must be higher in some round."""
+        with pytest.raises(ValueError, match="whole steps from one idle figure"):
+            epn.tools_load_macros(self._table(
+                tmp_path, whole={"trogdor": self._whole("trogdor", 2.0, (2.0, 2.0))}))
 
-    def test_a_table_without_the_tool_named_as_one_printed_step_stops_the_build(self, tmp_path):
-        with pytest.raises(ValueError, match="exactly one step"):
-            epn.tools_load_macros(self._table(tmp_path, trogdor=()))
+    def test_a_whole_millisecond_median_that_fell_under_the_load_stops_the_build(self, tmp_path):
+        with pytest.raises(ValueError, match="whole steps from one idle figure"):
+            epn.tools_load_macros(self._table(
+                tmp_path, whole={"quiver": self._whole("quiver", 2.0, (3.0, 1.0))}))
+
+    def test_a_median_printed_with_a_fraction_stops_the_build(self, tmp_path):
+        with pytest.raises(ValueError, match="whole steps from one idle figure"):
+            epn.tools_load_macros(self._table(tmp_path, whole={
+                "pravega-benchmark": self._whole("pravega-benchmark", 1.0, (1.5, 2.0))}))
+
+    def test_a_whole_millisecond_tool_without_its_loaded_cells_stops_the_build(self, tmp_path):
+        """With nothing under the load there is no step to count, and the prose counts one."""
+        bare = [r for r in self._quiver() if not (r[2] == "88" and r[3] == "no")]
+        with pytest.raises(ValueError, match="whole steps from one idle figure"):
+            epn.tools_load_macros(self._table(tmp_path, whole={"quiver": bare}))
+
+    def test_two_idle_medians_stop_the_build(self, tmp_path):
+        """A step is counted from the one idle figure every round shared."""
+        two = self._whole("sbk", 5.0, (6.0,)) + self._whole("sbk", 4.0, (6.0,), first=2)
+        with pytest.raises(ValueError, match="whole steps from one idle figure"):
+            epn.tools_load_macros(self._table(tmp_path, whole={"sbk": two}))
 
     def test_a_tool_whose_tail_did_not_rise_stops_the_build(self, tmp_path):
         flat = self._cells("1", "vegeta", 1.6, 1.5, 1.5) + self._cells("2", "vegeta", 1.6, 1.5, 1.5)
@@ -2691,6 +2738,8 @@ class TestToolsUnderLoad:
         assert rows == ["\\kafka{} Trogdor & 2.00 & 3.00 & 3.00 & 8.00 & 6.00 \\\\",
                         "k6 & 0.70 & 0.72 & 0.85 & 2.93 & 0.85 \\\\",
                         "NATS bench & 1.31 & 1.30 & 1.43 & 4.02 & 3.94 \\\\",
+                        "Pravega benchmark & 1.00 & 1.50 & 3.00 & 6.00 & 4.00 \\\\",
+                        "Quiver & 1.00 & 2.50 & 2.00 & 6.00 & 4.00 \\\\",
                         "SBK & 5.00 & 7.50 & 17.00 & 21.00 & 17.50 \\\\"]
 
     def test_the_committed_table_is_the_one_the_data_give(self):
@@ -2843,9 +2892,10 @@ class TestTheToolsBlock:
                 w.writerows(rows)
         return str(p1), str(p2)
 
-    def _t2(self, rnd, tool, offset, verdict, clocks, kept="", sent="3000", corrected=None):
+    def _t2(self, rnd, tool, offset, verdict, clocks, kept="", sent="3000", corrected=None,
+            why=""):
         return (rnd, tool, offset, verdict, "", sent, kept,
-                verdict if corrected is None else corrected, clocks, "")
+                verdict if corrected is None else corrected, clocks, why)
 
     def _pulsar(self, kept1="7", kept2="3", judged_one=1, sent2="3000"):
         """pulsar-perf as 10 October left it: every value kept at the smaller offset, a few at
@@ -2920,9 +2970,28 @@ class TestTheToolsBlock:
                    self._t2("1", "rocketmq-benchmark", "4.81", "undecided", "two")]
         return t1, t2
 
+    KEPT = "it kept 2956 of the 3000 it was asked to send"
+
+    def _counted(self, why=KEPT, trip="in one process"):
+        """The Pravega benchmark as freeze 37 left it, by what the prose says of it: it times
+        within one process, and counts what arrives in its minute, 43 or 44 short of the 3,000
+        asked for but in the run whose count was whole. Version 34's rule answered two by that
+        count in two runs, one in the whole one, and left the other undecided, its count no
+        shorter than its control's."""
+        t1 = [("1", "pravega-benchmark", trip, "p50", "1", "1.0887"),
+              ("2", "pravega-benchmark", trip, "p50", "1", "1.1411")]
+        t2 = [self._t2("1", "pravega-benchmark", "2.0086", self.ONE, "two", kept="2956",
+                       why=self.KEPT),
+              self._t2("1", "pravega-benchmark", "4.0300", "undecided", "one", kept="4298",
+                       why="its figures stayed within a quarter of the 4.030 ms offset"),
+              self._t2("2", "pravega-benchmark", "2.0219", self.ONE, "undecided", kept="2957",
+                       why="its figures moved between a quarter and half the 2.022 ms offset"),
+              self._t2("2", "pravega-benchmark", "4.0074", self.ONE, "two", kept="2956", why=why)]
+        return t1, t2
+
     def _tables(self, tmp_path, rdkafka_round2=KEEPS, slope="1.0084", drop_round2=False,
                 rdkafka_round1="undecided", wrk2_clocks="one", rdkafka_clocks="two",
-                pulsar=None, october=None, brokers=None):
+                pulsar=None, october=None, brokers=None, counted=None):
         t1 = [("1", "wrk2", "round trip", "p50", "1", slope),
               ("1", "rdkafka_performance", "across two processes", "avg", "2", "1.9583"),
               ("1", "pulsar-perf", "across two processes", "p50", "1", "1.0285"),
@@ -2940,20 +3009,23 @@ class TestTheToolsBlock:
             t2.append(self._t2("2", "rdkafka_performance", "4.59", rdkafka_round2, "two"))
         more_t1, more_t2 = self._october() if october is None else october
         late_t1, late_t2 = self._brokers() if brokers is None else brokers
-        return self._write(tmp_path, t1 + more_t1 + late_t1, t2 + more_t2 + late_t2)
+        own_t1, own_t2 = self._counted() if counted is None else counted
+        return self._write(tmp_path, t1 + more_t1 + late_t1 + own_t1,
+                           t2 + more_t2 + late_t2 + own_t2)
 
     def test_the_counts_the_section_quotes(self, tmp_path):
-        """Fourteen tools: six on one clock, held so in ten of their eleven runs, SBK's other run
-        undecided, five of them taking both timestamps in one process and PerfKit in two on one
-        host; seven on two, answered so in sixteen of their eighteen runs (Pulsar's undecided run
-        and Trogdor's at the larger offset are the two); and Artemis's perf client, on two
-        processes, whose two runs are counted apart. YSB's slopes and RocketMQ's are their own,
-        held outside the band and out of the band's figures, and PerfKit, with none, adds nothing
-        to them."""
+        """Fifteen tools: six on one clock, held so in ten of their eleven runs, SBK's other run
+        undecided; seven on two, answered so in sixteen of their eighteen runs (Pulsar's undecided
+        run and Trogdor's at the larger offset are the two); Artemis's perf client, on two
+        processes, whose two runs are counted apart; and the Pravega benchmark, whose four runs are
+        counted apart too, by what its count let the rule answer. Six tools take both timestamps in
+        one process, five of the one-clock tools and the Pravega benchmark, and PerfKit in two on
+        one host. YSB's slopes and RocketMQ's are their own, held outside the band and out of the
+        band's figures, and PerfKit, with none, adds nothing to them."""
         got = dict(epn.tools_block_macros(*self._tables(tmp_path)))
-        assert got == {"toolsRunWord": "14", "toolsRoundsWord": "two",
+        assert got == {"toolsRunWord": "15", "toolsRoundsWord": "two",
                        "toolsSlopeLo": "0.98", "toolsSlopeHi": "1.14",
-                       "toolsOneClockWord": "six", "toolsOneProcessWord": "five",
+                       "toolsOneClockWord": "six", "toolsOneProcessWord": "six",
                        "toolsOneClockOf": "11", "toolsOneClockHeld": "10",
                        "toolsTwoClockWord": "seven", "toolsTwoClockRuns": "16",
                        "toolsTwoClockOf": "18", "toolsKeepsRoundsWord": "one",
@@ -2962,7 +3034,37 @@ class TestTheToolsBlock:
                        "toolsStreamKeptHi": "4", "toolsYsbSlopeLo": "-0.2",
                        "toolsYsbSlopeHi": "236", "toolsYsbOneClockWord": "one",
                        "toolsYsbRunsWord": "two", "toolsAskedToSend": "3{,}000",
-                       "toolsArtemisRunsWord": "two"}
+                       "toolsArtemisRunsWord": "two", "toolsCountedRunsWord": "four",
+                       "toolsCountedTwoWord": "two", "toolsCountedUndecidedWord": "one",
+                       "toolsCountedOneWord": "one", "toolsCountedShortLo": "43",
+                       "toolsCountedShortHi": "44"}
+
+    def test_tables_without_the_pravega_benchmark_stop_the_build(self, tmp_path):
+        with pytest.raises(ValueError, match="answered two was answered by its count"):
+            epn.tools_block_macros(*self._tables(tmp_path, counted=([], [])))
+
+    def test_a_pravega_run_answered_two_by_its_figures_stops_the_build(self, tmp_path):
+        """The prose says each of its runs answered two was answered by its count alone; one whose
+        figures moved by more than half the offset would say its clocks are two."""
+        moved = "its figures moved by more than half the 4.007 ms offset (avg +2.100, p50 +2.000)"
+        with pytest.raises(ValueError, match="answered two was answered by its count"):
+            epn.tools_block_macros(*self._tables(tmp_path, counted=self._counted(why=moved)))
+
+    def test_the_pravega_benchmark_read_as_timing_across_two_processes_stops_the_build(
+            self, tmp_path):
+        """Its exception rests on its two timestamps being taken in one process."""
+        with pytest.raises(ValueError, match="its interval one process's"):
+            epn.tools_block_macros(*self._tables(
+                tmp_path, counted=self._counted(trip="across two processes")))
+
+    def test_a_one_clock_tool_timing_outside_one_process_stops_the_build(self, tmp_path):
+        """The prose counts the tools timing within one process as the one-clock tools but
+        PerfKit, and the Pravega benchmark; a one-clock tool read to time some other interval
+        would fall outside that count."""
+        t1, t2 = self._october()
+        t1 = [r if r[1] != "xinfra-monitor" else r[:2] + ("one machine",) + r[3:] for r in t1]
+        with pytest.raises(ValueError, match="timing within one process"):
+            epn.tools_block_macros(*self._tables(tmp_path, october=(t1, t2)))
 
     def test_rocketmq_inside_the_band_in_a_round_stops_the_build(self, tmp_path):
         """The prose reports its staircase as missing the band in every round, against its
@@ -3059,8 +3161,10 @@ class TestTheToolsBlock:
 
     def test_tables_without_pulsar_stop_the_build(self, tmp_path):
         late_t1, late_t2 = self._brokers()
-        p1, p2 = self._write(tmp_path, [("1", "wrk2", "round trip", "p50", "1", "1.0")] + late_t1,
-                             [self._t2("1", "wrk2", "3.8", self.ONE, "one")] + late_t2)
+        own_t1, own_t2 = self._counted()
+        p1, p2 = self._write(tmp_path,
+                             [("1", "wrk2", "round trip", "p50", "1", "1.0")] + late_t1 + own_t1,
+                             [self._t2("1", "wrk2", "3.8", self.ONE, "one")] + late_t2 + own_t2)
         with pytest.raises(ValueError, match="Pulsar's client kept"):
             epn.tools_block_macros(p1, p2)
 
@@ -3070,6 +3174,7 @@ class TestTheToolsBlock:
         assert rows == [
             "wrk2 & round trip & 1.01--1.04 & one & 3/3 \\\\",
             "\\kafka{} producer & to ack. & 1.14--1.14 & one & 1/1 \\\\",
+            "Pravega benchmark & one process & 1.09--1.14 & one & 1/4 \\\\",
             "SBK & one process & 1.01--1.01 & one & 1/2 \\\\",
             "Strimzi Canary & one process & 1.00--1.00 & one & 1/1 \\\\",
             "Xinfra Monitor & one process & 1.04--1.04 & one & 2/2 \\\\",
@@ -3218,6 +3323,95 @@ class TestFreezeThirtySixsOwnPredictions:
             return rows
         with pytest.raises(ValueError, match="B2C and S2C alike"):
             epn.brokers_block_macros(*self._copy(tmp_path, rocket=apart))
+
+
+class TestFreezeThirtySevensOwnPrediction:
+    """Freeze 37's own prediction, T2-q (block_v40.py), and the Pravega benchmark's clock-moved runs
+    beside it, as the supplement quotes them. The faulty tables are the committed ones with one
+    fault put in."""
+
+    WRAPPED = "1.8446744073709552e+19"
+
+    def _copy(self, tmp_path, rows=None, verdicts=None):
+        import json
+        src = Path(__file__).resolve().parents[2] / "docs" / "results" / "tools"
+        with (src / "v40.csv").open(encoding="utf-8", newline="") as fh:
+            have = list(csv.DictReader(fh))
+        path = tmp_path / "v40.csv"
+        with path.open("w", encoding="utf-8", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=list(have[0]), lineterminator="\n")
+            w.writeheader()
+            w.writerows(rows(have) if rows else have)
+        found = json.loads((src / "v40_verdicts.json").read_text(encoding="utf-8"))
+        judged = tmp_path / "v40_verdicts.json"
+        judged.write_text(json.dumps(verdicts(found) if verdicts else found), encoding="utf-8")
+        return str(path), str(judged)
+
+    def _set(self, rnd, tool, run, field, value, offset=None):
+        """A change that puts one value into the one row named."""
+        def change(rows):
+            (row,) = [r for r in rows if (r["round"], r["tool"], r["run"]) == (rnd, tool, run)
+                      and (offset is None or r["offset_ms"] == offset)]
+            row[field] = value
+            return rows
+        return change
+
+    def _verdict(self, **fields):
+        def change(found):
+            found["T2-q"].update(fields)
+            return found
+        return change
+
+    def test_the_committed_tables_give_the_printed_numbers(self):
+        assert dict(epn.quiver_block_macros()) == {
+            "toolsQuiverFailedWord": "one", "toolsQuiverHeldWord": "three",
+            "toolsQuiverFewBelow": "1", "toolsQuiverSmallBelowLo": "2{,}308",
+            "toolsQuiverSmallBelowHi": "2{,}992", "toolsQuiverLargeBelowLo": "2{,}995",
+            "toolsQuiverLargeBelowHi": "2{,}999", "toolsPravegaAvgMoveHi": "0.3"}
+
+    def test_a_copy_reads_the_same(self, tmp_path):
+        assert epn.quiver_block_macros(*self._copy(tmp_path)) == epn.quiver_block_macros()
+
+    def test_absent_tables_emit_nothing(self, tmp_path, capsys):
+        assert epn.quiver_block_macros(str(tmp_path / "a.csv")) == []
+        assert "freeze 37's tables absent" in capsys.readouterr().out
+
+    @pytest.mark.parametrize("fields", [
+        {"verdict": "holds", "failed_in_rounds": [], "held_in_rounds": ["1", "2", "3", "4"]},
+        {"verdict": "holds"},
+        {"failed_in_rounds": []},
+        {"not_judged_in_rounds": ["2"]},
+        {"failed_in_rounds": ["1", "5"]},
+    ], ids=["held", "a verdict of holds", "no failed round", "a round not judged",
+            "a failed round with no run"])
+    def test_a_verdict_other_than_the_prose_gives_stops_the_build(self, tmp_path, fields):
+        with pytest.raises(ValueError, match="T2-q failed in some rounds"):
+            epn.quiver_block_macros(*self._copy(tmp_path, verdicts=self._verdict(**fields)))
+
+    @pytest.mark.parametrize("change", [
+        ("1", "offset", "avg", WRAPPED, "2.000"),
+        ("2", "offset", "max", "18.0", "2.000"),
+        ("3", "offset", "avg", "1.5", "4.000"),
+        ("4", "control", "below_zero", "1", None),
+        ("2", "control", "max", WRAPPED, None),
+    ], ids=["the failed round's average wrapped", "a maximum unwrapped",
+            "a larger offset's average unwrapped", "a control below zero", "a control wrapped"])
+    def test_a_quiver_run_other_than_the_prose_gives_stops_the_build(self, tmp_path, change):
+        rnd, run, field, value, offset = change
+        faulty = self._set(rnd, "quiver", run, field, value, offset)
+        with pytest.raises(ValueError, match="T2-q failed in some rounds"):
+            epn.quiver_block_macros(*self._copy(tmp_path, rows=faulty))
+
+    def test_a_pravega_median_that_moved_with_the_clock_stops_the_build(self, tmp_path):
+        faulty = self._set("3", "pravega-benchmark", "offset", "p50", "2.0", "4.000")
+        with pytest.raises(ValueError, match="median stayed where its control's was"):
+            epn.quiver_block_macros(*self._copy(tmp_path, rows=faulty))
+
+    def test_a_table_without_the_pravega_benchmark_stops_the_build(self, tmp_path):
+        def drop(rows):
+            return [r for r in rows if r["tool"] != "pravega-benchmark"]
+        with pytest.raises(ValueError, match="median stayed where its control's was"):
+            epn.quiver_block_macros(*self._copy(tmp_path, rows=drop))
 
 
 class TestTheReceiverWaitIsEmitted:
@@ -3375,12 +3569,12 @@ class TestKOne:
 
 
 class TestTheStepTest:
-    """S1 for the paper's sentence and the supplement's paragraph and table (freeze 34, D37-4):
-    what four one-clock tools do with a value below zero when the clock steps back under them,
-    beside a control tool that cannot see the steps. The prose says every stepped run passed S1-a
-    and every prediction held in every round, so a table that says otherwise is a guard, not a
-    note. The faulty tables here are the committed runs with one fault put in, not a made-up
-    world, so they carry every field a real run sets."""
+    """S1 for the paper's sentence and the supplement's paragraph and table (freeze 34, D37-4, and
+    freezes 35 to 37 after it): what each tool does with a value below zero when the clock steps
+    back under it, beside tools that cannot see the steps. The prose says every stepped run passed
+    S1-a and every prediction held in every round but Sarama's, so a table that says otherwise is a
+    guard, not a note. The faulty tables here are the committed runs with one fault put in, not a
+    made-up world, so they carry every field a real run sets."""
 
     def _copy(self, tmp_path, rows=None, verdicts=None, more_rows=None, more_verdicts=None):
         """Freeze 34's table and the later blocks' (S1_MORE), each with the fault given put in."""
@@ -3409,7 +3603,8 @@ class TestTheStepTest:
             ("sOneRoundsWord", "four"), ("sOnePkbLo", "8"), ("sOnePkbHi", "18"),
             ("sOneCanaryLo", "10"), ("sOneCanaryHi", "20"), ("sOneStreamLo", "16"),
             ("sOneStreamHi", "25"), ("sOneXinfraLo", "40"), ("sOneXinfraHi", "84"),
-            ("sOneSbkLo", "26"), ("sOneSbkHi", "58"), ("sOneSaramaGapLo", "1.3"),
+            ("sOneSbkLo", "26"), ("sOneSbkHi", "58"), ("sOneQuiverLo", "9"),
+            ("sOneQuiverHi", "25"), ("sOneSaramaGapLo", "1.3"),
             ("sOneSaramaGapHi", "3.8"), ("sOneArtemisSentLo", "2"), ("sOneArtemisSentHi", "10"),
             ("sOneClockBackMs", "0.1")]
 
@@ -3425,8 +3620,12 @@ class TestTheStepTest:
         assert rows[0] == ("PerfKit messaging & 50 & 363--397 & 8--18 & 0 & samples below zero, "
                            "in its mean and percentiles \\\\")
         assert rows[4].startswith("\\kafka{} end-to-end & 20 & 29--33 & --- & --- & ")
-        assert rows[-1] == ("Artemis perf & 20 & 451--466 & 0 & 0 & its producer stopped short, "
-                            "saying success \\\\")
+        assert rows[8] == ("Artemis perf & 20 & 451--466 & 0 & 0 & its producer stopped short, "
+                           "saying success \\\\")
+        assert rows[9] == ("Quiver & 20 & 326--343 & 9--25 & 0 & values below zero in its "
+                           "transfers, its maximum wrapped \\\\")
+        assert rows[-1] == ("Pravega benchmark & 20 & 335--341 & 1 & 0 & no total printed, and an "
+                            "exception \\\\")
 
     def test_the_committed_table_is_the_one_the_data_give(self):
         repo = Path(__file__).resolve().parents[2]

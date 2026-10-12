@@ -115,3 +115,11 @@ round,tool,trip,figure,crossings,slope
 4,artemis-perf,across two processes,p50,1,1.0440
 4,bookkeeper-benchmark,send to acknowledgment,p50,1,1.2033
 4,rocketmq-benchmark,across two processes,avg,1,1.7788
+1,pravega-benchmark,in one process,p50,1,1.0887
+1,quiver,across two processes,p50,1,1.0783
+2,pravega-benchmark,in one process,p50,1,1.1411
+2,quiver,across two processes,p50,1,1.4813
+3,pravega-benchmark,in one process,p50,1,1.1411
+3,quiver,across two processes,p50,1,1.4289
+4,pravega-benchmark,in one process,p50,1,1.0285
+4,quiver,across two processes,p50,1,0.8977

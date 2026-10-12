@@ -1,0 +1,17 @@
+round,tool,run,steps,stepped_back_ms,clock_after_ms,instrument_ok,below_zero,p50,p99,kept,received,avg,min,sent,asked,producer_result,max,final,thrown
+1,quiver,control,,,,,0,1.0,2.0,3000,3000,1.0326666666666666,1.0,,3000,,17.0,,
+1,quiver,stepped,326,6520.0,-0.043,True,9,1.0,2.0,3000,3000,5.534023222112866e+16,0.0,,3000,,1.8446744073709552e+19,,
+1,pravega-benchmark,control,,,,,0,1.0,3.0,2956,,1.0,,,3000,,16.0,True,0
+1,pravega-benchmark,stepped,340,6800.0,0.011,True,1,,,,,,,,3000,,,False,6
+2,quiver,control,,,,,0,1.0,2.0,3000,3000,1.0606666666666666,1.0,,3000,,18.0,,
+2,quiver,stepped,334,6680.0,-0.041,True,25,1.0,3.0,3000,3000,1.5372286728091293e+17,1.0,,3000,,1.8446744073709552e+19,,
+2,pravega-benchmark,control,,,,,0,1.0,3.0,2957,,1.2,,,3000,,18.0,True,0
+2,pravega-benchmark,stepped,341,6820.0,0.010,True,1,,,,,,,,3000,,,False,6
+3,quiver,control,,,,,0,1.0,1.0,3000,3000,1.0126666666666666,1.0,,3000,,18.0,,
+3,quiver,stepped,343,6860.0,-0.027,True,22,1.0,3.0,3000,3000,1.3527612320720338e+17,1.0,,3000,,1.8446744073709552e+19,,
+3,pravega-benchmark,control,,,,,0,1.0,3.0,2957,,1.4,,,3000,,15.0,True,0
+3,pravega-benchmark,stepped,335,6700.0,-0.045,True,1,,,,,,,,3000,,,False,6
+4,quiver,control,,,,,0,0.0,1.0,3000,3000,0.30366666666666664,0.0,,3000,,17.0,,
+4,quiver,stepped,335,6700.0,-0.020,True,9,1.0,1.0,3000,3000,5.534023222112866e+16,0.0,,3000,,1.8446744073709552e+19,,
+4,pravega-benchmark,control,,,,,0,1.0,3.0,2958,,1.1,,,3000,,16.0,True,0
+4,pravega-benchmark,stepped,335,6700.0,-0.022,True,1,,,,,,,,3000,,,False,6

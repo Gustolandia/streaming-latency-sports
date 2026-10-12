@@ -14,7 +14,9 @@ show when T2 moves its receiving arrow's clock:
 
 It holds if it holds in every round, as K1's and S1's are judged; a round that cannot judge it leaves
 it undecided, with the rounds that could not. The Pravega benchmark's T2, on one clock, is judged with
-every tool's (tools_block.py).
+every tool's (tools_block.py); its runs are written beside Quiver's, judged by nothing here, because
+the supplement says what its figures and its count did there, and a sentence that quotes them
+quotes this table (added at the fold, after the runs).
 
     python3 scripts/block_v40.py --root runs/azure/collected/matched-b/v40_<stamp>/x/runs/azure \\
         --out docs/results/tools/v40.csv --verdicts docs/results/tools/v40_verdicts.json
@@ -33,7 +35,11 @@ import sys
 WRAPPED_MS = 1e18
 
 FIELDS = ("round", "tool", "run", "offset_ms", "sent", "received", "below_zero", "avg", "p50", "max",
-          "wrapped")
+          "wrapped", "kept")
+
+#: The tools whose T2 runs are written here: Quiver, judged by T2-q, and the Pravega benchmark,
+#: described.
+TOOLS = ("quiver", "pravega-benchmark")
 
 _OFFSET = re.compile(r"t2-(.+)-(\d+(?:_\d+)?)ms$")
 
@@ -46,34 +52,35 @@ def _load(path):
         return None
 
 
-def run_row(rnd, folder, run, offset_ms=""):
+def run_row(rnd, folder, run, offset_ms="", tool="quiver"):
     reading = _load(os.path.join(folder, "reading.json")) or {}
     figures = reading.get("reported_ms") or {}
 
     def cell(value):
         return "" if value is None else value
 
-    return {"round": rnd, "tool": "quiver", "run": run, "offset_ms": offset_ms,
+    return {"round": rnd, "tool": tool, "run": run, "offset_ms": offset_ms,
             "sent": cell(reading.get("sent")), "received": cell(reading.get("received")),
             "below_zero": cell(reading.get("below_zero")), "avg": cell(figures.get("avg")),
             "p50": cell(figures.get("p50")), "max": cell(figures.get("max")),
-            "wrapped": "+".join(reading.get("wrapped") or [])}
+            "wrapped": "+".join(reading.get("wrapped") or []), "kept": cell(reading.get("kept"))}
 
 
 def block_rows(root, rounds):
-    """Every T2 run of Quiver, round by round: its control, then its offsets."""
+    """Every T2 run of each tool here, round by round: its control, then its offsets."""
     rows = []
     for rnd, folder in rounds:
         base = os.path.join(root, folder)
         names = sorted(os.listdir(base)) if os.path.isdir(base) else []
-        control = os.path.join(base, "t2-quiver-control")
-        if os.path.isdir(control):
-            rows.append(run_row(rnd, control, "control"))
-        for name in names:
-            match = _OFFSET.fullmatch(name)
-            if match and match.group(1) == "quiver":
-                rows.append(run_row(rnd, os.path.join(base, name), "offset",
-                                    match.group(2).replace("_", ".")))
+        for tool in TOOLS:
+            control = os.path.join(base, "t2-%s-control" % tool)
+            if os.path.isdir(control):
+                rows.append(run_row(rnd, control, "control", tool=tool))
+            for name in names:
+                match = _OFFSET.fullmatch(name)
+                if match and match.group(1) == tool:
+                    rows.append(run_row(rnd, os.path.join(base, name), "offset",
+                                        match.group(2).replace("_", "."), tool=tool))
     return rows
 
 
@@ -96,7 +103,7 @@ def holds_t2q(control, offsets):
 def judge(rows, rounds):
     held, failed, unjudged = [], [], []
     for rnd in rounds:
-        mine = [r for r in rows if r["round"] == rnd]
+        mine = [r for r in rows if r["round"] == rnd and r["tool"] == "quiver"]
         control = [r for r in mine if r["run"] == "control"]
         offsets = [r for r in mine if r["run"] == "offset"]
         ok = holds_t2q(control[0], offsets) if control else None

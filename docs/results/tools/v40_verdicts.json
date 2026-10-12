@@ -1,0 +1,15 @@
+{
+  "T2-q": {
+    "failed_in_rounds": [
+      "1"
+    ],
+    "held_in_rounds": [
+      "2",
+      "3",
+      "4"
+    ],
+    "not_judged_in_rounds": [],
+    "tool": "quiver",
+    "verdict": "fails"
+  }
+}

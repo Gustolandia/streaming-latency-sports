@@ -525,6 +525,11 @@ class TestEveryTypedNumeralInTheMainTextIsADecision:
         "0.35": "the one latency panel (a) of the deletion figure draws at four phases, a "
                 "constant of make_paper_figures.plot_phases chosen so that three phases are "
                 "deleted and one kept; an illustration, not a measurement",
+        # 12 Oct 2026, with freeze 37: the arithmetic of an integer, not a measurement
+        "1.8": "2^64 ms to two figures, what an unsigned 64-bit subtraction makes of a value "
+               "just below zero, as Quiver's summary subtracts; a property of its integers, "
+               "not a result, and that its maximum passed 10^18 ms in every run under the "
+               "offsets is checked by emit_paper_numbers.quiver_block_macros",
         # "1.0" and "2.0" left this inventory in round 76: the grid values are now emitted
         # (`ombGridPrintedLo`, `ombGridPrintedHi`) from the same rows Figure 4's ticks are drawn
         # from, so neither is typed anywhere in the main text any longer.

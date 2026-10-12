@@ -53,6 +53,8 @@ Which judged file stands for which round is the write-up's decision, not this sc
               first pair as each ran (freeze 35).
   the three   ../matched-b/v39_20261011T232744Z, tools_v39 and tools_v39_round2 to _round4,
               judged on the second x86 pair as each ran (freeze 36).
+  the two     ../matched-b/v40_20261012T034644Z, tools_v40 and tools_v40_round2 to _round4, judged on the
+              second x86 pair as each ran (freeze 37).
 
     python scripts/tools_block.py --collected runs/azure/collected/matched
 """
@@ -129,6 +131,13 @@ ROUNDS_V39 = tuple(
     for rnd, folder in (("1", "tools_v39"), ("2", "tools_v39_round2"), ("3", "tools_v39_round3"),
                         ("4", "tools_v39_round4")))
 
+#: Freeze 37's block (D40-1): Quiver and the Pravega benchmark, judged on the second x86 pair as
+#: each ran. Quiver's own prediction is judged by block_v40.py, and S1 on both by s1_block.py.
+ROUNDS_V40 = tuple(
+    (rnd, "../matched-b/v40_20261012T034644Z/x/runs/azure/" + folder, None, {})
+    for rnd, folder in (("1", "tools_v40"), ("2", "tools_v40_round2"), ("3", "tools_v40_round3"),
+                        ("4", "tools_v40_round4")))
+
 #: The interval each tool times, as the plan read its invocation before any run (the addendum
 #: of freeze 21, "How each tool keeps time"). It is how the tool was run, not a measurement, and
 #: T2 is its test: every tool read as one clock was found on one, and the tool read as spanning
@@ -174,6 +183,10 @@ TRIPS = {
     "artemis-perf": "across two processes",
     "rocketmq-benchmark": "across two processes",
     "bookkeeper-benchmark": "send to acknowledgment",
+    # Freeze 37's two (D40-4): Quiver's receiving arrow subtracts its sending arrow's stamp, and
+    # the Pravega benchmark takes both of its stamps in one JVM.
+    "quiver": "across two processes",
+    "pravega-benchmark": "in one process",
 }
 
 _STEP = re.compile(r"t1-(.+)-step\.json$")
@@ -330,7 +343,7 @@ def collect(collected, rounds=None):
     """The three tables, every round, from the folders the write-up names."""
     t1, t2, t3 = [], [], []
     for rnd, runs, verdicts, read_again in (ROUNDS + ROUNDS_V33 + ROUNDS_V35 + ROUNDS_V36
-                                            + ROUNDS_V37 + ROUNDS_V38 + ROUNDS_V39
+                                            + ROUNDS_V37 + ROUNDS_V38 + ROUNDS_V39 + ROUNDS_V40
                                             if rounds is None else rounds):
         again = {tool: os.path.join(collected, d, "t1-%s-step.json" % tool)
                  for tool, d in read_again.items()}

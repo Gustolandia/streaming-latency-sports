@@ -3599,6 +3599,17 @@ CLOCKS_NOT_PREDICTED = {"artemis-perf": "D39-4"}
 #: them: one run of SBK, whose minimum, printed in whole milliseconds, moved by one step (freeze 35).
 ONE_CLOCK_UNDECIDED = {"sbk": 1}
 
+#: The tools on one clock whose answer from the offset their count set rather than their figures,
+#: by the change that predicted their clock: the Pravega benchmark (freeze 37, D40-4) counts what
+#: arrives in its minute, set-up included, so its count falls short of what it was asked to publish
+#: whatever its clocks, and version 34's rule answers one only for a whole count and two for a short
+#: one beside a longer control. Held to that: every run of it answered two was answered by its
+#: count, and its interval is one process's.
+CLOCKS_BY_COUNT = {"pravega-benchmark": "D40-4"}
+
+#: The intervals timed within one process: what the prose counts as taking both timestamps there.
+ONE_PROCESS_TRIPS = ("round trip", "send to acknowledgment", "in one process")
+
 #: The tools by the names a reader knows them by, short enough for a column-wide table.
 TOOL_NAMES = {
     "valkey-benchmark": "Valkey benchmark",
@@ -3630,6 +3641,8 @@ TOOL_NAMES = {
     "artemis-perf": "Artemis perf",
     "rocketmq-benchmark": "RocketMQ benchmark",
     "bookkeeper-benchmark": "BookKeeper benchmark",
+    "quiver": "Quiver",
+    "pravega-benchmark": "Pravega benchmark",
 }
 
 #: The table's row order: by the interval timed, one-clock intervals first; and how each is set
@@ -3685,7 +3698,8 @@ def _tools_judged(t1, t2):
     for r in t2:
         if r["clocks"] in ("one", "two"):
             answered[r["tool"]].add(r["clocks"])
-    wrong = {t: sorted(a) for t, a in answered.items() if t not in CLOCKS_NOT_PREDICTED
+    wrong = {t: sorted(a) for t, a in answered.items()
+             if t not in CLOCKS_NOT_PREDICTED and t not in CLOCKS_BY_COUNT
              and (len(a) != 1 or (a == {"two"}) != (trip[t] in TWO_CLOCK_TRIPS))}
     if wrong:
         raise ValueError("each tool must be answered one way, and the way its invocation was read "
@@ -3694,8 +3708,18 @@ def _tools_judged(t1, t2):
     if any("two" in a or trip.get(t) not in TWO_CLOCK_TRIPS for t, a in shown.items()):
         raise ValueError("the prose says %s spans two clocks and that no run of it was answered "
                          "two; the tables say %s" % (sorted(CLOCKS_NOT_PREDICTED), shown))
-    one = sorted(t for t, a in answered.items() if a == {"one"} and t not in CLOCKS_NOT_PREDICTED)
-    two = sorted(t for t, a in answered.items() if a == {"two"} and t not in CLOCKS_NOT_PREDICTED)
+    #: A table without such a tool gives it no interval, so its absence stops the build here too:
+    #: the two tables name the same tools (`_tools_rows`), so it cannot have runs without one.
+    counted = [r for r in t2 if r["tool"] in CLOCKS_BY_COUNT]
+    if (any(trip.get(t) not in ONE_PROCESS_TRIPS for t in CLOCKS_BY_COUNT)
+            or any(r["clocks"] == "two" and not r["clocks_why"].startswith("it kept")
+                   for r in counted)):
+        raise ValueError("the prose says every run of %s answered two was answered by its count "
+                         "alone, its interval one process's; the tables disagree"
+                         % sorted(CLOCKS_BY_COUNT))
+    apart = set(CLOCKS_NOT_PREDICTED) | set(CLOCKS_BY_COUNT)
+    one = sorted(t for t, a in answered.items() if a == {"one"} and t not in apart)
+    two = sorted(t for t, a in answered.items() if a == {"two"} and t not in apart)
     #: The prose says the one-clock tools' figures stayed put in every run but the ones it names.
     undecided = {}
     for r in t2:
@@ -3784,6 +3808,16 @@ def tools_block_macros(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
     if one_host != ["pkb"]:
         raise ValueError("the prose names PerfKit as the one tool on one clock across two "
                          "processes; the tables say %s" % one_host)
+    #: The tools that take both timestamps in one process, by the interval each times: those on one
+    #: clock but PerfKit, and those whose answer their count set (CLOCKS_BY_COUNT).
+    in_one_process = sorted(t for t in trip if trip[t] in ONE_PROCESS_TRIPS)
+    if in_one_process != sorted((set(one) - set(one_host)) | set(CLOCKS_BY_COUNT)):
+        raise ValueError("the prose counts the tools timing within one process as those on one "
+                         "clock but PerfKit, with %s; the tables say %s"
+                         % (sorted(CLOCKS_BY_COUNT), in_one_process))
+    #: What the rule answered for the tools whose answer their count set, as the prose gives it.
+    counted = [r for r in t2 if r["tool"] in CLOCKS_BY_COUNT]
+    short = [int(r["sent"]) - int(r["kept"]) for r in counted if int(r["kept"]) < int(r["sent"])]
     #: And it says freeze 21's judge, whose noise allowance comes from a staircase PerfKit has
     #: none of, decided none of PerfKit's runs.
     if any(r["verdict"] != UNDECIDED_RUN for r in t2 if r["tool"] == "pkb"):
@@ -3807,7 +3841,7 @@ def tools_block_macros(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
         ("toolsSlopeLo", "%.2f" % min(per_crossing)),
         ("toolsSlopeHi", "%.2f" % max(per_crossing)),
         ("toolsOneClockWord", _spell(len(one))),
-        ("toolsOneProcessWord", _spell(len(one) - len(one_host))),
+        ("toolsOneProcessWord", _spell(len(in_one_process))),
         ("toolsOneClockOf", str(len(one_runs))),
         ("toolsOneClockHeld", str(sum(r["clocks"] == "one" for r in one_runs))),
         ("toolsTwoClockWord", _spell(len(two))),
@@ -3825,6 +3859,12 @@ def tools_block_macros(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
         ("toolsYsbRunsWord", _spell(len(ysb_t2))),
         ("toolsAskedToSend", "{:,}".format(int(wrong["sent"])).replace(",", "{,}")),
         ("toolsArtemisRunsWord", _spell(sum(1 for r in t2 if r["tool"] in CLOCKS_NOT_PREDICTED))),
+        ("toolsCountedRunsWord", _spell(len(counted))),
+        ("toolsCountedTwoWord", _spell(sum(r["clocks"] == "two" for r in counted))),
+        ("toolsCountedUndecidedWord", _spell(sum(r["clocks"] == UNDECIDED_RUN for r in counted))),
+        ("toolsCountedOneWord", _spell(sum(r["clocks"] == "one" for r in counted))),
+        ("toolsCountedShortLo", str(min(short))),
+        ("toolsCountedShortHi", str(max(short))),
     ]
 
 
@@ -3843,17 +3883,14 @@ TAIL_BACK_SHARE = 0.9
 T3_APART = {"ysb": "its figure is set by its flush",
             "pkb": "its tail is the managed queue's, swinging by more between rounds"}
 
-#: The tools whose median the load moved by exactly one step of what they print, by that step:
-#: Trogdor prints whole milliseconds, and its median went from 2 to 3. The prose names it, and
-#: quotes the largest move of the others beside it, rather than let one printed step stand as
-#: how far every median moved.
-MEDIAN_ONE_STEP = {"trogdor": 1.0}
-
-#: The tools whose median the load moved by more than one step of what they print, which the prose
-#: names with each round's figures: SBK prints whole milliseconds, and its median went from 5 ms
-#: idle to 6 to 9 ms under the load, and back to 5 at real-time priority in every round (freeze 35).
-#: Held to that: the same median idle in every round, and back to it at real-time priority.
-MEDIAN_MOVED = ("sbk",)
+#: The tools that print their median in whole milliseconds and whose median the load raised by
+#: whole steps: Trogdor, from 2 to 3 ms; SBK (freeze 35), from 5 ms to as much as 9; and Quiver
+#: and the Pravega benchmark (freeze 37), from 1 ms by one or two steps. The prose names them apart,
+#: and quotes the largest move of the others beside them, rather than let a printed step stand as
+#: how far every median moved. Held to what it says of them: in every round the same median idle,
+#: no lower under the load and higher in some round, and back to the idle median at real-time
+#: priority.
+MEDIAN_WHOLE_MS = ("pravega-benchmark", "quiver", "sbk", "trogdor")
 
 
 def _tools_load(t3_path=TOOLS_T3):
@@ -3915,32 +3952,34 @@ def tools_load_macros(t3_path=TOOLS_T3):
     rises = [v["rise"] for v in fold.values()]
     back = [t for t, v in fold.items() if v.get("back", 0.0) >= TAIL_BACK_SHARE]
     moves = {t: v["move"] for t, v in fold.items() if "move" in v}
-    if any(moves.get(t) != step for t, step in MEDIAN_ONE_STEP.items()):
-        raise ValueError("the prose says the load moved the median of %s by exactly one step of "
-                         "what it prints; the table says %s"
-                         % (sorted(MEDIAN_ONE_STEP), {t: moves.get(t) for t in MEDIAN_ONE_STEP}))
     import csv as _csv
     with open(t3_path, encoding="utf-8") as fh:
-        cells = [r for r in _csv.DictReader(fh) if r["tool"] in MEDIAN_MOVED and r["p50"]]
-    idle = {float(r["p50"]) for r in cells if r["load_pct"] == "0"}
-    ahead = {float(r["p50"]) for r in cells if r["load_pct"] == busy and r["go_first"] == "yes"}
-    under = [float(r["p50"]) for r in cells if r["load_pct"] == busy and r["go_first"] == "no"]
-    if len(idle) != 1 or ahead != idle or not under or min(under) <= max(idle):
-        raise ValueError("the prose says the load raised the median of %s in every round from one "
-                         "idle figure, and real-time priority put it back; the table says idle %s, "
-                         "under %s, ahead %s" % (list(MEDIAN_MOVED), sorted(idle), under,
-                                                 sorted(ahead)))
+        cells = [r for r in _csv.DictReader(fh) if r["tool"] in MEDIAN_WHOLE_MS and r["p50"]]
+    steps, wrong = [], {}
+    for tool in MEDIAN_WHOLE_MS:
+        mine = [r for r in cells if r["tool"] == tool]
+        idle = {float(r["p50"]) for r in mine if r["load_pct"] == "0"}
+        ahead = {float(r["p50"]) for r in mine if r["load_pct"] == busy and r["go_first"] == "yes"}
+        under = [float(r["p50"]) for r in mine if r["load_pct"] == busy and r["go_first"] == "no"]
+        whole = all(float(r["p50"]).is_integer() for r in mine)
+        if (len(idle) != 1 or ahead != idle or not under or not whole
+                or min(under) < max(idle) or max(under) <= max(idle)):
+            wrong[tool] = (sorted(idle), under, sorted(ahead))
+        else:
+            steps += [u - max(idle) for u in under]
+    if wrong:
+        raise ValueError("the prose says the load raised the whole-millisecond median of %s by "
+                         "whole steps from one idle figure, and real-time priority put it back; "
+                         "the table says %s" % (list(MEDIAN_WHOLE_MS), wrong))
     return [
         ("toolsLoadPct", busy),
         ("toolsTailToolsWord", _spell(len(fold))),
         ("toolsTailRiseLo", "%.1f" % min(rises)),
         ("toolsTailRiseHi", "%.1f" % max(rises)),
-        ("toolsMedianMoveHi", "%.1f" % max(m for t, m in moves.items()
-                                           if t not in MEDIAN_ONE_STEP and t not in MEDIAN_MOVED)),
+        ("toolsMedianMoveHi", "%.1f" % max(m for t, m in moves.items() if t not in MEDIAN_WHOLE_MS)),
         ("toolsTailBackWord", _spell(len(back))),
-        ("toolsSbkMedianIdle", "%g" % idle.pop()),
-        ("toolsSbkMedianUnderLo", "%g" % min(under)),
-        ("toolsSbkMedianUnderHi", "%g" % max(under)),
+        ("toolsWholeMsWord", _spell(len(MEDIAN_WHOLE_MS))),
+        ("toolsWholeStepsHi", _spell(int(max(steps)))),
     ]
 
 
@@ -4062,6 +4101,8 @@ S1_MORE = (
      os.path.join("docs", "results", "tools", "s1_v38_verdicts.json")),
     (os.path.join("docs", "results", "tools", "s1_v39.csv"),
      os.path.join("docs", "results", "tools", "s1_v39_verdicts.json")),
+    (os.path.join("docs", "results", "tools", "s1_v40.csv"),
+     os.path.join("docs", "results", "tools", "s1_v40_verdicts.json")),
 )
 #: The S1 predictions that failed, by the change that made them, as the prose reports them: Sarama's
 #: producer tool, whose 99th percentile in its stepped runs fell below its control's by more than
@@ -4080,7 +4121,9 @@ S1_TOOLS = (("pkb", "PerfKit messaging", "samples below zero, in its mean and pe
             ("mqtt-benchmark", "mqtt-benchmark", "minimum above zero, mean within 1~ms of its control's"),
             ("sarama-producer-perf", "Sarama producer",
              "median as its control's, 99th percentile below it"),
-            ("artemis-perf", "Artemis perf", "its producer stopped short, saying success"))
+            ("artemis-perf", "Artemis perf", "its producer stopped short, saying success"),
+            ("quiver", "Quiver", "values below zero in its transfers, its maximum wrapped"),
+            ("pravega-benchmark", "Pravega benchmark", "no total printed, and an exception"))
 
 
 def _s1(csv_path=S1_CSV, verdicts_path=S1_VERDICTS, more=S1_MORE):
@@ -4135,7 +4178,7 @@ def s1_macros(csv_path=S1_CSV, verdicts_path=S1_VERDICTS, more=S1_MORE):
     out = [("sOneRoundsWord", _spell(len({r["round"] for r in rows})))]
     for tool, stem in (("pkb", "Pkb"), ("strimzi-canary", "Canary"),
                        ("stream-perftest-one", "Stream"), ("xinfra-monitor", "Xinfra"),
-                       ("sbk", "Sbk")):
+                       ("sbk", "Sbk"), ("quiver", "Quiver")):
         found = _below(rows, tool)
         out += [("sOne%sLo" % stem, str(min(found))), ("sOne%sHi" % stem, str(max(found)))]
     #: Sarama's failure, as the prose gives it: how far its stepped 99th percentile fell below its
@@ -4249,6 +4292,79 @@ def brokers_block_macros(v39_path=V39_CSV, verdicts_path=V39_VERDICTS, rocket_ru
         ("toolsRocketSTwoCHi", "%.2f" % max(s2c)),
         ("toolsRocketRefWaitMs", "%.0f" % reference),
     ]
+
+
+V40_CSV = os.path.join("docs", "results", "tools", "v40.csv")
+V40_VERDICTS = os.path.join("docs", "results", "tools", "v40_verdicts.json")
+#: A figure past this, ms, is one Quiver's unsigned subtraction wrapped (block_v40.WRAPPED_MS).
+QUIVER_WRAPPED_MS = 1e18
+
+
+def quiver_block_macros(v40_path=V40_CSV, verdicts_path=V40_VERDICTS):
+    """Freeze 37's own prediction (scripts/block_v40.py), T2-q, as the supplement reports it: it
+    failed in the rounds the verdict names, where at the smaller offset too few of Quiver's
+    transfers came out below zero for its average to wrap, though its maximum did; in the others,
+    and at the larger offset in every round, its summary wrapped as predicted, and no control held
+    a value below zero or a wrapped figure. Each is checked before it is printed."""
+    import csv as _csv
+    if not (os.path.exists(v40_path) and os.path.exists(verdicts_path)):
+        print("note: freeze 37's tables absent")
+        return []
+    with open(v40_path, encoding="utf-8", newline="") as fh:
+        table = list(_csv.DictReader(fh))
+    with open(verdicts_path, encoding="utf-8") as fh:
+        verdict = json.load(fh)["T2-q"]
+    rows = [r for r in table if r["tool"] == "quiver"]
+    #: The Pravega benchmark's T2 runs beside them, judged by nothing in that table: its median
+    #: stayed where its control's was in every run, as the prose says, and its average moved by
+    #: at most this much.
+    pravega = {}
+    for r in table:
+        if r["tool"] == "pravega-benchmark":
+            pravega.setdefault(r["round"], {}).setdefault(r["run"], []).append(r)
+    drift = [(float(r["avg"]) - float(p["control"][0]["avg"]),
+              float(r["p50"]) - float(p["control"][0]["p50"]))
+             for p in pravega.values() for r in p.get("offset", [])]
+    if not drift or any(m != 0.0 for _, m in drift):
+        raise ValueError("the prose says the Pravega benchmark's median stayed where its control's "
+                         "was in every clock-moved run; the table says %s" % drift)
+    failed, held = verdict["failed_in_rounds"], verdict["held_in_rounds"]
+    moved = [r for r in rows if r["run"] == "offset"]
+    controls = [r for r in rows if r["run"] == "control"]
+    smaller = {}
+    for r in moved:
+        smaller.setdefault(r["round"], []).append(r)
+    smaller = {rnd: min(rs, key=lambda r: float(r["offset_ms"])) for rnd, rs in smaller.items()}
+    larger = [r for r in moved if r not in smaller.values()]
+    few = [smaller[rnd] for rnd in failed if rnd in smaller]
+    if (verdict["verdict"] != "fails" or not failed or len(few) != len(failed)
+            or verdict["not_judged_in_rounds"]
+            or any(float(r["max"]) < QUIVER_WRAPPED_MS for r in moved)
+            or any(float(r["avg"]) < QUIVER_WRAPPED_MS for r in larger)
+            or any(float(r["avg"]) >= QUIVER_WRAPPED_MS for r in few)
+            or any(int(r["below_zero"]) or float(r["max"]) >= QUIVER_WRAPPED_MS for r in controls)):
+        raise ValueError("the prose says T2-q failed in some rounds, its average unwrapped at the "
+                         "smaller offset there while every maximum wrapped, the larger offset "
+                         "wrapped its average in every round, and no control wrapped; the tables "
+                         "say %s" % verdict)
+    ok_smaller = [int(smaller[rnd]["below_zero"]) for rnd in held]
+    below = [int(r["below_zero"]) for r in larger]
+    return [
+        ("toolsQuiverFailedWord", _spell(len(failed))),
+        ("toolsQuiverHeldWord", _spell(len(held))),
+        ("toolsQuiverFewBelow", _grouped(max(int(r["below_zero"]) for r in few))),
+        ("toolsQuiverSmallBelowLo", _grouped(min(ok_smaller))),
+        ("toolsQuiverSmallBelowHi", _grouped(max(ok_smaller))),
+        ("toolsQuiverLargeBelowLo", _grouped(min(below))),
+        ("toolsQuiverLargeBelowHi", _grouped(max(below))),
+        ("toolsPravegaAvgMoveHi", "%.1f" % max(abs(a) for a, _ in drift)),
+    ]
+
+
+def _grouped(count):
+    """A count as the prose sets it, its thousands parted by a comma braced so that math mode
+    adds no space after it: 2{,}308."""
+    return "{:,}".format(count).replace(",", "{,}")
 
 
 K1_CSV = os.path.join("docs", "results", "tools", "k1.csv")
@@ -4365,9 +4481,11 @@ def render_tools_table(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
         slopes = [float(r["slope"]) / int(r["crossings"])
                   for r in t1 if r["tool"] == tool and r["slope"]]
         runs = [r for r in t2 if r["tool"] == tool]
-        label = "one" if tool in one else "two"
+        label = "two" if trip[tool] in TWO_CLOCK_TRIPS else "one"
         #: Artemis's perf client spans two processes, but its figures cannot show the offset
-        #: (CLOCKS_NOT_PREDICTED): it is listed as two, with the runs so answered, none.
+        #: (CLOCKS_NOT_PREDICTED): it is listed as two, with the runs so answered, none. The
+        #: Pravega benchmark times within one process, and is listed as one, with the runs the rule
+        #: answered so beside its count's others (CLOCKS_BY_COUNT).
         #: A tool whose T1 is the zero step alone has no slope: PerfKit, whose managed queue the
         #: staircase cannot reach (D37-1).
         slope = "%s--%s" % (_signed(min(slopes)), _signed(max(slopes))) if slopes else "---"
@@ -5035,7 +5153,8 @@ def _all_pairs(m):
             + arm_macros() + manipulation_macros()
             + deletion_macros() + literature_macros() + cliff_macros() + reach_macros()
             + tools_block_macros() + tools_load_macros() + ysb_flush_macros() + ysb_fit_macros()
-            + k1_macros() + s1_macros() + brokers_block_macros() + recv_wait_macros()
+            + k1_macros() + s1_macros() + brokers_block_macros() + quiver_block_macros()
+            + recv_wait_macros()
             + law_reading_macros()
             + s_window_macros() + rate_by_delivery_macros() + mechanism_interval_macros()
             + traced_pooled_macros() + workload_macros() + backlog_macros()

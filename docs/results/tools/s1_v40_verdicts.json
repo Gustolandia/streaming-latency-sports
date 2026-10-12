@@ -1,0 +1,24 @@
+{
+  "pravega-benchmark": {
+    "failed_in_rounds": [],
+    "held_in_rounds": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "not_judged_in_rounds": [],
+    "verdict": "holds"
+  },
+  "quiver": {
+    "failed_in_rounds": [],
+    "held_in_rounds": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "not_judged_in_rounds": [],
+    "verdict": "holds"
+  }
+}

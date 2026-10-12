@@ -373,6 +373,13 @@ class TestCollect:
         assert tb.TRIPS["kgo-repeater"] == "across two machines"
         assert {tb.TRIPS[t] for t in ("artemis-perf", "rocketmq-benchmark")} == {"across two processes"}
 
+    def test_freeze_37_is_folded_from_the_second_pair(self):
+        assert [r[0] for r in tb.ROUNDS_V40] == ["1", "2", "3", "4"]
+        assert all(r[1].startswith("../matched-b/v40_20261012T034644Z/x/runs/azure/tools_v40")
+                   for r in tb.ROUNDS_V40)
+        assert (tb.TRIPS["quiver"], tb.TRIPS["pravega-benchmark"]) == (
+            "across two processes", "in one process")
+
 
 class TestMain:
 
@@ -402,17 +409,17 @@ class TestMain:
         assert not out.exists()
 
     def test_the_committed_tables_are_what_the_paper_reads(self):
-        """Twenty-nine tools, four rounds, two offsets each, every T2 run judged again: the shape
+        """Thirty-one tools, four rounds, two offsets each, every T2 run judged again: the shape
         Section V-B and the supplement's S5 describe. 11 October folded the five tools freezes 32
-        and 33 ran into them, then freeze 34's PerfKit Benchmarker; 12 October freeze 35's four and
-        freeze 36's three."""
+        and 33 ran into them, then freeze 34's PerfKit Benchmarker; 12 October freeze 35's four,
+        freeze 36's three and freeze 37's two."""
         repo = Path(__file__).resolve().parents[2]
         with (repo / "docs" / "results" / "tools" / "tools_t1.csv").open(encoding="utf-8") as fh:
             t1 = list(csv.DictReader(fh))
         with (repo / "docs" / "results" / "tools" / "tools_t2.csv").open(encoding="utf-8") as fh:
             t2 = list(csv.DictReader(fh))
-        assert len({r["tool"] for r in t1}) == 29 and len({r["round"] for r in t1}) == 4
-        assert len(t1) == 116 and len(t2) == 232
+        assert len({r["tool"] for r in t1}) == 31 and len({r["round"] for r in t1}) == 4
+        assert len(t1) == 124 and len(t2) == 248
         #: PerfKit's queue is out of the staircase's reach, so its T1 is the zero step alone and
         #: carries no slope; every other tool's does (D37-1).
         assert {r["tool"] for r in t1 if not r["slope"]} == {"pkb"}
@@ -423,6 +430,6 @@ class TestMain:
         #: T3: every tool, every round, idle and loaded, each with and without go-first.
         with (repo / "docs" / "results" / "tools" / "tools_t3.csv").open(encoding="utf-8") as fh:
             t3 = list(csv.DictReader(fh))
-        assert len(t3) == 464 and {r["tool"] for r in t3} == set(tb.TRIPS)
+        assert len(t3) == 496 and {r["tool"] for r in t3} == set(tb.TRIPS)
         assert {(r["load_pct"], r["go_first"]) for r in t3} == {
             ("0", "no"), ("0", "yes"), ("88", "no"), ("88", "yes")}

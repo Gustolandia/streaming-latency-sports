@@ -2461,6 +2461,17 @@ def test_r1s_switches_reach_the_runner_and_raise_nothing_else():
     assert (r1["CONSUMER_PRIORITY"], r1["RECV_CAPTURE"], r1["PRIORITY"]) == ("1", "1", "")
     a7 = _row_reader_says({"priority": True})
     assert (a7["CONSUMER_PRIORITY"], a7["RECV_CAPTURE"], a7["PRIORITY"]) == ("", "", "1")
+    assert r1["SEND_CAPTURE"] == a7["SEND_CAPTURE"] == "", "neither captures the sender"
+    assert r1["HW_CAPTURE"] == a7["HW_CAPTURE"] == "", "and neither the card's own stamps"
+
+
+def test_freeze_39s_switch_reaches_the_runner():
+    """Freeze 39 (13 Oct 2026): a row's send_capture becomes SEND_CAPTURE, beside R1's receiver
+    capture, and its go-first raises both processes that read the clock, as A7's did."""
+    f1 = _row_reader_says({"send_capture": True, "recv_capture": True, "priority": True,
+                           "load_pct": 0, "hw_capture": True})
+    assert (f1["SEND_CAPTURE"], f1["RECV_CAPTURE"], f1["PRIORITY"], f1["LOAD"],
+            f1["HW_CAPTURE"]) == ("1", "1", "1", "0", "1")
 
 
 def _r1_runner(tmp_path, name, **switches):
@@ -2473,14 +2484,21 @@ def _r1_runner(tmp_path, name, **switches):
     start = first + run.split(first, 1)[1].split("  chronyc -c tracking", 1)[0]
     head = '  if [ -n "$recv_full" ]; then'
     stop = head + run.split(head, 1)[1].split("\n  fi\n", 1)[0] + "\n  fi\n"
+    for head in ('  if [ -n "$hw_full" ]; then', '  if [ -n "$send_full" ]; then'):
+        stop += head + run.split(head, 1)[1].split("\n  fi\n", 1)[0] + "\n  fi\n"
     run_dir, calls = tmp_path / name, tmp_path / (name + "_calls.txt")
     run_dir.mkdir()
     script = "\n".join([
-        'sudo () { echo "sudo $*" >> "$CALLS"; }', "sleep () { :; }", "ps () { return 1; }",
+        # ethtool, run through sudo, answers with the card's clock where FAKE_PHC names one, and
+        # ip with the links FAKE_LINK lists.
+        'sudo () { echo "sudo $*" >> "$CALLS";'
+        ' [ "$1" != ethtool ] || echo "PTP Hardware Clock: ${FAKE_PHC:-none}"; }',
+        'ip () { printf "%s\\n" "${FAKE_LINK:-}"; }', "sleep () { :; }", "ps () { return 1; }",
         "r1 () {", '  local wrap_sched=""', start,
         '  echo "consumer=$consumer_wrap"', '  echo "producer=$wrap_sched"', stop, "}", "r1", ""])
     env = {"CALLS": calls.as_posix(), "RUN_DIR": run_dir.as_posix(), "BROKER_PRIV": "10.9.9.9",
-           "ME": "tester", "PRIORITY": "", "CONSUMER_PRIORITY": "", "RECV_CAPTURE": ""}
+           "DRIVER_PRIV": "10.8.8.8", "RECEIVER_IP": "10.7.7.7", "ME": "tester", "PRIORITY": "",
+           "CONSUMER_PRIORITY": "", "RECV_CAPTURE": "", "SEND_CAPTURE": "", "HW_CAPTURE": ""}
     env.update(switches)
     said = bash(["-c", script], extra_env=env, capture_output=True, text=True, check=True).stdout
     handed = dict(line.split("=", 1) for line in said.splitlines())
@@ -2522,16 +2540,114 @@ def test_r1s_capture_is_full_length_in_nanoseconds_and_stopped_by_its_own_comman
             "and not the sudo that runs pkill, whose command line holds the pattern itself"
 
 
+@needs_bash
+def test_freeze_39s_capture_is_the_senders_packets_and_stopped_by_its_own_command_line(tmp_path):
+    """Freeze 39 times each message's departure from the kernel's own timestamp, so the
+    producer's packets are captured in the driver's own namespace on eth0, at full length and to
+    the nanosecond, from the driver to the broker and not the commands sent over ssh. The capture
+    is stopped as R1's is, by its own command line."""
+    _, calls = _r1_runner(tmp_path, "sent", SEND_CAPTURE="1")
+    started = [c for c in calls if "pkill" not in c]
+    assert started == ["sudo tcpdump -i eth0 -s 0 --time-stamp-precision=nano -w "
+                       "%s/sender_full.pcap src host 10.8.8.8 and dst host 10.9.9.9 and not "
+                       "port 22" % (tmp_path / "sent").as_posix()]
+    stops = [c.split(" -f ", 1) for c in calls if "pkill" in c]
+    assert [how for how, _ in stops] == ["sudo pkill -INT", "sudo pkill -KILL"]
+    for how, pattern in stops:
+        assert re.search(pattern, started[0]), "pkill -f finds the capture by its command line"
+        assert not re.search(pattern, "%s -f %s" % (how, pattern))
+    both, calls = _r1_runner(tmp_path, "both", SEND_CAPTURE="1", RECV_CAPTURE="1")
+    assert len([c for c in calls if "pkill" not in c]) == 2, "each capture starts once"
+
+
+#: The driver's links as `ip -br link` showed them on 13 October: the accelerated-networking device
+#: is eth0's SLAVE and carries the same address.
+LINKS = ("eth0             UP             60:45:bd:e9:60:ba <BROADCAST,MULTICAST,UP,LOWER_UP> \n"
+         "enP58460s1       UP             60:45:bd:e9:60:ba <BROADCAST,MULTICAST,SLAVE,UP,LOWER_UP> ")
+
+
+@needs_bash
+def test_freeze_39s_card_capture_is_on_the_device_that_carries_the_packets_with_its_clock(tmp_path):
+    """Freeze 39 also captures the receiver's packets as the network card stamped them, described
+    and not judged: on the accelerated-networking device, the link `ip -br link` shows as a SLAVE,
+    with the card's clock, which ethtool names, sampled beside it. Both are stopped by their own
+    command lines. A card without a clock, or no such device, captures nothing and says so. The
+    first pilot read the wrong column, the address, and captured nothing (13 October)."""
+    _, calls = _r1_runner(tmp_path, "card", HW_CAPTURE="1", FAKE_LINK=LINKS, FAKE_PHC="1")
+    run = (tmp_path / "card").as_posix()
+    started = [c for c in calls if "pkill" not in c]
+    assert started == [
+        "sudo ethtool -T enP58460s1",
+        "sudo tcpdump -i enP58460s1 -j adapter_unsynced -s 0 --time-stamp-precision=nano -w "
+        "%s/receiver_hw.pcap src host 10.9.9.9 and dst host 10.7.7.7" % run,
+        "sudo python3 scripts/phc_offset.py --device /dev/ptp1 --interval 0.5 --out "
+        "%s/phc_offset.csv" % run]
+    assert (tmp_path / "card" / "hw_device.txt").read_text().split() == ["enP58460s1", "/dev/ptp1"]
+    stops = [c.split(" -f ", 1) for c in calls if "pkill" in c]
+    assert [how for how, _ in stops] == ["sudo pkill -INT", "sudo pkill -INT", "sudo pkill -KILL"]
+    for (how, pattern), target in zip(stops, (started[1], started[2], started[1])):
+        assert re.search(pattern, target), "pkill -f finds each by its command line"
+        assert not re.search(pattern, "%s -f %s" % (how, pattern))
+    for name, link, clock in (("clockless", LINKS, ""), ("plain", LINKS.split("\n")[0], "1")):
+        _, calls = _r1_runner(tmp_path, name, HW_CAPTURE="1", FAKE_LINK=link, FAKE_PHC=clock)
+        assert not [c for c in calls if "tcpdump" in c or "pkill" in c], name
+    assert (tmp_path / "clockless" / "hw_device.txt").read_text().split() == ["enP58460s1", "none"]
+    assert (tmp_path / "plain" / "hw_device.txt").read_text().split() == ["none", "none"]
+
+
+def _load_lines(tmp_path, load):
+    """A run's load lines, from starting stress-ng to the duty's correction, in bash, with stress-ng,
+    the sampler and the correction's Python stood in for by commands that write down how they
+    were called. (The calls.) They run as the runner runs them: with an unset variable an error,
+    and stress_pid declared without a value, as the runner declares it."""
+    code = (KIT / "campaign.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
+    first = "  # Freeze 39 (13 Oct 2026): a load of 0 is idle"
+    block = first + code.split(first, 1)[1].split("  # M0 replays the football plan", 1)[0]
+    calls = tmp_path / ("load_%s_calls.txt" % load)
+    script = "\n".join([
+        "set -uo pipefail",
+        'stress-ng () { echo "stress-ng $*" >> "$CALLS"; }',
+        'python3 () { echo "python3 $1" >> "$CALLS"; }', "sleep () { :; }",
+        "kill () { :; }", "wait () { :; }", "pkill () { :; }",
+        "lines () {", "  local stress_pid sampler_pid", block, "}", "lines",
+        "builtin wait", ""])
+    env = {"CALLS": calls.as_posix(), "RUN_DIR": tmp_path.as_posix(), "LOAD": str(load),
+           "want_cpus": "8"}
+    bash(["-c", script], extra_env=env, capture_output=True, text=True, check=True)
+    return calls.read_text(encoding="utf-8").splitlines() if calls.exists() else []
+
+
+@needs_bash
+def test_a_load_of_zero_is_idle_and_any_other_is_stress_ng(tmp_path):
+    """Freeze 39's idle setups start no load at all: stress-ng told a duty of zero would still be
+    running, and the correction would lift its duty to one percent. The sampler runs in both, so
+    the integrity rule still measures the load. The first pilot's first idle run stopped the
+    runner (13 October): nothing set stress_pid, and the runner treats an unset variable as an
+    error."""
+    idle = _load_lines(tmp_path, 0)
+    assert not [c for c in idle if c.startswith("stress-ng")]
+    assert "python3 scripts/util_sampler.py" in idle
+    busy = _load_lines(tmp_path, 88)
+    assert [c for c in busy if c.startswith("stress-ng")] == [
+        "stress-ng --cpu 8 --cpu-load 88 --timeout 3600s"]
+
+
 def test_no_stop_run_through_sudo_finds_its_own_sudo():
     """pkill leaves itself out but not the sudo that runs it, and that sudo's command line holds
     the pattern. Written plainly, the forced stop of R1's capture killed its own sudo in every
     one of R1's 53 runs, and each run's log said so (3 October)."""
     code = (KIT / "campaign.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
     stops = re.findall(r'(sudo pkill -[A-Z]+) -f "([^"]+)"', code)
-    assert len(stops) == 4, "R1's capture and M0's, each asked politely and then forced"
+    assert len(stops) == 9, ("R1's capture, freeze 39's sender capture, its card capture with the "
+                             "card's clock sampler, and M0's, each asked politely, the captures "
+                             "then forced")
     for how, pattern in stops:
-        pattern = pattern.replace("$RUN_DIR", "runs/law_r1_r001-R1-redis-l75-rtc-a1")
-        started = "sudo ip netns exec sblrecv " + pattern.replace("[t]", "t") + " host 10.1.1.21"
+        # As the shell hands each pattern to pkill, with its variables expanded.
+        for name, value in (("$RUN_DIR", "runs/law_r1_r001-R1-redis-l75-rtc-a1"),
+                            ("$hw_dev", "enP58460s1"), ("$hw_clock", "/dev/ptp1")):
+            pattern = pattern.replace(name, value)
+        started = ("sudo ip netns exec sblrecv " + pattern.replace("[t]", "t").replace("[p]", "p")
+                   + " host 10.1.1.21")
         assert re.search(pattern, started), pattern
         assert not re.search(pattern, "%s -f %s" % (how, pattern)), pattern
 

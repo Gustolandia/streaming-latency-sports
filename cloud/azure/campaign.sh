@@ -270,8 +270,15 @@ run_one () {
     --host "$DRIVER_PRIV" --receiver "$RECEIVER_IP" --out "$RUN_DIR/delay_hold.json" \
     > "$RUN_DIR/delay_hold.log" 2>&1
 
-  stress-ng --cpu "$want_cpus" --cpu-load "$LOAD" --timeout 3600s >/dev/null 2>&1 &
-  stress_pid=$!
+  # Freeze 39 (13 Oct 2026): a load of 0 is idle, with no stress-ng at all, rather than the duty of
+  # one percent the correction below would set. The sampler still runs, so the integrity rule
+  # holds the measured load to zero within its points. stress_pid is set empty first: the runner
+  # treats an unset variable as an error, and an idle run starts nothing to set it.
+  stress_pid=""
+  if [ "$LOAD" != 0 ]; then
+    stress-ng --cpu "$want_cpus" --cpu-load "$LOAD" --timeout 3600s >/dev/null 2>&1 &
+    stress_pid=$!
+  fi
   sleep 3
   python3 scripts/util_sampler.py --out "$RUN_DIR/utilisation.csv" --interval 0.5 >/dev/null 2>&1 &
   sampler_pid=$!
@@ -288,8 +295,8 @@ run_one () {
   #: actually shows, before the warm-up ends and well before any message is counted. What it was
   #: corrected to is written beside the run.
   sleep 4
-  local shown adjusted
-  shown=$(python3 -c 'import csv, statistics, sys
+  local shown="" adjusted
+  [ -n "$stress_pid" ] && shown=$(python3 -c 'import csv, statistics, sys
 rows = list(csv.DictReader(open(sys.argv[1], newline="", encoding="utf-8")))
 rho = [float(r["rho"]) for r in rows[-6:] if r.get("rho")]
 print("%.2f" % (100 * statistics.fmean(rho)) if rho else "")' "$RUN_DIR/utilisation.csv" 2>/dev/null)
@@ -360,6 +367,39 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     recv_full=$!
     sleep 2
   fi
+  # Freeze 39 (13 Oct 2026): the producer's packets as the driver's kernel sends them, at full
+  # length and to the nanosecond, so that each message's departure is timed from the kernel's own
+  # timestamp as R1 timed its arrival. The driver's own connections to the broker, the commands
+  # this script sends it over ssh, are left out.
+  local send_full=""
+  if [ -n "$SEND_CAPTURE" ]; then
+    sudo tcpdump -i eth0 -s 0 --time-stamp-precision=nano -w "$RUN_DIR/sender_full.pcap" \
+      src host "$DRIVER_PRIV" and dst host "$BROKER_PRIV" and not port 22 \
+      > "$RUN_DIR/sender_full.err" 2>&1 &
+    send_full=$!
+    sleep 2
+  fi
+  # Freeze 39 (13 Oct 2026), described and not judged: the receiver's packets as the network card
+  # stamped them on its own clock, on the accelerated-networking device that carries them, and
+  # that clock sampled against the system's twice a second, so that each stamp can be put on the
+  # system's clock. What the card saw first and the kernel stamped later is the kernel's own delay,
+  # the part of the host the kernel's timestamp keeps.
+  local hw_full="" hw_clock="" hw_dev=""
+  if [ -n "$HW_CAPTURE" ]; then
+    hw_dev=$(ip -br link | awk '$4 ~ /SLAVE/ {print $1; exit}')
+    [ -n "$hw_dev" ] && hw_clock=$(sudo ethtool -T "$hw_dev" 2>/dev/null \
+      | awk '/PTP Hardware Clock:/ && $4 ~ /^[0-9]+$/ {print "/dev/ptp" $4}')
+    echo "${hw_dev:-none} ${hw_clock:-none}" > "$RUN_DIR/hw_device.txt"
+    if [ -n "$hw_clock" ]; then
+      sudo tcpdump -i "$hw_dev" -j adapter_unsynced -s 0 --time-stamp-precision=nano \
+        -w "$RUN_DIR/receiver_hw.pcap" src host "$BROKER_PRIV" and dst host "$RECEIVER_IP" \
+        > "$RUN_DIR/receiver_hw.err" 2>&1 &
+      hw_full=$!
+      sudo python3 scripts/phc_offset.py --device "$hw_clock" --interval 0.5 \
+        --out "$RUN_DIR/phc_offset.csv" > "$RUN_DIR/phc_offset.err" 2>&1 &
+      sleep 2
+    fi
+  fi
   chronyc -c tracking > "$RUN_DIR/clock_before.txt" 2>/dev/null
   head -n 1 /proc/stat > "$RUN_DIR/stat_before.txt"
   tcp_counters before
@@ -399,6 +439,21 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     for _ in $(seq 1 20); do ps -p "$recv_full" > /dev/null || break; sleep 0.5; done
     sudo pkill -KILL -f "[t]cpdump -i any -s 0 --time-stamp-precision=nano -w $RUN_DIR/receiver_full.pcap" 2>/dev/null
     wait "$recv_full" 2>/dev/null
+  fi
+  if [ -n "$hw_full" ]; then
+    # Stopped by their own command lines, as the captures below are.
+    sudo pkill -INT -f "[t]cpdump -i $hw_dev -j adapter_unsynced -s 0 --time-stamp-precision=nano -w $RUN_DIR/receiver_hw.pcap" 2>/dev/null
+    sudo pkill -INT -f "[p]hc_offset.py --device $hw_clock --interval 0.5 --out $RUN_DIR/phc_offset.csv" 2>/dev/null
+    for _ in $(seq 1 20); do ps -p "$hw_full" > /dev/null || break; sleep 0.5; done
+    sudo pkill -KILL -f "[t]cpdump -i $hw_dev -j adapter_unsynced -s 0 --time-stamp-precision=nano -w $RUN_DIR/receiver_hw.pcap" 2>/dev/null
+    wait "$hw_full" 2>/dev/null
+  fi
+  if [ -n "$send_full" ]; then
+    # Stopped by its own command line, as the receiver's capture above is.
+    sudo pkill -INT -f "[t]cpdump -i eth0 -s 0 --time-stamp-precision=nano -w $RUN_DIR/sender_full.pcap" 2>/dev/null
+    for _ in $(seq 1 20); do ps -p "$send_full" > /dev/null || break; sleep 0.5; done
+    sudo pkill -KILL -f "[t]cpdump -i eth0 -s 0 --time-stamp-precision=nano -w $RUN_DIR/sender_full.pcap" 2>/dev/null
+    wait "$send_full" 2>/dev/null
   fi
   if [ -n "$receiver_capture" ]; then
     # Stopped by its own command line, not through the sudo that started it: sudo does not relay
@@ -484,6 +539,9 @@ values = {
     # R1 (3 Oct 2026): go-first for the consumer alone, and the receiver's packets in every run.
     "CONSUMER_PRIORITY": "1" if p.get("consumer_priority") else "",
     "RECV_CAPTURE": "1" if p.get("recv_capture") else "",
+    # Freeze 39 (13 Oct 2026): the producer's packets as well, in every run of its block.
+    "SEND_CAPTURE": "1" if p.get("send_capture") else "",
+    "HW_CAPTURE": "1" if p.get("hw_capture") else "",
     "TRACE": 1 if int(hashlib.sha256(row["key"].encode()).hexdigest(), 16) % 2 == 0 else 0,
     "HZ": round(1000 / tick) if tick else "",
 }
@@ -502,7 +560,7 @@ PY
   echo "$ROW" > "$RUN_DIR/queue_row.json"
   printf '{"lane": "%s", "profile": "%s", "driver": "%s", "commit": "%s"}\n' "$LANE" \
     "${AZ_PROFILE:-unknown}" "$(hostname)" "$(git rev-parse HEAD 2>/dev/null)" > "$RUN_DIR/lane.json"
-  log "run $KEY: $BACKEND, load $LOAD%, slice ${SLICE_NS:-kernel default}, delay $DELAY_MS ms${PRIORITY:+, go-first}${CONSUMER_PRIORITY:+, go-first consumer}${RECV_CAPTURE:+, receiver capture}${CPUS:+, $CPUS CPUs online}"
+  log "run $KEY: $BACKEND, load $LOAD%, slice ${SLICE_NS:-kernel default}, delay $DELAY_MS ms${PRIORITY:+, go-first}${CONSUMER_PRIORITY:+, go-first consumer}${RECV_CAPTURE:+, receiver capture}${SEND_CAPTURE:+, sender capture}${HW_CAPTURE:+, card capture}${CPUS:+, $CPUS CPUs online}"
   REASON=""
   STOP_REASON=""
   run_one

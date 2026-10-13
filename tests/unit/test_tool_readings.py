@@ -1919,6 +1919,27 @@ class TestFreeze38sToolAsItRan:
         assert got["ranges"]["subscriber"]["p50"] == control["ranges"]["subscriber"]["p50"]
         assert control["final"] is True and control["kept"] == 120
 
+    def test_the_stepped_run_whose_median_fell_two_buckets(self):
+        """Round 2 of the block's S1, where S1-l failed (D41-5). Its clients reported their first
+        burst with a running duration below zero, their wall clock behind the start they were given,
+        so its controller counted the values of two bursts of five where its control counted three;
+        read with the burn-in as its controller reads it, they sum to the count it printed. Of them
+        the steps put 17 in bucket 0 and the rest lay in buckets 6 to 9, against its control's 7 to
+        10, and its printed median lay two buckets below its control's."""
+        text = _ran38("pubsub-loadtest_s1_stepped_round2.txt")
+        got = tr.read_tool("pubsub-loadtest", text)
+        sub = got["buckets"]["subscriber"]
+        assert sum(sub) == got["kept"] == 80 and sub[0] == 17
+        assert {i for i, n in enumerate(sub) if n} == {0, 6, 7, 8, 9}
+        first = [r for r in tr.pubsub_responses(text) if r["side"] == "subscriber" and any(r["counts"])]
+        assert first[0]["seconds"] < 0 < first[1]["seconds"]
+        control = tr.read_tool("pubsub-loadtest", _ran38("pubsub-loadtest_s1_control_round2.txt"))
+        ctl = control["buckets"]["subscriber"]
+        assert sum(ctl) == control["kept"] == 120
+        assert {i for i, n in enumerate(ctl) if n} == {7, 8, 9, 10}
+        assert got["ranges"]["subscriber"]["p50"] == [11.390625, 17.0859375]
+        assert control["ranges"]["subscriber"]["p50"] == [25.62890625, 38.443359375]
+
 
 class TestThePubsubReader:
     """Each branch of read_pubsub_loadtest, on output shaped as cloud/azure/tools_run.sh prints it."""
@@ -1996,6 +2017,26 @@ class TestThePubsubReader:
         assert got["buckets_burn_in"] == {"subscriber": [0, 0, 3]}
         no_burn_in = tr.read_tool("pubsub-loadtest", self._run(console))
         assert no_burn_in["buckets"]["subscriber"] == [2, 1, 7, 1], "every response counts"
+
+    def test_a_duration_below_zero_or_left_out_is_not_past_the_burn_in(self):
+        """Its controller counts a response only where the duration it reports is longer than the
+        burn-in (Client.java:246-250): one below zero, as a client's wall clock behind its start
+        reports under S1's steps, never is, nor one the response leaves out, protobuf's zero; and
+        nanoseconds count without seconds beside them."""
+        def check(buckets, *duration):
+            head = ("[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - "
+                    "Connected to cps-gcloud-java-subscriber client.  Got check response: ")
+            values = ["bucket_values: %d" % n for n in buckets]
+            timed = ["running_duration {"] + ["  %s" % d for d in duration] + ["}"] if duration else []
+            return [head + values[0]] + values[1:] + timed + [""]
+        console = "\n".join(check([1], "seconds: -6", "nanos: -842000000")
+                            + check([0, 1], "nanos: 500000000") + check([0, 0, 1]))
+        got = tr.read_tool("pubsub-loadtest", self._run(console, burn_in="0"))
+        assert got["buckets"] == {"subscriber": [0, 1]}
+        assert got["buckets_burn_in"] == {"subscriber": [1, 0, 1]}
+        assert [r["seconds"] for r in tr.pubsub_responses(self._run(console))] == [
+            pytest.approx(-6.842), 0.5, 0.0]
+        assert tr.pubsub_responses(None) == []
 
     def test_what_it_says_went_missing_and_the_attempts_set_aside(self):
         console = "\n".join([self.HEAD + "Some published messages were not received!",

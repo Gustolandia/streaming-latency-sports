@@ -1,0 +1,14 @@
+{
+  "pubsub-loadtest": {
+    "failed_in_rounds": [
+      "2"
+    ],
+    "held_in_rounds": [
+      "1",
+      "3",
+      "4"
+    ],
+    "not_judged_in_rounds": [],
+    "verdict": "fails"
+  }
+}

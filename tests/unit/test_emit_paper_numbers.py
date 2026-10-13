@@ -2721,12 +2721,16 @@ class TestToolsUnderLoad:
                  ("1", "pkb", "0", "no", "22.0000", "80.3300", "33.1100"),
                  ("1", "pkb", "0", "yes", "21.5000", "192.2000", "32.5100"),
                  ("1", "pkb", "88", "no", "22.0000", "245.8700", "40.0100"),
-                 ("1", "pkb", "88", "yes", "22.0000", "157.9500", "37.6500")]
+                 ("1", "pkb", "88", "yes", "22.0000", "157.9500", "37.6500"),
+                 ("3", "pubsub-loadtest", "0", "no", "21.3574", "32.0361", ""),
+                 ("3", "pubsub-loadtest", "0", "yes", "14.2383", "32.0361", ""),
+                 ("3", "pubsub-loadtest", "88", "no", "21.3574", "9352.2846", ""),
+                 ("3", "pubsub-loadtest", "88", "yes", "9.4922", "14.2383", "")]
         alone = epn.tools_load_macros(self._table(tmp_path))
         assert epn.tools_load_macros(self._table(tmp_path, apart)) == alone
         table = epn.render_tools_load_table(self._table(tmp_path, apart))
-        assert "Yahoo" not in table and "PerfKit" not in table
-        assert set(epn.T3_APART) == {"ysb", "pkb"}
+        assert "Yahoo" not in table and "PerfKit" not in table and "Pub/Sub" not in table
+        assert set(epn.T3_APART) == {"ysb", "pkb", "pubsub-loadtest"}
 
     def test_an_absent_table_emits_nothing(self, tmp_path, capsys):
         assert epn.tools_load_macros(str(tmp_path / "none.csv")) == []
@@ -3003,9 +3007,21 @@ class TestTheToolsBlock:
                        corrected="undecided")]
         return t1, t2
 
+    def _unanswered(self, clocks="undecided", trip="across two processes"):
+        """The Pub/Sub load test as freeze 38 left it: on two clocks, its controller throwing under
+        every offset before it printed a figure, so that version 34's rule had nothing to read and
+        left every run undecided; a managed service, so no slope."""
+        why = "no average, median or minimum to hold against its control"
+        t1 = [("1", "pubsub-loadtest", trip, "p50", "1", "")]
+        t2 = [self._t2("1", "pubsub-loadtest", "26.6695", "undecided", clocks, sent="", why=why),
+              self._t2("1", "pubsub-loadtest", "28.6318", "undecided", "undecided", sent="",
+                       why=why)]
+        return t1, t2
+
     def _tables(self, tmp_path, rdkafka_round2=KEEPS, slope="1.0084", drop_round2=False,
                 rdkafka_round1="undecided", wrk2_clocks="one", rdkafka_clocks="two",
-                pulsar=None, october=None, brokers=None, counted=None, quiver=None):
+                pulsar=None, october=None, brokers=None, counted=None, quiver=None,
+                unanswered=None):
         t1 = [("1", "wrk2", "round trip", "p50", "1", slope),
               ("1", "rdkafka_performance", "across two processes", "avg", "2", "1.9583"),
               ("1", "pulsar-perf", "across two processes", "p50", "1", "1.0285"),
@@ -3025,8 +3041,21 @@ class TestTheToolsBlock:
         late_t1, late_t2 = self._brokers() if brokers is None else brokers
         own_t1, own_t2 = self._counted() if counted is None else counted
         q_t1, q_t2 = self._quiver() if quiver is None else quiver
-        return self._write(tmp_path, t1 + more_t1 + late_t1 + own_t1 + q_t1,
-                           t2 + more_t2 + late_t2 + own_t2 + q_t2)
+        u_t1, u_t2 = self._unanswered() if unanswered is None else unanswered
+        return self._write(tmp_path, t1 + more_t1 + late_t1 + own_t1 + q_t1 + u_t1,
+                           t2 + more_t2 + late_t2 + own_t2 + q_t2 + u_t2)
+
+    @pytest.mark.parametrize("unanswered", ["two", "one process", "absent"])
+    def test_the_pub_sub_load_test_otherwise_than_the_supplement_gives_stops_the_build(
+            self, tmp_path, unanswered):
+        """The supplement says version 34's rule left every run of the Pub/Sub load test undecided,
+        its interval spanning two clocks; a run answered, an interval in one process, or the tool
+        missing from the tables, each stops the build."""
+        given = {"two": self._unanswered(clocks="two"),
+                 "one process": self._unanswered(trip="in one process"),
+                 "absent": ([], [])}[unanswered]
+        with pytest.raises(ValueError, match="left every run of \\['pubsub-loadtest'\\]"):
+            epn.tools_block_macros(*self._tables(tmp_path, unanswered=given))
 
     def test_the_counts_the_section_quotes(self, tmp_path):
         """Sixteen tools: six on one clock, held so in ten of their eleven runs, SBK's other run
@@ -3037,9 +3066,10 @@ class TestTheToolsBlock:
         of them as one clock. Six tools take both timestamps in one process, five of the one-clock
         tools and the Pravega benchmark, and PerfKit in two on one host. YSB's slopes and
         RocketMQ's are their own, held outside the band and out of the band's figures, and
-        PerfKit, with none, adds nothing to them."""
+        PerfKit, with none, adds nothing to them. The Pub/Sub load test, whose two runs the rule
+        left undecided, is counted apart too, and with no slope adds nothing to them either."""
         got = dict(epn.tools_block_macros(*self._tables(tmp_path)))
-        assert got == {"toolsRunWord": "16", "toolsRoundsWord": "two",
+        assert got == {"toolsRunWord": "17", "toolsRoundsWord": "two",
                        "toolsSlopeLo": "0.98", "toolsSlopeHi": "1.14",
                        "toolsOneClockWord": "six", "toolsOneProcessWord": "six",
                        "toolsOneClockOf": "11", "toolsOneClockHeld": "10",
@@ -3197,9 +3227,12 @@ class TestTheToolsBlock:
     def test_tables_without_pulsar_stop_the_build(self, tmp_path):
         late_t1, late_t2 = self._brokers()
         own_t1, own_t2 = self._counted()
+        u_t1, u_t2 = self._unanswered()
         p1, p2 = self._write(tmp_path,
-                             [("1", "wrk2", "round trip", "p50", "1", "1.0")] + late_t1 + own_t1,
-                             [self._t2("1", "wrk2", "3.8", self.ONE, "one")] + late_t2 + own_t2)
+                             [("1", "wrk2", "round trip", "p50", "1", "1.0")] + late_t1 + own_t1
+                             + u_t1,
+                             [self._t2("1", "wrk2", "3.8", self.ONE, "one")] + late_t2 + own_t2
+                             + u_t2)
         with pytest.raises(ValueError, match="Pulsar's client kept"):
             epn.tools_block_macros(p1, p2)
 
@@ -3215,6 +3248,7 @@ class TestTheToolsBlock:
             "Xinfra Monitor & one process & 1.04--1.04 & one & 2/2 \\\\",
             "PerfKit messaging & one host & --- & one & 2/2 \\\\",
             "Artemis perf & two processes & 1.05--1.05 & two & 0/2 \\\\",
+            "Pub/Sub load test & two processes & --- & two & 0/2 \\\\",
             "Pulsar perf. & two processes & 1.03--1.14 & two & 3/4 \\\\",
             "Quiver & two processes & 1.08--1.08 & two & 2/2 \\\\",
             "librdkafka perf. & two processes & 0.98--0.98 & two & 2/2 \\\\",
@@ -3457,6 +3491,173 @@ class TestFreezeThirtySevensOwnPrediction:
             return [r for r in rows if r["tool"] != "pravega-benchmark"]
         with pytest.raises(ValueError, match="median stayed where its control's was"):
             epn.quiver_block_macros(*self._copy(tmp_path, rows=drop))
+
+
+class TestThePubsubBlock:
+    """Freeze 38's own predictions (block_v41.py), S1 on the Pub/Sub load test (s1_block.py) and the
+    reading after its runs (pubsub_post_hoc.py), as the supplement quotes them. The faulty tables are
+    the committed ones with one fault put in."""
+
+    TABLES = ("v41.csv", "v41_verdicts.json", "pubsub_runs.csv", "s1_v41_verdicts.json",
+              "tools_t3.csv")
+
+    def _copy(self, tmp_path, table=None, verdicts=None, runs=None, s1=None, t3=None):
+        import json
+        src = Path(__file__).resolve().parents[2] / "docs" / "results" / "tools"
+        out = []
+        for name, change in zip(self.TABLES, (table, verdicts, runs, s1, t3)):
+            path = tmp_path / name
+            if name.endswith(".json"):
+                found = json.loads((src / name).read_text(encoding="utf-8"))
+                path.write_text(json.dumps(change(found) if change else found), encoding="utf-8")
+            else:
+                with (src / name).open(encoding="utf-8", newline="") as fh:
+                    have = list(csv.DictReader(fh))
+                with path.open("w", encoding="utf-8", newline="") as fh:
+                    w = csv.DictWriter(fh, fieldnames=list(have[0]), lineterminator="\n")
+                    w.writeheader()
+                    w.writerows(change(have) if change else have)
+            out.append(str(path))
+        return out
+
+    @staticmethod
+    def _rows(match, **fields):
+        """A change that puts the values given into every row whose fields match."""
+        def change(rows):
+            hit = [r for r in rows if all(r[k] == v for k, v in match.items())]
+            assert hit, match
+            for r in hit:
+                r.update(fields)
+            return rows
+        return change
+
+    @staticmethod
+    def _verdict(name, **fields):
+        def change(found):
+            found[name].update(fields)
+            return found
+        return change
+
+    def test_the_committed_tables_give_the_printed_numbers(self):
+        assert dict(epn.pubsub_block_macros()) == {
+            "toolsPubsubOffsetLo": "26.6", "toolsPubsubOffsetHi": "89.5",
+            "toolsPubsubZeroLo": "87", "toolsPubsubZeroHi": "120", "toolsPubsubCounted": "120",
+            "toolsPubsubAheadLo": "656.8", "toolsPubsubAheadHi": "985.3",
+            "toolsPubsubAside": "39", "toolsPubsubRuns": "48", "toolsPubsubTailWidth": "13",
+            "sOnePubsubHeldWord": "three", "sOnePubsubFailedWord": "one",
+            "sOnePubsubFailedRound": "2", "sOnePubsubZero": "17",
+            "sOnePubsubStepCounted": "80", "sOnePubsubControlCounted": "120",
+            "sOnePubsubFirstLo": "6.8", "sOnePubsubFirstHi": "7.7"}
+
+    def test_a_copy_reads_the_same(self, tmp_path):
+        assert epn.pubsub_block_macros(*self._copy(tmp_path)) == epn.pubsub_block_macros()
+
+    def test_absent_tables_emit_nothing(self, tmp_path, capsys):
+        assert epn.pubsub_block_macros(str(tmp_path / "a.csv")) == []
+        assert "freeze 38's tables absent" in capsys.readouterr().out
+
+    @pytest.mark.parametrize("fault", [
+        {"verdicts": ("T2-l", {"verdict": "fails"})},
+        {"verdicts": ("T4-l", {"held_in_rounds": ["1", "2", "3"]})},
+        {"table": ({"run": "offset", "round": "2"}, {"exit": "0"})},
+        {"table": ({"run": "offset", "round": "3"}, {"thrown": "2"})},
+        {"table": ({"run": "offset", "round": "4"}, {"wrote_csv": "True"})},
+        {"table": ({"run": "control", "round": "1"}, {"exit": "1"})},
+        {"table": ({"run": "control", "round": "2"}, {"thrown": "1"})},
+        {"table": ({"run": "control", "round": "3"}, {"wrote_csv": "False"})},
+        {"table": ({"run": "ahead", "round": "4"}, {"sub_p50_high": "1477.9"})},
+        {"runs": ({"stage": "t2", "run": "26_629ms", "round": "1"}, {"median_throws": "False"})},
+        {"runs": ({"stage": "t2", "run": "28_629ms", "round": "4"}, {"bucket0": "59"})},
+        {"runs": ({"stage": "t2", "run": "87_498ms", "round": "2"}, {"counted": "119"})},
+    ], ids=["T2-l failed", "T4-l not held in every round", "an offset run that exited 0",
+            "an offset run that threw twice", "an offset run that wrote its results",
+            "a control that exited 1", "a control that threw", "a control that wrote nothing",
+            "a clock-ahead range of its own", "an offset run whose search did not throw",
+            "under half in bucket 0", "an offset run that counted another number"])
+    def test_a_t2_or_t4_run_other_than_the_prose_gives_stops_the_build(self, tmp_path, fault):
+        (where, (match, fields)), = fault.items()
+        change = (self._verdict(match, **fields) if where == "verdicts"
+                  else self._rows(match, **fields))
+        with pytest.raises(ValueError, match="T2-l and T4-l held in every round"):
+            epn.pubsub_block_macros(*self._copy(tmp_path, **{where: change}))
+
+    def test_a_block_without_its_offset_runs_stops_the_build(self, tmp_path):
+        def drop(rows):
+            return [r for r in rows if r["run"] != "offset"]
+        with pytest.raises(ValueError, match="T2-l and T4-l held in every round"):
+            epn.pubsub_block_macros(*self._copy(tmp_path, table=drop))
+
+    @pytest.mark.parametrize("fault", [
+        {"s1": {"verdict": "holds"}},
+        {"s1": {"failed_in_rounds": []}},
+        {"s1": {"failed_in_rounds": ["2", "4"], "held_in_rounds": ["1", "3"]}},
+        {"s1": {"not_judged_in_rounds": ["3"]}},
+        {"runs": ({"stage": "s1", "run": "control", "round": "2"}, {"median_bucket": "8"})},
+        {"runs": ({"stage": "s1", "run": "stepped", "round": "2"},
+                  {"median_bucket_without_0": "8"})},
+        {"runs": ({"stage": "s1", "run": "stepped", "round": "2"}, {"bucket0": "0"})},
+        {"runs": ({"stage": "s1", "run": "control", "round": "3"}, {"kept": "119"})},
+        {"runs": ({"stage": "s1", "run": "stepped", "round": "4"},
+                  {"counted": "120", "kept": "120"})},
+        {"runs": ({"stage": "s1", "run": "stepped"}, {"counted": "120", "kept": "120"})},
+        {"runs": ({"stage": "s1", "run": "stepped", "round": "1"}, {"first_burst_s": "0.000"})},
+        {"runs": ({"stage": "s1", "run": "control", "round": "4"}, {"first_burst_s": "-1.000"})},
+    ], ids=["S1-l held", "no failed round", "two failed rounds", "a round not judged",
+            "a gap of one bucket",
+            "a median the bucket-0 values moved", "nothing in bucket 0",
+            "a count other than its controller's", "stepped counts that differ",
+            "stepped runs counting as many as their controls",
+            "a stepped first burst not below zero", "a control's first burst below zero"])
+    def test_an_s1_run_other_than_the_prose_gives_stops_the_build(self, tmp_path, fault):
+        (where, change), = fault.items()
+        if where == "s1":
+            change = self._verdict("pubsub-loadtest", **change)
+        else:
+            change = self._rows(*change[:1], **change[1])
+        with pytest.raises(ValueError, match="S1-l failed in some rounds"):
+            epn.pubsub_block_macros(*self._copy(tmp_path, **{where: change}))
+
+    @pytest.mark.parametrize("run", ["stepped", "control"])
+    def test_a_round_without_one_of_its_s1_runs_stops_the_build(self, tmp_path, run):
+        def drop(rows):
+            return [r for r in rows if (r["stage"], r["run"], r["round"]) != ("s1", run, "3")]
+        with pytest.raises(ValueError, match="S1-l failed in some rounds"):
+            epn.pubsub_block_macros(*self._copy(tmp_path, runs=drop))
+
+    def test_controls_that_counted_different_numbers_stop_the_build(self, tmp_path):
+        """The supplement quotes one count for every control."""
+        faulty = self._rows({"stage": "s1", "run": "control", "round": "1"}, counted="119",
+                            kept="119")
+        with pytest.raises(ValueError, match="S1-l failed in some rounds"):
+            epn.pubsub_block_macros(*self._copy(tmp_path, runs=faulty))
+
+    def test_an_offset_run_the_reading_misses_stops_the_build(self, tmp_path):
+        def drop(rows):
+            return [r for r in rows if (r["stage"], r["run"], r["round"]) != ("t2", "28_629ms", "3")]
+        with pytest.raises(ValueError, match="T2-l and T4-l held in every round"):
+            epn.pubsub_block_macros(*self._copy(tmp_path, runs=drop))
+
+    def test_a_block_with_no_offset_run_in_either_table_stops_the_build(self, tmp_path):
+        def table(rows):
+            return [r for r in rows if r["run"] != "offset"]
+
+        def runs(rows):
+            return [r for r in rows if r["stage"] != "t2" or r["run"] == "control"]
+        with pytest.raises(ValueError, match="T2-l and T4-l held in every round"):
+            epn.pubsub_block_macros(*self._copy(tmp_path, table=table, runs=runs))
+
+    def test_a_run_set_aside_twice_stops_the_build(self, tmp_path):
+        faulty = self._rows({"stage": "t3", "run": "l0-firstyes", "round": "2"}, set_aside="2")
+        with pytest.raises(ValueError, match="ran at its second"):
+            epn.pubsub_block_macros(*self._copy(tmp_path, runs=faulty))
+
+    def test_a_tail_bucket_no_wider_than_a_wait_for_a_core_stops_the_build(self, tmp_path):
+        """The supplement sets its tail apart because its idle 99th percentile's bucket is wider
+        than any tool's rise under the load."""
+        narrow = self._rows({"tool": "pubsub-loadtest", "load_pct": "0", "go_first": "no"},
+                            p99="1.0000")
+        with pytest.raises(ValueError, match="wider than any tool's rise"):
+            epn.pubsub_block_macros(*self._copy(tmp_path, t3=narrow))
 
 
 class TestThePravegaCounts:
@@ -3755,8 +3956,10 @@ class TestTheStepTest:
                            "saying success \\\\")
         assert rows[9] == ("Quiver & 20 & 326--343 & 9--25 & 0 & values below zero in its "
                            "transfers, its maximum wrapped \\\\")
-        assert rows[-1] == ("Pravega benchmark & 20 & 335--341 & 1 & 0 & no total printed, and an "
+        assert rows[10] == ("Pravega benchmark & 20 & 335--341 & 1 & 0 & no total printed, and an "
                             "exception \\\\")
+        assert rows[-1] == ("Pub/Sub load test & 50 & 1719--1737 & --- & --- & nothing: binned with "
+                            "its fastest \\\\")
 
     def test_the_committed_table_is_the_one_the_data_give(self):
         repo = Path(__file__).resolve().parents[2]

@@ -55,6 +55,8 @@ Which judged file stands for which round is the write-up's decision, not this sc
               judged on the second x86 pair as each ran (freeze 36).
   the two     ../matched-b/v40_20261012T034644Z, tools_v40 and tools_v40_round2 to _round4, judged on the
               second x86 pair as each ran (freeze 37).
+  Pub/Sub     ../matched-b/v41_20261013T044951Z, tools_v41 and tools_v41_round2 to _round4, judged on
+              the second x86 pair as each ran (freeze 38).
 
     python scripts/tools_block.py --collected runs/azure/collected/matched
 """
@@ -78,6 +80,11 @@ T3_FIELDS = ("round", "tool", "load_pct", "go_first", "p50", "p99", "avg")
 #: before D26-2 wrote one, and tools_run.sh's defaults, 50 a second for 60 s, were never
 #: overridden -- the figure the round-1 judgement of 25 September was given.
 SENT_DEFAULT = 3000
+
+#: The tools asked for no count, whose runs leave no asked_to_send.txt by design, so that none is
+#: held to SENT_DEFAULT: the Pub/Sub load test's preset publishes one message a second for as long
+#: as it runs (D41-2), and tools_run.sh removes the file its own defaults wrote.
+ASKED_FOR_NO_COUNT = ("pubsub-loadtest",)
 
 #: (round, folder of its runs, where its T2 verdicts are, staircases read again).
 ROUNDS = (
@@ -138,6 +145,14 @@ ROUNDS_V40 = tuple(
     for rnd, folder in (("1", "tools_v40"), ("2", "tools_v40_round2"), ("3", "tools_v40_round3"),
                         ("4", "tools_v40_round4")))
 
+#: Freeze 38's block (D41-1): Google's Cloud Pub/Sub load test framework against Google's own
+#: Pub/Sub, judged on the second x86 pair as each ran. Its own predictions are judged by
+#: block_v41.py, and S1 on it by s1_block.py.
+ROUNDS_V41 = tuple(
+    (rnd, "../matched-b/v41_20261013T044951Z/x/runs/azure/" + folder, None, {})
+    for rnd, folder in (("1", "tools_v41"), ("2", "tools_v41_round2"), ("3", "tools_v41_round3"),
+                        ("4", "tools_v41_round4")))
+
 #: The interval each tool times, as the plan read its invocation before any run (the addendum
 #: of freeze 21, "How each tool keeps time"). It is how the tool was run, not a measurement, and
 #: T2 is its test: every tool read as one clock was found on one, and the tool read as spanning
@@ -187,6 +202,9 @@ TRIPS = {
     # the Pravega benchmark takes both of its stamps in one JVM.
     "quiver": "across two processes",
     "pravega-benchmark": "in one process",
+    # Freeze 38's Pub/Sub load test (D41-4): its subscriber subtracts the stamp its publisher wrote
+    # into the message, two processes, each reading its own wall clock.
+    "pubsub-loadtest": "across two processes",
 }
 
 _STEP = re.compile(r"t1-(.+)-step\.json$")
@@ -282,7 +300,8 @@ def rejudge(runs, tool, run, given, verdicts=None):
             "smallest_reported_ms") or (plain or {}).get("step_ms")
         shift = (_load(os.path.join(path, "offset_measured.json")) or {}).get("measured_ms")
         asked = float(_OFFSET.match(run).group(2).replace("_", "."))
-        sent = _number(os.path.join(path, "asked_to_send.txt"), SENT_DEFAULT)
+        sent = (None if tool in ASKED_FOR_NO_COUNT
+                else _number(os.path.join(path, "asked_to_send.txt"), SENT_DEFAULT))
         inputs = dict(sent=sent, exit_code=_number(os.path.join(path, "exit_code.txt"), 0),
                       plain=plain, step_ms=step, control=control, shift_ms=shift,
                       noise=tool_negatives.noise_from_staircase(
@@ -344,6 +363,7 @@ def collect(collected, rounds=None):
     t1, t2, t3 = [], [], []
     for rnd, runs, verdicts, read_again in (ROUNDS + ROUNDS_V33 + ROUNDS_V35 + ROUNDS_V36
                                             + ROUNDS_V37 + ROUNDS_V38 + ROUNDS_V39 + ROUNDS_V40
+                                            + ROUNDS_V41
                                             if rounds is None else rounds):
         again = {tool: os.path.join(collected, d, "t1-%s-step.json" % tool)
                  for tool, d in read_again.items()}

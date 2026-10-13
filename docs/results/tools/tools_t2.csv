@@ -247,3 +247,11 @@ round,tool,offset_ms,verdict,standing,sent,kept,verdict_31,clocks,clocks_why
 4,pravega-benchmark,4.0075,times against one clock,times against one clock,3000,2956,undecided,two,it kept 2956 of the 3000 it was asked to send
 4,quiver,1.9901,undecided,,3000,3000,undecided,two,"its figures moved by more than half the 1.990 ms offset (avg +18397552756179658752.000, p50 +18446744073709551616.000, min -1.000)"
 4,quiver,4.0178,undecided,,3000,3000,undecided,two,"its figures moved by more than half the 4.018 ms offset (avg +18440595159018315776.000, p50 +18446744073709551616.000, min +13.000)"
+1,pubsub-loadtest,26.6695,undecided,,,,undecided,undecided,"no average, median or minimum to hold against its control"
+1,pubsub-loadtest,28.6318,undecided,,,,undecided,undecided,"no average, median or minimum to hold against its control"
+2,pubsub-loadtest,87.4724,undecided,,,,undecided,undecided,"no average, median or minimum to hold against its control"
+2,pubsub-loadtest,89.4519,undecided,,,,undecided,undecided,"no average, median or minimum to hold against its control"
+3,pubsub-loadtest,26.6493,undecided,,,,undecided,undecided,"no average, median or minimum to hold against its control"
+3,pubsub-loadtest,28.6539,undecided,,,,undecided,undecided,"no average, median or minimum to hold against its control"
+4,pubsub-loadtest,26.6494,undecided,,,,undecided,undecided,"no average, median or minimum to hold against its control"
+4,pubsub-loadtest,28.6318,undecided,,,,undecided,undecided,"no average, median or minimum to hold against its control"

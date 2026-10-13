@@ -1215,11 +1215,13 @@ whichever member of its consumer group receives the record, another process or h
 documented group mode, in whole microseconds. A value at or below zero is kept, unflagged, in the
 sample its 50th, 90th and 99th percentiles are read from, which are the only figures it reports.
 \item The Google Cloud Pub/Sub load test framework subtracts one virtual machine's wall clock from
-another's, in milliseconds, and bins the result by its logarithm. Its Java client puts a zero or a
-negative into the bucket of the fastest messages. Its Go client, on the build its startup script
-installs, ends with a panic at the first negative; its Python client raises before it acknowledges
-the message; and its Node client files the value under a key named \texttt{NaN}, where nothing
-counts it.
+another's, in milliseconds, and counts the result into buckets by its logarithm, each bucket half
+again as wide as the one below. Its Java client puts a zero or a negative into the bucket of the
+fastest messages. Its controller, the process that gathers the clients' buckets and prints the
+percentiles, throws when that bucket holds half the values or more. Its Go client, on the build its
+startup script installs, ends with a panic at the first negative. Its Python client raises before
+it acknowledges the message, and its Node client files the value under a key named
+\texttt{NaN}, where nothing counts it.
 \item The Pravega benchmark indexes an array by each latency in whole milliseconds, so the place
 it records the value refuses a negative, as a library does in the tools above. The exception ends
 the thread that keeps its statistics: no later window is printed, nor any final percentile, and the
@@ -1265,12 +1267,18 @@ versions 38 and 39 (\brk{freezes/35-experiment-plan}, \brk{freezes/36-experiment
 public before its runs: \texttt{mqtt-benchmark}, IBM Sarama's producer tool, SBK and Redpanda's
 \texttt{kgo-repeater} on the first pair, and Apache Artemis's perf client, RocketMQ's benchmark
 and BookKeeper's benchmark on the second, each of the last three against a broker of its own,
-started alone on that pair's broker machine. The last two, Quiver and the Pravega benchmark, must
-be built from source on older toolchains. They ran on the second pair under version 40
+started alone on that pair's broker machine. Two more, Quiver and the Pravega benchmark, must be
+built from source on older toolchains. They ran on the second pair under version 40
 (\brk{freezes/37-experiment-plan}), public before its runs, Quiver against the Artemis broker
-version 39 had started and the Pravega benchmark against Pravega's own server. Table~\ref{stab:toolsrun} lists all of them. A delay
-added in steps cannot reach the managed queue's path, so PerfKit's T1 was its zero step alone. Of
-the others, every tool's figure but two followed the delay at a slope inside the band the plan
+version 39 had started and the Pravega benchmark against Pravega's own server. The last, the
+Pub/Sub load test, ran under version 41 (\brk{freezes/38-experiment-plan}), public before its
+runs, from the second pair's driver against Google's own Pub/Sub, in a Google Cloud project
+deleted, like PerfKit's queue, once its runs were home. Table~\ref{stab:toolsrun} lists all of
+them. In $\toolsPubsubAside$ of the Pub/Sub load test's $\toolsPubsubRuns$ runs the first attempt
+never began, because its controller's first call to Pub/Sub timed out. Each such attempt measured
+nothing, and was set aside and made again a minute later, as version 41 provides. The first test,
+T1, adds a delay to the path in steps, which cannot reach a managed service, so for PerfKit and the
+Pub/Sub load test it was the zero step alone. Of the others, every tool's figure but two followed the delay at a slope inside the band the plan
 fixed in advance. The Yahoo Streaming
 Benchmark's did not, as version 36 predicted: its slopes ran from $\toolsYsbSlopeLo$ to
 $\toolsYsbSlopeHi$~ms per millisecond added. The prediction's reason, read again after the runs,
@@ -1410,6 +1418,26 @@ smaller offset, and T2-q held. Freeze 21's judge left all of its runs undecided,
 34's judge, because neither has a behavior for a value that wraps. Version 34's answer from the
 offset alone needs none, and it was two in every run.
 
+The Pub/Sub load test reads two clocks, because its subscriber subtracts the time its publisher
+wrote into the message from a reading of its own clock. It counts each value into a bucket by the
+logarithm of its milliseconds, so every value at or below a millisecond, a value below zero
+included, falls into the first bucket, with the fastest. Its controller prints each percentile as
+the bounds of a bucket one below the values in it. The trip T2 took its offsets from was therefore
+the top of the bucket above the median its reference run printed (D41-3). Under the offsets,
+$\toolsPubsubOffsetLo$ to $\toolsPubsubOffsetHi$~ms, the first bucket held $\toolsPubsubZeroLo$
+to $\toolsPubsubZeroHi$ of the $\toolsPubsubCounted$ values its subscriber counted in each run.
+Its search for the median fails once that bucket holds half the values. In every run its controller
+then threw an exception reading ``Programming error: negative values appear in buckets.'', printed
+no figure for its subscriber and wrote no results file, and the runner stopped it at its time
+limit, as version 41 predicted (T2-l). Each control printed its figures and exited normally. Both
+judges therefore left all its runs undecided, and Table~\ref{stab:toolsrun} lists it as two clocks
+with no run answered either way.
+
+Its T4 run moved its subscriber's clock a second ahead instead, which raised every value by
+1{,}000~ms. Yet in every round it printed its median's range as $\toolsPubsubAheadLo$ to
+$\toolsPubsubAheadHi$~ms, wholly below a second, because it prints the bucket below the values, as
+version 41 predicted (T4-l).
+
 The Yahoo Streaming Benchmark is the one tool whose notebook drops values with no clock moved:
 $\toolsYsbControlDropLo$--$\toolsYsbControlDropHi\%$ of its windows, those whose last write came
 before the window's end, as version 36 foresaw (D36-6). Both judges take their base from a
@@ -1428,7 +1456,8 @@ given (\brk{docs/results/tools/ysb_t2_fit.csv}).
 A third test, T3, ran each tool idle and against a background load that kept every core
 $\toolsLoadPct\%$ busy, each with and without real-time priority on the process that subtracts. The
 plan fixed no rule for T3, so what follows describes the runs and judges nothing. The load
-lengthened the tail of every tool that prints a 99th percentile (Table~\ref{stab:toolsload}).
+lengthened the tail of every tool whose 99th percentile can show a wait for a core
+(Table~\ref{stab:toolsload}); three others are set apart below.
 Taking the median over the four rounds, the 99th percentile of each of the \toolsTailToolsWord{}
 rose by $\toolsTailRiseLo$--$\toolsTailRiseHi$~ms, of the order of the $\baseSliceMs$~ms slice a
 thread can wait for a core (Section~\ref{P-sec:tail}), and real-time priority took back at least
@@ -1441,7 +1470,10 @@ everything else it times, so the wait reads as latency. The Yahoo Streaming Benc
 because its figure is set by its flush, as above, and not by the trip a waiting thread lengthens.
 So is PerfKit Benchmarker: its trip goes to a managed queue in a data center, and its 99th
 percentile of 100 messages, set by that queue's own tail, swung between its idle rounds by far
-more than a wait for a core adds.
+more than a wait for a core adds. So is the Pub/Sub load test, which prints each percentile as a
+bucket's range: the range it printed for its idle 99th percentile, the median over the four rounds,
+was some $\toolsPubsubTailWidth$~ms wide, wider than the most any tool's 99th percentile rose under
+the load, $\toolsTailRiseHi$~ms.
 
 \textbf{\kafka{}'s own end-to-end tool, beside an observer.} \kafka{}'s end-to-end tool publishes
 each message, waits for its acknowledgment, and only then polls for the message, so it cannot time
@@ -1498,30 +1530,49 @@ run. At the first value below zero its one statistics task threw an
 \texttt{ArrayIndexOutOfBoundsException} naming that value, and every later statistic was lost.
 Its code then exits with status 0, as it does after printing any exception, so a run that lost its
 statistics ends as one that succeeded; the runs did not record that status. Each control printed
-its total.
+its total. Version 41 added the Pub/Sub load test, on two clocks, stepped back by 50~ms, as
+PerfKit was, because its trip is longer than 20~ms. Nothing it printed mentioned a value below zero,
+which it puts in its first bucket, with the fastest. Its clients time how long they have run on the
+wall clock, from a start given on that clock. The steps held that clock back, so the clients
+reported their first burst of messages with a running time below zero, $-\sOnePubsubFirstHi$ to
+$-\sOnePubsubFirstLo$~s. Its controller counts only what arrives after the first minute of running
+time, and on the held-back clock that minute lasted longer, so it counted $\sOnePubsubStepCounted$
+values in each stepped run where its controls counted $\sOnePubsubControlCounted$. Version 41
+predicted that the median a stepped run printed would lie in its control's bucket or one either side
+(S1-l). That held in \sOnePubsubHeldWord{} rounds and failed in \sOnePubsubFailedWord{},
+round~\sOnePubsubFailedRound{}, where the stepped median lay two buckets below its control's. The
+steps put $\sOnePubsubZero$ of that run's $\sOnePubsubStepCounted$ values into the first bucket,
+but without them its median still lies two buckets below. Read after the runs, the counts show that
+Pub/Sub delivered faster in that stepped run than in its control minutes before, and the one bucket
+allowed was narrower than that drift.
 
 The per-run verdicts and figures are in \brk{docs/results/tools/tools_t1.csv},
-\brk{tools_t2.csv} and \brk{tools_t3.csv}, folded by \brk{scripts/tools_block.py} from the runs;
-K1's are in \brk{docs/results/tools/k1.csv}, judged by \brk{scripts/kafka_clamp.py}; S1's in
-\brk{docs/results/tools/s1.csv}, \brk{s1_v38.csv}, \brk{s1_v39.csv} and \brk{s1_v40.csv}, judged by
-\brk{scripts/s1_block.py}; version 39's own predictions in \brk{docs/results/tools/v39.csv},
-judged by \brk{scripts/block_v39.py}, and version 40's in \brk{v40.csv}, judged by
-\brk{scripts/block_v40.py}; and the readings after the runs, of the Yahoo Streaming
-Benchmark in \brk{docs/results/tools/ysb_flush.csv} and \brk{ysb_t2_fit.csv}, and of RocketMQ's
-benchmark in \brk{docs/results/tools/rocketmq_waits.csv} and \brk{rocketmq_t1.csv}. The write-ups
+\brk{tools_t2.csv} and \brk{tools_t3.csv}, folded by \brk{scripts/tools_block.py} from the runs.
+K1's are in \brk{docs/results/tools/k1.csv}, judged by \brk{scripts/kafka_clamp.py}, and S1's in
+\brk{docs/results/tools/s1.csv}, \brk{s1_v38.csv}, \brk{s1_v39.csv}, \brk{s1_v40.csv} and
+\brk{s1_v41.csv}, judged by \brk{scripts/s1_block.py}. The predictions of versions 39, 40 and 41
+about their own tools are in \brk{docs/results/tools/v39.csv}, \brk{v40.csv} and
+\brk{v41.csv}, judged by \brk{scripts/block_v39.py}, \brk{scripts/block_v40.py} and
+\brk{scripts/block_v41.py}. The readings after the runs are in
+\brk{docs/results/tools/ysb_flush.csv} and \brk{ysb_t2_fit.csv} for the Yahoo Streaming Benchmark,
+\brk{rocketmq_waits.csv} and \brk{rocketmq_t1.csv} for RocketMQ's benchmark, and
+\brk{pubsub_runs.csv}, written by \brk{scripts/pubsub_post_hoc.py}, for the Pub/Sub load test.
+The write-ups
 are \brk{docs/results/tools/t1-t4-eleven-tools.md}, with its five recorded faults,
 \brk{docs/results/tools/t1-t4-five-tools.md},
 \brk{docs/results/tools/t1-t4-october-tools.md},
 \brk{docs/results/tools/t1-t4-perfkit-and-s1.md},
-\brk{docs/results/tools/t1-t4-freezes-35-36.md} and
-\brk{docs/results/tools/t1-t4-freeze-37.md}.
+\brk{docs/results/tools/t1-t4-freezes-35-36.md},
+\brk{docs/results/tools/t1-t4-freeze-37.md} and
+\brk{docs/results/tools/t1-t4-freeze-38.md}.
 
 \begin{table}[tb]
 \caption{\textbf{Of the tools run, \toolsOneClockWord{} time on one clock and \toolsTwoClockWord{}
 on two.} The registered campaign's tools block, \toolsRoundsWord{} rounds per tool, eleven tools
-in September and twenty in October, each on one of two pairs of machines of the same type;
-PerfKit Benchmarker timed a managed queue, which the staircase cannot reach, so it has no slope
-(---), and its two processes share one host. \texttt{kgo-repeater} times across two hosts.
+in September and twenty-one in October, each on one of two pairs of machines of the same type;
+PerfKit Benchmarker and Google's Pub/Sub load test timed managed services, which the staircase
+cannot reach, so they have no slope (---). PerfKit's two processes share one host, and
+\texttt{kgo-repeater} times across two hosts.
 RocketMQ's slope missed the band in every round. Interval: what the tool times, as its invocation
 was read before any run. Slope: how far its figure moved per millisecond of delay, divided by the
 number of times the interval crosses the delay, in its lowest and highest round. Clocks: how many
@@ -1529,12 +1580,14 @@ clocks its two timestamps come from, as its interval implies. Runs: of its offse
 version 34's rule, reading the offset alone, answered the same way. The rule answers two if moving
 back the clock of the process that subtracts cut what the tool kept, or moved its average, median
 or minimum by more than half the offset. It answers one if the tool kept every value and none of
-those moved by a quarter of the offset, and leaves the rest undecided. The title counts only the
-tools whose decided runs all agree with their Clocks. It leaves out Artemis's perf client, which
-reads two clocks but kept the offset out of its figures by having each refused value delivered
-again, so that its runs were answered one or left undecided. It also leaves out the Pravega
-benchmark, which reads one clock but counts only what arrives in a fixed minute, so that the rule
-read its short counts as values dropped (text).}
+those moved by a quarter of the offset, and leaves the rest undecided. The title counts a tool
+only if the rule decided some of its runs and every decided run agrees with its Clocks. It leaves
+out Artemis's perf client, which reads two clocks but kept the offset out of its figures by having
+each refused value delivered again, so that its runs were answered one or left undecided. It also
+leaves out the Pravega benchmark, which reads one clock but counts only what arrives in a fixed
+minute, so that the rule read its short counts as values dropped. The Pub/Sub load test is left out
+too: its controller threw under every offset before it printed a figure for the rule to read
+(text).}
 \label{stab:toolsrun}
 \centering
 \footnotesize
@@ -1547,7 +1600,8 @@ read its short counts as values dropped (text).}
 but \toolsWholeMsWord{}.} T3:
 each tool idle and against a background load keeping every core $\toolsLoadPct\%$ busy; real-time:
 the process that subtracts ran ahead of the load at real-time priority. Each figure is the median
-over the four rounds, in milliseconds, for the tools that print a 99th percentile.}
+over the four rounds, in milliseconds, for the tools that print a 99th percentile. The Yahoo
+Streaming Benchmark, PerfKit Benchmarker and the Pub/Sub load test are left out (text).}
 \label{stab:toolsload}
 \centering
 \footnotesize
@@ -1580,8 +1634,10 @@ and the most it showed in any control. The Pravega benchmark's statistics task s
 first value below zero, so its row counts one in each stepped run. \kafka{}'s end-to-end tool,
 \texttt{mqtt-benchmark} and Sarama's producer tool are not among the six, because they time with a
 monotonic clock, which the steps do not move; Sarama's prediction failed (text). Nor are Artemis's
-perf client and Quiver, which read two clocks. Artemis's row shows what its producer did, and
-Quiver's row shows how many of its transfers, as it calls messages, came out below zero.}
+perf client, Quiver and the Pub/Sub load test, which read two clocks. Artemis's row shows what
+its producer did, and Quiver's row shows how many of its transfers, as it calls messages, came out
+below zero. The Pub/Sub load test cannot show one, because it puts such a value in its first
+bucket, with the fastest, and its prediction failed in \sOnePubsubFailedWord{} round (text).}
 \label{stab:sone}
 \centering
 \footnotesize

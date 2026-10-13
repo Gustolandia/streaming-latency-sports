@@ -1307,49 +1307,60 @@ def _pubsub_table(part):
     return found
 
 
-def _pubsub_buckets(console, burn_in):
-    """Each side's buckets as its driver logs every check response from its clients
-    (Client.java:232-236), summed: bucket n holds the values in [1.5^n, 1.5^(n+1)) ms, and bucket 0
-    every value at or below 1 ms (MetricsHandler.java:72-73). Its controller adds a response's
-    buckets only once the run has outlasted the burn-in (Client.java:246-250), so those are counted
-    apart from the burn-in's: {"after": {side: [...]}, "burn_in": {side: [...]}}. With no burn-in
-    given, every response counts as after it."""
-    found = {"after": {}, "burn_in": {}}
-    open_ = None
+def _pubsub_responses(console):
+    """Every check response its driver logged from its clients (Client.java:232-236), in order:
+    [{"side": ..., "seconds": ..., "counts": [...]}]. Bucket n holds the values in
+    [1.5^n, 1.5^(n+1)) ms, and bucket 0 every value at or below 1 ms (MetricsHandler.java:72-73).
+    The seconds are the running duration the response reports, its seconds and nanoseconds
+    together, below zero where the client's wall clock has not yet reached the start it was given,
+    as under S1's steps; a duration the response leaves out is protobuf's zero."""
+    found, open_, timing = [], None, False
+    for line in console.splitlines():
+        checked = _PUBSUB_CHECK.search(line)
+        if line.startswith("["):
+            open_, timing = None, False
+            if not checked:
+                continue
+            open_ = {"side": checked.group(1), "counts": [], "seconds": 0.0}
+            found.append(open_)
+            line = checked.group(2)
+        if open_ is None:
+            continue
+        if re.fullmatch(r"\s*running_duration \{\s*", line):
+            timing = True
+            continue
+        value = re.fullmatch(r"\s*bucket_values: (\d+)\s*", line)
+        if value and not timing:
+            open_["counts"].append(int(value.group(1)))
+            continue
+        part = re.fullmatch(r"\s*(seconds|nanos): (-?\d+)\s*", line)
+        if part and timing:
+            open_["seconds"] += int(part.group(2)) / (1.0 if part.group(1) == "seconds" else 1e9)
+            continue
+        if line.strip() == "}":
+            timing = False
+    return found
 
-    def close(block):
-        if block is None:
-            return
-        late = burn_in is None or block["seconds"] is None or block["seconds"] > burn_in
+
+def pubsub_responses(text):
+    """The check responses in one run's printed output, as _pubsub_responses reads its console."""
+    return _pubsub_responses(_part(text or "", PUBSUB_CONSOLE, _PUBSUB_PARTS))
+
+
+def _pubsub_buckets(console, burn_in):
+    """Each side's buckets, summed over its check responses (_pubsub_responses). Its controller adds
+    a response's buckets only where the running duration the response reports is longer than the
+    burn-in (Client.java:246-250), so those are counted apart from the burn-in's:
+    {"after": {side: [...]}, "burn_in": {side: [...]}}. With no burn-in given, every response counts
+    as after it."""
+    found = {"after": {}, "burn_in": {}}
+    for block in _pubsub_responses(console):
+        late = burn_in is None or block["seconds"] > burn_in
         counts = found["after" if late else "burn_in"].setdefault(block["side"], [])
         while len(counts) < len(block["counts"]):
             counts.append(0)
         for i, n in enumerate(block["counts"]):
             counts[i] += n
-
-    for line in console.splitlines():
-        checked = _PUBSUB_CHECK.search(line)
-        if line.startswith("["):
-            close(open_)
-            open_ = None
-            if not checked:
-                continue
-            open_ = {"side": checked.group(1), "counts": [], "seconds": None}
-            line = checked.group(2)
-        if open_ is None:
-            continue
-        value = re.fullmatch(r"\s*bucket_values: (\d+)\s*", line)
-        if value and open_["seconds"] is None:
-            open_["counts"].append(int(value.group(1)))
-            continue
-        seconds = re.fullmatch(r"\s*seconds: (\d+)\s*", line)
-        if seconds and open_["seconds"] is None:
-            open_["seconds"] = int(seconds.group(1))
-            continue
-        nanos = re.fullmatch(r"\s*nanos: (\d+)\s*", line)
-        if nanos and open_["seconds"] is not None:
-            open_["seconds"] += int(nanos.group(1)) / 1e9
-    close(open_)
     return found
 
 

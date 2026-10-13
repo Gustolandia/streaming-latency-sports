@@ -3607,6 +3607,13 @@ ONE_CLOCK_UNDECIDED = {"sbk": 1}
 #: count, and its interval is one process's.
 CLOCKS_BY_COUNT = {"pravega-benchmark": "D40-4"}
 
+#: The tools on two clocks whose freeze predicted that version 34's rule would have nothing to read,
+#: by the change that predicted it: Google's Pub/Sub load test (freeze 38, D41-4), whose controller
+#: throws before it prints any figure for its subscriber once the offset has put half its values at
+#: or below a millisecond. Each is held to every one of its runs left undecided, which is what the
+#: prose says of it.
+CLOCKS_UNANSWERED = {"pubsub-loadtest": "D41-4"}
+
 #: The intervals timed within one process: what the prose counts as taking both timestamps there.
 ONE_PROCESS_TRIPS = ("round trip", "send to acknowledgment", "in one process")
 
@@ -3643,6 +3650,7 @@ TOOL_NAMES = {
     "bookkeeper-benchmark": "BookKeeper benchmark",
     "quiver": "Quiver",
     "pravega-benchmark": "Pravega benchmark",
+    "pubsub-loadtest": "Pub/Sub load test",
 }
 
 #: The table's row order: by the interval timed, one-clock intervals first; and how each is set
@@ -3700,6 +3708,7 @@ def _tools_judged(t1, t2):
             answered[r["tool"]].add(r["clocks"])
     wrong = {t: sorted(a) for t, a in answered.items()
              if t not in CLOCKS_NOT_PREDICTED and t not in CLOCKS_BY_COUNT
+             and t not in CLOCKS_UNANSWERED
              and (len(a) != 1 or (a == {"two"}) != (trip[t] in TWO_CLOCK_TRIPS))}
     if wrong:
         raise ValueError("each tool must be answered one way, and the way its invocation was read "
@@ -3717,7 +3726,16 @@ def _tools_judged(t1, t2):
         raise ValueError("the prose says every run of %s answered two was answered by its count "
                          "alone, its interval one process's; the tables disagree"
                          % sorted(CLOCKS_BY_COUNT))
-    apart = set(CLOCKS_NOT_PREDICTED) | set(CLOCKS_BY_COUNT)
+    #: And of the tools in CLOCKS_UNANSWERED, that the rule left every one of their runs undecided,
+    #: each spanning two clocks. A table without one of them gives it no interval, so its absence
+    #: stops the build here too.
+    unanswered = [r for r in t2 if r["tool"] in CLOCKS_UNANSWERED]
+    if (any(trip.get(t) not in TWO_CLOCK_TRIPS for t in CLOCKS_UNANSWERED)
+            or any(r["clocks"] != UNDECIDED_RUN for r in unanswered)):
+        raise ValueError("the prose says version 34's rule left every run of %s undecided, its "
+                         "interval spanning two clocks; the tables disagree"
+                         % sorted(CLOCKS_UNANSWERED))
+    apart = set(CLOCKS_NOT_PREDICTED) | set(CLOCKS_BY_COUNT) | set(CLOCKS_UNANSWERED)
     one = sorted(t for t, a in answered.items() if a == {"one"} and t not in apart)
     two = sorted(t for t, a in answered.items() if a == {"two"} and t not in apart)
     #: The prose says the one-clock tools' figures stayed put in every run but the ones it names.
@@ -3896,7 +3914,8 @@ TAIL_BACK_SHARE = 0.9
 #: messages, set by the queue's own tail, swung by some 140 ms between its idle rounds, far more
 #: than a wait for a core adds (freeze 34). T3 has no rule, so this decides only what is described.
 T3_APART = {"ysb": "its figure is set by its flush",
-            "pkb": "its tail is the managed queue's, swinging by more between rounds"}
+            "pkb": "its tail is the managed queue's, swinging by more between rounds",
+            "pubsub-loadtest": "its figures are buckets each half again as wide as the one below"}
 
 #: The tools that print their median in whole milliseconds and whose median the load raised by
 #: whole steps: Trogdor, from 2 to 3 ms; SBK (freeze 35), from 5 ms to as much as 9; and Quiver
@@ -4118,11 +4137,15 @@ S1_MORE = (
      os.path.join("docs", "results", "tools", "s1_v39_verdicts.json")),
     (os.path.join("docs", "results", "tools", "s1_v40.csv"),
      os.path.join("docs", "results", "tools", "s1_v40_verdicts.json")),
+    (os.path.join("docs", "results", "tools", "s1_v41.csv"),
+     os.path.join("docs", "results", "tools", "s1_v41_verdicts.json")),
 )
 #: The S1 predictions that failed, by the change that made them, as the prose reports them: Sarama's
 #: producer tool, whose 99th percentile in its stepped runs fell below its control's by more than
-#: the millisecond S1-i allowed, its clock monotonic (freeze 35, D38-5).
-S1_FAILED = {"sarama-producer-perf": "D38-5"}
+#: the millisecond S1-i allowed, its clock monotonic (freeze 35, D38-5); and the Pub/Sub load test,
+#: whose stepped median lay two buckets below its control's in one round, where S1-l allowed one
+#: (freeze 38, D41-5).
+S1_FAILED = {"sarama-producer-perf": "D38-5", "pubsub-loadtest": "D41-5"}
 #: S1's tools in the table's order, as the documents name them, with what each one's own output
 #: shows of a value below zero (freeze 34, D37-4); the control tool shows none by design.
 S1_TOOLS = (("pkb", "PerfKit messaging", "samples below zero, in its mean and percentiles"),
@@ -4138,7 +4161,8 @@ S1_TOOLS = (("pkb", "PerfKit messaging", "samples below zero, in its mean and pe
              "median as its control's, 99th percentile below it"),
             ("artemis-perf", "Artemis perf", "its producer stopped short, saying success"),
             ("quiver", "Quiver", "values below zero in its transfers, its maximum wrapped"),
-            ("pravega-benchmark", "Pravega benchmark", "no total printed, and an exception"))
+            ("pravega-benchmark", "Pravega benchmark", "no total printed, and an exception"),
+            ("pubsub-loadtest", "Pub/Sub load test", "nothing: binned with its fastest"))
 
 
 def _s1(csv_path=S1_CSV, verdicts_path=S1_VERDICTS, more=S1_MORE):
@@ -4220,8 +4244,8 @@ def render_s1_table(csv_path=S1_CSV, verdicts_path=S1_VERDICTS, more=S1_MORE):
     zero its own output showed in its stepped runs and in its controls, and what that output is."""
     rows, stepped = _s1(csv_path, verdicts_path, more)
     lines = [
-        "% Generated by scripts/emit_paper_numbers.py from docs/results/tools/s1.csv, s1_v38.csv",
-        "% and s1_v39.csv.",
+        "% Generated by scripts/emit_paper_numbers.py from docs/results/tools/s1.csv, s1_v38.csv,",
+        "% s1_v39.csv, s1_v40.csv and s1_v41.csv.",
         "% Do not edit by hand.",
         "\\begin{tabular}{@{}lrrrrl@{}}",
         "\\toprule",
@@ -4431,6 +4455,119 @@ def pravega_count_macros(t2_path=TOOLS_T2, v40_path=V40_CSV):
     return [("toolsPravegaBelowControlWord", _spell(below.pop()))]
 
 
+V41_CSV = os.path.join("docs", "results", "tools", "v41.csv")
+V41_VERDICTS = os.path.join("docs", "results", "tools", "v41_verdicts.json")
+S1_V41_VERDICTS = os.path.join("docs", "results", "tools", "s1_v41_verdicts.json")
+PUBSUB_RUNS = os.path.join("docs", "results", "tools", "pubsub_runs.csv")
+#: The status timeout(1) gives a run it stops at its limit: a driver whose controller threw never
+#: exits on its own (Driver.java:153-169).
+TIMED_OUT = 124
+
+
+def pubsub_block_macros(v41_path=V41_CSV, verdicts_path=V41_VERDICTS, runs_path=PUBSUB_RUNS,
+                        s1_path=S1_V41_VERDICTS, t3_path=TOOLS_T3):
+    """Freeze 38's own predictions (scripts/block_v41.py), S1 on the Pub/Sub load test
+    (scripts/s1_block.py) and the reading after its runs (scripts/pubsub_post_hoc.py), as the
+    supplement quotes them. T2-l held in every round: under both offsets bucket 0 held at least the
+    half of its subscriber's values its controller's search cannot pass, and its controller threw
+    once, wrote no results and was stopped at the run's limit, while each control printed and exited
+    with status 0. T4-l held in every round, each run printing one range. Its stepped runs' clients
+    reported their first burst with a running duration below zero, and each such run counted fewer
+    values than its control. S1-l failed in the one round its verdict names, where the stepped median
+    lay two buckets below its control's and stayed in its bucket without the values the steps put in
+    bucket 0. The first attempt of each run it names never began and was made again once. And the
+    bucket of its idle 99th percentile is wider than the most a wait for a core added to any other
+    tool's tail. Each is checked before it is printed."""
+    import csv as _csv
+    paths = (v41_path, verdicts_path, runs_path, s1_path, t3_path)
+    if not all(os.path.exists(p) for p in paths):
+        print("note: freeze 38's tables absent")
+        return []
+    with open(v41_path, encoding="utf-8", newline="") as fh:
+        table = list(_csv.DictReader(fh))
+    with open(verdicts_path, encoding="utf-8") as fh:
+        verdicts = json.load(fh)
+    with open(runs_path, encoding="utf-8", newline="") as fh:
+        runs = list(_csv.DictReader(fh))
+    with open(s1_path, encoding="utf-8") as fh:
+        s1 = json.load(fh)["pubsub-loadtest"]
+    rounds = sorted({r["round"] for r in table})
+    held = all(verdicts[k]["verdict"] == "holds" and verdicts[k]["held_in_rounds"] == rounds
+               for k in ("T2-l", "T4-l"))
+    moved = [r for r in table if r["run"] == "offset"]
+    controls = [r for r in table if r["run"] == "control"]
+    ahead = {(r["sub_p50_low"], r["sub_p50_high"]) for r in table if r["run"] == "ahead"}
+    zero = [r for r in runs if r["stage"] == "t2" and r["run"] != "control"]
+    if (not held or len(ahead) != 1 or len(zero) != len(moved)
+            or any(r["thrown"] != "1" or r["wrote_csv"] != "False" or int(r["exit"]) != TIMED_OUT
+                   for r in moved)
+            or any(r["thrown"] != "0" or r["wrote_csv"] != "True" or r["exit"] != "0"
+                   for r in controls)
+            or any(r["median_throws"] != "True" or 2 * int(r["bucket0"]) < int(r["counted"])
+                   for r in zero)
+            or len({r["counted"] for r in zero}) != 1):
+        raise ValueError("the prose says T2-l and T4-l held in every round: under the offsets bucket "
+                         "0 held at least half its subscriber's values, its controller threw once, "
+                         "wrote no results and was stopped at the limit, each control printed and "
+                         "exited with status 0, and every clock-ahead run printed one range; the "
+                         "tables say %s" % {k: verdicts[k]["verdict"] for k in ("T2-l", "T4-l")})
+    stepped = {r["round"]: r for r in runs if r["stage"] == "s1" and r["run"] == "stepped"}
+    control = {r["round"]: r for r in runs if r["stage"] == "s1" and r["run"] == "control"}
+    failed = s1["failed_in_rounds"]
+    both = list(stepped.values()) + list(control.values())
+    if (s1["verdict"] != "fails" or len(failed) != 1 or s1["not_judged_in_rounds"]
+            or sorted(stepped) != rounds or sorted(control) != rounds
+            or any(int(control[rnd]["median_bucket"]) - int(stepped[rnd]["median_bucket"]) != 2
+                   or stepped[rnd]["median_bucket_without_0"] != stepped[rnd]["median_bucket"]
+                   or stepped[rnd]["bucket0"] == "0" for rnd in failed)
+            or any(r["counted"] != r["kept"] for r in both)
+            or len({r["counted"] for r in stepped.values()}) != 1
+            or len({r["counted"] for r in control.values()}) != 1
+            or int(stepped[rounds[0]]["counted"]) >= int(control[rounds[0]]["counted"])
+            or any(float(r["first_burst_s"]) >= 0 for r in stepped.values())
+            or any(float(r["first_burst_s"]) <= 0 for r in control.values())):
+        raise ValueError("the prose says S1-l failed in some rounds, its stepped median two buckets "
+                         "below its control's and in that bucket without bucket 0, and that every "
+                         "stepped run's first burst came with a duration below zero and it counted "
+                         "fewer than its control; the tables say %s" % s1)
+    aside = [int(r["set_aside"]) for r in runs]
+    if max(aside) != 1:
+        raise ValueError("the prose says each run whose first attempt never began ran at its second; "
+                         "the reading says %s attempts were set aside in one run" % max(aside))
+    import statistics as _st
+    with open(t3_path, encoding="utf-8") as fh:
+        idle = [float(r["p99"]) for r in _csv.DictReader(fh) if r["tool"] == "pubsub-loadtest"
+                and r["load_pct"] == "0" and r["go_first"] == "no"]
+    width = 0.4 * _st.median(idle)
+    _busy, fold = _tools_load(t3_path)
+    if width <= max(v["rise"] for v in fold.values()):
+        raise ValueError("the prose says the bucket of the Pub/Sub load test's idle 99th percentile, "
+                         "%.1f ms wide, is wider than any tool's rise under the load" % width)
+    offsets = [float(r["offset_ms"]) for r in moved]
+    firsts = [-float(r["first_burst_s"]) for r in stepped.values()]
+    sample = stepped[failed[0]]
+    return [
+        ("toolsPubsubOffsetLo", "%.1f" % min(offsets)),
+        ("toolsPubsubOffsetHi", "%.1f" % max(offsets)),
+        ("toolsPubsubZeroLo", str(min(int(r["bucket0"]) for r in zero))),
+        ("toolsPubsubZeroHi", str(max(int(r["bucket0"]) for r in zero))),
+        ("toolsPubsubCounted", zero[0]["counted"]),
+        ("toolsPubsubAheadLo", "%.1f" % float(next(iter(ahead))[0])),
+        ("toolsPubsubAheadHi", "%.1f" % float(next(iter(ahead))[1])),
+        ("toolsPubsubAside", str(sum(aside))),
+        ("toolsPubsubRuns", str(len(runs))),
+        ("toolsPubsubTailWidth", "%.0f" % width),
+        ("sOnePubsubHeldWord", _spell(len(s1["held_in_rounds"]))),
+        ("sOnePubsubFailedWord", _spell(len(failed))),
+        ("sOnePubsubFailedRound", failed[0]),
+        ("sOnePubsubZero", sample["bucket0"]),
+        ("sOnePubsubStepCounted", sample["counted"]),
+        ("sOnePubsubControlCounted", control[failed[0]]["counted"]),
+        ("sOnePubsubFirstLo", "%.1f" % min(firsts)),
+        ("sOnePubsubFirstHi", "%.1f" % max(firsts)),
+    ]
+
+
 K1_CSV = os.path.join("docs", "results", "tools", "k1.csv")
 K1_VERDICTS = os.path.join("docs", "results", "tools", "k1_verdicts.json")
 DEFAULT_K1_TABLE = os.path.join("docs", "generated", "k1_table.tex")
@@ -4547,11 +4684,12 @@ def render_tools_table(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
         runs = [r for r in t2 if r["tool"] == tool]
         label = "two" if trip[tool] in TWO_CLOCK_TRIPS else "one"
         #: Artemis's perf client spans two processes, but its figures cannot show the offset
-        #: (CLOCKS_NOT_PREDICTED): it is listed as two, with the runs so answered, none. The
+        #: (CLOCKS_NOT_PREDICTED), and the Pub/Sub load test prints none under it
+        #: (CLOCKS_UNANSWERED): each is listed as two, with the runs so answered, none. The
         #: Pravega benchmark times within one process, and is listed as one, with the runs the rule
         #: answered so beside its count's others (CLOCKS_BY_COUNT).
-        #: A tool whose T1 is the zero step alone has no slope: PerfKit, whose managed queue the
-        #: staircase cannot reach (D37-1).
+        #: A tool whose T1 is the zero step alone has no slope: PerfKit and the Pub/Sub load test,
+        #: whose managed services the staircase cannot reach (D37-1, D41-3).
         slope = "%s--%s" % (_signed(min(slopes)), _signed(max(slopes))) if slopes else "---"
         lines.append("%s & %s & %s & %s & %d/%d \\\\" % (
             TOOL_NAMES[tool], TRIP_CELLS[trip[tool]], slope, label,
@@ -5218,7 +5356,7 @@ def _all_pairs(m):
             + deletion_macros() + literature_macros() + cliff_macros() + reach_macros()
             + tools_block_macros() + tools_load_macros() + ysb_flush_macros() + ysb_fit_macros()
             + k1_macros() + s1_macros() + brokers_block_macros() + quiver_block_macros()
-            + pravega_count_macros()
+            + pravega_count_macros() + pubsub_block_macros()
             + recv_wait_macros()
             + law_reading_macros()
             + s_window_macros() + rate_by_delivery_macros() + mechanism_interval_macros()

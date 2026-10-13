@@ -67,6 +67,11 @@ ALLOWED = {
     ("postmortem.tex", "recOwnWaitRatioLo", r"($0.43$, $1.11$, $100.00$ at ten"):
         "a branch retention at ten minutes in the drift test, equal to the lowest median ratio "
         "of the registered acknowledgment-wait prediction",
+    # 13 Oct 2026: the Pub/Sub load test's least running time below zero under S1, -6.8 s.
+    ("supplement.tex", "sOnePubsubFirstLo", r"Upstream Linux 6.8 used"):
+        "the Linux release whose scheduler constants S3.7 quotes, equal to the least running time "
+        "below zero, in seconds, with which the Pub/Sub load test's clients reported their first "
+        "burst under S1's steps; a version and a duration sharing digits",
     # 12 Oct 2026: the tools block's least tail rise, 0.9 ms once freezes 35 and 36 were folded.
     ("supplement.tex", "toolsTailRiseLo", r"times its value at 0.9 of the slice"):
         "a fraction of the scheduler slice at which the rate is read in S6.3, equal to the least "

@@ -455,8 +455,10 @@ PerfKit Benchmarker, messaging & 1~ms & Kept, floored to whole milliseconds, als
 the clock makes one & read, run \\
 Apache ActiveMQ Artemis's \texttt{perf} & 1~$\mu$s & Refused by its histogram library; the session
 is rolled back and the run still reads success; uncounted & read, run \\
-Google's Pub/Sub load test framework & 1~ms & Binned with the fastest messages by its Java client;
-its Go client panics, its Python client raises, its Node client loses it; uncounted & read \\
+Google's Pub/Sub load test framework & 1~ms & Binned with the fastest messages by its Java client,
+and the controller reading those bins throws, blaming negative values, once half the values lie
+there; its Go client panics, its Python client raises, its Node client loses it; uncounted & read,
+run \\
 Quiver & 1~ms & Wrapped by unsigned arithmetic to some $10^{19}$~ms, uncounted & read, run \\
 Redpanda's \texttt{kgo-repeater}, RocketMQ's benchmark & 1~$\mu$s, 1~ms & Kept, unflagged;
 RocketMQ's maximum, which starts at zero, cannot show it & read, run \\
@@ -533,12 +535,12 @@ sampler since August 2026~\cite{rezolus}.
 \subsection{Tools run}
 \label{sec:toolsrun}
 Reading a tool shows what it does with a value below zero, not whether it ever meets one. The
-registered campaign therefore ran \toolsRunWord{} benchmarking tools against a broker on a second
-machine, PerfKit Benchmarker against a managed queue, \toolsRoundsWord{} rounds each, with
-predictions fixed from their source before any run. Twenty of them ran in October, in blocks of
-their own: five the plan had once left out, and fifteen read at source that month
-(Supplement~S5). A delay added to the path in steps, which cannot reach the managed queue's, moved
-the figure of every other tool but two $\toolsSlopeLo$--$\toolsSlopeHi$~ms per millisecond added
+registered campaign therefore ran \toolsRunWord{} benchmarking tools, \toolsRoundsWord{} rounds
+each, with predictions fixed from their source before any run. PerfKit Benchmarker and the Pub/Sub
+load test ran against managed services, the others against a broker on a second machine.
+Twenty-one of them ran in October, in blocks of their own: five the plan had once left out, and
+sixteen read at source that month (Supplement~S5). A delay added to the path in steps cannot reach a
+managed service. It moved the figure of every other tool but two $\toolsSlopeLo$--$\toolsSlopeHi$~ms per millisecond added
 and per crossing of the delay, so those tools measure the path. The Yahoo Streaming Benchmark's
 did not, as predicted, though for another reason: each write of its results waits for four replies
 that cross the delay. RocketMQ's benchmark's did not either, against its prediction. Some of its
@@ -578,10 +580,14 @@ it received $\toolsArtemisReceivedLo$ to $\toolsArtemisReceivedHi$ messages from
 $\toolsAskedToSend$ its producer publishes in a run, and reported success. With the clock stepped,
 its producer stopped after
 $\sOneArtemisSentLo$ to $\sOneArtemisSentHi$ messages and again reported success (Supplement~S5).
+Pub/Sub's load test reads two clocks too, but bins every value at or below a millisecond with its
+fastest messages. Under both offsets at least half its subscriber's values fell there, so its
+controller threw an exception blaming negative values and printed no latency for the subscriber
+(Supplement~S5).
 \texttt{emqtt-bench}'s histogram keeps values below zero, but its console printed no
 latency under either offset (Supplement~S5). Waiting for a core shows in these tools as time added
 rather than as a value below zero. With every core $\toolsLoadPct\%$ busy, the 99th percentile of
-each of the \toolsTailToolsWord{} tools that print one rose by $\toolsTailRiseLo$--$\toolsTailRiseHi$~ms,
+each of the \toolsTailToolsWord{} tools whose figures can show such a wait rose by $\toolsTailRiseLo$--$\toolsTailRiseHi$~ms,
 and real-time priority took nearly all of that rise back in \toolsTailBackWord{} of them. Medians
 moved by at most $\toolsMedianMoveHi$~ms, except in \toolsWholeMsWord{} tools that print whole
 milliseconds, where they rose by up to \toolsWholeStepsHi{} milliseconds and real-time priority put

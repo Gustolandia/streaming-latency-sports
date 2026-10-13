@@ -199,6 +199,30 @@ class TestJudgedAgainUnderFreeze31:
         assert row["sent"] == str(tb.SENT_DEFAULT) and row["clocks"] == "one"
         assert "1.816 ms offset" in row["clocks_why"], "the offset asked for, none measured"
 
+    def test_a_tool_asked_for_no_count_is_held_to_none(self, tmp_path):
+        """The Pub/Sub load test's preset publishes once a second for as long as it runs, so its
+        runs leave no count asked for, and its row gives none rather than SENT_DEFAULT (D41-2). Its
+        controller printed nothing under the offset, so neither judge had anything to read."""
+        tool, run = "pubsub-loadtest", "t2-pubsub-loadtest-26_629ms"
+        plain = {"kept": 120, "tool": tool, "unit": "ms", "step_ms": 12.814453125,
+                 "reported_ms": {"p50": 14.23828125, "p99": 32.0361328125},
+                 "steps_ms": {"p50": 5.6953125, "p99": 12.814453125}}
+        _json(tmp_path / ("t1-%s-0ms" % tool) / "reading.json", plain)
+        _json(tmp_path / ("t1-%s-0ms" % tool) / "reference_trips.json",
+              {"source": "pubsub-loadtest itself", "trips_ms": [25.62890625]})
+        _step(tmp_path, tool, None)
+        _json(tmp_path / ("t2-%s-control" % tool) / "reading.json", plain)
+        _json(tmp_path / run / "reading.json", {"kept": None, "tool": tool, "unit": "ms",
+                                                "step_ms": None, "reported_ms": {},
+                                                "steps_ms": {}})
+        _json(tmp_path / run / "offset_measured.json", {"asked_ms": 26.629, "measured_ms": 26.6695})
+        (tmp_path / run / "exit_code.txt").write_text("0\n", encoding="utf-8")
+        _verdict(tmp_path, run, 26.6695, None, decided=False)
+        (row,) = tb.t2_rows("1", str(tmp_path))
+        assert (row["sent"], row["kept"], row["verdict"], row["verdict_31"], row["clocks"]) == (
+            "", "", "undecided", "undecided", "undecided")
+        assert tool in tb.ASKED_FOR_NO_COUNT
+
     def test_a_run_whose_reference_is_missing_is_not_judged_again(self, tmp_path):
         runs = _world(tmp_path)
         (runs / "t1-vegeta-0ms" / "reference_trips.json").unlink()
@@ -380,6 +404,12 @@ class TestCollect:
         assert (tb.TRIPS["quiver"], tb.TRIPS["pravega-benchmark"]) == (
             "across two processes", "in one process")
 
+    def test_freeze_38_is_folded_from_the_second_pair(self):
+        assert [r[0] for r in tb.ROUNDS_V41] == ["1", "2", "3", "4"]
+        assert all(r[1].startswith("../matched-b/v41_20261013T044951Z/x/runs/azure/tools_v41")
+                   for r in tb.ROUNDS_V41)
+        assert tb.TRIPS["pubsub-loadtest"] == "across two processes"
+
 
 class TestMain:
 
@@ -409,20 +439,20 @@ class TestMain:
         assert not out.exists()
 
     def test_the_committed_tables_are_what_the_paper_reads(self):
-        """Thirty-one tools, four rounds, two offsets each, every T2 run judged again: the shape
+        """Thirty-two tools, four rounds, two offsets each, every T2 run judged again: the shape
         Section V-B and the supplement's S5 describe. 11 October folded the five tools freezes 32
         and 33 ran into them, then freeze 34's PerfKit Benchmarker; 12 October freeze 35's four,
-        freeze 36's three and freeze 37's two."""
+        freeze 36's three and freeze 37's two; 13 October freeze 38's one."""
         repo = Path(__file__).resolve().parents[2]
         with (repo / "docs" / "results" / "tools" / "tools_t1.csv").open(encoding="utf-8") as fh:
             t1 = list(csv.DictReader(fh))
         with (repo / "docs" / "results" / "tools" / "tools_t2.csv").open(encoding="utf-8") as fh:
             t2 = list(csv.DictReader(fh))
-        assert len({r["tool"] for r in t1}) == 31 and len({r["round"] for r in t1}) == 4
-        assert len(t1) == 124 and len(t2) == 248
-        #: PerfKit's queue is out of the staircase's reach, so its T1 is the zero step alone and
-        #: carries no slope; every other tool's does (D37-1).
-        assert {r["tool"] for r in t1 if not r["slope"]} == {"pkb"}
+        assert len({r["tool"] for r in t1}) == 32 and len({r["round"] for r in t1}) == 4
+        assert len(t1) == 128 and len(t2) == 256
+        #: PerfKit's queue and Google's Pub/Sub are out of the staircase's reach, so their T1 is the
+        #: zero step alone and carries no slope; every other tool's does (D37-1, D41-3).
+        assert {r["tool"] for r in t1 if not r["slope"]} == {"pkb", "pubsub-loadtest"}
         #: Every tool in the tables has the interval the plan read for it before any run, and
         #: every tool the plan read was run.
         assert {r["tool"] for r in t1} == set(tb.TRIPS)
@@ -430,6 +460,6 @@ class TestMain:
         #: T3: every tool, every round, idle and loaded, each with and without go-first.
         with (repo / "docs" / "results" / "tools" / "tools_t3.csv").open(encoding="utf-8") as fh:
             t3 = list(csv.DictReader(fh))
-        assert len(t3) == 496 and {r["tool"] for r in t3} == set(tb.TRIPS)
+        assert len(t3) == 512 and {r["tool"] for r in t3} == set(tb.TRIPS)
         assert {(r["load_pct"], r["go_first"]) for r in t3} == {
             ("0", "no"), ("0", "yes"), ("88", "no"), ("88", "yes")}

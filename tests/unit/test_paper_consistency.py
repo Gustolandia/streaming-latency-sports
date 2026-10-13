@@ -5150,7 +5150,7 @@ class TestTableThreeMarksEveryToolRun:
         "Yahoo Streaming Benchmark": ("ysb",),
         "PerfKit Benchmarker": ("pkb",),
         "Artemis": ("artemis-perf",),
-        "Pub/Sub": (),
+        "Pub/Sub": ("pubsub-loadtest",),
         "Quiver": ("quiver",),
         "kgo-repeater": ("kgo-repeater", "rocketmq-benchmark"),
         "end-to-end and producer tools": ("kafka-end-to-end", "kafka-producer-perf"),

@@ -511,7 +511,9 @@ class TestEachNameIsBuiltWhereAReaderFirstMeetsIt:
                "busy-polling", "steal time",
                # 4 Oct 2026: the introduction opens on the stakes, and its first paragraph
                # defines the two programs a broker joins.
-               "producer", "consumer")
+               "producer", "consumer",
+               # 13 Oct 2026: Section VI names the fix freeze 39 tested where it first gives it.
+               "kernel-timed latency")
 
     @staticmethod
     def _reader_text(paper):

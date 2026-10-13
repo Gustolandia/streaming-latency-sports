@@ -818,6 +818,82 @@ them aside. And three of the four setups at real-time priority hold only two unt
 to judge the tracer there. The plan, the register of every run and the reading are in the
 repository under \brk{docs/results/recv_wait}, read by \brk{scripts/recv_wait.py}.
 
+\subsection{S3.9. Timed between the kernel's timestamps, a message's latency held still across background load and priority}
+\label{s:fullfix}
+
+Every remedy of Section~\ref{P-sec:practice} leaves some wait inside the latency. Timing from the
+publish call cancels the wait of the thread that reads the acknowledgment but keeps the receiving
+thread's (\ref{s:recvwait}), and real-time priority shortens both waits without ending them. A fix
+that keeps every client thread's wait out of the latency has to take both of a message's
+timestamps where no such thread reads the clock. The kernel does that: it timestamps each packet
+as it leaves or arrives, without waiting for any program. We tested that fix by a plan and five
+predictions fixed before any of its runs, including a short pilot that checked the captures.
+
+The runs used the same first x86 pair (\ref{s:law-design}) and both brokers, with no background
+load on the client machine or with $\fullFixLoadPct\%$, the base slice at $3$~ms and no delay
+added to the network. The producer and the consumer ran together at normal or at real-time
+priority. Eight setups ran in six shuffled rounds. All $\fullFixRuns$ runs passed the integrity
+rule, and no message arrived more than $150$~ms late. Each run captured the producer's packets as
+they left through the client machine's kernel and the receiver's packets as they arrived, with the
+kernel's nanosecond timestamps, on the clock the clients read. Each message then carries four
+times: the publish call, $t_{\mathrm{pub}}$; the kernel's timestamp of the packet that carried it
+out, $t_{\mathrm{tx}}$; the kernel's timestamp of the packet that brought it in,
+$t_{\mathrm{rx}}$; and the consumer's timestamp, $t_{\mathrm{recv}}$. The \emph{kernel-timed
+latency} $W = t_{\mathrm{rx}} - t_{\mathrm{tx}}$ holds the network and the broker and none of the
+client threads' waits. The client machine's time before and after it, $H_{\mathrm{out}} =
+t_{\mathrm{tx}} - t_{\mathrm{pub}}$ and $H_{\mathrm{in}} = t_{\mathrm{recv}} - t_{\mathrm{rx}}$,
+holds the clients' waits and work, so that $D = H_{\mathrm{out}} + W + H_{\mathrm{in}}$ for every
+message.
+
+\begin{table}[tb]
+\caption{\textbf{Kernel-timed latency held still while, at normal priority, the tail of $D$ rose
+$\fullFixTailRatioLo$--$\fullFixTailRatioHi$-fold.} $W$ runs from the kernel's timestamp as a
+message leaves the client machine to its timestamp as the message comes back. $D$ runs from the
+publish call to the consumer's timestamp. One row for each broker, background load on the client
+machine, and priority of the producer and the consumer together. Each figure is a setup's median
+over its six runs of each run's statistic, in microseconds. $H_{\mathrm{out}}$ and
+$H_{\mathrm{in}}$ are the client machine's time before and after $W$. The kernel's delay, from the
+network card's own receive timestamp to the kernel's, is reported, not tested against a
+prediction.}
+\label{stab:fullfix}
+\centering
+\footnotesize
+\input{docs/generated/full_fix_table}
+\end{table}
+
+The predictions held, all five (Table~\ref{stab:fullfix}). The first two asked that $W$ not move
+with the load or with the priority. The median of $W$ moved by at most $\fullFixMedianMovePct\%$
+between the loads at each priority and between the priorities at each load, on both brokers,
+against the $\fullFixMedianMarginPct\%$ allowed, and its 99th percentile by at most
+$\fullFixTailMovePct\%$ against $\fullFixTailMarginPct\%$. The third asked that nothing be lost.
+None of the $\fullFixMessages$ messages had $W$ at or below zero, and every message appeared in
+both captures. The fourth asked that the effect the fix keeps out be present in the same runs. At
+normal priority the load raised the 99th percentile of $D$ $\fullFixTailRatioKafka$-fold on
+\kafka{} and $\fullFixTailRatioRedis$-fold on \redis{}, where the plan required
+$\fullFixEffectRatio$-fold. The mean of $D$ rose too, and the mean of $W$ moved by at most
+$\fullFixWireSharePct\%$ of that rise, against the $\fullFixWireShareBarPct\%$ allowed. The fifth
+placed \kafka{}'s part of the rise before the bytes leave. Under load at normal priority the mean
+of \kafka{}'s $H_{\mathrm{out}}$ rose $\fullFixSendRiseKafkaUs\,\mu$s, where at least
+$\fullFixSendRiseBarUs\,\mu$s was predicted, because its client hands each message to a
+background thread that writes it to the network after the publish call returns. \redis{}'s,
+written by the calling thread, moved $\fullFixSendMoveRedisUs\,\mu$s, within the
+$\fullFixSendMoveBarUs\,\mu$s allowed. $H_{\mathrm{in}}$ rose on both brokers, as
+\ref{s:recvwait} found, and real-time priority undid most of both rises.
+
+The network card's own receive timestamps were captured beside the kernel's and put on the
+system's clock by sampling the card's clock twice a second. They were reported, not tested against
+a prediction. Their gap to the kernel's is the part of the client machine's delay that the
+kernel's timestamp keeps. The kernel timestamped each packet a median of
+$\fullFixKernelDelayLoUs$--$\fullFixKernelDelayHiUs\,\mu$s after the card did, longest with no
+background load, as the plan expected of processors that must wake to take the interrupt. The plan
+words this delay as the card's arrival less the kernel's. The delay reported is the kernel's less
+the card's. The largest move of the median of $W$, $\fullFixMedianMoveUs\,\mu$s on \redis{} at
+real-time priority, was a fall under load. Of that fall, $\fullFixCardMoveUs\,\mu$s lay between
+the kernel's departure timestamp and the card's arrival timestamp. We have not tested why. A
+program can read such timestamps through the kernel's \texttt{SO\_TIMESTAMPING} socket option,
+without a capture. We did not test that form. The plan, the register of every run and the reading
+are in the repository under \brk{docs/results/full_fix}, read by \brk{scripts/full_fix.py}.
+
 \section{S4. The positivity filter and the retention law in full}
 \label{s:failure2}
 

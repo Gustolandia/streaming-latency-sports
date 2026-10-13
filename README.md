@@ -1226,7 +1226,13 @@ of "grid" is now the *q*-lattice; no claim and no number changed. **Section VI-B
 receiving thread's own wait** that a latency timed from the publish call keeps: measured three ways in 51
 runs after the registered campaign (R1), it added 0.41–0.94 ms to the mean latency, while the median
 message waited 18–46 µs; Supplement S3.10 gives the design, the four predictions and what each
-found ([`docs/results/recv_wait`](docs/results/recv_wait/README.md)). **The vocabulary is the
+found ([`docs/results/recv_wait`](docs/results/recv_wait/README.md)). **Section VI now tests a fix
+that leaves nothing** (freeze 39, 13 Oct): a latency timed between the kernel's own timestamps as
+each message leaves the client machine and as it arrives. In 48 runs its median moved at most 7.9%
+and its 99th percentile at most 7.2% between an idle machine and one 88% busy and between normal and
+real-time priority, while in the same runs the 99th percentile of the end-to-end latency rose
+4.3–4.6-fold; all five registered predictions held. Supplement S3.9 gives the design and what each
+prediction found ([`docs/results/full_fix`](docs/results/full_fix/README.md)). **The vocabulary is the
 industry's** (writing standard A10, in all three documents and the figures): the producer
 *publishes*; *A* is the publish latency, the old send lag the publish delay and *D* the end-to-end
 latency, the names the OpenMessaging Benchmark reports them under; *E* is the event-time latency

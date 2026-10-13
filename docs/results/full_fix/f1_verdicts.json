@@ -1,0 +1,127 @@
+{
+  "F-a": {
+    "values": {
+      "kafka, 0% load: normal against real-time": [
+        751.50175,
+        744.13625
+      ],
+      "kafka, 88% load: normal against real-time": [
+        758.8215,
+        792.4475
+      ],
+      "kafka, normal priority: idle against load": [
+        751.50175,
+        758.8215
+      ],
+      "kafka, real-time priority: idle against load": [
+        744.13625,
+        792.4475
+      ],
+      "redis, 0% load: normal against real-time": [
+        631.3785,
+        638.7075
+      ],
+      "redis, 88% load: normal against real-time": [
+        612.9295,
+        588.4665
+      ],
+      "redis, normal priority: idle against load": [
+        631.3785,
+        612.9295
+      ],
+      "redis, real-time priority: idle against load": [
+        638.7075,
+        588.4665
+      ]
+    },
+    "verdict": "holds"
+  },
+  "F-b": {
+    "values": {
+      "kafka, 0% load: normal against real-time": [
+        822.202765,
+        823.38106
+      ],
+      "kafka, 88% load: normal against real-time": [
+        837.6793150000001,
+        880.73513
+      ],
+      "kafka, normal priority: idle against load": [
+        822.202765,
+        837.6793150000001
+      ],
+      "kafka, real-time priority: idle against load": [
+        823.38106,
+        880.73513
+      ],
+      "redis, 0% load: normal against real-time": [
+        769.833905,
+        785.5606250000003
+      ],
+      "redis, 88% load: normal against real-time": [
+        716.1443150000018,
+        728.9859200000002
+      ],
+      "redis, normal priority: idle against load": [
+        769.833905,
+        716.1443150000018
+      ],
+      "redis, real-time priority: idle against load": [
+        785.5606250000003,
+        728.9859200000002
+      ]
+    },
+    "verdict": "holds"
+  },
+  "F-c": {
+    "runs_against": [],
+    "verdict": "holds"
+  },
+  "F-d": {
+    "values": {
+      "kafka": {
+        "D_mean": [
+          1687.8161471531675,
+          3200.8890731756214
+        ],
+        "D_p99": [
+          1801.4406800000002,
+          8298.591335000001
+        ],
+        "W_mean": [
+          766.1065804931836,
+          763.0572084001603
+        ]
+      },
+      "redis": {
+        "D_mean": [
+          858.9667514033681,
+          1214.8586238973535
+        ],
+        "D_p99": [
+          1011.3038550000001,
+          4395.798235
+        ],
+        "W_mean": [
+          633.9659134923818,
+          615.8974286287089
+        ]
+      }
+    },
+    "verdict": "holds"
+  },
+  "F-e": {
+    "values": {
+      "kafka": [
+        573.255099639134,
+        1199.0635815958299
+      ],
+      "redis": [
+        91.98840637530071,
+        88.11588352044907
+      ]
+    },
+    "verdict": "holds"
+  },
+  "pauses": []
+}

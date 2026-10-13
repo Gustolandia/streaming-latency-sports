@@ -3824,6 +3824,66 @@ class TestTheReceiverWaitIsEmitted:
         assert not recv.exists()
 
 
+class TestTheFullFixIsEmitted:
+    """F1's numbers (freeze 39, 13 Oct 2026), for the paragraph of Section VI and Supplement S3.9,
+    read through scripts/full_fix.py's own judge of the committed run table rather than typed."""
+
+    def test_the_committed_reading_gives_the_printed_numbers(self):
+        m = dict(epn.full_fix_macros())
+        assert (m["fullFixRuns"], m["fullFixMessages"], m["fullFixLoadPct"]) == (
+            "48", "239{,}424", "88")
+        assert (m["fullFixMedianMovePct"], m["fullFixMedianMoveUs"], m["fullFixCardMoveUs"]) == (
+            "7.9", "50", "30")
+        assert m["fullFixTailMovePct"] == "7.2"
+        assert (m["fullFixTailRatioKafka"], m["fullFixTailRatioRedis"]) == ("4.6", "4.3")
+        assert (m["fullFixTailRatioLo"], m["fullFixTailRatioHi"]) == ("4.3", "4.6")
+        assert m["fullFixWireSharePct"] == "5.1"
+        assert (m["fullFixSendRiseKafkaUs"], m["fullFixSendMoveRedisUs"]) == ("626", "4")
+        assert (m["fullFixKernelDelayLoUs"], m["fullFixKernelDelayHiUs"]) == ("6", "20")
+
+    def test_the_bars_are_the_plans_own(self):
+        """A sentence that quotes a margin quotes the one the verdict was read against."""
+        m = dict(epn.full_fix_macros())
+        bars = ("fullFixMedianMarginPct", "fullFixTailMarginPct", "fullFixEffectRatio",
+                "fullFixWireShareBarPct", "fullFixSendRiseBarUs", "fullFixSendMoveBarUs")
+        assert [m[b] for b in bars] == ["10", "25", "1.5", "20", "200", "100"]
+
+    def test_every_prediction_held_as_the_prose_says(self):
+        """Section VI and S3.9 say all five held; a verdict that did not must fail here."""
+        found, _ = epn._full_fix_reading()
+        assert {k: v["verdict"] for k, v in found.items()} == dict.fromkeys(
+            ("F-a", "F-b", "F-c", "F-d", "F-e"), "holds")
+
+    def test_the_largest_move_is_on_redis_at_real_time_priority_and_a_fall(self):
+        """S3.9 names where the median of W moved most, and says that it fell under load."""
+        found, _ = epn._full_fix_reading()
+        name, (base, other) = max(found["F-a"]["values"].items(),
+                                  key=lambda kv: abs(kv[1][1] - kv[1][0]) / kv[1][0])
+        assert name == "redis, real-time priority: idle against load" and other < base
+
+    def test_the_committed_table_is_the_one_the_data_give(self):
+        repo = Path(__file__).resolve().parents[2]
+        have = (repo / "docs" / "generated" / "full_fix_table.tex").read_text(encoding="utf-8")
+        assert have.replace("\r\n", "\n") == epn.render_full_fix_table()
+        rows = [line for line in have.splitlines() if line.startswith(("\\kafka", "\\redis"))]
+        assert len(rows) == 8
+        assert rows[2] == ("\\kafka{}, $88\\%$, normal & $759$ & $838$ & $2443$ & $8299$ & "
+                           "$1199$ & $1247$ & $6$ \\\\")
+
+    def test_a_missing_reading_emits_nothing(self, tmp_path):
+        assert epn.full_fix_macros(str(tmp_path)) == []
+        assert epn.render_full_fix_table(str(tmp_path)) == ""
+
+    def test_main_skips_the_table_where_the_reading_is_absent(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(epn, "render_full_fix_table", lambda *a, **kw: "")
+        led, out = tmp_path / "l.csv", tmp_path / "n.tex"
+        write_ledger(led, [("load_sweep", 10, 90, 0)])
+        fix = tmp_path / "fix.tex"
+        assert main(["--ledger", str(led), "--out", str(out), "--table",
+                     str(tmp_path / "t.tex"), "--full-fix-table", str(fix)]) == 0
+        assert not fix.exists()
+
+
 class TestKOne:
     """K1 for Section V-A's sentence and the supplement's table (freeze 32, D35-6, D35-7): how often
     a record was readable before Kafka's own end-to-end tool had its acknowledgment. The prose says

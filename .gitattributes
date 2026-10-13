@@ -23,3 +23,7 @@ Dockerfile* text eol=lf
 # A plan freeze is checked against the SHA-256 fingerprints in its folder (freezes/README.md), so
 # git must store and check out every file in it byte for byte, with no line-ending conversion.
 freezes/*/** -text
+
+# F1's design note is fingerprinted in DESIGN_TIMESTAMP_NOTE.md beside it, so it too must check out
+# byte for byte.
+docs/results/full_fix/DESIGN.md -text

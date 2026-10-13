@@ -4964,6 +4964,124 @@ def render_recv_wait_table(root=RECV_WAIT_DIR):
     return "\n".join(lines)
 
 
+FULL_FIX_DIR = os.path.join("docs", "results", "full_fix")
+DEFAULT_FULL_FIX_TABLE = os.path.join("docs", "generated", "full_fix_table.tex")
+
+
+def _full_fix_reading(root=FULL_FIX_DIR):
+    """(F1's verdicts, its run rows), the verdicts computed by scripts/full_fix.py's own judge
+    from the committed run table; None without it."""
+    import csv as _csv
+    import full_fix
+    runs = os.path.join(root, "f1_runs.csv")
+    if not os.path.exists(runs):
+        return None
+    with open(runs, newline="", encoding="utf-8") as fh:
+        rows = list(_csv.DictReader(fh))
+    return full_fix.judge(rows), rows
+
+
+def _moves(pairs):
+    """[(move as a share of the value held against, move in the field's own unit)] over the
+    (base, other) pairs a held_still verdict compares."""
+    return [(abs(other - base) / base, abs(other - base)) for base, other in pairs]
+
+
+def _card_move_at_largest(rows):
+    """The move of the wire time measured to the card's own stamp, in the comparison where the
+    kernel-timed wire time's median moved most: how much of that move lay before the card."""
+    import full_fix
+    moves = []
+    for b in full_fix.BACKENDS:
+        pairs = [((b, full_fix.IDLE, p), (b, full_fix.BUSY, p)) for p in (False, True)]
+        pairs += [((b, load, False), (b, load, True)) for load in (full_fix.IDLE, full_fix.BUSY)]
+        for one, other in pairs:
+            w = [full_fix.setup_value(rows, *s, field="W_median") for s in (one, other)]
+            card = [full_fix.setup_value(rows, *s, field="Wcard_median") for s in (one, other)]
+            moves.append((abs(w[1] - w[0]) / w[0], abs(card[1] - card[0])))
+    return max(moves)[1]
+
+
+def full_fix_macros(root=FULL_FIX_DIR):
+    """F1, a full fix tested (freeze 39): the paragraph of Section VI that names it, and
+    Supplement S3.9. Read through scripts/full_fix.py's own judge of the committed run table, so
+    no figure here can part from the verdicts its record gives (docs/results/full_fix). The
+    largest moves of the wire time run over the eight comparisons the plan makes, between the
+    loads at each priority and between the priorities at each load, on both brokers."""
+    read = _full_fix_reading(root)
+    if read is None:
+        return []
+    import full_fix
+    found, rows = read
+    median, tail = _moves(found["F-a"]["values"].values()), _moves(found["F-b"]["values"].values())
+    effect, send = found["F-d"]["values"], found["F-e"]["values"]
+    ratios = dict((b, effect[b]["D_p99"][1] / effect[b]["D_p99"][0]) for b in effect)
+    # The wire time's move in its mean, as a share of the rise in D's mean, at normal priority.
+    shares = [abs(v["W_mean"][1] - v["W_mean"][0]) / (v["D_mean"][1] - v["D_mean"][0])
+              for v in effect.values()]
+    kernel = [full_fix.setup_value(rows, b, load, p, "Kdelay_median") for b in full_fix.BACKENDS
+              for load in (full_fix.IDLE, full_fix.BUSY) for p in (False, True)]
+    return [
+        ("fullFixRuns", str(len(rows))),
+        ("fullFixMessages", latex_thousands(sum(int(r["messages"]) for r in rows))),
+        ("fullFixLoadPct", str(full_fix.BUSY)),
+        ("fullFixMedianMovePct", "%.1f" % (100 * max(median)[0])),
+        ("fullFixMedianMoveUs", "%.0f" % max(median)[1]),
+        ("fullFixCardMoveUs", "%.0f" % _card_move_at_largest(rows)),
+        ("fullFixMedianMarginPct", "%.0f" % (100 * full_fix.MEDIAN_SHARE)),
+        ("fullFixTailMovePct", "%.1f" % (100 * max(tail)[0])),
+        ("fullFixTailMarginPct", "%.0f" % (100 * full_fix.TAIL_SHARE)),
+        ("fullFixEffectRatio", "%.1f" % full_fix.EFFECT_RATIO),
+        ("fullFixTailRatioKafka", "%.1f" % ratios["kafka"]),
+        ("fullFixTailRatioRedis", "%.1f" % ratios["redis"]),
+        ("fullFixTailRatioLo", "%.1f" % min(ratios.values())),
+        ("fullFixTailRatioHi", "%.1f" % max(ratios.values())),
+        ("fullFixWireSharePct", "%.1f" % (100 * max(shares))),
+        ("fullFixWireShareBarPct", "%.0f" % (100 * full_fix.WIRE_SHARE_OF_RISE)),
+        ("fullFixSendRiseKafkaUs", "%.0f" % (send["kafka"][1] - send["kafka"][0])),
+        ("fullFixSendRiseBarUs", "%.0f" % full_fix.KAFKA_SEND_RISE_US),
+        ("fullFixSendMoveRedisUs", "%.0f" % abs(send["redis"][1] - send["redis"][0])),
+        ("fullFixSendMoveBarUs", "%.0f" % full_fix.REDIS_SEND_MOVE_US),
+        ("fullFixKernelDelayLoUs", "%.0f" % min(kernel)),
+        ("fullFixKernelDelayHiUs", "%.0f" % max(kernel)),
+    ]
+
+
+def render_full_fix_table(root=FULL_FIX_DIR):
+    """F1's eight setups, one row each: the wire time's median and 99th percentile, those of D
+    beside them, the host's two waits on the mean, and the kernel's own delay, described and not
+    judged. Each figure is a setup's median over its runs, in microseconds. Empty where the
+    reading is missing."""
+    read = _full_fix_reading(root)
+    if read is None:
+        return ""
+    import full_fix
+    rows = read[1]
+    lines = [
+        "% Generated by scripts/emit_paper_numbers.py from",
+        "% docs/results/full_fix/f1_runs.csv. Do not edit by hand.",
+        "\\begin{tabular}{@{}lrrrrrrr@{}}",
+        "\\toprule",
+        "& \\multicolumn{2}{c}{$W$} & \\multicolumn{2}{c}{$D$} & "
+        "\\multicolumn{2}{c}{Host's wait, mean} & Kernel's \\\\",
+        "\\cmidrule(lr){2-3}\\cmidrule(lr){4-5}\\cmidrule(lr){6-7}",
+        "Broker, load, priority & Median & 99th & Median & 99th & $H_{\\mathrm{out}}$ & "
+        "$H_{\\mathrm{in}}$ & delay \\\\",
+        "\\midrule",
+    ]
+    for b in full_fix.BACKENDS:
+        for load in (full_fix.IDLE, full_fix.BUSY):
+            for p in (False, True):
+                cells = tuple(full_fix.setup_value(rows, b, load, p, f) for f in (
+                    "W_median", "W_p99", "D_median", "D_p99", "Hsend_mean", "Hrecv_mean",
+                    "Kdelay_median"))
+                lines.append("\\%s{}, $%d\\%%$, %s & $%.0f$ & $%.0f$ & $%.0f$ & $%.0f$ & $%.0f$ & "
+                             "$%.0f$ & $%.0f$ \\\\" % ((b, load, "real-time" if p else "normal")
+                                                      + cells))
+    lines += ["\\bottomrule", "\\end{tabular}", ""]
+    return "\n".join(lines)
+
+
 #: Counts the prose sets as words. The ledger printed them as digits ("3 local maxima",
 #: "across 3 levels", "8 matched pairs") in a manuscript that spells small counts out
 #: everywhere else; an outside reading (1 Oct 2026) found the two styles side by side. Each
@@ -5369,7 +5487,7 @@ def _all_pairs(m):
             + tools_block_macros() + tools_load_macros() + ysb_flush_macros() + ysb_fit_macros()
             + k1_macros() + s1_macros() + brokers_block_macros() + quiver_block_macros()
             + pravega_count_macros() + pubsub_block_macros()
-            + recv_wait_macros()
+            + recv_wait_macros() + full_fix_macros()
             + law_reading_macros()
             + s_window_macros() + rate_by_delivery_macros() + mechanism_interval_macros()
             + traced_pooled_macros() + workload_macros() + backlog_macros()
@@ -5397,6 +5515,7 @@ def main(argv=None):
     ap.add_argument("--k1-table", default=DEFAULT_K1_TABLE)
     ap.add_argument("--s1-table", default=DEFAULT_S1_TABLE)
     ap.add_argument("--recv-wait-table", default=DEFAULT_RECV_WAIT_TABLE)
+    ap.add_argument("--full-fix-table", default=DEFAULT_FULL_FIX_TABLE)
     ap.add_argument("--mechanism-table", default=DEFAULT_MECHANISM_TABLE)
     ap.add_argument("--groups-table", default=DEFAULT_GROUPS_TABLE)
     ap.add_argument("--geometry-table", default=DEFAULT_GEOMETRY_TABLE)
@@ -5449,6 +5568,9 @@ def main(argv=None):
     recv = render_recv_wait_table()
     if recv:
         targets.append((args.recv_wait_table, recv))
+    fix = render_full_fix_table()
+    if fix:
+        targets.append((args.full_fix_table, fix))
     if os.path.exists(MECH_INTERVALS_CSV):
         targets.append((args.mechanism_table, render_mechanism_table()))
     if os.path.exists(GROUPS_CSV):

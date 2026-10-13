@@ -106,6 +106,22 @@ class TestTheRuns:
         assert rr.run_row(str(tmp_path / "nothing"), {}) is None
         assert rr.campaign_of("stage1") == "" and rr.campaign_of("law_x") == ""
 
+    def test_an_f1_run_names_its_queue_and_its_three_captures(self, tmp_path):
+        """F1 (13 Oct 2026) captured the sender's packets and the receiver's, the latter twice, as
+        the kernel and as the network card stamped them, and raised both clients at real-time
+        priority. Its judged queue, f1, has no stamp; its pilot's queues are f1_pilot and
+        f1_pilot2."""
+        params = {"backend": "kafka", "load_pct": 0, "delay_ms": 0, "slice_ns": 3000000,
+                  "recv_capture": True, "send_capture": True, "hw_capture": True,
+                  "priority": True}
+        row = rr.run_row(str(run(tmp_path, "law_f1_r001-F1-kafka-l0-rt-a1", params)), {})
+        assert (row["campaign"], row["block"]) == ("f1", "F1")
+        assert row["recv_capture"] is row["send_capture"] is row["hw_capture"] is True
+        assert row["priority"] is True and row["consumer_priority"] is None
+        pilot = rr.run_row(str(run(tmp_path, "law_f1_pilot2_r001-F1-redis-l88-ord-a1",
+                                   dict(params, backend="redis", load_pct=88, priority=None))), {})
+        assert pilot["campaign"] == "f1_pilot2" and pilot["priority"] is None
+
     def test_an_r1_run_names_its_stampless_queue_and_both_of_its_settings(self, tmp_path):
         """R1 (3 Oct 2026) named its first queue r1, with no stamp, raised the consumer alone and
         captured the receiver's packets in every run. The registry says all three."""
@@ -121,6 +137,7 @@ class TestTheRuns:
                                   {"backend": "redis", "load_pct": 88, "delay_ms": 0,
                                    "recv_capture": True})), {})
         assert more["campaign"] == "r1_more" and more["consumer_priority"] is None
+        assert more["send_capture"] is None and more["hw_capture"] is None, "R1 captured neither"
         assert rr.campaign_of("law_r1_r001-R1-kafka-l75-ord-a1", "r001-R1-kafka-l75-ord-a1") \
             == "r1"
         assert rr.campaign_of("law_r1_r001", "r002") == "", "a key the name does not end with"

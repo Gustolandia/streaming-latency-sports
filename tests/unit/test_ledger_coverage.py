@@ -134,6 +134,10 @@ ALLOWED = {
     ("supplement.tex", "recvWaitFactor", r"slices, 1.5 and 3~ms"):
         "the same slice, equal to the factor within which R1-d asked the three estimates to "
         "agree; a slice and a ratio sharing two digits",
+    # 13 Oct 2026: F1's frozen bar for the rise of D's 99th percentile under load (F-d).
+    ("supplement.tex", "fullFixEffectRatio", r"slices, 1.5 and 3~ms"):
+        "the same slice, equal to the factor by which F-d required the load to raise the 99th "
+        "percentile of D; a slice and a plan's ratio sharing two digits",
     # 7 Oct 2026: leaving out the late messages (stale_backlog.py) moved several emitted values
     # onto numbers the documents already type for other quantities.
     ("supplement.tex", "backlogFastestMedianMs", r"slices, 1.5 and 3~ms"):

@@ -61,7 +61,8 @@ happens obeys laws we derive and test by manipulation. It rises with load, depen
 is placed, and falls when the clock-reading threads run at real-time priority and as the timed
 path outgrows the scheduler's slice, which the processor count sets. An industry-wide audit finds
 such values discarded uncounted or never measured, and a filter on millisecond clocks that
-deletes the fastest messages too. We give checks, and measure what most of them buy.
+deletes the fastest messages too. Kernel timestamps exclude the wait from latency, even under
+load. We give checks, and measure what most of them buy.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -116,8 +117,9 @@ meet such a value and three keep it. Of the \toolsRunWord{} we ran,
 millisecond clock, a filter that keeps only latencies above zero, a \emph{positivity filter}, also
 deletes the fastest messages, and no public report we audited says how many samples it kept.
 \item \textbf{What to do} (Section~\ref{sec:practice}). Checks for benchmark authors and
-readers, each with what it buys where we measured it. Better clock synchronization cures neither
-problem.
+readers, each with what it buys where we measured it, and one fix that keeps the waits out of the
+latency. Timed between the kernel's timestamps as each message leaves and returns, the latency held
+still across load and priority. Better clock synchronization cures neither problem.
 \end{enumerate}
 
 % Set here so that the figure the opening cites first is numbered first.
@@ -721,6 +723,11 @@ median error of $\recoveryErrPass\%$ where the sign check passes and $\recoveryE
 fails. $S$ alone understates $D$ $\understateFactor\times$ at the median
 (Fig.~\ref{fig:exposure}). \\
 \addlinespace[2pt]
+Time each message by the kernel's timestamps as it leaves the client machine and as it returns. &
+Holds no client thread's wait. Its median moved at most $\fullFixMedianMovePct\%$ across load and
+priority, while load at normal priority raised the tail of $D$
+$\fullFixTailRatioLo$--$\fullFixTailRatioHi\times$ (Supplement~S3.9). \\
+\addlinespace[2pt]
 Give the threads that read the clock real-time priority, or have them spin on a dedicated core
 (\emph{busy-polling}). &
 $\rtFactorLow$--$\rtFactorHigh\times$ fewer values of $S$ below zero on \kafka{} and
@@ -798,6 +805,18 @@ check sees. Measured three ways in $\recvWaitRuns$ later runs on the registered 
 machines, that wait added $\recvWaitAddedLo$--$\recvWaitAddedHi$~ms to the mean end-to-end latency
 at $\recvLowLoadPct$ and $\recvHighLoadPct\%$ background load, while the median message waited
 $\recvWaitMedianLoUs$--$\recvWaitMedianHiUs\,\mu$s (Supplement~S3.8).
+
+\textbf{Let the kernel timestamp each message.} The kernel timestamps each packet as it leaves or
+enters the client machine, without waiting for the clients' threads. A latency timed between
+those timestamps, the \emph{kernel-timed latency}, therefore includes none of their waits. All
+five predictions we fixed before any run held. Over $\fullFixRuns$ runs on both brokers, its median
+moved by at most $\fullFixMedianMovePct\%$ and its 99th percentile by at most
+$\fullFixTailMovePct\%$ between no background load and $\fullFixLoadPct\%$, and between normal and
+real-time priority. In the same runs, at normal priority, the load raised the 99th percentile of
+$D$ $\fullFixTailRatioLo$--$\fullFixTailRatioHi$-fold (Supplement~S3.9). No kernel-timed latency
+fell to zero or below, so a positivity filter has nothing to delete, and the clients' waits are
+measured beside it instead of inside it. A tool can read such timestamps through the kernel's
+\texttt{SO\_TIMESTAMPING} socket option, which we did not test.
 
 \textbf{Give the threads that read the clock a core.} Real-time priority cut the negative-span
 rate $\rtFactorLow$--$\rtFactorHigh\times$ at unchanged background load on \kafka{}, and
@@ -918,7 +937,9 @@ predictions of where the rate falls with the end-to-end latency, and of how quic
 confirmed. Python's rate there was $\pyOverJavaX$ and $\pyOverJavaArm$ times Java's on the x86
 and Neoverse~N2 pairs, above the registered limit of $1.5$ (Supplement~S6). The constants are
 those of one EEVDF-era kernel. Designs that pin a busy-polling thread to a dedicated core, or
-timestamp in hardware, remove the waiting state, and we make no claim about them.
+timestamp in hardware, remove the waiting state, and we make no claim about them. We read the
+kernel's timestamps only from packet captures, at a single publish rate on a single machine pair
+and kernel.
 
 The deletion is demonstrated in one benchmark, in its embedded mode, and reproduced in one
 independent program of our own. The benchmark's distributed mode failed on every attempt on the
@@ -942,7 +963,11 @@ of the message, which should coincide, differ by milliseconds and in either orde
 thread waits for a core, for up to a scheduler's slice, before it reads the clock. Across the
 industry such values are deleted, replaced or never measured, a positivity filter on a
 millisecond clock deletes the fastest messages too, and no report we audited says how many
-samples it kept. Before acting on a broker latency below a few milliseconds, ask which timestamp
+samples it kept. A latency timed between the kernel's timestamps, as each message leaves the
+client machine and returns, holds none of these waits. Under load it held still while, at normal
+priority, the end-to-end latency's tail rose $\fullFixTailRatioLo$--$\fullFixTailRatioHi$-fold.
+Before acting on a broker latency below a
+few milliseconds, ask which timestamp
 it was timed from, how many samples the tool kept, and how many it discarded, by sign.
 
 % The disclosure paragraph is required by IEEE policy. scripts/build_without_authors.py and

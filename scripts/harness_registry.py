@@ -30,6 +30,7 @@ import argparse
 import csv
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -83,16 +84,34 @@ def load(path=REGISTRY):
     return rows
 
 
+#: A send that waits for its acknowledgment, on the path that times a message to its receipt.
+#: The receipt is then read only once the acknowledgment has returned, so a message that reached
+#: the consumer first is timed from that later moment: a time that was never measured stands in
+#: for its arrival, and its receipt-minus-acknowledgment difference is held at zero. That is a
+#: substitution, the class SUPPRESSION in audit_external_harness.py describes, made by the order
+#: of two calls rather than by a test of the sign. classify() sees one line and cannot tell a
+#: send on a publish path, where waiting is the measurement, from one on the end-to-end path, so
+#: the rule is read here, where the row's path is known, and classify() is left as it read our
+#: own corpus and the OpenMessaging Benchmark. Kafka's own EndToEndLatency is the specimen, and
+#: K1 measured what it hides (docs/results/tools/k1.csv). Read so since 13 Oct 2026; before, the
+#: registry filed that tool as one that never meets such a value, true of the value it computes.
+BLOCKING_SEND = re.compile(r"\.send\s*\([^;]*\)\s*\.get\s*\(\s*\)\s*;")
+
+
 def classified(rows):
     """Each row with the classes its evidence line falls into, derived not stored.
 
     A row whose evidence matches nothing is not an error: the Rezolus row is a counter, not a
-    defect, and it should come back with an empty class list.
+    defect, and it should come back with an empty class list. A row on the end-to-end path whose
+    evidence is a send that waits for its acknowledgment is also a substitution (BLOCKING_SEND).
     """
     out = []
     for r in rows:
         d = dict(r)
-        d["kinds"] = classify(r["evidence"])
+        d["kinds"] = list(classify(r["evidence"]))
+        if (r["path"] == "end-to-end" and BLOCKING_SEND.search(r["evidence"])
+                and "silent_suppression" not in d["kinds"]):
+            d["kinds"].append("silent_suppression")
         d["is_counter"] = bool(DISCARD_COUNTER.search(r["evidence"]))
         d["tally_guard"] = guards_a_tally(r["evidence"])
         out.append(d)
@@ -210,6 +229,9 @@ def summary(rows=None):
         "message_tools": message,
         "tally_guards": tallied,
         "message_cut": sorted(set(cut) & set(message)),
+        # 13 Oct 2026: the message tools that cut such a value out of what they report and count
+        # it, SBK alone, which the paper counts beside the ones that cut without counting.
+        "message_counted": sorted(set(counted) & set(message)),
     }
 
 

@@ -76,6 +76,15 @@ COUNTS = {
         "counts": "the message tools that cut the value out of a figure they report",
         "require": ("cut", "out of"),
     },
+    # 13 Oct 2026: the tools that cut the value at all, SBK among them, and the five that do not.
+    "harnessMessageCutAllWord": {
+        "counts": "the message tools that cut the value out of a figure they report, counted or not",
+        "require": ("cut", "out of"),
+    },
+    "harnessMessageUncutWord": {
+        "counts": "the message tools that cut nothing",
+        "require": ("cut nothing",),
+    },
 }
 
 

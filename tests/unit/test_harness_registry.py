@@ -64,6 +64,19 @@ def test_classified_derives_suppression_from_a_ternary_substitution():
     assert classified(rows)[0]["kinds"] == ["silent_suppression"]
 
 
+def test_a_send_that_waits_for_its_acknowledgment_substitutes_only_on_the_end_to_end_path():
+    """On the end-to-end path a send that waits for its acknowledgment holds every receipt to no
+    earlier than the acknowledgment, a later time standing in for an early arrival; on a publish
+    path the wait is the measurement itself, and nothing is substituted (13 Oct 2026)."""
+    send = "producer.send(new ProducerRecord<>(topic, message)).get();"
+    assert classified([row(evidence=send)])[0]["kinds"] == ["silent_suppression"]
+    assert classified([row(evidence=send, path="publish")])[0]["kinds"] == []
+    assert classified([row(evidence="producer.send(record, callback);")])[0]["kinds"] == []
+    # A line already read as a substitution is not given the class twice.
+    both = "producer.send(r).get(); latency = Double.NaN;"
+    assert classified([row(evidence=both)])[0]["kinds"] == ["silent_suppression"]
+
+
 def test_classified_returns_empty_for_a_line_with_no_defect():
     """The counterexample row must come back clean, not be forced into a class."""
     rows = [row(evidence='name = "scheduler_discarded_samples",')]
@@ -188,9 +201,11 @@ EXPECTED = {
     # 2 Oct 2026: the slice keeps a negative, the percentile table does not. The NATS CLI
     # records into hdrhistogram-go and ignores the error a negative value returns.
     "NATS CLI": ({"cross_process_latency", "library_refusal"}, False),
-    # Keeps every sample, filters nothing, and reports zero for every sub-millisecond
-    # percentile because the array is filled by integer division.
-    "Apache Kafka (bundled)": ({"quantized_retention"}, False),
+    # Reports zero for every sub-millisecond percentile because the array is filled by integer
+    # division; and since 13 Oct 2026 a substitution too, its end-to-end tool's send waiting for
+    # the acknowledgment before the poll, so an early message is timed from that later moment
+    # (BLOCKING_SEND in harness_registry.py).
+    "Apache Kafka (bundled)": ({"quantized_retention", "silent_suppression"}, False),
     # Round 6: the guard is on the counter, so the filter label is withdrawn -- the tool
     # computes the cross-process span and keeps every sample of it.
     "emqtt-bench":             ({"cross_process_latency"}, False),
@@ -322,12 +337,20 @@ def test_the_round6_reaudit_headline_counts():
     `> 0`. SBK counts what it keeps out, the second tool that does. Redpanda's kgo-repeater and
     RocketMQ's benchmark keep every value, and Sarama's producer tool and mqtt-benchmark time on a
     monotonic clock in one process. Twenty-seven tools, eighteen silent.
+
+    On 13 Oct 2026 the registry began reading Kafka's bundled end-to-end tool as a substitution:
+    its send waits for the acknowledgment and only then does it poll, so a message that reached
+    the consumer first is timed from that later moment, nothing counting how often. The line
+    was already in the registry, read on 11 Oct; what changed is that a send which blocks on the
+    end-to-end path is now read as what it does (BLOCKING_SEND). Nineteen silent.
     """
     s = summary()
     assert s["harnesses"] == 27
-    assert s["n_silent"] == 18
-    assert s["suppressors"] == ["Google Pub/Sub load test", "Kafka Trogdor", "Quiver",
-                                "RabbitMQ PerfTest", "Xinfra Monitor", "blktrace btt", "fio"]
+    assert s["n_silent"] == 19
+    assert s["suppressors"] == ["Apache Kafka (bundled)", "Google Pub/Sub load test",
+                                "Kafka Trogdor", "Quiver", "RabbitMQ PerfTest", "Xinfra Monitor",
+                                "blktrace btt", "fio"]
+    assert s["message_counted"] == ["SBK"]
     assert s["counts_discards"] == ["Rezolus", "SBK"]
     assert "emqtt-bench" not in s["silent"]
     assert s["filters"] == ["Apache BookKeeper benchmark", "OpenMessaging Benchmark",

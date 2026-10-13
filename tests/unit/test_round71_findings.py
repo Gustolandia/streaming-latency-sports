@@ -434,9 +434,12 @@ class TestW3FoundTheRegistryWasSpillingARow:
         # 2026 librdkafka's rdkafka_performance added three lines and an eighth silent tool, and
         # Kafka's end-to-end tool one line: it sends, waits for the acknowledgment, then polls.
         # The six tools read later that day added two lines each and five silent tools, and the
-        # second reading's ten twelve lines and five silent tools, BookKeeper's at `> 0`.
+        # second reading's ten twelve lines and five silent tools, BookKeeper's at `> 0`. On 13 Oct
+        # 2026 Kafka's end-to-end tool became the nineteenth silent tool on its existing line: a
+        # send that waits for its acknowledgment, on the end-to-end path, replaces an earlier
+        # arrival with a later time (harness_registry.BLOCKING_SEND).
         assert s["evidence_lines"] == 48 and s["harnesses"] == 27
-        assert s["n_silent"] == 18 and "Apache Pulsar perf" in s["silent"]
+        assert s["n_silent"] == 19 and "Apache Pulsar perf" in s["silent"]
 
 
 class TestW3TheScriptIsCoveredWithoutTouchingTheNetwork:

@@ -171,10 +171,13 @@ class TestR2TheTwoThresholdsAreDifferentThings:
         made it eleven tools, eight silent and ten vendors; C was already among the languages.
         The six read later that day made it seventeen tools, thirteen silent, fourteen vendors
         and seven languages, Clojure and Python the new ones. The second reading that day made it
-        twenty-seven tools, eighteen silent and twenty vendors, in the same seven languages."""
+        twenty-seven tools, eighteen silent and twenty vendors, in the same seven languages.
+        13 Oct 2026: Kafka's bundled end-to-end tool joined the silent ones without a new line
+        read. It polls for each message only after its acknowledgment, so an arrival before the
+        acknowledgment is replaced by that later time, uncounted: nineteen silent."""
         import harness_registry
         s = harness_registry.summary()
-        assert (s["harnesses"], s["n_silent"], s["vendors"], s["languages"]) == (27, 18, 20, 7)
+        assert (s["harnesses"], s["n_silent"], s["vendors"], s["languages"]) == (27, 19, 20, 7)
 
     def test_a_threshold_is_not_a_new_response(self):
         from audit_external_harness import DISPOSAL_KINDS, DISPOSAL_RESPONSES

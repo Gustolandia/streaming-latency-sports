@@ -6,7 +6,7 @@ Tool & Language, vendor & Span measured & Clock & What happens to the value & Co
 \midrule
 Artemis \texttt{perf} & Java, Apache Software Foundation & end-to-end & microsecond & refused by own library & no \\
 BookKeeper benchmark & Java, Apache Software Foundation & publish & nanosecond & filter, $>0$ & no \\
-Apache Kafka (bundled) & Java, Apache Software Foundation & end-to-end & nanosecond & truncate to the resolution & no \\
+Apache Kafka (bundled) & Java, Apache Software Foundation & end-to-end & nanosecond & \begin{tabular}[t]{@{}l@{}}truncate to the resolution;\\ substitute a value\end{tabular} & no \\
 Apache Kafka (bundled) & Java, Apache Software Foundation & publish & millisecond & truncate to the resolution & no \\
 Apache Pulsar perf & Java, Apache Software Foundation & end-to-end & millisecond & filter, $\geq 0$ & no \\
 RocketMQ benchmark & Java, Apache Software Foundation & end-to-end & millisecond & --- & --- \\
@@ -15,7 +15,7 @@ Sarama producer perf. & Go, IBM & publish & millisecond & truncate to the resolu
 Kafka Trogdor & Java, Apache Software Foundation & end-to-end & millisecond & substitute a value & no \\
 Kafka Trogdor & Java, Apache Software Foundation & publish & millisecond & refused by own library & no \\
 NATS CLI & Go, Synadia & end-to-end & nanosecond & refused by own library & no \\
-OpenMessaging Bench. & Java, Linux Foundation & end-to-end & millisecond & filter, $>0$, truncate to the resolution & no \\
+OpenMessaging Bench. & Java, Linux Foundation & end-to-end & millisecond & \begin{tabular}[t]{@{}l@{}}filter, $>0$;\\ truncate to the resolution\end{tabular} & no \\
 OpenMessaging Bench. & Java, Linux Foundation & publish & nanosecond & --- & --- \\
 PerfKit messaging & Python, Google & end-to-end & millisecond & truncate to the resolution & no \\
 Pravega benchmark & Java, Pravega & end-to-end & millisecond & refused by own library & no \\

@@ -2508,6 +2508,13 @@ class TestTheRegistryCells:
         assert epn._registry_cells({"kinds": {"positive_only_filter"},
                                     "counts_discards": False}) == ("filter, $>0$", "no")
 
+    def test_two_responses_are_stacked_one_to_a_line(self):
+        """A label can hold a comma of its own, so two responses are set on two lines."""
+        got = epn._registry_cells({"kinds": {"positive_only_filter", "quantized_retention"},
+                                   "counts_discards": False})
+        assert got == ("\\begin{tabular}[t]{@{}l@{}}filter, $>0$;\\\\ truncate to the "
+                       "resolution\\end{tabular}", "no")
+
     def test_a_disposal_that_is_counted(self):
         assert epn._registry_cells({"kinds": {"silent_suppression"},
                                     "counts_discards": True})[1] == "yes"
@@ -2530,17 +2537,22 @@ class TestTheMessageToolCount:
     value at or below zero out of a figure they report, and what the ones that do not do instead.
     """
 
-    def test_the_committed_registry_gives_seventeen_of_twenty_four(self):
+    def test_the_committed_registry_gives_nineteen_of_twenty_four(self):
         """Seven of eight on the morning of 11 Oct 2026; the six tools read that evening made it
-        twelve of fourteen, and the second reading's ten seventeen of twenty-four. Past twelve
-        house style keeps the digits; the seven that cut nothing are spelled."""
+        twelve of fourteen, and the second reading's ten seventeen of twenty-four. On 13 Oct Kafka's
+        bundled end-to-end tool joined them, its wait for the acknowledgment read as a
+        substitution, so eighteen cut without counting, nineteen with SBK, which counts what it
+        cuts. Past twelve house style keeps the digits; the five that cut nothing are spelled."""
         got = dict(epn.registry_macros())
         assert (got["harnessMessageWord"], got["harnessMessageWordCap"]) == ("24", "24")
-        assert (got["harnessMessageCutWord"], got["harnessMessageCutWordCap"]) == ("17", "17")
-        assert (got["harnessMessageKeepWord"], got["harnessMessageKeepWordCap"]) == ("seven",
-                                                                                    "Seven")
-        assert not {"harnessMessage", "harnessMessageCut", "harnessMessageKeep"} & set(got), \
+        assert (got["harnessMessageCutWord"], got["harnessMessageCutWordCap"]) == ("18", "18")
+        assert got["harnessMessageCutAllWord"] == got["harnessMessageCutAllWordCap"] == "19"
+        assert (got["harnessMessageUncutWord"], got["harnessMessageUncutWordCap"]) == ("five",
+                                                                                      "Five")
+        assert not {"harnessMessage", "harnessMessageCut", "harnessMessageCutAll",
+                    "harnessMessageUncut"} & set(got), \
             "the digits are quoted nowhere, so they are not emitted"
+        assert "harnessMessageKeepWord" not in got, "the count of the seven left with its sentence"
 
     def test_a_count_past_twelve_still_has_its_words(self):
         """The survey grew past twelve tools, and its sentences quote the count through the word

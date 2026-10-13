@@ -104,7 +104,12 @@ ABBREVIATIONS = frozenset((
 #: harnessMessageWordCap, which opened S5's first sentence. The third is harnessMessageKeepWordCap,
 #: the twin of the new count of message tools that cut nothing, which is read only mid-sentence.
 #: Each stays emitted by the same rule as the twin above.
-UNUSED_MACRO_CEILING = 71
+#: 72 since 13 Oct 2026, when Kafka's bundled end-to-end tool was classed as cutting by
+#: replacement: the count of the seven that cut nothing gave way to two counts, of the tools that
+#: cut at all and of the five that cut nothing, each read only mid-sentence, so
+#: harnessMessageKeepWordCap went quiet and harnessMessageCutAllWordCap and
+#: harnessMessageUncutWordCap came in.
+UNUSED_MACRO_CEILING = 72
 
 
 def rendered(name):

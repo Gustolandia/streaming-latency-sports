@@ -108,9 +108,9 @@ scheduler's slice, which the kernel sets from the CPU count. \emph{Real-time pri
 the threads that read the clock ahead of every thread at the default \emph{normal priority}, cut
 it $\rtFactorLow$--$\rtFactorHigh\times$ on \kafka{} and $\rtRedisFactorLow$--$\rtRedisFactorHigh\times$ on \redis{} at unchanged load.
 \item \textbf{The industry-wide audit} (Section~\ref{sec:external}). Of the \harnessMessageWord{}
-message tools we read at source, \harnessMessageCutWord{} cut such values out of a figure they
-report, without counting them. Of the rest, one counts what it cuts, three never meet such a
-value, \kafka{}'s own among them, and three keep them. Of the \toolsRunWord{} we ran,
+message tools we read at source, \harnessMessageCutAllWord{} cut such values out of a figure they
+report. All but one, the Storage Benchmark Kit (SBK), count none of them. Of the rest, two never
+meet such a value and three keep it. Of the \toolsRunWord{} we ran,
 \toolsOneProcessWord{} take both timestamps in one process, so they never measure a
 \emph{one-way latency}, the time from one process to another. On a
 millisecond clock, a filter that keeps only latencies above zero, a \emph{positivity filter}, also
@@ -465,8 +465,8 @@ RocketMQ's maximum, which starts at zero, cannot show it & read, run \\
 \midrule
 \multicolumn{4}{@{}l}{\emph{Both timestamps in one process: publish to receipt, or to the
 acknowledgment}} \\
-\kafka{}'s end-to-end and producer tools & 1~ms & Never measured: the end-to-end tool polls only
-after each acknowledgment, so a message that arrived first is timed no earlier; on a path faster
+\kafka{}'s end-to-end and producer tools & 1~ms & An arrival before the acknowledgment replaced by a
+later time, uncounted: the end-to-end tool polls only after each acknowledgment; on a path faster
 than a millisecond its every percentile reads zero & read, run \\
 RabbitMQ PerfTest & 1~$\mu$s & Replaced by its absolute value, uncounted; until June 2026 a zero
 was dropped too & read, run \\
@@ -476,8 +476,8 @@ Xinfra Monitor & 1~ms & Replaced by zero in its percentiles, kept in its average
 read, run \\
 Strimzi Canary & 1~ms & Binned with the fastest messages; dropped by the log reader it ships,
 uncounted & read, run \\
-Storage Benchmark Kit (SBK) & 1~ms & Kept out of its figures and counted, the one message tool
-that counts it & read, run \\
+Storage Benchmark Kit (SBK) & 1~ms & Cut from its figures but counted, a zero kept; the one
+message tool that counts what it cuts & read, run \\
 Pravega benchmark & 1~ms & An array index that throws, ending every later statistic; uncounted &
 read, run \\
 Apache BookKeeper's benchmark, to the acknowledgment & 1~ns & A zero dropped with the failed
@@ -507,8 +507,8 @@ Rezolus, scheduler wakeups & 1~ns & Discarded and counted, since August 2026 & r
 We read \harnessAuditedWord{} measurement tools at source, across \harnessLanguagesWord{}
 languages and \harnessVendorsWord{} vendors, and classified them with one program whose
 verdicts, each with its source line, are in the supplement's tool registry (Supplement~S5).
-Of these, \harnessMessageWord{} time messages, and \harnessMessageCutWord{} of those cut a value at
-or below zero out of a figure they report, without counting it, in
+Of these, \harnessMessageWord{} time messages. Of those, \harnessMessageCutWord{} cut a value at or
+below zero out of a figure they report, without counting it, in
 \harnessDisposalClassesWord{} ways: a filter drops it, the tool's own library refuses it, or
 another value replaces it. Replacement hides best, because nothing looks missing. RabbitMQ
 PerfTest takes the absolute value~\cite{rabbitmq_perftest}, and \texttt{emqtt-bench} keeps every
@@ -517,18 +517,20 @@ prints~\cite{emqtt_bench}. Until June 2026 PerfTest also kept only values above 
 millisecond mode deleted every trip shorter than a millisecond. The filter in librdkafka's
 \texttt{rdkafka\_performance} prints a line for each value it drops but keeps no count. Users
 have reported such values: in the Yahoo Streaming Benchmark's tracker in 2018, still open, and in
-RabbitMQ Stream PerfTest's in May 2026, which answered with a filter that drops them. Of the
-\harnessMessageKeepWord{} message tools that cut nothing, one, SBK, keeps such a value out of its
-figures and counts it. Apache \kafka{}'s bundled pair never measures such a value. Its
-end-to-end tool waits for each acknowledgment before it polls for the message, so a message that
-reached the consumer first is reported no earlier than its acknowledgment. Beside an observer that
-noted when each message became readable, $\kOneEarlyBusyLo$--$\kOneEarlyBusyHi\%$ of messages were
-readable before the tool had their acknowledgment with every core $\toolsLoadPct\%$ busy, and at
-most $\kOneEarlyFirstHi\%$ with the tool at real-time priority (Supplement~S5). It also rounds each
-latency down to whole milliseconds, so on a path faster than a millisecond every percentile it
-reports is zero~\cite{kafka_tools}. Two more time in one process on a monotonic clock and never
-meet such a value either, and the last three keep it, PerfKit Benchmarker's messaging benchmark
-floored to whole milliseconds (Supplement~S5). Of the tools that time no message, \texttt{fio} and \texttt{btt}
+RabbitMQ Stream PerfTest's in May 2026, which answered with a filter that drops them. Apache
+\kafka{}'s own end-to-end tool hides a value of $S$ below zero without computing one. It polls for
+each message only once the acknowledgment has returned, so a message that reached the consumer
+before its acknowledgment is timed to that later moment, which replaces its arrival. Beside an
+observer that noted when each message became readable, $\kOneEarlyBusyLo$--$\kOneEarlyBusyHi\%$ of
+messages were readable before the tool had their acknowledgment with every core
+$\toolsLoadPct\%$ busy, and at most $\kOneEarlyFirstHi\%$ with the tool at real-time priority
+(Supplement~S5). It also rounds each latency down to whole milliseconds, so on a path faster than
+a millisecond every percentile it reports is zero~\cite{kafka_tools}. SBK cuts such a value out of
+its figures, but counts it and prints the count. Of the \harnessMessageUncutWord{} message tools
+that cut nothing, two time only to the acknowledgment, on a monotonic clock, and never meet such a
+value, and
+three keep it, PerfKit Benchmarker's messaging benchmark floored to whole milliseconds
+(Supplement~S5). Of the tools that time no message, \texttt{fio} and \texttt{btt}
 substitute zero and one nanosecond, and only Rezolus counts what it discards, in its scheduler
 sampler since August 2026~\cite{rezolus}.
 

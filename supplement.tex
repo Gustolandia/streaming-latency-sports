@@ -1078,14 +1078,16 @@ on the harness above.
 
 \textbf{Tools read at source.} Of the \harnessAuditedWord{} tools we read at source,
 \harnessMessageWord{} time messages, and \harnessMessageCutWord{} of those cut a value at or below
-zero out of a figure they report without counting it. One of them, \texttt{emqtt-bench}, keeps the
-value in its histogram and leaves it out of the average it prints. Of the remaining
-\harnessMessageKeepWord{}, SBK keeps the value out of its figures and counts it, the one message
-tool that does. \kafka{}'s bundled pair, IBM Sarama's producer tool and \texttt{mqtt-benchmark}
-time in one process on a monotonic clock and never meet it (the note on \texttt{EndToEndLatency}
-below). PerfKit Benchmarker's messaging benchmark, Redpanda's \texttt{kgo-repeater} and RocketMQ's
-benchmark keep it. Counted by whether the sample itself is lost, \harnessSilentWord{} of all
-\harnessAuditedWord{} dispose of it, \texttt{fio} and \texttt{btt} among them. The plan never
+zero out of a figure they report without counting it. \texttt{emqtt-bench} is among them because
+it leaves the value out of the average it prints, though its histogram keeps it. So is \kafka{}'s
+bundled end-to-end tool, which times a message that reached the consumer first as arriving after
+its acknowledgment (the note on \texttt{EndToEndLatency} below). SBK, the Storage Benchmark Kit,
+cuts the value but counts it, the one message tool that does. Of the remaining
+\harnessMessageUncutWord{}, which cut nothing, IBM Sarama's producer tool and \texttt{mqtt-benchmark}
+time only to the acknowledgment, on a monotonic clock, and never meet it, and PerfKit Benchmarker's
+messaging benchmark, Redpanda's \texttt{kgo-repeater} and RocketMQ's benchmark keep it. Counted by
+whether the tool loses or replaces the value, \harnessSilentWord{} of all \harnessAuditedWord{}
+dispose of it without counting it, \texttt{fio} and \texttt{btt} among them. The plan never
 listed the tools of two readings in October 2026, which followed the protocol of the earlier audit
 (\brk{data/tools_audit/batch_10.json} and \brk{batch_11.json}). Every verdict traces to a line of
 source a reader can check. Each row of the registry file,
@@ -1140,13 +1142,16 @@ producer times each message from that timestamp to the delivery report on its ow
 records every value.
 \item The \texttt{EndToEndLatency} tool bundled with \kafka{} cannot produce a value below zero,
 because it uses one thread, one monotonic clock and a synchronous publish call. It loses the
-measurement anyway. Each sample prints in floating point, but the \texttt{long[]} its percentiles
-come from is filled by the integer division \texttt{elapsed / 1000 / 1000}, so on a path faster
-than a millisecond its p50, p99 and p999 all read zero. Its synchronous publish call has a second
-effect: it polls for the message only once the acknowledgment has returned, so a message that
-reached the consumer first is timed no earlier than its acknowledgment. The
-receipt-minus-acknowledgment difference this paper measures is held at zero by the order of two
-calls, and a poll that finds nothing stops the run rather than dropping the message. The companion
+measurement anyway, in two ways. Each sample prints in floating point, but the \texttt{long[]} its
+percentiles come from is filled by the integer division \texttt{elapsed / 1000 / 1000}, so on a
+path faster than a millisecond its p50, p99 and p999 all read zero. And it polls for the message
+only once its synchronous publish call has returned the acknowledgment, so a message that reached
+the consumer first is timed no earlier than its acknowledgment. That message's
+receipt-minus-acknowledgment difference, which this paper measures, is then held at zero by the
+order of two calls, a later time standing in for the arrival, and nothing counts how often. The
+registry classes that as a substitution, as it classes Trogdor's floor and Xinfra Monitor's zero,
+and the test K1 below measured how often. A poll that finds
+nothing stops the run rather than dropping the message. The companion
 \texttt{ProducerPerformance} takes its publish-to-acknowledgment difference on
 \texttt{System.currentTimeMillis()} and casts it to \texttt{int}.
 \item In \texttt{fio} the guard appears in three timing functions, each returning zero for a
@@ -1205,9 +1210,9 @@ still open.
 to whole milliseconds, so a trip under a millisecond reads zero; its mean and percentiles keep
 every value, sign and all. It measures managed services only: Google Pub/Sub, AWS SQS and Azure
 Service Bus.
-\item SBK, the Storage Benchmark Kit, is the second tool we read that counts what it discards. A
-value below zero is kept out of its minimum, maximum, mean and percentiles and counted, and every
-report prints the count as invalid latencies; a zero is kept. Its default timestamps are
+\item SBK cuts a value below zero but counts it, the second tool we read to do so. Such a value is
+kept out of its minimum, maximum, mean and percentiles, and every report prints how many as
+invalid latencies; a zero is kept. Its default timestamps are
 wall-clock milliseconds, and its multi-host mode lets one host subtract another's timestamp, which
 no document mentions.
 \item Redpanda's \texttt{kgo-repeater} subtracts the timestamping worker's wall clock from that of
@@ -1488,8 +1493,8 @@ acknowledgment: $\kOneEarlyIdleLo$--$\kOneEarlyIdleHi\%$ idle,
 $\kOneEarlyBusyLo$--$\kOneEarlyBusyHi\%$ under the load, and at most $\kOneEarlyFirstHi\%$ with the
 tool at real-time priority. The three predictions version 35 froze after a pilot of two rounds held
 in all \kOneRoundsWord{}: such messages occur under the load, the load raises their share, and
-real-time priority takes it back. The tool timed each such message from its acknowledgment, a
-median $\kOneLateMedian$~ms after the observer could read it. Under the load its own 99th
+real-time priority takes it back. The tool timed each such message to a poll after its
+acknowledgment, a median $\kOneLateMedian$~ms after the observer could read it. Under the load its own 99th
 percentile was $\kOneToolNine$~ms where the observer's was $\kOneObservedNine$~ms. What the tool
 reports is the publish, the acknowledgment and the poll, one after another: a waiting thread
 lengthens it, and a message that overtook its acknowledgment cannot shorten it.

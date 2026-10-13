@@ -1000,8 +1000,13 @@ def _registry_cells(v):
     """
     kinds = sorted(v["kinds"] & set(REGISTRY_LABELS))
     if kinds:
-        return (", ".join(REGISTRY_LABELS[k] for k in kinds),
-                "yes" if v["counts_discards"] else "no")
+        labels = [REGISTRY_LABELS[k] for k in kinds]
+        #: Two responses are stacked, one to a line: a label can hold a comma of its own ("filter,
+        #: $>0$"), and Kafka's end-to-end span, read as a substitution too since 13 Oct 2026, made
+        #: the joined cell wider than the page.
+        cell = (labels[0] if len(labels) == 1 else
+                "\\begin{tabular}[t]{@{}l@{}}" + ";\\\\ ".join(labels) + "\\end{tabular}")
+        return cell, "yes" if v["counts_discards"] else "no"
     if v["counts_discards"]:
         return "discard", "yes"
     # 11 Oct 2026: a guard on the tally a tool prints from keeps the value out of that figure
@@ -1811,12 +1816,15 @@ def literature_macros(path=os.path.join("docs", "results", "external",
             ("litInsideRegimeWord", _spell(len(inside)))]
 
 
-#: The message tools that cut nothing out of what they report, as the paper and the supplement
-#: group them: one keeps a value below zero out of its figures and counts it; three time in one
-#: process on a monotonic clock and never meet one; and three keep it. The prose spells the sizes
-#: of the three groups, so a registry that moves a tool between them stops the build below.
+#: The message tools that cut nothing out of what they report without counting it, as the paper
+#: and the supplement group them: one cuts a value below zero out of its figures but counts it;
+#: two time in one process on a monotonic clock and never meet one; and three keep it. The prose
+#: spells the sizes of the three groups, so a registry that moves a tool between them stops the
+#: build below. Kafka's bundled pair left the second group on 13 Oct 2026, when the registry began
+#: reading its end-to-end tool's wait for the acknowledgment as a substitution (BLOCKING_SEND in
+#: harness_registry.py).
 MESSAGE_KEEP_COUNTS = ["SBK"]
-MESSAGE_KEEP_NEVER_MEET = ["Apache Kafka (bundled)", "IBM Sarama producer perf", "mqtt-benchmark"]
+MESSAGE_KEEP_NEVER_MEET = ["IBM Sarama producer perf", "mqtt-benchmark"]
 MESSAGE_KEEP_KEEP = ["PerfKit Benchmarker messaging", "Redpanda kgo-repeater",
                      "Apache RocketMQ benchmark"]
 
@@ -1896,7 +1904,10 @@ def registry_macros():
                          "%s cut nothing, of which %s count"
                          % (MESSAGE_KEEP_COUNTS, MESSAGE_KEEP_NEVER_MEET, MESSAGE_KEEP_KEEP,
                             rest, sorted(s["counts_discards"])))
-    out.append(("harnessMessageKeep", str(len(rest))))
+    #: The documents count the tools that cut such a value at all, the one that counts what it
+    #: cuts among them, and the ones that cut nothing (13 Oct 2026).
+    out += [("harnessMessageCutAll", str(len(s["message_cut"]) + len(MESSAGE_KEEP_COUNTS))),
+            ("harnessMessageUncut", str(len(rest) - len(MESSAGE_KEEP_COUNTS)))]
     # Spelled forms of the same counts. IEEE house style wants a small number spelled in
     # prose; the alternative to emitting the word was transcribing it, which is the failure
     # mode this whole file exists to prevent. Above twelve the style keeps the digits, which
@@ -1916,7 +1927,8 @@ def registry_macros():
     # ledger once the words are spelled: a macro nobody reads is a number nobody checks. The
     # capitalised twins stay, as every spelled count's does.
     out = [(name, value) for name, value in out
-           if name not in ("harnessMessage", "harnessMessageCut", "harnessMessageKeep")]
+           if name not in ("harnessMessage", "harnessMessageCut", "harnessMessageCutAll",
+                           "harnessMessageUncut")]
     # The scope of the guard, computed rather than remembered. A referee who opens
     # MessageProducer.java finds a nanosecond clock and no filter, and will read an
     # unqualified "the benchmark filters" as overstated. These macros make the qualifier a

@@ -420,3 +420,80 @@ class TestFreeze37sTwo:
                         "--verdicts", str(tmp_path / "v.json")]) == 0
         out = capsys.readouterr().out
         assert "quiver               holds" in out and "pravega-benchmark    holds" in out
+
+
+class TestFreeze38sOne:
+    """Google's Pub/Sub load test under S1 (D41-5): each value below zero a step makes goes into
+    bucket 0 with the fastest messages, too few to carry its median there, so the run ends as its
+    control does and nothing it prints says so."""
+
+    B7, B8, B9 = [11.390625, 17.0859375], [17.0859375, 25.62890625], [25.62890625, 38.443359375]
+    B10 = [38.443359375, 57.6650390625]
+
+    def _reading(self, p50, final=True, mentions=0):
+        return {"final": final, "thrown": 0, "mentions_negative": mentions,
+                "ranges": {"subscriber": {"p50": p50}}, "reported_ms": {"p50": sum(p50) / 2}}
+
+    def _pair(self, root, folder, stepped, control=None):
+        _run(root, folder, "pubsub-loadtest", "control", control or self._reading(self.B8))
+        _run(root, folder, "pubsub-loadtest", "stepped", stepped)
+
+    def _verdict(self, root, rounds=(("1", "tools_v41"),)):
+        rows = sb.block_rows(str(root), list(rounds), sb.TOOLS_V41)
+        return sb.judge(rows, [rnd for rnd, _ in rounds], sb.TOOLS_V41)["pubsub-loadtest"]
+
+    def test_it_shows_no_count_of_values_below_zero(self):
+        assert sb.below_zero("pubsub-loadtest", self._reading(self.B8)) is None
+
+    @pytest.mark.parametrize("stepped", ["B8", "B7", "B9"])
+    def test_it_holds_where_its_median_stayed_within_one_bucket(self, tmp_path, stepped):
+        self._pair(tmp_path, "tools_v41", self._reading(getattr(self, stepped)))
+        self._pair(tmp_path, "tools_v41_round2", self._reading(self.B8))
+        found = self._verdict(tmp_path, (("1", "tools_v41"), ("2", "tools_v41_round2")))
+        assert found["verdict"] == "holds" and found["held_in_rounds"] == ["1", "2"]
+
+    def test_its_rows_carry_the_median_s_top_and_the_lines_that_mention_it(self, tmp_path):
+        self._pair(tmp_path, "tools_v41", self._reading(self.B9, mentions=0))
+        rows = sb.block_rows(str(tmp_path), [("1", "tools_v41")], sb.TOOLS_V41)
+        assert [(r["run"], r["p50_high"], r["mentions"], r["below_zero"]) for r in rows] == [
+            ("control", self.B8[1], 0, ""), ("stepped", self.B9[1], 0, "")]
+
+    @pytest.mark.parametrize("stepped, control", [
+        ({"p50": B10}, None),
+        ({"p50": B8, "final": False}, None),
+        ({"p50": B8, "mentions": 1}, None),
+        ({"p50": B8}, {"p50": B8, "final": False}),
+    ], ids=["two buckets away", "did not end as its control", "mentioned a value below zero",
+            "a control that did not end"])
+    def test_it_fails_where_a_part_of_it_is_missing(self, tmp_path, stepped, control):
+        self._pair(tmp_path, "tools_v41", self._reading(**stepped),
+                   self._reading(**control) if control else None)
+        assert self._verdict(tmp_path)["verdict"] == "fails"
+
+    @pytest.mark.parametrize("stepped", [
+        {"final": True, "mentions_negative": 0, "ranges": {"subscriber": {}}},
+        {"final": True, "ranges": {"subscriber": {"p50": B8}}},
+        {"ranges": {"subscriber": {"p50": B8}}, "mentions_negative": 0},
+    ], ids=["no median printed", "nothing said of the lines", "no ending read"])
+    def test_runs_without_what_they_are_judged_by_are_not_judged(self, tmp_path, stepped):
+        self._pair(tmp_path, "tools_v41", stepped)
+        assert self._verdict(tmp_path)["verdict"] == "undecided"
+
+    def test_it_holds_on_the_fourth_pilot_s_runs(self, tmp_path):
+        """Read by tool_readings as tools.sh reads them, the shape of a real reading included."""
+        import tool_readings as tr
+        fixtures = Path(__file__).resolve().parents[1] / "fixtures" / "tools_f38"
+
+        def read(name):
+            return tr.read_tool("pubsub-loadtest", (fixtures / name).read_text(encoding="utf-8"))
+
+        self._pair(tmp_path, "tools_v41", read("pubsub-loadtest_s1_stepped.txt"),
+                   read("pubsub-loadtest_s1_control.txt"))
+        assert self._verdict(tmp_path)["verdict"] == "holds"
+
+    def test_main_accepts_it_by_name(self, tmp_path, capsys):
+        self._pair(tmp_path, "tools_v41", self._reading(self.B8))
+        assert sb.main(["--root", str(tmp_path), "--rounds", "1:tools_v41",
+                        "--tools", "pubsub-loadtest", "--out", str(tmp_path / "s.csv"),
+                        "--verdicts", str(tmp_path / "v.json")]) == 0
+        assert "pubsub-loadtest      holds" in capsys.readouterr().out

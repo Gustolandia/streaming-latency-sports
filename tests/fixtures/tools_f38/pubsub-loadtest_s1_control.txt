@@ -1,0 +1,576 @@
+stopped 1 process(es) an earlier run left; see runs/azure/pilot_v41d/s1-pubsub-loadtest-control/leftovers.txt
+# pubsub attempts set aside
+1
+# pubsub driver's console
+[pool-1-thread-1] INFO com.google.pubsub.flic.controllers.resource_controllers.PubsubResourceController - Topic cloud-pubsub-loadtest already exists, reusing.
+[pool-1-thread-1] ERROR com.google.pubsub.flic.controllers.resource_controllers.PubsubResourceController - Creating subscription: loadtest-subscriber
+[main] INFO com.google.pubsub.flic.controllers.Controller - Started non-compute resource_controllers.
+[main] INFO com.google.pubsub.clients.common.JavaLoadtestWorker - Started server, listening on port 35585.
+[main] INFO com.google.pubsub.clients.common.JavaLoadtestWorker - Started server, listening on port 33537.
+[main] INFO com.google.pubsub.flic.controllers.Controller - Started compute resource_controllers.
+[pool-1-thread-5] INFO com.google.pubsub.flic.controllers.Client - Connecting to localhost:35585
+[pool-1-thread-8] INFO com.google.pubsub.flic.controllers.Client - Connecting to localhost:33537
+[pool-1-thread-8] INFO com.google.pubsub.flic.controllers.Client - Starting at seconds: 1791848837
+nanos: 503000000
+
+[pool-1-thread-5] INFO com.google.pubsub.flic.controllers.Client - Starting at seconds: 1791848837
+nanos: 503000000
+
+[pool-1-thread-8] WARN com.google.pubsub.flic.controllers.Client - Request to start: project: "sbl-pubsub-load-test"
+topic: "cloud-pubsub-loadtest"
+start_time {
+  seconds: 1791848837
+  nanos: 503000000
+}
+test_duration {
+  seconds: 180
+}
+include_ids: true
+pubsub_options {
+  subscription: "loadtest-subscriber"
+}
+cpu_scaling: 5
+
+[pool-1-thread-5] WARN com.google.pubsub.flic.controllers.Client - Request to start: project: "sbl-pubsub-load-test"
+topic: "cloud-pubsub-loadtest"
+start_time {
+  seconds: 1791848837
+  nanos: 503000000
+}
+test_duration {
+  seconds: 180
+}
+include_ids: true
+publisher_options {
+  rate: 1.0
+  batch_duration {
+    nanos: 1000000
+  }
+  batch_size: 1
+  message_size: 1
+}
+cpu_scaling: 5
+
+[pool-2-thread-1] INFO com.google.pubsub.clients.common.JavaLoadtestWorker - Request received, starting up server.
+[pool-2-thread-1] INFO com.google.pubsub.clients.common.JavaLoadtestWorker - Request received, starting up server.
+[pool-2-thread-1] INFO com.google.pubsub.clients.common.AbstractPublisher - Per thread rate upper bound: 0.02500000037252903
+[pool-2-thread-1] WARN com.google.pubsub.clients.gcloud.CPSPublisherTask - constructing CPS publisher
+[grpc-default-executor-0] INFO com.google.pubsub.flic.controllers.Client - Successfully started client [localhost]
+[grpc-default-executor-0] INFO com.google.pubsub.flic.controllers.Client - Successfully started client [localhost]
+[main] INFO com.google.pubsub.flic.controllers.Controller - Started all clients.
+[main] INFO com.google.pubsub.flic.Driver - Will start burn-in time in 59 seconds.
+[pool-2-thread-1] INFO com.google.pubsub.clients.common.JavaLoadtestWorker - starting in: seconds: 59
+nanos: 850000000
+
+[pool-2-thread-1] INFO com.google.pubsub.clients.common.JavaLoadtestWorker - starting in: seconds: 59
+nanos: 614000000
+
+[pool-1-thread-7] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[pool-1-thread-2] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-0] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: running_duration {
+  seconds: -49
+  nanos: -862000000
+}
+
+[grpc-default-executor-0] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  seconds: -49
+  nanos: -858000000
+}
+
+[pool-1-thread-3] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[pool-1-thread-6] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-0] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: running_duration {
+  seconds: -39
+  nanos: -868000000
+}
+
+[grpc-default-executor-0] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  seconds: -39
+  nanos: -862000000
+}
+
+[pool-1-thread-9] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[pool-1-thread-10] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-0] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: running_duration {
+  seconds: -29
+  nanos: -869000000
+}
+
+[grpc-default-executor-0] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  seconds: -29
+  nanos: -862000000
+}
+
+[pool-1-thread-5] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-0] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: running_duration {
+  seconds: -19
+  nanos: -876000000
+}
+
+[pool-1-thread-8] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-0] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  seconds: -19
+  nanos: -870000000
+}
+
+[pool-1-thread-11] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[pool-1-thread-7] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-0] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: running_duration {
+  seconds: -9
+  nanos: -869000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  seconds: -9
+  nanos: -868000000
+}
+
+[pool-2-thread-1] INFO com.google.pubsub.clients.common.JavaLoadtestWorker - starting now
+[pool-2-thread-1] INFO com.google.pubsub.clients.common.JavaLoadtestWorker - stopwatch started
+[pool-2-thread-1] WARN com.google.pubsub.clients.common.PooledWorkerTask - starting workers
+[pool-3-thread-1] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-2] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-3] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-4] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-5] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-6] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-7] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-8] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-9] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-10] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-11] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-12] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-13] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-14] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-15] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-2-thread-1] INFO com.google.pubsub.clients.common.JavaLoadtestWorker - starting now[pool-3-thread-16] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+
+[pool-2-thread-1] INFO com.google.pubsub.clients.common.JavaLoadtestWorker - stopwatch started
+[pool-3-thread-17] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-18] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-19] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-20] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-21] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-22] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-23] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-24] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-25] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-26] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-27] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-28] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-29] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-30] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-31] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-32] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-33] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-34] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-35] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-36] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-37] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-38] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-2-thread-1] INFO com.google.pubsub.clients.common.JavaLoadtestWorker - task started
+[pool-3-thread-39] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-3-thread-40] WARN com.google.pubsub.clients.common.PooledWorkerTask - worker started
+[pool-1-thread-2] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[pool-1-thread-13] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: running_duration {
+  nanos: 127000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  nanos: 141000000
+}
+
+[pool-2-thread-1] INFO com.google.pubsub.clients.common.JavaLoadtestWorker - task started
+[pool-1-thread-3] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 40
+running_duration {
+  seconds: 10
+  nanos: 124000000
+}
+
+[pool-1-thread-14] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 40
+running_duration {
+  seconds: 10
+  nanos: 137000000
+}
+
+[pool-1-thread-6] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: running_duration {
+  seconds: 20
+  nanos: 124000000
+}
+
+[pool-1-thread-15] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  seconds: 20
+  nanos: 137000000
+}
+
+[pool-1-thread-9] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: running_duration {
+  seconds: 30
+  nanos: 124000000
+}
+
+[pool-1-thread-16] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  seconds: 30
+  nanos: 137000000
+}
+
+[pool-1-thread-10] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 34
+bucket_values: 6
+running_duration {
+  seconds: 40
+  nanos: 124000000
+}
+
+[pool-1-thread-17] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 12
+bucket_values: 28
+running_duration {
+  seconds: 40
+  nanos: 137000000
+}
+
+[pool-1-thread-5] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: running_duration {
+  seconds: 50
+  nanos: 124000000
+}
+
+[pool-1-thread-18] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  seconds: 50
+  nanos: 130000000
+}
+
+[pool-1-thread-8] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: running_duration {
+  seconds: 60
+  nanos: 124000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: NaN MB/s
+[pool-1-thread-19] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  seconds: 60
+  nanos: 130000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: NaN MB/s
+[pool-1-thread-7] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: running_duration {
+  seconds: 70
+  nanos: 124000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 0.0 MB/s
+[pool-1-thread-20] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  seconds: 70
+  nanos: 130000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 0.0 MB/s
+[pool-1-thread-11] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 26
+bucket_values: 14
+running_duration {
+  seconds: 80
+  nanos: 124000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 2.0E-6 MB/s
+[pool-1-thread-21] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 38
+bucket_values: 2
+running_duration {
+  seconds: 80
+  nanos: 130000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 2.0E-6 MB/s
+[pool-1-thread-22] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: running_duration {
+  seconds: 90
+  nanos: 124000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 1.3333333333333332E-6 MB/s
+[pool-1-thread-2] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  seconds: 90
+  nanos: 130000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 1.3333333333333332E-6 MB/s
+[pool-1-thread-12] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: running_duration {
+  seconds: 100
+  nanos: 124000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 1.0E-6 MB/s
+[pool-1-thread-13] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  seconds: 100
+  nanos: 130000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 1.0E-6 MB/s
+[pool-1-thread-23] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: running_duration {
+  seconds: 110
+  nanos: 124000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 8.000000000000001E-7 MB/s
+[pool-1-thread-3] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  seconds: 110
+  nanos: 129000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 8.000000000000001E-7 MB/s
+[pool-1-thread-24] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 3
+bucket_values: 35
+bucket_values: 2
+running_duration {
+  seconds: 120
+  nanos: 124000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 1.3333333333333332E-6 MB/s
+[pool-1-thread-14] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 7
+bucket_values: 32
+bucket_values: 1
+running_duration {
+  seconds: 120
+  nanos: 130000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 1.3333333333333332E-6 MB/s
+[pool-1-thread-25] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: running_duration {
+  seconds: 130
+  nanos: 124000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 1.1428571428571428E-6 MB/s
+[pool-1-thread-6] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  seconds: 130
+  nanos: 129000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 1.1428571428571428E-6 MB/s
+[pool-1-thread-26] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: running_duration {
+  seconds: 140
+  nanos: 124000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 1.0E-6 MB/s
+[pool-1-thread-15] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  seconds: 140
+  nanos: 129000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 1.0E-6 MB/s
+[pool-1-thread-27] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: running_duration {
+  seconds: 150
+  nanos: 124000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 8.888888888888889E-7 MB/s
+[pool-1-thread-9] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  seconds: 150
+  nanos: 130000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 8.888888888888889E-7 MB/s
+[pool-1-thread-28] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 4
+bucket_values: 36
+running_duration {
+  seconds: 160
+  nanos: 124000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 1.2E-6 MB/s
+[pool-1-thread-16] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 0
+bucket_values: 40
+running_duration {
+  seconds: 160
+  nanos: 130000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 1.2E-6 MB/s
+[pool-1-thread-29] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: running_duration {
+  seconds: 170
+  nanos: 124000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 1.0909090909090908E-6 MB/s
+[pool-1-thread-10] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  seconds: 170
+  nanos: 130000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 1.0909090909090908E-6 MB/s
+[pool-2-thread-1] INFO com.google.pubsub.clients.common.JavaLoadtestWorker - test stopping
+[pool-1-thread-30] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-publisher client.  Got check response: running_duration {
+  seconds: 180
+  nanos: 124000000
+}
+is_finished: true
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 1.0E-6 MB/s
+[pool-1-thread-5] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  seconds: 180
+  nanos: 129000000
+}
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 1.0E-6 MB/s
+[pool-2-thread-1] INFO com.google.pubsub.clients.common.JavaLoadtestWorker - test stopping
+[pool-2-thread-1] INFO com.google.pubsub.clients.common.JavaLoadtestWorker - Load test complete.
+[pool-1-thread-17] INFO com.google.pubsub.flic.controllers.Client - Checking...
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Connected to cps-gcloud-java-subscriber client.  Got check response: running_duration {
+  seconds: 190
+  nanos: 130000000
+}
+is_finished: true
+
+[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - Approximate rate: 9.230769230769231E-7 MB/s
+[pool-1-thread-20] INFO com.google.pubsub.flic.controllers.resource_controllers.PubsubResourceController - Cleaning up pubsub resource_controllers.
+[main] INFO com.google.pubsub.flic.controllers.Controller - Stopping all controllers.
+[Thread-0] ERROR com.google.pubsub.clients.common.JavaLoadtestWorker - Shutting down server since JVM is shutting down.
+[Thread-0] ERROR com.google.pubsub.clients.common.JavaLoadtestWorker - Shutting down server since JVM is shutting down.
+[main] INFO com.google.pubsub.clients.common.JavaLoadtestWorker - Started server, listening on port 33537.
+[main] INFO com.google.pubsub.clients.common.JavaLoadtestWorker - Started server, listening on port 35585.
+[pool-1-thread-20] INFO com.google.pubsub.flic.controllers.resource_controllers.PubsubResourceController - Cleaned up pubsub resource_controllers.
+[main] INFO com.google.pubsub.flic.controllers.Controller - Stopped all controllers.
+[main] INFO com.google.pubsub.flic.Driver - ===============================================
+[main] INFO com.google.pubsub.flic.Driver - Results for cps-gcloud-java-subscriber:
+[main] INFO com.google.pubsub.flic.Driver - 50%: 11.390625 - 17.0859375
+[main] INFO com.google.pubsub.flic.Driver - 99%: 17.0859375 - 25.62890625
+[main] INFO com.google.pubsub.flic.Driver - 99.9%: 17.0859375 - 25.62890625
+[main] INFO com.google.pubsub.flic.Driver - Average throughput: 0 MB/s
+[main] INFO com.google.pubsub.flic.Driver - Results for cps-gcloud-java-publisher:
+[main] INFO com.google.pubsub.flic.Driver - 50%: 11.390625 - 17.0859375
+[main] INFO com.google.pubsub.flic.Driver - 99%: 17.0859375 - 25.62890625
+[main] INFO com.google.pubsub.flic.Driver - 99.9%: 17.0859375 - 25.62890625
+[main] INFO com.google.pubsub.flic.Driver - Average throughput: 0 MB/s
+[main] INFO com.google.pubsub.flic.Driver - ===============================================
+[Thread-0] ERROR com.google.pubsub.clients.common.JavaLoadtestWorker - Shutting down server since JVM is shutting down.[Thread-0] ERROR com.google.pubsub.clients.common.JavaLoadtestWorker - Shutting down server since JVM is shutting down.
+
+# pubsub driver's exit status
+0
+# pubsub test seconds
+120
+# pubsub burn-in seconds
+60
+# pubsub output.csv
+Messaging Type,Language,Messaging Side,Num Clients,Cores Per Client,Message Size,CPU Scaling,QPS,Throughput (MB/s),50%ile Latency,90%ile Latency,99%ile Latency,99.9%ile Latency
+CPS_GCLOUD,JAVA,SUBSCRIBER,1,1,1,5,1,0,14.23828125,14.23828125,21.357421875,21.357421875
+CPS_GCLOUD,JAVA,PUBLISHER,1,1,1,5,1,0,14.23828125,21.357421875,21.357421875,21.357421875

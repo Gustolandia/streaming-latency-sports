@@ -1844,3 +1844,166 @@ class TestFreeze37sToolsAsTheyRan:
         got = tr.read_tool("pravega-benchmark", _ran37("pravega-benchmark_under_libfaketime.txt"))
         assert got["reported_ms"]["max"] == 1009.0 and got["reported_ms"]["avg"] == 19.9
         assert sum(1 for w in got["window_rows"] if w[2] > 500) == 4 and got["final"] is True
+
+
+F38 = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fixtures", "tools_f38")
+
+
+def _ran38(name):
+    with open(os.path.join(F38, name), encoding="utf-8") as fh:
+        return fh.read()
+
+
+class TestFreeze38sToolAsItRan:
+    """Google's Pub/Sub load test as it printed in the pilots of 12 October on the second x86 pair:
+    its outputs whole, client lines and check responses included."""
+
+    def test_its_zero_step(self):
+        """Both sides' medians printed as [11.4, 17.1) ms, the bucket below the one most of its
+        values went into, [17.1, 25.6); 120 messages each, the preset's one a second for two
+        minutes; and its driver's exit status 0."""
+        got = tr.read_tool("pubsub-loadtest", _ran38("pubsub-loadtest_t1_zero_step.txt"))
+        assert got["ranges"]["subscriber"]["p50"] == [11.390625, 17.0859375]
+        assert got["ranges"]["publisher"]["p99"] == [25.62890625, 38.443359375]
+        assert got["reported_ms"] == {"p50": 14.23828125, "p90": 21.357421875,
+                                      "p99": 32.0361328125, "p999": 32.0361328125}
+        assert got["steps_ms"]["p50"] == 17.0859375 - 11.390625
+        assert (got["kept"], got["sent"], got["exit"], got["final"], got["thrown"]) == (
+            120, 120, 0, True, 0)
+        assert got["mentions_negative"] == 0 and got["missing"] is None
+        sub = got["buckets"]["subscriber"]
+        assert sub[7] == max(sub[:10]) and sum(sub[:6]) == 0, "no value under 11 ms"
+
+    def test_an_attempt_whose_controller_never_started(self):
+        """Its controller's call to Pub/Sub timed out before any message: nothing printed."""
+        got = tr.read_tool("pubsub-loadtest", _ran38("pubsub-loadtest_never_started.txt"))
+        assert got["reported_ms"] == {} and got["ranges"] == {} and got["buckets"] == {}
+        assert (got["exit"], got["wrote_csv"], got["final"]) == (1, False, False)
+
+    def test_its_t2_control_on_java_11(self):
+        """The fourth pilot's, as the block will run it: on Java 11, nothing moved."""
+        got = tr.read_tool("pubsub-loadtest", _ran38("pubsub-loadtest_t2_control.txt"))
+        assert got["ranges"]["subscriber"]["p50"] == [17.0859375, 25.62890625]
+        assert (got["final"], got["kept"], got["sent"], got["thrown"]) == (True, 120, 120, 0)
+        assert got["set_aside"] == 0 and got["buckets"]["subscriber"][0] == 0
+
+    def test_its_subscriber_s_clock_moved_back_past_its_trip(self):
+        """101 of the 120 values its controller counted fell in bucket 0, and its controller threw
+        while computing the subscriber's median: no percentile printed for either side, no
+        output.csv, and the driver stopped at six minutes."""
+        got = tr.read_tool("pubsub-loadtest", _ran38("pubsub-loadtest_t2_offset.txt"))
+        assert (got["thrown"], got["mentions_negative"]) == (1, 1)
+        assert got["ranges"] == {"subscriber": {}} and got["reported_ms"] == {}
+        assert (got["exit"], got["wrote_csv"], got["final"]) == (124, False, False)
+        sub = got["buckets"]["subscriber"]
+        assert sub[0] == 101 and sum(sub) == 120
+
+    def test_its_subscriber_s_clock_a_second_ahead(self):
+        """Every value its subscriber counted went into bucket 17, [985.3, 1477.9) ms by its own
+        binning, and the range its controller printed for that bucket lies wholly below 985.3 ms,
+        Math.pow(1.5, 16) and (1.5, 17) on that JVM giving its bounds."""
+        got = tr.read_tool("pubsub-loadtest", _ran38("pubsub-loadtest_t4_ahead.txt"))
+        assert got["ranges"]["subscriber"]["p50"] == [656.8408355712891, 985.2612533569336]
+        sub = got["buckets"]["subscriber"]
+        assert sub[17] == 120 and sum(sub) == 120
+        assert got["final"] is True and got["reported_ms"]["p50"] == 821.0510444641113
+
+    def test_under_the_steps_and_its_control(self):
+        """One step caught 34 of a burst of 40, in the burn-in its controller does not count; its
+        printed median stayed its control's, and nothing it printed said so."""
+        got = tr.read_tool("pubsub-loadtest", _ran38("pubsub-loadtest_s1_stepped.txt"))
+        assert got["buckets_burn_in"]["subscriber"][0] == 34 and got["buckets"]["subscriber"][0] == 0
+        assert (got["final"], got["mentions_negative"], got["kept"], got["set_aside"]) == (
+            True, 0, 80, 1)
+        control = tr.read_tool("pubsub-loadtest", _ran38("pubsub-loadtest_s1_control.txt"))
+        assert got["ranges"]["subscriber"]["p50"] == control["ranges"]["subscriber"]["p50"]
+        assert control["final"] is True and control["kept"] == 120
+
+
+class TestThePubsubReader:
+    """Each branch of read_pubsub_loadtest, on output shaped as cloud/azure/tools_run.sh prints it."""
+
+    HEAD = "[main] INFO com.google.pubsub.flic.Driver - "
+    CSV = ("Messaging Type,Language,Messaging Side,Num Clients,Cores Per Client,Message Size,"
+           "CPU Scaling,QPS,Throughput (MB/s),50%ile Latency,90%ile Latency,99%ile Latency,"
+           "99.9%ile Latency\n")
+
+    def _run(self, console, status="0", csv=None, seconds="120", burn_in=None, aside=None):
+        parts = []
+        if aside is not None:
+            parts += [tr.PUBSUB_ASIDE, aside]
+        parts += [tr.PUBSUB_CONSOLE, console, tr.PUBSUB_STATUS, status]
+        if seconds is not None:
+            parts += [tr.PUBSUB_SECONDS, seconds]
+        if burn_in is not None:
+            parts += [tr.PUBSUB_BURN_IN, burn_in]
+        parts += [tr.PUBSUB_CSV] + ([csv] if csv else [])
+        return "\n".join(parts) + "\n"
+
+    def test_a_run_whose_controller_threw_on_the_subscriber(self):
+        console = "\n".join([
+            self.HEAD + "Results for cps-gcloud-java-publisher:",
+            self.HEAD + "50%: 11.390625 - 17.0859375",
+            self.HEAD + "99%: 25.62890625 - 38.443359375",
+            self.HEAD + "Results for cps-gcloud-java-subscriber:",
+            'Exception in thread "main" java.lang.RuntimeException: Programming error: negative '
+            "values appear in buckets.",
+            "\tat com.google.pubsub.flic.common.LatencyTracker.getNthPercentileIndex(LatencyTracker.java:51)"])
+        got = tr.read_tool("pubsub-loadtest", self._run(console, status="124"))
+        assert got["reported_ms"] == {} and got["ranges"]["subscriber"] == {}
+        assert got["publisher_ms"] == {"p50": (11.390625 + 17.0859375) / 2,
+                                       "p99": (25.62890625 + 38.443359375) / 2}
+        assert (got["thrown"], got["mentions_negative"], got["exit"]) == (1, 1, 124)
+        assert (got["wrote_csv"], got["final"], got["kept"], got["sent"]) == (False, False, None,
+                                                                             None)
+
+    def test_a_bound_in_scientific_notation_and_a_line_before_any_side(self):
+        console = "\n".join([self.HEAD + "50%: 1.0 - 2.0",
+                             self.HEAD + "Results for cps-gcloud-java-subscriber:",
+                             self.HEAD + "99.9%: 1.4778918457E7 - 2.2168377685E7"])
+        got = tr.read_tool("pubsub-loadtest", self._run(console))
+        assert got["ranges"] == {"subscriber": {"p999": [1.4778918457e7, 2.2168377685e7]}}
+
+    def test_a_csv_cell_that_is_no_number_is_left_out_and_a_midpoint_gives_its_bucket(self):
+        csv = self.CSV + "CPS_GCLOUD,JAVA,SUBSCRIBER,1,1,1,5,1,0,0.5,21.357421875,NaN,\n"
+        got = tr.read_tool("pubsub-loadtest", self._run("", csv=csv))
+        assert got["reported_ms"] == {"p50": 0.5, "p90": 21.357421875}
+        assert got["steps_ms"] == {"p50": 1.0, "p90": pytest.approx(0.4 * 21.357421875)}
+        assert got["kept"] == 120 and got["sent"] is None, "no publisher row"
+        assert got["exit"] == 0 and got["final"] is True
+
+    def test_a_run_without_its_seconds_counts_nothing(self):
+        csv = self.CSV + "CPS_GCLOUD,JAVA,SUBSCRIBER,1,1,1,5,1,0,14.23828125,1,1,1\n"
+        got = tr.read_tool("pubsub-loadtest", self._run("", csv=csv, seconds=None))
+        assert got["kept"] is None and got["reported_ms"]["p50"] == 14.23828125
+
+    def test_its_check_responses_are_summed_apart_from_the_burn_in(self):
+        """Its controller counts a response's buckets only once the run outlasts the burn-in."""
+        def check(side, buckets, seconds, nanos="84000000"):
+            values = ["bucket_values: %d" % n for n in buckets]
+            first = values[0] if values else "running_duration {"
+            lines = ["[grpc-default-executor-1] INFO com.google.pubsub.flic.controllers.Client - "
+                     "Connected to cps-gcloud-java-%s client.  Got check response: %s" % (side, first)]
+            lines += values[1:] + (["running_duration {"] if values else [])
+            return lines + ["  seconds: %d" % seconds, "  nanos: %s" % nanos, "}", ""]
+        console = "\n".join(
+            ["nanos: 5", "[pool-2-thread-1] INFO worker - starting in: seconds: 59", "nanos: 896"]
+            + check("subscriber", [0, 0, 3], 30) + check("subscriber", [2, 0, 4, 1], 90)
+            + check("publisher", [], 95) + check("subscriber", [0, 1], 60, nanos="5")
+            + ["is_finished: true", "[main] INFO Driver - done"])
+        got = tr.read_tool("pubsub-loadtest", self._run(console, burn_in="60"))
+        assert got["buckets"] == {"subscriber": [2, 1, 4, 1], "publisher": []}
+        assert got["buckets_burn_in"] == {"subscriber": [0, 0, 3]}
+        no_burn_in = tr.read_tool("pubsub-loadtest", self._run(console))
+        assert no_burn_in["buckets"]["subscriber"] == [2, 1, 7, 1], "every response counts"
+
+    def test_what_it_says_went_missing_and_the_attempts_set_aside(self):
+        console = "\n".join([self.HEAD + "Some published messages were not received!",
+                             self.HEAD + "Missing 3 total messages."])
+        got = tr.read_tool("pubsub-loadtest", self._run(console, aside="2"))
+        assert (got["missing"], got["set_aside"]) == (3, 2)
+        assert tr.read_tool("pubsub-loadtest", self._run(""))["set_aside"] is None
+
+    def test_an_empty_output_reads_as_nothing(self):
+        got = tr.read_tool("pubsub-loadtest", "")
+        assert got["reported_ms"] == {} and got["exit"] is None and got["final"] is False

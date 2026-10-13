@@ -1,0 +1,42 @@
+# pubsub driver's console
+[main] ERROR com.google.pubsub.flic.controllers.Controller - error starting controller: java.util.concurrent.ExecutionException: java.net.SocketTimeoutException: Read timed out
+[pool-1-thread-1] INFO com.google.pubsub.flic.controllers.resource_controllers.PubsubResourceController - Cleaning up pubsub resource_controllers.
+[main] INFO com.google.pubsub.flic.controllers.Controller - Stopping all controllers.
+[main] ERROR com.google.pubsub.flic.controllers.Controller - Failed to stop: java.util.concurrent.ExecutionException: com.google.api.client.googleapis.json.GoogleJsonResponseException: 404 Not Found
+{
+  "code" : 404,
+  "errors" : [ {
+    "domain" : "global",
+    "message" : "Resource not found (resource=loadtest-subscriber).",
+    "reason" : "notFound"
+  } ],
+  "message" : "Resource not found (resource=loadtest-subscriber).",
+  "status" : "NOT_FOUND"
+}
+[main] ERROR com.google.pubsub.flic.Driver - An error occurred...
+java.lang.NullPointerException
+	at com.google.protobuf.util.Timestamps.checkValid(Timestamps.java:168)
+	at com.google.protobuf.util.Timestamps.toMillis(Timestamps.java:316)
+	at com.google.pubsub.flic.Driver.runTest(Driver.java:216)
+	at com.google.pubsub.flic.Driver.run(Driver.java:198)
+	at com.google.pubsub.flic.Driver.lambda$main$3(Driver.java:131)
+	at com.google.common.collect.ImmutableList.forEach(ImmutableList.java:397)
+	at com.google.pubsub.flic.Driver.main(Driver.java:125)
+[pool-1-thread-4] INFO com.google.pubsub.flic.controllers.resource_controllers.PubsubResourceController - Cleaning up pubsub resource_controllers.
+[main] INFO com.google.pubsub.flic.controllers.Controller - Stopping all controllers.
+[main] ERROR com.google.pubsub.flic.controllers.Controller - Failed to stop: java.util.concurrent.ExecutionException: com.google.api.client.googleapis.json.GoogleJsonResponseException: 404 Not Found
+{
+  "code" : 404,
+  "errors" : [ {
+    "domain" : "global",
+    "message" : "Resource not found (resource=loadtest-subscriber).",
+    "reason" : "notFound"
+  } ],
+  "message" : "Resource not found (resource=loadtest-subscriber).",
+  "status" : "NOT_FOUND"
+}
+# pubsub driver's exit status
+1
+# pubsub test seconds
+120
+# pubsub output.csv

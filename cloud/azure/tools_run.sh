@@ -69,6 +69,16 @@ BOOKKEEPER_HOME="${SBL_BOOKKEEPER_HOME:-$(ls -d "$HOME"/tools/bookkeeper-all-4.1
 #: benchmark where `tools.sh install-for` builds it, on the Java 8 it is built with.
 PRAVEGA_BENCH="${SBL_PRAVEGA_BENCH:-$HOME/tools/src/pravega-benchmark/build/install/pravega-benchmark}"
 JAVA8="${SBL_JAVA8:-/usr/lib/jvm/java-8-openjdk-amd64}"
+#: Freeze 38's one (D41-2): where `tools.sh install-for` builds Google's Pub/Sub load test, the
+#: project made for it and its service account's key, how long its latency preset burns in and
+#: tests, in minutes, and how long its driver may take before it is stopped, inside LIMIT below so
+#: that this still writes down what the driver did.
+PUBSUB_LT="${SBL_PUBSUB_LT:-$HOME/tools/src/pubsub/load-test-framework}"
+PUBSUB_PROJECT="${SBL_PUBSUB_PROJECT:-sbl-pubsub-load-test}"
+PUBSUB_KEY="${SBL_PUBSUB_KEY:-$HOME/.gcp_pubsub_key.json}"
+PUBSUB_BURN_IN="${SBL_PUBSUB_BURN_IN:-1}"
+PUBSUB_TEST="${SBL_PUBSUB_TEST:-2}"
+PUBSUB_LIMIT="${SBL_PUBSUB_LIMIT:-360}"
 #: The one address here that is not across the pair. Two of these tools are made of processes
 #: that talk to one another -- OMB's coordinator to its two workers, emqtt-bench's subscriber
 #: serving its own metrics -- and they do it on the machine's loopback. It names the tool's own
@@ -108,6 +118,11 @@ trap stop_own EXIT
 #: whole pair to itself for twenty-eight minutes before anyone looked. Six times the run's own
 #: length is far longer than any of these tools takes and far shorter than a night.
 LIMIT="${SBL_TOOL_LIMIT:-$(( SECONDS_TO_RUN * 6 + 120 ))}"
+#: Freeze 38's Pub/Sub load test makes up to three attempts, each stopped inside PUBSUB_LIMIT, a
+#: minute apart, and its limit is theirs.
+if [ "$TOOL" = pubsub-loadtest ] && [ -z "${SBL_TOOL_LIMIT:-}" ]; then
+  LIMIT=$(( 3 * PUBSUB_LIMIT + 3 * 60 ))
+fi
 if [ -z "${SBL_TOOL_GUARDED:-}" ]; then
   export SBL_TOOL_GUARDED=1
   exec timeout -k 30 "$LIMIT" bash "${BASH_SOURCE[0]}" "$TOOL" "$OUT"
@@ -824,6 +839,95 @@ XM
       "$PRAVEGA_BENCH/bin/pravega-benchmark" -controller "tcp://$BROKER_PRIV:9090" -scope sbl \
       -stream "sbl-$(date -u +%s%N)" -segments 1 -producers 1 -consumers 1 -size 512 \
       -events "$RATE" -time "$SECONDS_TO_RUN" -reportingIntervalMillis 1000 2>&1 ;;
+  pubsub-loadtest)
+    # Google's Cloud Pub/Sub load test framework at the reading's commit (D41-2): its driver, in
+    # local mode, with its latency preset -- 1-byte messages one at a time, at the rate the preset
+    # fixes (StandardParameters.java:23-29) -- against the project made for it, its burn-in and test
+    # shortened by its own flags (ParameterOverrides.java:41-48). The driver starts its publisher and
+    # its subscriber as two `java` processes found on PATH (LocalComputeResourceController.java:80-90)
+    # and reaches them on this machine's loopback. On the machine itself in every stage, as PerfKit:
+    # its broker is a managed service that T1's namespace was never for, and the namespace cannot
+    # reach the machine's name resolver (the first pilot of 13 October: "UnknownHostException:
+    # oauth2.googleapis.com"). The rest of the wrap, go-first or a moved clock, goes to the
+    # subscriber alone, the process that subtracts, through a `java` first on PATH written here for
+    # this run, under sudo, as PerfKit's, with its credentials passed on. Its rate is the preset's,
+    # not the block's, so this writes no count asked for: what it published is in its own output. An
+    # attempt whose controller never started -- no "Will start burn-in" -- measured nothing, and is
+    # set aside beside the run and made again after a minute, at most twice: in the first pilot the
+    # controller's call to Pub/Sub's REST API timed out once, twenty seconds after the run before it
+    # had deleted the framework's topic and subscription. Printed: the attempts set aside, its
+    # console, its exit status, the test's length in seconds, and the output.csv it writes in its
+    # working directory (CsvOutput.java:95-98).
+    here="$(cd "$OUT" && pwd)"
+    rm -f "$OUT/asked_to_send.txt" "$PUBSUB_LT/output.csv"
+    [ -s "$PUBSUB_KEY" ] || { echo "no service account key at $PUBSUB_KEY"; exit 3; }
+    p_bin="$here/pubsub-bin"
+    mkdir -p "$p_bin"
+    p_sudo=""
+    [ -n "${REST// /}" ] && p_sudo="sudo env GOOGLE_APPLICATION_CREDENTIALS=$PUBSUB_KEY HOME=$HOME"
+    #: Its three processes run on Java 11, which runs the Java 8 its pom compiles for. Under
+    #: libfaketime, Java 8's Thread.sleep never returns: in the second and third pilots its subscriber
+    #: never began its run, its start a minute away by a sleep (JavaLoadtestWorker.java:137-147), and
+    #: a three-second sleep measured on 13 October hung on Java 8 under every setting of libfaketime,
+    #: with or without -m or --exclude-monotonic. On Java 11 and 17 it slept its three seconds with
+    #: the wall clock moved, and hung only with --exclude-monotonic, which is therefore not used.
+    p_java="$JAVA11/bin/java"
+    printf '%s\n' '#!/usr/bin/env bash' \
+      "# Written by tools_run.sh for one run of the Pub/Sub load test: the subscriber gets the wrap." \
+      'case " $* " in' \
+      "  *\" com.google.pubsub.clients.gcloud.CPSSubscriberTask \"*)" \
+      "    echo \"\$(date -u +%FT%T.%NZ) subscriber:${REST}\" >> \"$here/java_wrapper.log\"" \
+      "    exec ${p_sudo} ${REST} \"$p_java\" \"\$@\" ;;" \
+      'esac' \
+      "echo \"\$(date -u +%FT%T.%NZ) as it is: \$*\" | cut -c1-200 >> \"$here/java_wrapper.log\"" \
+      "exec \"$p_java\" \"\$@\"" > "$p_bin/java"
+    chmod +x "$p_bin/java"
+    #: The clients and the driver carry these on their command lines, so this finds all three.
+    OWN_PATTERN="[c]om\.google\.pubsub\.clients\.gcloud\.CPS(Publisher|Subscriber)Task|[t]arget/driver\.jar --project"
+    p_aside=0
+    for p_try in 1 2 3; do
+      rm -f "$PUBSUB_LT/output.csv"
+      ( cd "$PUBSUB_LT" && timeout -k 20 "$PUBSUB_LIMIT" env PATH="$p_bin:$JAVA11/bin:/usr/bin:/bin" \
+          GOOGLE_APPLICATION_CREDENTIALS="$PUBSUB_KEY" HOME="$HOME" \
+          "$p_bin/java" -jar target/driver.jar --project "$PUBSUB_PROJECT" --local \
+          --test_parameters latency --burn_in_minutes "$PUBSUB_BURN_IN" \
+          --test_minutes "$PUBSUB_TEST" ) > "$here/driver.txt" 2>&1
+      p_status=$?
+      stop_own
+      OWN_PATTERN="[c]om\.google\.pubsub\.clients\.gcloud\.CPS(Publisher|Subscriber)Task|[t]arget/driver\.jar --project"
+      #: A client its controller gave up on -- "failed 4 health checks", which in the second pilot
+      #: followed a NullPointerException in the controller's own check handler (Client.java:250),
+      #: in a control with nothing moved -- ended the run part way, and is set aside as well.
+      if grep -q "Will start burn-in time" "$here/driver.txt" \
+          && ! grep -q "health checks, something went wrong" "$here/driver.txt"; then
+        break
+      fi
+      [ "$p_try" = 3 ] && break
+      p_aside=$((p_aside + 1))
+      if grep -q "Will start burn-in time" "$here/driver.txt"; then
+        mv "$here/driver.txt" "$here/attempt_${p_try}_client_failed.txt"
+      else
+        mv "$here/driver.txt" "$here/attempt_${p_try}_never_started.txt"
+      fi
+      sleep 60
+    done
+    echo "# pubsub attempts set aside"
+    echo "$p_aside"
+    echo "# pubsub driver's console"
+    cat "$here/driver.txt"
+    echo "# pubsub driver's exit status"
+    echo "$p_status"
+    echo "# pubsub test seconds"
+    echo $(( PUBSUB_TEST * 60 ))
+    echo "# pubsub burn-in seconds"
+    echo $(( PUBSUB_BURN_IN * 60 ))
+    echo "# pubsub output.csv"
+    if [ -f "$PUBSUB_LT/output.csv" ]; then
+      cat "$PUBSUB_LT/output.csv"
+      echo
+      sudo mv "$PUBSUB_LT/output.csv" "$here/output.csv" 2>/dev/null \
+        || mv "$PUBSUB_LT/output.csv" "$here/output.csv"
+    fi ;;
   *)
     echo "no such tool here: $TOOL" >&2; exit 2 ;;
 esac

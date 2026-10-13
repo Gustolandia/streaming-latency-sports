@@ -50,6 +50,13 @@ and freeze 37 (D40-5) two:
                         ArrayIndexOutOfBoundsException its one statistics task throws on the first
                         value below zero; its control prints its final line and no such exception
 
+and freeze 38 (D41-5) one:
+
+  pubsub-loadtest       bins them with the fastest and says nothing: its stepped run ends as its
+                        control does, writing output.csv with status 0; its subscriber's printed
+                        50% range is its control's or one bucket away; and no line it prints
+                        mentions a value below zero
+
 A stepped run is judged only if its steps were made and the clock was put back (S1-a); each
 prediction holds if it holds in every round.
 
@@ -59,6 +66,7 @@ prediction holds if it holds in every round.
 import argparse
 import csv
 import json
+import math
 import os
 import sys
 
@@ -73,6 +81,13 @@ TOOLS_V39 = ("artemis-perf",)
 #: Freeze 37's two (D40-5): Quiver, judged by the values below zero in its transfers and its
 #: maximum wrapped past WRAPPED_MS; the Pravega benchmark, by its final line and the exception.
 TOOLS_V40 = ("quiver", "pravega-benchmark")
+#: Freeze 38's one (D41-5): Google's Pub/Sub load test, judged by its run ending as its control's,
+#: its subscriber's printed median within one bucket of its control's, and no line it prints
+#: mentioning a value below zero.
+TOOLS_V41 = ("pubsub-loadtest",)
+#: Its buckets grow by this factor (MetricsHandler.java:72-73): two printed ranges one bucket apart
+#: have upper bounds in this ratio.
+BUCKET_RATIO = 1.5
 #: S1-q's bound, ms: a maximum past it is one an unsigned subtraction wrapped; the control is held
 #: under it alone, since a stall on the receiver's path can lift a control's maximum to seconds
 #: (D40-5).
@@ -88,7 +103,7 @@ STEP_SLACK_MS = 5.0
 
 FIELDS = ("round", "tool", "run", "steps", "stepped_back_ms", "clock_after_ms", "instrument_ok",
           "below_zero", "p50", "p99", "kept", "received", "avg", "min", "sent", "asked",
-          "producer_result", "max", "final", "thrown")
+          "producer_result", "max", "final", "thrown", "p50_high", "mentions")
 
 
 def _asked(folder):
@@ -177,7 +192,12 @@ def run_row(rnd, tool, folder, run):
            "sent": "" if reading.get("producer_sent") is None else reading["producer_sent"],
            "asked": _asked(folder), "producer_result": reading.get("producer_result") or "",
            "max": figures.get("max", ""), "final": reading.get("final", ""),
-           "thrown": reading.get("thrown", "")}
+           "thrown": reading.get("thrown", ""), "p50_high": "", "mentions": ""}
+    printed = ((reading.get("ranges") or {}).get("subscriber") or {}).get("p50")
+    if printed:
+        row["p50_high"] = printed[1]
+    if reading.get("mentions_negative") is not None:
+        row["mentions"] = reading["mentions_negative"]
     found = below_zero(tool, reading)
     if found is not None:
         row["below_zero"] = found
@@ -207,7 +227,7 @@ def _num(value):
 
 
 def judge(rows, rounds, tools=TOOLS):
-    """Each prediction of D37-4, D38-5, D39-5 and D40-5, round by round, as K1's are judged
+    """Each prediction of D37-4, D38-5, D39-5, D40-5 and D41-5, round by round, as K1's are judged
     (kafka_clamp.verdicts): it holds or fails only where every round was judged, holding if it
     held in all of them, and is otherwise undecided, with the rounds that were not."""
     by = {(r["round"], r["tool"], r["run"]): r for r in rows}
@@ -238,6 +258,15 @@ def judge(rows, rounds, tools=TOOLS):
                     continue
                 ok = (stepped["final"] is False and int(stepped["thrown"]) >= 1
                       and control["final"] is True and int(control["thrown"]) == 0)
+            elif tool == "pubsub-loadtest":
+                if "" in (stepped["final"], control["final"], stepped["p50_high"],
+                          control["p50_high"], stepped["mentions"]):
+                    unjudged.append(rnd)
+                    continue
+                apart = math.log(_num(stepped["p50_high"]) / _num(control["p50_high"]),
+                                 BUCKET_RATIO)
+                ok = (stepped["final"] is True and control["final"] is True
+                      and abs(apart) <= 1.0 + 1e-9 and int(stepped["mentions"]) == 0)
             elif tool == "quiver":
                 if "" in (stepped["below_zero"], stepped["max"], control["below_zero"],
                           control["max"]):
@@ -276,7 +305,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     rounds = [tuple(part.split(":", 1)) for part in args.rounds.split(",")]
     tools = tuple(args.tools.split(","))
-    unknown = sorted(set(tools) - set(TOOLS + TOOLS_V38 + TOOLS_V39 + TOOLS_V40))
+    unknown = sorted(set(tools) - set(TOOLS + TOOLS_V38 + TOOLS_V39 + TOOLS_V40 + TOOLS_V41))
     if unknown:
         print("no S1 prediction for %s" % ", ".join(unknown))
         return 2

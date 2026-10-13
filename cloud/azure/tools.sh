@@ -131,6 +131,7 @@ rocketmq-benchmark|tarball|5.5.1
 bookkeeper-benchmark|tarball|4.18.1
 quiver|git|ba4e5766b3b18e8456eefe8c8754894586ac58dc
 pravega-benchmark|git|3807aeddfa64b65ced8d332558c80ec0ca6e4d47
+pubsub-loadtest|git|cd7d07bbfa4b81afc148f31a091f9b0d958dbe01
 '
 #: The last five are the tools the plan registered and version 15 left unrun (D15-6), run under
 #: freeze 30 (D33-1), each at the version the audit read (data/tools_audit/batch_01, 03, 04 and
@@ -207,6 +208,15 @@ GRADLE4_SHA256="b49c6da1b2cb67a0caf6c7480630b51c70a11ca2016ff2f555eaeda863143a29
 PRAVEGA_VERSION="0.13.0"
 PRAVEGA_SHA512="8c21701193c506122673868ed23b1d3b6f81eaebc8b36e6d1ba85d7817906c0fcf68010e31bf300afc150ea08d27b7428ffdbe0530471d77648a7f7739265d2d"
 
+#: Freeze 38 (D41-1): the last tool of the second October reading, Google's Cloud Pub/Sub load test
+#: framework, at the commit the reading read, against Google's own Pub/Sub: its local and in-process
+#: controllers make their topic and subscription through Pub/Sub's REST API with Application Default
+#: Credentials (LocalController.java:43-71), so no emulator stands in. The project was made for it
+#: and is deleted when the runs are home; its service account may use Pub/Sub alone, and its key
+#: lives on this driver only, never in the repository.
+PUBSUB_PROJECT="${SBL_PUBSUB_PROJECT:-sbl-pubsub-load-test}"
+PUBSUB_KEY="${SBL_PUBSUB_KEY:-$HOME/.gcp_pubsub_key.json}"
+
 #: What those five are built and run with, pinned like them and checked against the checksums
 #: their publishers give, because each is part of what produced the program whose behaviour the
 #: block reports. OMB needs a newer Maven than Ubuntu's 3.6.3 (its enforcer asks for 3.8.6), and
@@ -226,7 +236,7 @@ PULSAR_SHA512="8c0a63cc6421c8eb3c4a55b8895ca08a38a1c6771758251fc7a82edbc4c6a42bb
 FAKEABLE="wrk2 valkey-benchmark memtier_benchmark rdkafka_performance kafka-end-to-end \
 kafka-producer-perf rabbitmq-perftest omb pulsar-perf emqtt-bench ycsb \
 xinfra-monitor trogdor stream-perftest ysb pkb stream-perftest-one sbk \
-artemis-perf rocketmq-benchmark bookkeeper-benchmark quiver"
+artemis-perf rocketmq-benchmark bookkeeper-benchmark quiver pubsub-loadtest"
 #: The tools it cannot: Go does not go through the C library for the clock. kgo-repeater's
 #: producing repeater runs on the broker, so stepping this machine's clock moves its consumer's
 #: alone (D38-2).
@@ -811,6 +821,33 @@ get_pravega_benchmark () {
   return 0
 }
 
+#: Freeze 38's Pub/Sub load test (D41-1): built as its run.py builds it, `mvn package` and then its
+#: driver.jar copied where its local and GCE modes look for the clients' jar (run.py:21-22,
+#: Client.java:47), on Ubuntu's Java 8, which its pom compiles for (pom.xml:197-198) and its GCE
+#: startup scripts install for its clients, with the Maven pinned above.
+get_pubsub_loadtest () {
+  local src="$WORK/src/pubsub"
+  local lt="$src/load-test-framework"
+  if [ -f "$lt/target/classes/gce/driver.jar" ] \
+      && [ "$(git -C "$src" rev-parse HEAD 2>/dev/null)" = "$1" ]; then
+    log "   the Pub/Sub load test already built, at $1"
+  else
+    [ -x "$JAVA8/bin/javac" ] || sudo apt-get install -y -qq openjdk-8-jdk-headless >/dev/null 2>&1 \
+      || { log "   WARN: Java 8 could not be installed"; return 1; }
+    #: Java 11 stays the default the first tools ran on; installing 8 must not take its place.
+    get_java17 && get_maven || return 1
+    rm -rf "$src"; mkdir -p "$WORK/src"
+    ( git clone -q https://github.com/GoogleCloudPlatform/pubsub "$src" && cd "$lt" \
+        && git checkout -q "$1" \
+        && PATH="$WORK/apache-maven-$MAVEN_VERSION/bin:$PATH" JAVA_HOME="$JAVA8" mvn -B -q package \
+        && cp target/driver.jar target/classes/gce/ ) > "$DIR/build_pubsub-loadtest.log" 2>&1 \
+      || { log "   WARN: the Pub/Sub load test did not build; see $DIR/build_pubsub-loadtest.log"; return 1; }
+  fi
+  ( cd "$src" && git rev-parse HEAD && "$JAVA8/bin/java" -version 2>&1 | head -1 \
+      && sha256sum load-test-framework/target/driver.jar ) > "$DIR/commit_pubsub-loadtest.txt" 2>/dev/null
+  return 0
+}
+
 #: The broker side of freeze 36's three, on the broker machine: each installed from the same archive
 #: and started alone, the others stopped, since the broker's memory holds one of them beside the
 #: servers already there. From anywhere else this asks the broker to do it, as `brokers` does.
@@ -962,6 +999,9 @@ install_for () {
     pravega-benchmark)
       get_pravega_benchmark 3807aeddfa64b65ced8d332558c80ec0ca6e4d47 \
         || stop "the Pravega benchmark is not built; see $DIR/build_pravega-benchmark.log" ;;
+    pubsub-loadtest)
+      get_pubsub_loadtest cd7d07bbfa4b81afc148f31a091f9b0d958dbe01 \
+        || stop "the Pub/Sub load test is not built; see $DIR/build_pubsub-loadtest.log" ;;
     *) stop "$tool has no install of its own; run the whole install" ;;
   esac
   log "CAMPAIGN_COMPLETE: $tool installed alone"
@@ -1441,6 +1481,25 @@ json.dump({"source": "%s itself" % sys.argv[3], "trips_ms": trips}, open(sys.arg
         "$out/reference.log" "$out/reference_trips.json" "$tool" \
         || { log "   WARN: the $tool reference timed nothing; see $out/reference.log"; return 1; }
       return 0 ;;
+    pubsub-loadtest)
+      #: Freeze 38 (D41-3): no client of ours was written for Pub/Sub, so the tool is its own
+      #: reference at no offset, as PerfKit is. Its controller prints each bound one bucket below the
+      #: values in it, so its subscriber's true median lies in [U, 1.5 U), U the upper bound of the 50%
+      #: range it prints, and the trip T2 takes its offsets from is 1.5 U, the top of that bucket.
+      log "   the Pub/Sub load test itself, once more, for the reference: no client of ours speaks Pub/Sub"
+      bash cloud/azure/tools_run.sh pubsub-loadtest "$out/reference_tool" > "$out/reference.log" 2>&1
+      python3 -c 'import json, sys
+sys.path.insert(0, "scripts")
+import tool_readings
+r = tool_readings.read_tool("pubsub-loadtest", open(sys.argv[1], encoding="utf-8").read())
+printed = ((r.get("ranges") or {}).get("subscriber") or {}).get("p50")
+if not printed:
+    raise SystemExit("the Pub/Sub load test printed no subscriber median to take a reference from")
+json.dump({"source": "pubsub-loadtest itself: the top of the bucket above its printed median",
+           "printed_p50_ms": printed, "trips_ms": [1.5 * printed[1]]}, open(sys.argv[2], "w"))' \
+        "$out/reference.log" "$out/reference_trips.json" \
+        || { log "   WARN: the Pub/Sub reference printed no median; see $out/reference.log"; return 1; }
+      return 0 ;;
     pkb)
       log "   PerfKit itself, once more, for the reference: no client of ours speaks to its broker"
       bash cloud/azure/tools_run.sh pkb "$out/reference_pkb" > "$out/reference.log" 2>&1
@@ -1608,6 +1667,12 @@ server_answers () {
       [ -n "$ns" ] || { echo "no Service Bus connection string in ${SBL_PKB_CONNECTION:-$HOME/.pkb_connection}"; return 1; }
       timeout 5 bash -c "echo > /dev/tcp/$ns/5671" 2>/dev/null \
         || { echo "nothing answers AMQP at $ns:5671"; return 1; } ;;
+    pubsub-loadtest)
+      #: Freeze 38: its broker is Google's Cloud Pub/Sub, reached over HTTPS with the service
+      #: account's key, which this checks is here without reading it aloud.
+      [ -s "$PUBSUB_KEY" ] || { echo "no service account key at $PUBSUB_KEY"; return 1; }
+      timeout 5 bash -c "echo > /dev/tcp/pubsub.googleapis.com/443" 2>/dev/null \
+        || { echo "nothing answers HTTPS at pubsub.googleapis.com:443"; return 1; } ;;
     ysb)
       #: YSB's generator speaks Kafka 0.8.2's protocol, which Kafka 4 removed and 3.9.1 still
       #: speaks, so it uses the canary's broker (D36-2); and it keeps its windows in Redis.
@@ -1695,11 +1760,12 @@ t1 () {
   #: on the broker's card, and its broker is not ours -- so only its zero step is run, the tool and
   #: its reference, which T2 reads its offsets from, and the staircase is recorded as not run.
   case "$tool" in
-    pkb)
+    pkb|pubsub-loadtest)
       log "== T1 $tool: its broker is a managed service, which the staircase cannot reach; the zero step only"
-      local run="t1-$tool-0ms"
+      local run="t1-$tool-0ms" service="Azure Service Bus"
+      [ "$tool" = pubsub-loadtest ] && service="Google's Cloud Pub/Sub"
       mkdir -p "$DIR/$run"
-      echo "out of reach: the broker is Azure Service Bus, not the testbed's" > "$DIR/$run/delay.json"
+      echo "out of reach: the broker is $service, not the testbed's" > "$DIR/$run/delay.json"
       bash cloud/azure/tools_run.sh "$tool" "$DIR/$run" > "$DIR/$run/tool.txt" 2>&1
       python3 scripts/tool_readings.py read --tool "$tool" --file "$DIR/$run/tool.txt" \
         --out "$DIR/$run/reading.json" >/dev/null 2>&1 \
@@ -2041,7 +2107,25 @@ t4 () {
   mkdir -p "$DIR/$run"
   log "== T4 $tool: what it can report at all"
   needs_namespace
-  SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh "$tool" "$DIR/$run" \
+  local wrap="$NETNS"
+  #: Freeze 38 (D41-4, T4-l): the Pub/Sub load test's T4 runs with its subscriber's clock one second
+  #: ahead under libfaketime, which raises every latency it times by exactly that, so that what its
+  #: controller prints can be held against a floor known before the run.
+  if [ "$tool" = pubsub-loadtest ]; then
+    sudo apt-get install -y -qq faketime >/dev/null 2>&1
+    local zero ahead moved
+    zero=$(faketime_reading "$(offset_as plain 0)") && ahead=$(faketime_reading "+1.000000000") \
+      || stop "libfaketime's one-second offset could not be measured on this machine"
+    moved=$(python3 -c 'import sys; print("%.4f" % (float(sys.argv[1]) - float(sys.argv[2])))' \
+      "$ahead" "$zero")
+    python3 -c 'import sys; sys.exit(0 if abs(float(sys.argv[1]) + 1000.0) <= 5.0 else 1)' "$moved" \
+      || stop "libfaketime moved the clock $moved ms where one second ahead reads -1000 ms"
+    echo "{\"asked_ms\": -1000, \"measured_ms\": $moved, \"spelling\": \"+1.000000000\"}" \
+      > "$DIR/$run/offset_measured.json"
+    wrap="$NETNS faketime -f +1.000000000"
+    log "   the subscriber's clock one second ahead, measured $moved ms"
+  fi
+  SBL_TOOL_WRAP="$wrap" bash cloud/azure/tools_run.sh "$tool" "$DIR/$run" \
     > "$DIR/$run/tool.txt" 2>&1
   python3 scripts/tool_readings.py read --tool "$tool" --file "$DIR/$run/tool.txt" \
     --out "$DIR/$run/reading.json" >/dev/null 2>&1 \
@@ -2139,6 +2223,8 @@ k1 () {
 #: that send every 20 ms at the same moment of their cycle every time, between two messages.
 S1_STEP_MS="${SBL_S1_STEP_MS:-20}"
 S1_STEP_MS_PKB="${SBL_S1_STEP_MS_PKB:-50}"
+#: Freeze 38 (D41-5): the Pub/Sub load test's trip to Google's Pub/Sub is longer than 20 ms too.
+S1_STEP_MS_PUBSUB="${SBL_S1_STEP_MS_PUBSUB:-50}"
 S1_PERIOD_S="${SBL_S1_PERIOD_S:-0.2}"
 s1 () {
   local tool="${1:?which tool}"
@@ -2150,6 +2236,7 @@ s1 () {
   needs_namespace
   local step="$S1_STEP_MS"
   if [ "$tool" = pkb ]; then step="$S1_STEP_MS_PKB"; fi
+  if [ "$tool" = pubsub-loadtest ]; then step="$S1_STEP_MS_PUBSUB"; fi
   log "== S1 $tool: the wall clock steps back $step ms about every $S1_PERIOD_S s while it runs"
   local control="$DIR/s1-$tool-control" run="$DIR/s1-$tool-stepped"
   mkdir -p "$control" "$run"

@@ -1252,6 +1252,168 @@ def read_pravega_benchmark(text):
                     thrown_at=sorted({int(m.group(1)) for m in thrown if m.group(1)}))
 
 
+PUBSUB_CONSOLE = "# pubsub driver's console"
+PUBSUB_STATUS = "# pubsub driver's exit status"
+PUBSUB_SECONDS = "# pubsub test seconds"
+PUBSUB_CSV = "# pubsub output.csv"
+PUBSUB_BURN_IN = "# pubsub burn-in seconds"
+PUBSUB_ASIDE = "# pubsub attempts set aside"
+_PUBSUB_PARTS = (PUBSUB_CONSOLE, PUBSUB_STATUS, PUBSUB_SECONDS, PUBSUB_CSV, PUBSUB_BURN_IN,
+                 PUBSUB_ASIDE)
+_PUBSUB_CHECK = re.compile(r"Connected to cps-gcloud-\w+-(publisher|subscriber) client\.\s+Got check "
+                           r"response:(.*)$")
+#: What its controller throws when a percentile's share of the values lies in bucket 0, where 0, 1
+#: and every negative value land (LatencyTracker.java:37-52).
+PUBSUB_THROWN = "Programming error: negative values appear in buckets."
+_PUBSUB_NUMBER = r"[-+]?\d+(?:\.\d+)?(?:[Ee][-+]?\d+)?"
+_PUBSUB_KEYS = {"50": "p50", "90": "p90", "99": "p99", "99.9": "p999"}
+
+
+def _pubsub_ranges(console):
+    """Each client side's printed percentile ranges, {side: {key: [low, high]}}, by the "Results
+    for" line before them (Driver.java:243-246)."""
+    side, ranges = None, {}
+    for line in console.splitlines():
+        named = re.search(r"Results for cps-gcloud-\w+-(publisher|subscriber):", line)
+        if named:
+            side = named.group(1)
+            ranges.setdefault(side, {})
+            continue
+        printed = re.search(r"\b(50|99|99\.9)%%: (%s) - (%s)" % (_PUBSUB_NUMBER, _PUBSUB_NUMBER),
+                            line)
+        if printed and side:
+            ranges[side][_PUBSUB_KEYS[printed.group(1)]] = [float(printed.group(2)),
+                                                            float(printed.group(3))]
+    return ranges
+
+
+def _pubsub_table(part):
+    """The rows of the output.csv its driver writes (CsvOutput.java:36-38, 83-86, 95-98), by side:
+    its rate and each percentile's midpoint."""
+    lines = [l.strip() for l in part.splitlines() if l.strip()]
+    if not lines:
+        return {}
+    names = lines[0].split(",")
+    found = {}
+    for line in lines[1:]:
+        row = dict(zip(names, line.split(",")))
+        side = (row.get("Messaging Side") or "").lower()
+        cells = {}
+        for key, column in (("qps", "QPS"), ("p50", "50%ile Latency"), ("p90", "90%ile Latency"),
+                            ("p99", "99%ile Latency"), ("p999", "99.9%ile Latency")):
+            if re.fullmatch(_PUBSUB_NUMBER, row.get(column) or ""):
+                cells[key] = float(row[column])
+        found[side] = cells
+    return found
+
+
+def _pubsub_buckets(console, burn_in):
+    """Each side's buckets as its driver logs every check response from its clients
+    (Client.java:232-236), summed: bucket n holds the values in [1.5^n, 1.5^(n+1)) ms, and bucket 0
+    every value at or below 1 ms (MetricsHandler.java:72-73). Its controller adds a response's
+    buckets only once the run has outlasted the burn-in (Client.java:246-250), so those are counted
+    apart from the burn-in's: {"after": {side: [...]}, "burn_in": {side: [...]}}. With no burn-in
+    given, every response counts as after it."""
+    found = {"after": {}, "burn_in": {}}
+    open_ = None
+
+    def close(block):
+        if block is None:
+            return
+        late = burn_in is None or block["seconds"] is None or block["seconds"] > burn_in
+        counts = found["after" if late else "burn_in"].setdefault(block["side"], [])
+        while len(counts) < len(block["counts"]):
+            counts.append(0)
+        for i, n in enumerate(block["counts"]):
+            counts[i] += n
+
+    for line in console.splitlines():
+        checked = _PUBSUB_CHECK.search(line)
+        if line.startswith("["):
+            close(open_)
+            open_ = None
+            if not checked:
+                continue
+            open_ = {"side": checked.group(1), "counts": [], "seconds": None}
+            line = checked.group(2)
+        if open_ is None:
+            continue
+        value = re.fullmatch(r"\s*bucket_values: (\d+)\s*", line)
+        if value and open_["seconds"] is None:
+            open_["counts"].append(int(value.group(1)))
+            continue
+        seconds = re.fullmatch(r"\s*seconds: (\d+)\s*", line)
+        if seconds and open_["seconds"] is None:
+            open_["seconds"] = int(seconds.group(1))
+            continue
+        nanos = re.fullmatch(r"\s*nanos: (\d+)\s*", line)
+        if nanos and open_["seconds"] is not None:
+            open_["seconds"] += int(nanos.group(1)) / 1e9
+    close(open_)
+    return found
+
+
+def _pubsub_width(midpoint):
+    """The width of the bucket whose midpoint its controller printed: bucket 0 is [0, 1), and bucket
+    n > 0 is [1.5^(n-1), 1.5^n), whose midpoint is 1.25 times its floor and whose width is half it."""
+    return 1.0 if midpoint == 0.5 else 0.4 * midpoint
+
+
+def read_pubsub_loadtest(text):
+    """Google's Cloud Pub/Sub load test framework, run by its driver in local mode: the percentile
+    ranges its controller prints for each client side (Driver.java:239-246) and the midpoints it
+    writes to output.csv. Its subscriber's latency is its System.currentTimeMillis() less the
+    publisher's, carried in the message (CPSSubscriberTask.java:68-70, AbstractPublisher.java:83),
+    put into bucket floor(log1.5 ms), floored at 0 (MetricsHandler.java:72-73), so that 0, 1 and
+    every value below zero share bucket 0; its publisher's is its own publish to success, in one
+    process (AbstractPublisher.java:93-95). Its controller labels bucket n [1.5^(n-1), 1.5^n), one
+    bucket below the values in it, and throws PUBSUB_THROWN when a percentile's share lies in bucket
+    0, before it writes output.csv or exits with status 0. Read: the subscriber's figures, which are
+    what the run reports, its ranges and the publisher's, how many times that exception was printed,
+    how many lines mention a value below zero at all, the messages it says went missing, its exit
+    status, and the counts its rates give over the test's seconds."""
+    text = text or ""
+    console = _part(text, PUBSUB_CONSOLE, _PUBSUB_PARTS)
+    status = re.search(r"^\s*(-?\d+)\s*$", _part(text, PUBSUB_STATUS, _PUBSUB_PARTS), re.M)
+    seconds = re.search(r"^\s*(\d+)\s*$", _part(text, PUBSUB_SECONDS, _PUBSUB_PARTS), re.M)
+    table = _pubsub_table(_part(text, PUBSUB_CSV, _PUBSUB_PARTS))
+    ranges = _pubsub_ranges(console)
+    figures = {}
+    for side in ("subscriber", "publisher"):
+        got, steps = {}, {}
+        for key in ("p50", "p90", "p99", "p999"):
+            printed = ranges.get(side, {}).get(key)
+            middle = table.get(side, {}).get(key)
+            if middle is None and printed:
+                middle = (printed[0] + printed[1]) / 2.0
+            if middle is None:
+                continue
+            got[key] = middle
+            steps[key] = printed[1] - printed[0] if printed else _pubsub_width(middle)
+        figures[side] = (got, steps)
+    missing = _last(console, r"Missing (\d+) total messages")
+    span = int(seconds.group(1)) if seconds else None
+    burn = re.search(r"^\s*(\d+)\s*$", _part(text, PUBSUB_BURN_IN, _PUBSUB_PARTS), re.M)
+    aside = re.search(r"^\s*(\d+)\s*$", _part(text, PUBSUB_ASIDE, _PUBSUB_PARTS), re.M)
+    buckets = _pubsub_buckets(console, int(burn.group(1)) if burn else None)
+
+    def count(side):
+        rate = table.get(side, {}).get("qps")
+        return None if rate is None or span is None else int(round(rate * span))
+
+    exit_status = int(status.group(1)) if status else None
+    return _reading("pubsub-loadtest", figures["subscriber"][0], figures["subscriber"][1],
+                    ranges=ranges, publisher_ms=figures["publisher"][0],
+                    thrown=console.count(PUBSUB_THROWN),
+                    mentions_negative=len(re.findall(r"^.*negative.*$", console, re.M | re.I)),
+                    missing=int(missing.group(1)) if missing else None,
+                    exit=exit_status, wrote_csv=bool(table),
+                    final=exit_status == 0 and bool(table), kept=count("subscriber"),
+                    sent=count("publisher"), buckets=buckets["after"],
+                    buckets_burn_in=buckets["burn_in"],
+                    set_aside=int(aside.group(1)) if aside else None, unit="ms")
+
+
 #: Every tool this reads, by the name a campaign calls it.
 READERS = {
     "vegeta": read_vegeta,
@@ -1295,6 +1457,8 @@ READERS = {
     # Freeze 37's two (D40-2), each read where its own source says it reports.
     "quiver": read_quiver,
     "pravega-benchmark": read_pravega_benchmark,
+    # Freeze 38's one (D41-2), read where its own source says it reports.
+    "pubsub-loadtest": read_pubsub_loadtest,
 }
 
 

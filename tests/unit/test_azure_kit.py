@@ -741,9 +741,12 @@ class TestTheToolsBlock:
         more since freeze 36: the reference of each of its three, the tool itself at no offset, in
         the namespace as T1's zero step runs it (D39-3); freeze 37's Quiver there under
         libfaketime at no offset, since libfaketime alone lengthens its receiver's trip (D40-3).
+        And one more since freeze 38: the Pub/Sub load test's reference, itself at no offset,
+        unwrapped as PerfKit's (D41-3). Its T4 takes a wrap of its own, the subscriber's clock a
+        second ahead, through the same call as every other tool's T4.
         """
         code = self.tools()
-        assert code.count("bash cloud/azure/tools_run.sh") == 11
+        assert code.count("bash cloud/azure/tools_run.sh") == 12
         assert 'SBL_TOOL_WRAP="$wrap" bash cloud/azure/tools_run.sh "$tool" "$out/reference_tool"' in code
         assert 'local wrap="$NETNS"' in code
         assert 'if [ "$tool" = quiver ]; then wrap="$NETNS faketime -f -0.000000000"; fi' in code
@@ -1881,8 +1884,8 @@ class TestEveryPinnedToolHasSomethingThatInstallsIt:
         freeze 30 adds (D33-1), the four freeze 32 adds (D35-1), YSB (D36-1), freeze 34's
         PerfKit and Stream PerfTest as one instance, which shares its jar with the two-instance
         runs but is its own way of running it, freeze 35's four (D38-1), freeze 36's three
-        (D39-1), and freeze 37's two (D40-1)."""
-        assert len(self._tools()) == 32
+        (D39-1), freeze 37's two (D40-1), and freeze 38's Pub/Sub load test (D41-1)."""
+        assert len(self._tools()) == 33
 
     @pytest.mark.parametrize("tool", ["vegeta", "hey", "k6", "wrk2", "valkey-benchmark",
                                       "memtier_benchmark", "rdkafka_performance",
@@ -2588,3 +2591,95 @@ class TestFreeze37sTwoTools:
         assert "-Dpravegaservice.service.published.host.nameOrIp=$BROKER_PRIV" in server
         assert "-Xmx2g" in server and "Pravega Sandbox is running locally now" in server
         assert "pkill -f -- 'io.pravega.local.LocalPravegaEmulator'" in server
+
+
+class TestFreeze38sOneTool:
+    """Google's Pub/Sub load test (D41-1, D41-2): built from the commit the reading read as its
+    run.py builds it, against the project made for it with a key kept off the repository, its driver
+    and both clients in one namespace, and the rest of the wrap on the subscriber alone."""
+
+    def tools(self):
+        return (KIT / "tools.sh").read_text(encoding="utf-8")
+
+    def case(self):
+        """Up to the next case label: the java it writes holds a `;;` of its own."""
+        runner = (KIT / "tools_run.sh").read_text(encoding="utf-8")
+        return runner.split("\n  pubsub-loadtest)", 1)[1].split("\n  *)\n", 1)[0]
+
+    def test_it_is_built_at_the_commit_its_pin_names_as_its_run_py_builds_it(self):
+        text = self.tools()
+        table = dict(line.split("|")[0::2] for line in
+                     text.split("PINNED='", 1)[1].split("'", 1)[0].strip().splitlines())
+        assert table["pubsub-loadtest"] == "cd7d07bbfa4b81afc148f31a091f9b0d958dbe01"
+        install = text.split("\ninstall_for () {", 1)[1].split("\n}\n", 1)[0]
+        assert "get_pubsub_loadtest %s" % table["pubsub-loadtest"] in install
+        build = text.split("\nget_pubsub_loadtest () {", 1)[1].split("\n}\n", 1)[0]
+        assert 'JAVA_HOME="$JAVA8" mvn -B -q package' in build
+        assert "cp target/driver.jar target/classes/gce/" in build
+
+    def test_its_key_is_named_and_never_held_in_the_repository(self):
+        text, runner = self.tools(), (KIT / "tools_run.sh").read_text(encoding="utf-8")
+        for script in (text, runner):
+            assert 'PUBSUB_KEY="${SBL_PUBSUB_KEY:-$HOME/.gcp_pubsub_key.json}"' in script
+            assert "private_key" not in script and "BEGIN PRIVATE" not in script
+        server = text.split("\nserver_answers () {", 1)[1].split("\n}\n", 1)[0]
+        assert '[ -s "$PUBSUB_KEY" ]' in server and "pubsub.googleapis.com/443" in server
+
+    def test_the_rest_of_the_wrap_goes_to_the_subscriber_alone(self):
+        """The driver reaches its clients on loopback, so the namespace is all three processes';
+        the moved clock or go-first belongs to the subscriber, which subtracts (D41-2)."""
+        case = self.case()
+        fakeable = self.tools().split('FAKEABLE="', 1)[1].split('"', 1)[0].split()
+        assert "pubsub-loadtest" in fakeable
+        assert 'timeout -k 20 "$PUBSUB_LIMIT" env PATH="$p_bin:' in case, "on the machine itself"
+        assert "$NS" not in case.split("for p_try", 1)[1], "the namespace has no name resolver"
+        assert "com.google.pubsub.clients.gcloud.CPSSubscriberTask" in case
+        assert 'exec ${p_sudo} ${REST} \\"$p_java\\"' in case
+        assert 'p_sudo="sudo env GOOGLE_APPLICATION_CREDENTIALS=$PUBSUB_KEY HOME=$HOME"' in case
+        #: The pilots: under libfaketime Java 8's sleep never returns, and on Java 11 and 17 it
+        #: hangs only with the monotonic clock left alone, so it runs on 11 with neither.
+        assert 'p_java="$JAVA11/bin/java"' in case and "--exclude-monotonic" not in case.split(
+            "p_java=", 1)[1]
+        assert 'PATH="$p_bin:$JAVA11/bin:' in case and "$JAVA8" not in case
+        assert 'exec \\"$p_java\\" \\"\\$@\\"' in case
+        assert "--local" in case and "--test_parameters latency" in case
+        assert 'rm -f "$OUT/asked_to_send.txt"' in case, "its rate is its preset's"
+
+    def test_its_driver_is_stopped_inside_the_runner_s_own_limit(self):
+        """So that the runner still prints the status and the CSV T2-l is judged by, after up to
+        three attempts a minute apart, the two that never started set aside."""
+        runner = (KIT / "tools_run.sh").read_text(encoding="utf-8")
+        assert 'LIMIT=$(( 3 * PUBSUB_LIMIT + 3 * 60 ))' in runner
+        case = self.case()
+        assert "for p_try in 1 2 3; do" in case and 'grep -q "Will start burn-in time"' in case
+        assert 'mv "$here/driver.txt" "$here/attempt_${p_try}_never_started.txt"' in case
+        assert 'mv "$here/driver.txt" "$here/attempt_${p_try}_client_failed.txt"' in case
+        assert '! grep -q "health checks, something went wrong"' in case
+        for head in ("attempts set aside", "driver's console", "driver's exit status",
+                     "test seconds", "output.csv"):
+            assert 'echo "# pubsub %s"' % head in case
+
+    def test_its_leftovers_are_found_and_not_the_pkill_that_finds_them(self):
+        pattern = re.search(r'OWN_PATTERN="([^"]+)"', self.case()).group(1)
+        assert re.search(pattern, "java -Xmx5000M -cp target/classes/gce/driver.jar "
+                                  "com.google.pubsub.clients.gcloud.CPSSubscriberTask --port=4")
+        assert re.search(pattern, "/usr/lib/jvm/java-8-openjdk-amd64/bin/java -jar "
+                                  "target/driver.jar --project sbl-pubsub-load-test")
+        assert not re.search(pattern, "sudo pkill -f -- " + pattern)
+
+    def test_t1_is_its_zero_step_t4_runs_a_second_ahead_and_s1_steps_50_ms(self):
+        text = self.tools()
+        t1 = text.split("\nt1 () {", 1)[1].split("\n}\n", 1)[0]
+        assert "pkb|pubsub-loadtest)" in t1 and "Google's Cloud Pub/Sub" in t1
+        t4 = text.split("\nt4 () {", 1)[1].split("\n}\n", 1)[0]
+        assert 'wrap="$NETNS faketime -f +1.000000000"' in t4
+        assert 'faketime_reading "+1.000000000"' in t4
+        assert 'S1_STEP_MS_PUBSUB="${SBL_S1_STEP_MS_PUBSUB:-50}"' in text
+        s1 = text.split("\ns1 () {", 1)[1].split("\n}\n", 1)[0]
+        assert 'if [ "$tool" = pubsub-loadtest ]; then step="$S1_STEP_MS_PUBSUB"; fi' in s1
+
+    def test_its_reference_is_the_top_of_the_bucket_above_its_printed_median(self):
+        """Its controller prints each bound one bucket below the values in it (D41-3)."""
+        ref = self.tools().split("\nreference_for () {", 1)[1].split("\n}\n", 1)[0]
+        mine = ref.split("    pubsub-loadtest)", 1)[1].split("return 0 ;;", 1)[0]
+        assert '"trips_ms": [1.5 * printed[1]]' in mine

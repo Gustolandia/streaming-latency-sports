@@ -818,6 +818,24 @@ class TestPathsThatNeedARealFuture:
                 os.chdir(old_cwd)
                 sys.argv = old_argv
 
+    def test_freeze_40s_socket_timestamps_are_read_for_the_bootstraps_port(self, temp_dir):
+        """F2 (14 Oct 2026): asked for, the socket class is replaced for the bootstrap's port before
+        the client opens a connection, and what the sockets read is written at the end."""
+        import json
+        import socket
+        import so_timestamps
+        self._plan(temp_dir, 2)
+        producer, _ = self._producer()
+        with patch.object(socket, "socket", socket.socket):
+            self._run(temp_dir, producer, ["--bootstrap", "10.1.1.21:19092", "--so-timestamps",
+                                           "prod_so.csv", "--so-transmit", "sched"])
+        assert so_timestamps.TimestampingSocket._ports == (19092,)
+        written = temp_dir / "prod_so.csv"
+        assert written.read_text(encoding="utf-8").startswith("event_id,direction,ns")
+        summary = json.loads(written.with_name(written.stem + "_summary.json").read_text(
+            encoding="utf-8"))
+        assert summary["transmit"] == "sched"
+
     def test_a_delivery_error_aborts_the_run(self, temp_dir):
         """An errback that fires must surface, not leave a CSV of unstamped rows behind."""
         self._plan(temp_dir, 2)

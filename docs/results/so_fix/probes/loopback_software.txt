@@ -1,0 +1,8 @@
+client class: TimestampingSocket
+summary: {'connections': 1, 'refused': 0, 'transmit_timestamps': 20, 'other_queue_entries': 0, 'reads': 1, 'reads_without_timestamp': 0, 'transmit': 'software', 'transmit_keys': 20, 'ids_sent': 20, 'ids_sent_untimed': 0, 'ids_read': 20, 'ids_read_untimed': 0}
+constant-000000 tx-after-call us 53.0 rx-tx ms 388.444
+constant-000001 tx-after-call us 61.3 rx-tx ms 368.261
+constant-000002 tx-after-call us 36.3 rx-tx ms 348.126
+constant-000019 tx-after-call us 42.5 rx-tx ms 5.143
+missing: []
+all timed: True | tx keys: [64, 129, 194, 259, 324] ...

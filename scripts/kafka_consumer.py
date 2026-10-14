@@ -15,6 +15,7 @@ except Exception:
 
 import law_clock
 import thread_record
+import so_timestamps
 
 
 def now_ns() -> int:
@@ -47,6 +48,7 @@ def main():
     ap.add_argument("--read-trace", action="store_true",
                     help="write each poll's start, duration and message count beside the CSV")
 
+    so_timestamps.add_arguments(ap)
     args = ap.parse_args()
     record = thread_record.ThreadRecord() if args.thread_record else None
     polls = [] if args.read_trace else None
@@ -75,6 +77,8 @@ def main():
     else:
         bootstrap_servers = args.bootstrap if args.bootstrap else "localhost:9092"
 
+    # F2 (freeze 40): the kernel's own timestamps on the broker's connections, if asked for.
+    so = so_timestamps.start(args, so_timestamps.port_of(bootstrap_servers, 9092))
     consumer = KafkaConsumer(
         args.topic,
         bootstrap_servers=bootstrap_servers,
@@ -202,6 +206,7 @@ def main():
                         f_out.flush()
 
     consumer.close()
+    so_timestamps.finish(so, args)
     if polls is not None:
         with out_path.with_name(out_path.stem + "_readtrace.csv").open(
                 "w", newline="", encoding="utf-8") as fh:

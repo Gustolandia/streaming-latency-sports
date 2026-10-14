@@ -780,3 +780,18 @@ class TestTheThreadThatStampsArrivals:
     def test_it_is_not_written_unless_asked(self, temp_dir):
         self._run(temp_dir, [])
         assert not (temp_dir / "consumer_threads.json").exists()
+
+    def test_freeze_40s_socket_timestamps_are_read_for_the_redis_port(self, temp_dir):
+        """F2 (14 Oct 2026): asked for, the socket class is replaced for Redis's port before the
+        client opens a connection, and what the sockets read is written at the end."""
+        import socket
+        import so_timestamps
+        with patch.object(socket, "socket", socket.socket):
+            self._run(temp_dir, ["--so-timestamps", str(temp_dir / "consumer_so.csv"),
+                                 "--so-transmit", "sched"])
+        assert so_timestamps.TimestampingSocket._ports == (6379,)
+        written = temp_dir / "consumer_so.csv"
+        assert written.read_text(encoding="utf-8").startswith("event_id,direction,ns")
+        summary = json.loads(written.with_name(written.stem + "_summary.json").read_text(
+            encoding="utf-8"))
+        assert summary["transmit"] == "sched"

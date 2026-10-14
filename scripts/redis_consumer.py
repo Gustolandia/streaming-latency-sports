@@ -15,6 +15,7 @@ except Exception:
 
 import law_clock
 import thread_record
+import so_timestamps
 
 
 def now_ns() -> int:
@@ -56,8 +57,12 @@ def main():
     ap.add_argument("--thread-record", action="store_true",
                     help="write which thread stamped the arrivals, and both clocks, beside the CSV")
 
+    so_timestamps.add_arguments(ap)
     args = ap.parse_args()
     record = thread_record.ThreadRecord() if args.thread_record else None
+    # F2 (freeze 40): the kernel's own timestamps on the broker's connections, if asked
+    # for, before any connection is opened.
+    so = so_timestamps.start(args, args.port)
 
     # Use per-run group default to prevent cross-run contamination
     group_id = args.group or f"sb-group-{args.run_id}"
@@ -252,6 +257,7 @@ def main():
         _w.writerows(read_trace)
     if record is not None:
         record.write(thread_record.beside(out_path))
+    so_timestamps.finish(so, args)
     print(f"OK redis consumer: wrote {n} rows -> {out_path}")
     print(f"OK redis consumer: wrote {events_n} rows -> {events_path}")
 

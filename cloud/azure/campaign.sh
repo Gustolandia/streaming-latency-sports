@@ -403,6 +403,14 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   chronyc -c tracking > "$RUN_DIR/clock_before.txt" 2>/dev/null
   head -n 1 /proc/stat > "$RUN_DIR/stat_before.txt"
   tcp_counters before
+  # Freeze 40 (14 Oct 2026): the clients read the kernel's own timestamps on their connections to
+  # the broker through SO_TIMESTAMPING, each into its own file beside the run (so_timestamps.py),
+  # with the transmit timestamp taken where the row says.
+  local so_prod="" so_cons=""
+  if [ -n "$SO_STAMPS" ]; then
+    so_prod="--so-timestamps $RUN_DIR/producer_so.csv --so-transmit $SO_STAMPS"
+    so_cons="--so-timestamps $RUN_DIR/consumer_so.csv --so-transmit $SO_STAMPS"
+  fi
   began=$(date -u +%s)
   if [ "$BACKEND" = kafka ]; then
     client_args=()
@@ -411,16 +419,16 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     SBL_CONSUMER_WRAP="$consumer_wrap" SBL_SCHED_WRAP="$wrap_sched" \
       timeout -k 30 $(( DURATION + 300 )) bash scripts/run_kafka_trial.sh "$RUN_ID" "$run_plan" \
       "$run_speedup" "$run_maxt" -BOOTSTRAP "$KAFKA_BOOTSTRAP" \
-      -PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA $record_args" \
-      -CONSUMER_EXTRA "$record_args $read_args" \
+      -PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA $record_args $so_prod" \
+      -CONSUMER_EXTRA "$record_args $read_args $so_cons" \
       -IDLE_SECONDS 15 "${client_args[@]}" > "$RUN_DIR/trial.log" 2>&1
     rc=$?
   else
     SBL_CONSUMER_WRAP="$consumer_wrap" SBL_SCHED_WRAP="$wrap_sched" \
       timeout -k 30 $(( DURATION + 300 )) bash scripts/run_redis_trial.sh "$RUN_ID" "$run_plan" \
       "$run_speedup" "$run_maxt" -RedisHost "$REDIS_HOST" -PORT "$REDIS_PORT" \
-      -PRODUCER_EXTRA "$record_args" \
-      -CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA${ACK_BATCH:+ --ack-batch $ACK_BATCH} $record_args" \
+      -PRODUCER_EXTRA "$record_args $so_prod" \
+      -CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA${ACK_BATCH:+ --ack-batch $ACK_BATCH} $record_args $so_cons" \
       -IDLE_SECONDS 15 > "$RUN_DIR/trial.log" 2>&1
     rc=$?
   fi
@@ -542,6 +550,8 @@ values = {
     # Freeze 39 (13 Oct 2026): the producer's packets as well, in every run of its block.
     "SEND_CAPTURE": "1" if p.get("send_capture") else "",
     "HW_CAPTURE": "1" if p.get("hw_capture") else "",
+    # Freeze 40 (14 Oct 2026): where the clients' socket timestamps take the transmit time, or none.
+    "SO_STAMPS": str(p.get("so_timestamps") or ""),
     "TRACE": 1 if int(hashlib.sha256(row["key"].encode()).hexdigest(), 16) % 2 == 0 else 0,
     "HZ": round(1000 / tick) if tick else "",
 }
@@ -560,7 +570,7 @@ PY
   echo "$ROW" > "$RUN_DIR/queue_row.json"
   printf '{"lane": "%s", "profile": "%s", "driver": "%s", "commit": "%s"}\n' "$LANE" \
     "${AZ_PROFILE:-unknown}" "$(hostname)" "$(git rev-parse HEAD 2>/dev/null)" > "$RUN_DIR/lane.json"
-  log "run $KEY: $BACKEND, load $LOAD%, slice ${SLICE_NS:-kernel default}, delay $DELAY_MS ms${PRIORITY:+, go-first}${CONSUMER_PRIORITY:+, go-first consumer}${RECV_CAPTURE:+, receiver capture}${SEND_CAPTURE:+, sender capture}${HW_CAPTURE:+, card capture}${CPUS:+, $CPUS CPUs online}"
+  log "run $KEY: $BACKEND, load $LOAD%, slice ${SLICE_NS:-kernel default}, delay $DELAY_MS ms${PRIORITY:+, go-first}${CONSUMER_PRIORITY:+, go-first consumer}${RECV_CAPTURE:+, receiver capture}${SEND_CAPTURE:+, sender capture}${HW_CAPTURE:+, card capture}${SO_STAMPS:+, socket timestamps ($SO_STAMPS)}${CPUS:+, $CPUS CPUs online}"
   REASON=""
   STOP_REASON=""
   run_one

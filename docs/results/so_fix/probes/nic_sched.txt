@@ -1,0 +1,5 @@
+sched counts: {'transmit_timestamps': 40, 'other_queue_entries': 0, 'reads': 20, 'reads_without_timestamp': 0}
+sched ids with both timestamps: 20 of 20
+  constant-000000 tx-after-call 49.2 us, rx-tx 604.1 us
+  constant-000001 tx-after-call 16.4 us, rx-tx 613.3 us
+  constant-000002 tx-after-call 26.6 us, rx-tx 605.6 us

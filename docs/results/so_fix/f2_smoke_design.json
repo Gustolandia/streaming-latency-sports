@@ -1,0 +1,27 @@
+{
+  "about": "Freeze 40's first pilot step: one idle run on each broker, to see that the clients run with the socket class replaced before the full pilot. Not judged.",
+  "rounds": 1,
+  "seed": 20261198,
+  "setups": [
+    {
+      "id": "F2-kafka-l0-ord",
+      "backend": "kafka",
+      "load_pct": 0,
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "recv_capture": true,
+      "send_capture": true,
+      "so_timestamps": "software"
+    },
+    {
+      "id": "F2-redis-l0-ord",
+      "backend": "redis",
+      "load_pct": 0,
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "recv_capture": true,
+      "send_capture": true,
+      "so_timestamps": "software"
+    }
+  ]
+}

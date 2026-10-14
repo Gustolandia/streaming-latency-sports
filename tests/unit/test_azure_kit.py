@@ -390,7 +390,7 @@ def test_every_run_keeps_the_brokers_hold_its_tcp_counters_and_the_brokers_log()
     # The paper's batched acknowledgement reaches the Redis consumer, M0's own batch after it
     # where the setup names one (D29-1), and A9's thread record in the runs that ask (D28-1).
     assert ('-CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA${ACK_BATCH:+ --ack-batch $ACK_BATCH}'
-            ' $record_args"') in code
+            ' $record_args $so_cons"') in code
     helper = (KIT / "campaign.sh").read_text(encoding="utf-8").split("tcp_counters () {", 1)[1]
     for side in ('"$RUN_DIR/tcp_$1.txt"', "sudo ip netns exec sblrecv grep",
                  '"$RUN_DIR/broker_tcp_$1.txt"'):
@@ -2396,11 +2396,12 @@ def test_the_helper_blocks_runs_record_every_event_and_name_their_threads():
     assert 'sudo bpftrace "$EVENTS_BT" > "$RUN_DIR/waits.txt"' in run
     assert 'sudo bpftrace "$TRACE_BT" > "$RUN_DIR/runqlat.txt"' in run, "A1 and A3 as they were"
     assert 'record_args="--thread-record"' in run
-    assert '-PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA $record_args"' in run
-    assert '-CONSUMER_EXTRA "$record_args $read_args"' in run
-    assert '-PRODUCER_EXTRA "$record_args"' in run
+    # Freeze 40 (14 Oct 2026) appends each client's socket file, empty unless a row asks.
+    assert '-PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA $record_args $so_prod"' in run
+    assert '-CONSUMER_EXTRA "$record_args $read_args $so_cons"' in run
+    assert '-PRODUCER_EXTRA "$record_args $so_prod"' in run
     assert ('-CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA${ACK_BATCH:+ --ack-batch $ACK_BATCH}'
-            ' $record_args"') in run
+            ' $record_args $so_cons"') in run
     assert run.index('local record_args=""') < run.index('record_args="--thread-record"')
 
 
@@ -2463,6 +2464,7 @@ def test_r1s_switches_reach_the_runner_and_raise_nothing_else():
     assert (a7["CONSUMER_PRIORITY"], a7["RECV_CAPTURE"], a7["PRIORITY"]) == ("", "", "1")
     assert r1["SEND_CAPTURE"] == a7["SEND_CAPTURE"] == "", "neither captures the sender"
     assert r1["HW_CAPTURE"] == a7["HW_CAPTURE"] == "", "and neither the card's own stamps"
+    assert r1["SO_STAMPS"] == a7["SO_STAMPS"] == "", "nor reads the sockets' own timestamps"
 
 
 def test_freeze_39s_switch_reaches_the_runner():
@@ -2472,6 +2474,40 @@ def test_freeze_39s_switch_reaches_the_runner():
                            "load_pct": 0, "hw_capture": True})
     assert (f1["SEND_CAPTURE"], f1["RECV_CAPTURE"], f1["PRIORITY"], f1["LOAD"],
             f1["HW_CAPTURE"]) == ("1", "1", "1", "0", "1")
+
+
+def test_freeze_40s_switch_reaches_the_runner():
+    """Freeze 40 (14 Oct 2026): a row's so_timestamps names where the clients' sockets take the
+    transmit timestamp, and becomes SO_STAMPS; a row without it leaves SO_STAMPS empty."""
+    f2 = _row_reader_says({"so_timestamps": "sched", "send_capture": True, "recv_capture": True})
+    assert (f2["SO_STAMPS"], f2["SEND_CAPTURE"], f2["RECV_CAPTURE"]) == ("sched", "1", "1")
+    assert _row_reader_says({})["SO_STAMPS"] == ""
+
+
+def _socket_files(tmp_path, so_stamps):
+    """What freeze 40's lines hand each client, run as the runner runs them, with an unset
+    variable an error."""
+    code = (KIT / "campaign.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
+    first = "  # Freeze 40 (14 Oct 2026): the clients read"
+    block = first + code.split(first, 1)[1].split("  began=$(date -u +%s)", 1)[0]
+    script = "\n".join(["set -uo pipefail", "lines () {", block,
+                        '  echo "producer=$so_prod"', '  echo "consumer=$so_cons"', "}",
+                        "lines", ""])
+    said = bash(["-c", script], extra_env={"RUN_DIR": "runs/law_f2_r001", "SO_STAMPS": so_stamps},
+                capture_output=True, text=True, check=True).stdout
+    return dict(line.split("=", 1) for line in said.splitlines())
+
+
+@needs_bash
+def test_freeze_40s_clients_each_write_their_own_socket_file(tmp_path):
+    """Asked for, the producer and the consumer each write the timestamps their sockets read
+    beside the run, the transmit timestamp taken where the row says; not asked for, neither is
+    handed anything, so every earlier block's clients start exactly as before."""
+    asked = _socket_files(tmp_path, "sched")
+    assert asked == {
+        "producer": "--so-timestamps runs/law_f2_r001/producer_so.csv --so-transmit sched",
+        "consumer": "--so-timestamps runs/law_f2_r001/consumer_so.csv --so-transmit sched"}
+    assert _socket_files(tmp_path, "") == {"producer": "", "consumer": ""}
 
 
 def _r1_runner(tmp_path, name, **switches):

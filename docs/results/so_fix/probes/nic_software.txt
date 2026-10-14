@@ -1,0 +1,2 @@
+software counts: {'transmit_timestamps': 0, 'other_queue_entries': 0, 'reads': 20, 'reads_without_timestamp': 0}
+software ids with both timestamps: 0 of 20

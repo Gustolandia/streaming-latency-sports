@@ -18,6 +18,7 @@ except Exception:
 
 import law_clock
 import thread_record
+import so_timestamps
 
 
 def now_ns() -> int:
@@ -95,8 +96,12 @@ def main():
     ap.add_argument("--thread-record", action="store_true",
                     help="write which threads stamped what, and both clocks, beside the CSV")
 
+    so_timestamps.add_arguments(ap)
     args = ap.parse_args()
     record = thread_record.ThreadRecord() if args.thread_record else None
+    # F2 (freeze 40): the kernel's own timestamps on the broker's connections, if asked
+    # for, before any connection is opened.
+    so = so_timestamps.start(args, args.port)
 
     # The same bar as the Kafka client and as the Java one: the quantity being measured is the
     # same, so the instrument's resolution is judged the same way. See law_clock.py.
@@ -407,6 +412,7 @@ def main():
 
     if record is not None:
         record.write(thread_record.beside(out_path))
+    so_timestamps.finish(so, args)
     print(f"OK redis producer: wrote {sent} base rows -> {out_path}")
     if corr_enabled:
         print(f"OK redis producer: wrote {len(corr_rows)} correction rows -> {out_path}")

@@ -304,21 +304,22 @@ def nothing_lost(rows):
             "runs_against": bad}
 
 
-def the_hosts_effect(rows):
+def the_hosts_effect(rows, wire="W_mean"):
     """F-d: at normal priority, D's 99th percentile at the load at least EFFECT_RATIO times idle, and
-    W's mean moving by less than WIRE_SHARE_OF_RISE of the rise in D's mean."""
+    W's mean moving by less than WIRE_SHARE_OF_RISE of the rise in D's mean. `wire` names the field
+    that holds W's mean, so that freeze 40 can hold W_so to the same test."""
     results, shown = [], {}
     for b in BACKENDS:
         tail = [setup_value(rows, b, load, False, "D_p99") for load in (IDLE, BUSY)]
         d = [setup_value(rows, b, load, False, "D_mean") for load in (IDLE, BUSY)]
-        w = [setup_value(rows, b, load, False, "W_mean") for load in (IDLE, BUSY)]
+        w = [setup_value(rows, b, load, False, wire) for load in (IDLE, BUSY)]
         if None in tail + d + w:
             results.append(None)
             continue
         rise = d[1] - d[0]
         results.append(tail[1] >= EFFECT_RATIO * tail[0] and rise > 0
                        and abs(w[1] - w[0]) < WIRE_SHARE_OF_RISE * rise)
-        shown[b] = {"D_p99": tail, "D_mean": d, "W_mean": w}
+        shown[b] = {"D_p99": tail, "D_mean": d, wire: w}
     return {"verdict": _verdict(results), "values": shown}
 
 

@@ -15,6 +15,7 @@ except Exception:
 
 import law_clock
 import thread_record
+import so_timestamps
 
 
 def now_ns() -> int:
@@ -96,6 +97,7 @@ def main():
     ap.add_argument("--thread-record", action="store_true",
                     help="write which threads stamped what, and both clocks, beside the CSV")
 
+    so_timestamps.add_arguments(ap)
     args = ap.parse_args()
     record = thread_record.ThreadRecord() if args.thread_record else None
 
@@ -134,6 +136,8 @@ def main():
     if args.compression_type is not None:
         producer_kwargs["compression_type"] = args.compression_type
 
+    # F2 (freeze 40): the kernel's own timestamps on the broker's connections, if asked for.
+    so = so_timestamps.start(args, so_timestamps.port_of(bootstrap_servers, 9092))
     producer = KafkaProducer(**producer_kwargs)
     # Measured before the run, not assumed: a clock too coarse to see the effect stops here, and
     # the figure it reported goes in the run's own record either way. The Java client A8 compares
@@ -401,6 +405,7 @@ def main():
 
     if record is not None:
         record.write(thread_record.beside(out_path))
+    so_timestamps.finish(so, args)
     print(f"OK kafka producer: wrote {len(rows)} rows -> {out_path}")
 
 

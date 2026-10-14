@@ -13,6 +13,7 @@
 \input{glyphtounicode}
 \pdfgentounicode=1
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage[hidelinks]{hyperref}
@@ -424,16 +425,16 @@ counted (Table~\ref{tab:tools}).
 \begin{table*}[t]
 \caption{\textbf{What the tools we read and ran do with a latency at or below zero.} The tools are
 grouped by where they take their two timestamps. Only the first group measures a one-way latency
-(Section~\ref{sec:toolsrun}). Step: the smallest change in the latency a tool reports. Read:
-classified from its source (Section~\ref{sec:tools}). Run: run in the registered campaign
+(Section~\ref{sec:toolsrun}). Within each group, rows run in the order dropped, refused, replaced,
+and kept or never met. Step: the smallest change in the latency a tool reports. Read: classified
+from its source (Section~\ref{sec:tools}). Run: run in the registered campaign
 (Section~\ref{sec:toolsrun}). \kafka{}'s two bundled tools count as one tool read but two tools
-run. The last group times no message, but its tools also delete or replace such a value. Source
-lines, versions and dates: Supplement~S5.}
+run. Source lines, versions and dates: Supplement~S5.}
 \label{tab:tools}
 \centering
 \footnotesize
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}p{0.24\textwidth}p{0.075\textwidth}p{0.555\textwidth}p{0.075\textwidth}@{}}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.24\textwidth}p{0.075\textwidth}>{\raggedright\arraybackslash}p{0.555\textwidth}p{0.075\textwidth}@{}}
 \toprule
 Tool & Step & What happens to a value at or below zero & Read, run \\
 \midrule
@@ -441,65 +442,67 @@ Tool & Step & What happens to a value at or below zero & Read, run \\
 OpenMessaging Benchmark & 1~ms & Dropped by a filter that keeps values
 above zero, uncounted; at that step the filter also drops every message faster than a
 millisecond & read, run \\
-Apache Pulsar's performance client & 1~ms & Dropped when below zero, uncounted; a zero is kept &
-read, run \\
-\texttt{emqtt-bench} & 1~ms & Kept in its histogram since January 2025; its average counts it
-as zero and is printed only when some value is above zero & read, run \\
-\raggedright librdkafka's \brk{rdkafka_performance} & 10~$\mu$s & Dropped unless above zero, with a
+Apache Pulsar's performance client & 1~ms & Dropped when below zero, uncounted; a
+zero is kept & read, run \\
+librdkafka's \brk{rdkafka_performance} & 10~$\mu$s & Dropped unless above zero, with a
 printed line, uncounted; none reached zero in our runs & read, run \\
-\kafka{}'s Trogdor, end to end & 1~ms & Replaced by its histogram's floor, uncounted; that histogram
-throws on a negative, which loses a producer's sample & read, run \\
-RabbitMQ Stream PerfTest, as producer and consumer & 1~ms & Dropped when below zero, uncounted,
-since June 2026; a zero is kept & read, run \\
-Yahoo Streaming Benchmark & 1~ms & Kept in its output file; dropped by the notebook that
-analyses it, uncounted & read, run \\
-PerfKit Benchmarker, messaging & 1~ms & Kept, floored to whole milliseconds, also when a step of
-the clock makes one & read, run \\
-Apache ActiveMQ Artemis's \texttt{perf} & 1~$\mu$s & Refused by its histogram library; the session
-is rolled back and the run still reads success; uncounted & read, run \\
-Google's Pub/Sub load test framework & 1~ms & Binned with the fastest messages by its Java client,
-and the controller reading those bins throws, blaming negative values, once half the values lie
-there; its Go client panics, its Python client raises, its Node client loses it; uncounted & read,
-run \\
-Quiver & 1~ms & Wrapped by unsigned arithmetic to some $10^{19}$~ms, uncounted & read, run \\
-Redpanda's \texttt{kgo-repeater}, RocketMQ's benchmark & 1~$\mu$s, 1~ms & Kept, unflagged;
-RocketMQ's maximum, which starts at zero, cannot show it & read, run \\
+RabbitMQ Stream PerfTest, as producer and consumer & 1~ms & Dropped when below zero,
+uncounted, since June 2026; a zero is kept & read, run \\
+Yahoo Streaming Benchmark & 1~ms & Dropped by the notebook that analyzes its output
+file, uncounted; kept in that file & read, run \\
+Apache ActiveMQ Artemis's \texttt{perf} & 1~$\mu$s & Refused by its histogram library;
+the session is rolled back and the run still reads success; uncounted & read, run \\
+Google's Pub/Sub load test framework & 1~ms & Replaced by the bin of the fastest
+messages in its Java client, and the controller reading those bins throws, blaming negative
+values, once half the values lie there; its Go client panics, its Python client raises, its Node
+client loses it; uncounted & read, run \\
+\kafka{}'s Trogdor, end to end & 1~ms & Replaced by its histogram's floor, uncounted;
+that histogram throws on a negative, which loses a producer's sample & read, run \\
+Quiver & 1~ms & Replaced by some $10^{19}$~ms when unsigned arithmetic wraps it,
+uncounted & read, run \\
+\texttt{emqtt-bench} & 1~ms & Replaced by zero in its average, which is printed only
+when some value is above zero; kept in its histogram since January 2025 & read, run \\
+PerfKit Benchmarker, messaging & 1~ms & Kept, floored to whole milliseconds, also when
+a step of the clock makes one & read, run \\
+Redpanda's \texttt{kgo-repeater}, RocketMQ's benchmark & 1~$\mu$s, 1~ms & Kept,
+unflagged; RocketMQ's maximum, which starts at zero, cannot show it & read, run \\
 \midrule
 \multicolumn{4}{@{}l}{\emph{Both timestamps in one process: publish to receipt, or to the
 acknowledgment}} \\
-\kafka{}'s end-to-end and producer tools & 1~ms & An arrival before the acknowledgment replaced by a
-later time, uncounted: the end-to-end tool polls only after each acknowledgment; on a path faster
-than a millisecond its every percentile reads zero & read, run \\
-RabbitMQ PerfTest & 1~$\mu$s & Replaced by its absolute value, uncounted; until June 2026 a zero
-was dropped too & read, run \\
-NATS command-line latency test & 1~$\mu$s & Kept for its minimum, median and maximum, refused by
-its histogram library for its percentiles; uncounted & read, run \\
-Xinfra Monitor & 1~ms & Replaced by zero in its percentiles, kept in its average; uncounted &
-read, run \\
-Strimzi Canary & 1~ms & Binned with the fastest messages; dropped by the log reader it ships,
+Strimzi Canary & 1~ms & Dropped by the log reader it ships, uncounted; binned with the
+fastest messages & read, run \\
+Apache BookKeeper's benchmark, to the acknowledgment & 1~ns & A zero dropped with the
+failed writes, uncounted; no value below zero can arise & read, run \\
+Storage Benchmark Kit (SBK) & 1~ms & Dropped from its figures but counted, a zero
+kept; the one message tool that counts what it cuts & read, run \\
+NATS command-line latency test & 1~$\mu$s & Refused by its histogram library for its
+percentiles, kept for its minimum, median and maximum; uncounted & read, run \\
+Pravega benchmark & 1~ms & An array index that throws, ending every later statistic;
 uncounted & read, run \\
-Storage Benchmark Kit (SBK) & 1~ms & Cut from its figures but counted, a zero kept; the one
-message tool that counts what it cuts & read, run \\
-Pravega benchmark & 1~ms & An array index that throws, ending every later statistic; uncounted &
-read, run \\
-Apache BookKeeper's benchmark, to the acknowledgment & 1~ns & A zero dropped with the failed
-writes, uncounted; no value below zero can arise & read, run \\
+\kafka{}'s end-to-end and producer tools & 1~ms & End-to-end tool: an arrival before
+its acknowledgment replaced by the time of the poll that follows the acknowledgment, uncounted;
+on a path faster than a millisecond all its percentiles read zero. Producer tool: every value
+kept, unflagged & read, run \\
+RabbitMQ PerfTest & 1~$\mu$s & Replaced by its absolute value, uncounted; until June
+2026 a zero was dropped too & read, run \\
+Xinfra Monitor & 1~ms & Replaced by zero in its percentiles, kept in its average;
+uncounted & read, run \\
 Sarama's producer tool, requests; \texttt{mqtt-benchmark} & 1~ms, 1~ns & Never met: a
 monotonic clock in one process; Sarama truncates every request under a millisecond to zero &
 read, run \\
 \midrule
 \multicolumn{4}{@{}l}{\emph{Both timestamps in one process: request to reply, a round trip}} \\
-\texttt{wrk2} & 10~$\mu$s & Printed as impossible, then refused by its histogram library, or the
-run aborts; uncounted & read, run \\
-\raggedright \texttt{hey}, \texttt{k6}, \texttt{memtier}, Valkey benchmark, Vegeta, YCSB,
+\texttt{wrk2} & 10~$\mu$s & Printed as impossible, then refused by its histogram
+library, or the run aborts; uncounted & read, run \\
+\texttt{hey}, \texttt{k6}, \texttt{memtier}, Valkey benchmark, Vegeta, YCSB,
 \texttt{nats~bench} & 1~ns--0.1~ms & Cannot fall below zero in one process; none did when the
 clock was moved back & run \\
 \midrule
 \multicolumn{4}{@{}l}{\emph{A curiosity: intervals inside one host, which time no message}} \\
+Rezolus, scheduler wakeups & 1~ns & Dropped and counted, since August 2026 & read \\
 \texttt{fio}, input and output completion & 1~ns & Replaced by zero, uncounted & read \\
-\texttt{btt}, block-layer stages & 1~ns & Replaced by 1~ns, also when the two timestamps are
-equal; uncounted & read \\
-Rezolus, scheduler wakeups & 1~ns & Discarded and counted, since August 2026 & read \\
+\texttt{btt}, block-layer stages & 1~ns & Replaced by 1~ns, also when the two
+timestamps are equal; uncounted & read \\
 \bottomrule
 \end{tabular}
 \end{table*}

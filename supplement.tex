@@ -958,6 +958,21 @@ between two of the kernel's timestamps. The plan, the register of every run and 
 the repository under \brk{docs/results/so_fix}, read by \brk{scripts/so_fix.py}. The module is
 \brk{scripts/so_timestamps.py}.
 
+For a tool's author, the module's choices are these. It asks for the transmit timestamp at the
+device queue (\texttt{SOF\_TIMESTAMPING\_TX\_SCHED}, or \texttt{TX\_SOFTWARE} where the driver
+gives one), the software receive timestamp (\texttt{RX\_SOFTWARE} with \texttt{SOFTWARE}), an
+identifier for each write (\texttt{OPT\_ID}), and the timestamp alone on the error queue, without
+a copy of the packet (\texttt{OPT\_TSONLY})~\cite{linux_timestamping}. It turns the option on at a
+connection's first write or read once the connection is up, so that the identifier counts bytes
+from the first byte written. On this network the device-queue timestamp came back twice for every
+write, and the module keeps the first. It reads the error queue only when \texttt{poll()} reports
+something waiting there. On a socket with a timeout, as \texttt{kafka-python} sets one while it
+writes, Python waits for the socket to become readable before any read, so the module held each
+request past the client's own timeout and the pilot's first three \kafka{} attempts failed. Linux
+overwrites a read's receive timestamp with each packet the read consumes
+(\texttt{tcp\_update\_recv\_tstamps}, called from the read loop in \brk{net/ipv4/tcp.c}), so a
+read returns the timestamp of its last packet.
+
 \section{S4. The positivity filter and the retention law in full}
 \label{s:failure2}
 

@@ -56,14 +56,14 @@ benchmarks that now report latencies below a millisecond. At that scale, when a 
 clock matters. After a broker writes a message, it acknowledges it to the producer and delivers it
 to the consumer. On one machine and one clock, the two readings should coincide. Measured, their
 difference spreads over milliseconds, and part of it falls below zero. The cause is scheduling. A
-thread must wait for a processor core before it can read the clock, and the thread that reads the
+thread must wait for a processor core before reading the clock, and the thread that reads the
 acknowledgment can wait longer than the message takes to reach the consumer. How often this
 happens obeys laws we derive and test by manipulation. It rises with load, depends on how the load
 is placed, and falls when the clock-reading threads run at real-time priority and as the timed
 path outgrows the scheduler's slice, which the processor count sets. An industry-wide audit finds
 such values discarded uncounted or never measured, and a filter on millisecond clocks that
-deletes the fastest messages too. Kernel timestamps exclude the wait from latency, even under
-load. We give checks, and measure what most of them buy.
+deletes the fastest messages too. Kernel timestamps, readable by any tool, exclude the wait, even
+under load. We give checks, and measure what most of them buy.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -119,8 +119,9 @@ millisecond clock, a filter that keeps only latencies above zero, a \emph{positi
 deletes the fastest messages, and no public report we audited says how many samples it kept.
 \item \textbf{What to do} (Section~\ref{sec:practice}). Checks for benchmark authors and
 readers, each with what it buys where we measured it, and one fix that keeps the waits out of the
-latency. Timed between the kernel's timestamps as each message leaves and returns, the latency held
-still across load and priority. Better clock synchronization cures neither problem.
+latency in any tool. Timed between the kernel's timestamps as each message leaves and returns, the
+latency held still across load and priority. A tool can read those timestamps on its own sockets
+in four steps. Better clock synchronization cures neither problem.
 \end{enumerate}
 
 % Set here so that the figure the opening cites first is numbered first.
@@ -703,8 +704,11 @@ milliseconds for \kafka{} and Pulsar, and keep the positivity filter (Supplement
 \label{sec:discussion}
 \label{sec:checks}
 
-The late reading and the deletion are cheap to detect, and most of what they cost is cheap to
-repair (Table~\ref{tab:checks}).
+The late reading, a clock read delayed while its thread waits for a core, and the deletion of
+values at or below zero are cheap to detect, and most of what they cost is cheap to repair
+(Table~\ref{tab:checks}). One fix ends the late reading in any tool that times messages: take both
+of a message's timestamps from the kernel, not from the tool's threads. It comes first, and the
+rest find or shrink the late reading in a tool that still reads the clock in its threads.
 
 \begin{table}[tb]
 \caption{\textbf{Most steps cost little, and most were measured.} What a benchmark author or
@@ -717,6 +721,11 @@ reader should do, and what each step buys on our runs.}
 \toprule
 Do this & What it buys \\
 \midrule
+Time each message between the kernel's timestamps as it leaves and as it arrives, read on the
+tool's own sockets. & Holds no client thread's wait. Its median moved at most
+$\soFixMedianMovePct\%$ across load and priority, while load at normal priority raised the tail of
+$D$ $\soFixTailRatioLo$--$\soFixTailRatioHi\times$ (Supplement~S3.10). \\
+\addlinespace[2pt]
 Sign-check every run under the load it is quoted at, and report the rejection rate. & Catches
 runs in which $A$ exceeds $D$, and rejected $\auditPctCloud\%$ of our cloud runs. Misses a
 latency that load inflates but leaves positive. \\
@@ -725,11 +734,6 @@ Time from the publish call, or record the publish latency and add it back. & Rec
 median error of $\recoveryErrPass\%$ where the sign check passes and $\recoveryErrFail\%$ where it
 fails. $S$ alone understates $D$ $\understateFactor\times$ at the median
 (Fig.~\ref{fig:exposure}). \\
-\addlinespace[2pt]
-Time each message by the kernel's timestamps as it leaves the client machine and as it returns. &
-Holds no client thread's wait. Its median moved at most $\fullFixMedianMovePct\%$ across load and
-priority, while load at normal priority raised the tail of $D$
-$\fullFixTailRatioLo$--$\fullFixTailRatioHi\times$ (Supplement~S3.9). \\
 \addlinespace[2pt]
 Give the threads that read the clock real-time priority, or have them spin on a dedicated core
 (\emph{busy-polling}). &
@@ -751,6 +755,62 @@ schedule from phase-locking with the clock. Not measured. \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\textbf{Let the kernel timestamp each message.}\label{sec:fix} A tool reads each of a message's
+timestamps in one of its threads, and that thread may first wait for a core. The kernel timestamps
+each packet as it leaves a machine and as it enters one, the transmit and receive timestamps,
+without waiting for any program's thread. A latency timed from a message's transmit timestamp to
+its receive timestamp, the \emph{kernel-timed latency} $W$, therefore holds the network and the
+broker and none of the clients' waits. The waits are not lost. They fall before and after $W$:
+$H_{\mathrm{out}}$ runs from the publish call to the transmit timestamp, and $H_{\mathrm{in}}$ runs
+from the receive timestamp to the consumer's reading, so that $D = H_{\mathrm{out}} + W +
+H_{\mathrm{in}}$ for every message. A tool can therefore report what the network and the broker
+did, $W$, beside what the application saw, $D$.
+
+All five predictions we fixed before any run held. Over $\fullFixRuns$ runs on both brokers, timed from packet captures,
+the median of $W$ moved by at most $\fullFixMedianMovePct\%$ and its 99th percentile by at most
+$\fullFixTailMovePct\%$ between no background load and $\fullFixLoadPct\%$, and between normal and
+real-time priority. In the same runs, at normal priority, the load raised the 99th percentile of
+$D$ $\fullFixTailRatioLo$--$\fullFixTailRatioHi$-fold (Supplement~S3.9). No kernel-timed latency
+fell to zero or below, so a positivity filter has nothing to delete.
+
+\textbf{Read those timestamps on the tool's own sockets.} A tool need not capture packets. On
+Linux it reads the kernel's timestamps in four steps, through the \texttt{SO\_TIMESTAMPING}
+\emph{socket option}, a setting a program makes on one of its sockets.
+\begin{enumerate}
+\item On each connection to the broker, before its first write, turn on the kernel's software
+timestamps for transmit and receive, with an identifier for each write.
+\item The kernel leaves each write's transmit timestamp on the socket's \emph{error queue} once the
+write has gone out. The identifier is the byte offset of the write's last byte, which names the
+messages the write carried. Collect at every write and read, because while the queue holds a
+timestamp, the socket reports an error, and a client waiting on it spins.
+\item With each read, take the receive timestamp the kernel returns beside the data, that of the
+last packet the read consumed.
+\item Time each message from the transmit timestamp of the write that carried it to the receive
+timestamp of the read that delivered it, and report that latency beside $D$, counting any message
+left without a timestamp.
+\end{enumerate}
+Our Python module takes these steps beneath both brokers' client libraries, which it leaves
+unchanged, and finds each message in the bytes they write and read
+(\brk{scripts/so_timestamps.py}). In $\soFixRuns$ more runs, the kernel-timed latency read this
+way came within $\soFixAgreeMedianHiUs\,\mu$s of the captures' at the median. Its median moved by
+at most $\soFixMedianMovePct\%$ across load and priority, and the tail of $D$ again rose
+$\soFixTailRatioLo$--$\soFixTailRatioHi$-fold under load at normal priority (Supplement~S3.10).
+
+\textbf{What a tool must handle.} A write or a read that carries several messages gives them the
+timestamp of its end. A read that drains several packets therefore times the earlier ones late,
+and a consumer that waits while packets queue adds part of its wait back to them. At our publish
+rate the receive timestamps matched the captures' for $\soFixSameReceivePct\%$ or more of each
+run's messages. Where a driver gives no software transmit timestamp, as on our virtual network,
+ask instead for the kernel's timestamp as a packet enters the \emph{device queue}, where it waits
+for the driver. These came $\soFixQueueLeadLoUs$--$\soFixQueueLeadHiUs\,\mu$s before the
+capture's, in each run's median. The kernel timestamps an arriving packet a median of
+$\fullFixKernelDelayLoUs$--$\fullFixKernelDelayHiUs\,\mu$s after the network card does
+(Supplement~S3.9), and a card that timestamps in hardware would remove that delay, on a clock of
+its own that the tool must tie to the system's. With the producer and the consumer on two
+machines, $W$ spans two clocks and, like any one-way latency, includes their offset. Java's
+standard socket classes expose neither the option nor the error queue, so a Java tool needs a
+native call. A tool that cannot yet take the kernel's timestamps needs what follows.
 
 \textbf{Sign-check every run.}\label{sec:gate}\label{sec:audit} The \emph{sign check} rejects a
 run when more than one percent of its messages carry a value below zero in any latency component
@@ -807,23 +867,8 @@ below zero, but not the consumer's own wait for a core, which lengthens every la
 check sees. Measured three ways in $\recvWaitRuns$ later runs on the registered campaign's
 machines, that wait added $\recvWaitAddedLo$--$\recvWaitAddedHi$~ms to the mean end-to-end latency
 at $\recvLowLoadPct$ and $\recvHighLoadPct\%$ background load, while the median message waited
-$\recvWaitMedianLoUs$--$\recvWaitMedianHiUs\,\mu$s (Supplement~S3.8).
-
-\textbf{Let the kernel timestamp each message.} The kernel timestamps each packet as it leaves or
-enters the client machine, without waiting for the clients' threads. A latency timed between
-those timestamps, the \emph{kernel-timed latency}, therefore includes none of their waits. All
-five predictions we fixed before any run held. Over $\fullFixRuns$ runs on both brokers, timed from
-packet captures, its median moved by at most $\fullFixMedianMovePct\%$ and its 99th percentile by
-at most $\fullFixTailMovePct\%$ between no background load and $\fullFixLoadPct\%$, and between
-normal and real-time priority. In the same runs, at normal priority, the load raised the 99th
-percentile of $D$ $\fullFixTailRatioLo$--$\fullFixTailRatioHi$-fold (Supplement~S3.9). No
-kernel-timed latency fell to zero or below, so a positivity filter has nothing to delete, and the
-clients' waits are measured beside it, not inside it.
-
-A tool can read the kernel's timestamps on its own sockets, through the \texttt{SO\_TIMESTAMPING}
-socket option. In $\soFixRuns$ more runs, the kernel-timed latency read this way came within
-$\soFixAgreeMedianHiUs\,\mu$s of the captures' at the median and held still as before
-(Supplement~S3.10).
+$\recvWaitMedianLoUs$--$\recvWaitMedianHiUs\,\mu$s (Supplement~S3.8). The kernel-timed latency
+keeps that wait out.
 
 \textbf{Give the threads that read the clock a core.} Real-time priority cut the negative-span
 rate $\rtFactorLow$--$\rtFactorHigh\times$ at unchanged background load on \kafka{}, and
@@ -946,9 +991,11 @@ and Neoverse~N2 pairs, above the registered limit of $1.5$ (Supplement~S6). The 
 those of one EEVDF-era kernel. Designs that pin a busy-polling thread to a dedicated core, or
 timestamp in hardware, remove the waiting state, and we make no claim about them. We read the
 kernel's timestamps from packet captures and, through a Python module, on the clients' own
-sockets, at one publish rate on one machine pair and kernel. On that virtual network the kernel
-gave the sockets a departing packet's timestamp only as it entered the device queue, where it waits
-for the network driver.
+sockets, at one publish rate on one machine pair and kernel, with the producer and the consumer on
+one machine. On that virtual network the kernel gave the sockets a departing packet's timestamp
+only at the device queue. The clients used neither encryption nor compression, either of which
+would hide each message's bytes from a module beneath the client library, and we did not measure
+what taking the timestamps costs a tool.
 
 The deletion is demonstrated in one benchmark, in its embedded mode, and reproduced in one
 independent program of our own. The benchmark's distributed mode failed on every attempt on the
@@ -973,9 +1020,10 @@ thread waits for a core, for up to a scheduler's slice, before it reads the cloc
 industry such values are deleted, replaced or never measured, a positivity filter on a
 millisecond clock deletes the fastest messages too, and no report we audited says how many
 samples it kept. A latency timed between the kernel's timestamps, as each message leaves the
-client machine and returns, holds none of these waits. Under load it held still while, at normal
-priority, the end-to-end latency's tail rose $\fullFixTailRatioLo$--$\fullFixTailRatioHi$-fold. A
-tool can read those timestamps on its own sockets.
+client machine and returns, holds no client thread's wait. Under load it held still while, at
+normal priority, the end-to-end latency's tail rose $\fullFixTailRatioLo$--$\fullFixTailRatioHi$-fold.
+On Linux, any tool can read those timestamps on its own sockets and report that latency beside the
+end-to-end latency its application sees.
 Before acting on a broker latency below a
 few milliseconds, ask which timestamp
 it was timed from, how many samples the tool kept, and how many it discarded, by sign.

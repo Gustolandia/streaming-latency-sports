@@ -513,7 +513,10 @@ class TestEachNameIsBuiltWhereAReaderFirstMeetsIt:
                # defines the two programs a broker joins.
                "producer", "consumer",
                # 13 Oct 2026: Section VI names the fix freeze 39 tested where it first gives it.
-               "kernel-timed latency")
+               "kernel-timed latency",
+               # 15 Oct 2026: Section VI says how any tool reads those timestamps, and names the
+               # setting, the queue it returns them on and the queue a packet waits in.
+               "socket option", "error queue", "device queue")
 
     @staticmethod
     def _reader_text(paper):

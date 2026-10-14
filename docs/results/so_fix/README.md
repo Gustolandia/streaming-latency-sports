@@ -79,6 +79,31 @@ socket timestamps, and no socket latency came out at or below zero.
 *Words in this part.* **Pilot**: a short run of a block to check its instruments, never judged.
 **Device queue**: where the kernel holds a packet before the network driver takes it.
 
+## The result
+
+The 48 runs ran on 14 October 2026, from 00:11 to 02:34 UTC, and every one passed the integrity
+rule at its first attempt. All five predictions held ([`f2_verdicts.json`](f2_verdicts.json),
+written by `scripts/so_fix.py judge` from [`f2_runs.csv`](f2_runs.csv)):
+
+- **G-a held.** In every setup the median of `|W_so - W|` was 2.4 to 3.0 µs, against the 20 µs
+  allowed, and its 99th percentile at most 5.9 µs, against 100 µs. The receive timestamps were the
+  very same for 98.4% or more of each run's messages, and the queue's transmit timestamp came 2.3
+  to 3.2 µs before the capture's.
+- **G-b held.** `W_so`'s median moved by at most 7.8%, against 10%: on Kafka with no background
+  load, from 814 µs at normal priority to 750 µs at real-time priority.
+- **G-c held.** Its 99th percentile moved by at most 12.2%, against 25%.
+- **G-d held.** None of the 239,424 messages had `W_so` at or below zero, and every message had
+  both socket timestamps.
+- **G-e held.** At normal priority the load raised `D`'s 99th percentile 4.2-fold on Kafka, from
+  1,977 to 8,371 µs, and 4.7-fold on Redis, from 981 to 4,579 µs, while `W_so`'s mean moved by
+  5.1% and 0.2% of the rise in `D`'s mean.
+
+In three Kafka runs a pause held messages more than 150 ms, in `D` and in `W_so` alike, so outside
+the client machine; they are listed in the verdicts file, and a setup's median sets them aside.
+
+*Words in this part.* **Held**: the measured values stayed inside the margins the prediction set
+before the runs. **Fold**: how many times larger.
+
 ## The files
 
 | File | What it holds | Made by |
@@ -88,11 +113,17 @@ socket timestamps, and no socket latency came out at or below zero.
 | [`f2_design.json`](f2_design.json) | the judged block: eight setups, six rounds, its seed | by hand |
 | [`f2_smoke_design.json`](f2_smoke_design.json), [`f2_pilot_design.json`](f2_pilot_design.json) | the pilot's two steps | by hand |
 | [`f2_pilot_runs.csv`](f2_pilot_runs.csv) | each pilot run's checks and spans | `scripts/so_fix.py read` |
+| [`f2_runs.csv`](f2_runs.csv) | each of the 48 judged runs' checks and spans | `scripts/so_fix.py read` |
+| [`f2_verdicts.json`](f2_verdicts.json) | G-a to G-e and the values behind each, with the runs a pause held | `scripts/so_fix.py judge` |
+| [`f2_registry_runs.csv`](f2_registry_runs.csv) | every F2 run, the pilot's and its failed attempts included: machine, kernel, settings and verdict | `scripts/run_registry.py` |
 | [`code/`](code/), [`probes/`](probes/) | the three probes run on the driver, and what each printed | by hand, run on the driver |
 
 The pilot's runs are in `runs/azure/collected/matched/f2_smoke` and `f2_pilot`, and the probes and
 both steps' logs, with the runner and the clients as the pilot ran them, in
-`snapshot_20261013T234847Z`, each with its fingerprints.
+`snapshot_20261013T234847Z`, each with its fingerprints. The 48 judged runs are in
+`runs/azure/collected/matched/f2`, and the pair's work list logs and its own register of every run
+in `snapshot_20261014T171136Z`. The register lists the three failed Kafka attempts of the pilot's
+first step with no verdict, since each stopped before the integrity rule ran.
 
 ## How to reproduce
 
@@ -101,6 +132,7 @@ python3 scripts/run_queue.py make --design docs/results/so_fix/f2_design.json --
 bash cloud/azure/campaign.sh runs/azure/queues/f2.csv
 python scripts/so_fix.py read --runs runs/azure/collected/matched/f2/runs --driver 10.1.1.10 --broker 10.1.1.21 --receiver 10.1.1.11 --out docs/results/so_fix/f2_runs.csv
 python scripts/so_fix.py judge --table docs/results/so_fix/f2_runs.csv --out docs/results/so_fix/f2_verdicts.json
+python scripts/run_registry.py --runs runs/azure/collected/matched/f2_smoke/runs --runs runs/azure/collected/matched/f2_pilot/runs --runs runs/azure/collected/matched/f2/runs --out docs/results/so_fix/f2_registry_runs.csv
 ```
 
 The first two lines run on the first x86 pair's driver; its own work list runs them.
@@ -113,6 +145,8 @@ The first two lines run on the first x86 pair's driver; its own work list runs t
 | D | the latency from the publish call to the consumer's timestamp |
 | Device queue | where the kernel holds a packet before the network driver takes it |
 | Error queue | where the kernel leaves a socket's transmit timestamps for the program to collect |
+| Fold | how many times larger |
+| Held | stayed inside the margins a prediction set before the runs |
 | Pilot | a short, unjudged run of a block, to check its instruments |
 | Socket | the end of a network connection a program reads and writes |
 | `SO_TIMESTAMPING` | the Linux socket option that hands a program the kernel's timestamps of its packets |

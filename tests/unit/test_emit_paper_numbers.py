@@ -3884,6 +3884,60 @@ class TestTheFullFixIsEmitted:
         assert not fix.exists()
 
 
+class TestTheSocketFixIsEmitted:
+    """F2's numbers (freeze 40, 14 Oct 2026), for the sentence of Section VI and Supplement S3.10,
+    read through scripts/so_fix.py's own judge of the committed run table rather than typed."""
+
+    def test_the_committed_reading_gives_the_printed_numbers(self):
+        m = dict(epn.so_fix_macros())
+        assert (m["soFixRuns"], m["soFixMessages"]) == ("48", "239{,}424")
+        assert (m["soFixAgreeMedianLoUs"], m["soFixAgreeMedianHiUs"], m["soFixAgreeTailHiUs"]) == (
+            "2.4", "3.0", "5.9")
+        assert (m["soFixMedianMovePct"], m["soFixTailMovePct"]) == ("7.8", "12.2")
+        assert (m["soFixTailRatioLo"], m["soFixTailRatioHi"], m["soFixWireSharePct"]) == (
+            "4.2", "4.7", "5.1")
+        assert (m["soFixQueueLeadLoUs"], m["soFixQueueLeadHiUs"]) == ("2.3", "3.2")
+        assert m["soFixReceiveDiffUs"] == "0.06"
+        assert m["soFixPausedRuns"] == "3"
+        assert dict(epn.spelled_twins(epn.so_fix_macros()))["soFixPausedRunsWord"] == "three"
+
+    def test_the_share_of_identical_receive_timestamps_never_rounds_up(self):
+        """98.48% of the lowest run's messages is "98.4% or more", never "98.5% or more"."""
+        _, rows = epn._so_fix_reading()
+        lowest = min(float(r["rx_same_share"]) for r in rows)
+        floor = float(dict(epn.so_fix_macros())["soFixSameReceivePct"])
+        assert floor == 98.4 and floor / 100 <= lowest < floor / 100 + 0.001
+
+    def test_the_bars_are_the_plans_own_and_every_prediction_held(self):
+        m = dict(epn.so_fix_macros())
+        assert (m["soFixAgreeMedianBarUs"], m["soFixAgreeTailBarUs"]) == ("20", "100")
+        found, _ = epn._so_fix_reading()
+        assert {k: v["verdict"] for k, v in found.items()} == dict.fromkeys(
+            ("G-a", "G-b", "G-c", "G-d", "G-e"), "holds")
+
+    def test_the_committed_table_is_the_one_the_data_give(self):
+        repo = Path(__file__).resolve().parents[2]
+        have = (repo / "docs" / "generated" / "so_fix_table.tex").read_text(encoding="utf-8")
+        assert have.replace("\r\n", "\n") == epn.render_so_fix_table()
+        rows = [line for line in have.splitlines() if line.startswith(("\\kafka", "\\redis"))]
+        assert len(rows) == 8
+        assert rows[2] == ("\\kafka{}, $88\\%$, normal & $772$ & $922$ & $775$ & $925$ & "
+                           "$3.0$ & $5.9$ & $8371$ \\\\")
+
+    def test_a_missing_reading_emits_nothing(self, tmp_path):
+        assert epn.so_fix_macros(str(tmp_path)) == []
+        assert epn.render_so_fix_table(str(tmp_path)) == ""
+
+    def test_main_skips_the_table_where_the_reading_is_absent(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(epn, "render_so_fix_table", lambda *a, **kw: "")
+        led, out = tmp_path / "l.csv", tmp_path / "n.tex"
+        write_ledger(led, [("load_sweep", 10, 90, 0)])
+        sockets = tmp_path / "so.tex"
+        assert main(["--ledger", str(led), "--out", str(out), "--table",
+                     str(tmp_path / "t.tex"), "--so-fix-table", str(sockets)]) == 0
+        assert not sockets.exists()
+
+
 class TestKOne:
     """K1 for Section V-A's sentence and the supplement's table (freeze 32, D35-6, D35-7): how often
     a record was readable before Kafka's own end-to-end tool had its acknowledgment. The prose says

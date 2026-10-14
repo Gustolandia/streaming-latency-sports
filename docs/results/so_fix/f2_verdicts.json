@@ -1,0 +1,173 @@
+{
+  "G-a": {
+    "values": {
+      "kafka, 0% load, normal priority": [
+        2.6235,
+        3.7971700000000013
+      ],
+      "kafka, 0% load, real-time priority": [
+        2.6390000000000002,
+        3.746865000000001
+      ],
+      "kafka, 88% load, normal priority": [
+        2.989,
+        5.935450000000001
+      ],
+      "kafka, 88% load, real-time priority": [
+        3.0445,
+        5.8516850000000025
+      ],
+      "redis, 0% load, normal priority": [
+        2.3657500000000002,
+        3.572600000000002
+      ],
+      "redis, 0% load, real-time priority": [
+        2.4135,
+        3.6724500000000013
+      ],
+      "redis, 88% load, normal priority": [
+        2.63875,
+        5.318150000000001
+      ],
+      "redis, 88% load, real-time priority": [
+        2.6485000000000003,
+        5.236400000000003
+      ]
+    },
+    "verdict": "holds"
+  },
+  "G-b": {
+    "values": {
+      "kafka, 0% load: normal against real-time": [
+        813.5632499999999,
+        750.09175
+      ],
+      "kafka, 88% load: normal against real-time": [
+        774.96575,
+        782.2565
+      ],
+      "kafka, normal priority: idle against load": [
+        813.5632499999999,
+        774.96575
+      ],
+      "kafka, real-time priority: idle against load": [
+        750.09175,
+        782.2565
+      ],
+      "redis, 0% load: normal against real-time": [
+        594.591,
+        582.8932500000001
+      ],
+      "redis, 88% load: normal against real-time": [
+        598.7027499999999,
+        588.2215
+      ],
+      "redis, normal priority: idle against load": [
+        594.591,
+        598.7027499999999
+      ],
+      "redis, real-time priority: idle against load": [
+        582.8932500000001,
+        588.2215
+      ]
+    },
+    "verdict": "holds"
+  },
+  "G-c": {
+    "values": {
+      "kafka, 0% load: normal against real-time": [
+        968.90447,
+        850.8251150000001
+      ],
+      "kafka, 88% load: normal against real-time": [
+        925.090855,
+        945.4760300000005
+      ],
+      "kafka, normal priority: idle against load": [
+        968.90447,
+        925.090855
+      ],
+      "kafka, real-time priority: idle against load": [
+        850.8251150000001,
+        945.4760300000005
+      ],
+      "redis, 0% load: normal against real-time": [
+        744.470055,
+        734.81728
+      ],
+      "redis, 88% load: normal against real-time": [
+        681.5726250000002,
+        725.1484450000005
+      ],
+      "redis, normal priority: idle against load": [
+        744.470055,
+        681.5726250000002
+      ],
+      "redis, real-time priority: idle against load": [
+        734.81728,
+        725.1484450000005
+      ]
+    },
+    "verdict": "holds"
+  },
+  "G-d": {
+    "runs_against": [],
+    "verdict": "holds"
+  },
+  "G-e": {
+    "values": {
+      "kafka": {
+        "D_mean": [
+          1814.6082388732957,
+          3146.919077686447
+        ],
+        "D_p99": [
+          1977.35673,
+          8371.413155000002
+        ],
+        "Wso_mean": [
+          863.3613766038492,
+          795.4103026263031
+        ]
+      },
+      "redis": {
+        "D_mean": [
+          838.1680543303929,
+          1270.492693063352
+        ],
+        "D_p99": [
+          981.266735,
+          4578.6626
+        ],
+        "Wso_mean": [
+          600.8986441459504,
+          601.8618118484362
+        ]
+      }
+    },
+    "verdict": "holds"
+  },
+  "pauses": [
+    [
+      "law_f2_r003-F2-kafka-l0-ord-a1",
+      "F2-kafka-l0-ord",
+      5,
+      5,
+      230205.628
+    ],
+    [
+      "law_f2_r003-F2-kafka-l88-rt-a1",
+      "F2-kafka-l88-rt",
+      104,
+      104,
+      1888049.254
+    ],
+    [
+      "law_f2_r005-F2-kafka-l88-ord-a1",
+      "F2-kafka-l88-ord",
+      17,
+      17,
+      473931.732
+    ]
+  ]
+}

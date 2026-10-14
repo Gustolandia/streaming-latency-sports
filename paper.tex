@@ -809,14 +809,18 @@ $\recvWaitMedianLoUs$--$\recvWaitMedianHiUs\,\mu$s (Supplement~S3.8).
 \textbf{Let the kernel timestamp each message.} The kernel timestamps each packet as it leaves or
 enters the client machine, without waiting for the clients' threads. A latency timed between
 those timestamps, the \emph{kernel-timed latency}, therefore includes none of their waits. All
-five predictions we fixed before any run held. Over $\fullFixRuns$ runs on both brokers, its median
-moved by at most $\fullFixMedianMovePct\%$ and its 99th percentile by at most
-$\fullFixTailMovePct\%$ between no background load and $\fullFixLoadPct\%$, and between normal and
-real-time priority. In the same runs, at normal priority, the load raised the 99th percentile of
-$D$ $\fullFixTailRatioLo$--$\fullFixTailRatioHi$-fold (Supplement~S3.9). No kernel-timed latency
-fell to zero or below, so a positivity filter has nothing to delete, and the clients' waits are
-measured beside it instead of inside it. A tool can read such timestamps through the kernel's
-\texttt{SO\_TIMESTAMPING} socket option, which we did not test.
+five predictions we fixed before any run held. Over $\fullFixRuns$ runs on both brokers, timed from
+packet captures, its median moved by at most $\fullFixMedianMovePct\%$ and its 99th percentile by
+at most $\fullFixTailMovePct\%$ between no background load and $\fullFixLoadPct\%$, and between
+normal and real-time priority. In the same runs, at normal priority, the load raised the 99th
+percentile of $D$ $\fullFixTailRatioLo$--$\fullFixTailRatioHi$-fold (Supplement~S3.9). No
+kernel-timed latency fell to zero or below, so a positivity filter has nothing to delete, and the
+clients' waits are measured beside it, not inside it.
+
+A tool can read the kernel's timestamps on its own sockets, through the \texttt{SO\_TIMESTAMPING}
+socket option. In $\soFixRuns$ more runs, the kernel-timed latency read this way came within
+$\soFixAgreeMedianHiUs\,\mu$s of the captures' at the median and held still as before
+(Supplement~S3.10).
 
 \textbf{Give the threads that read the clock a core.} Real-time priority cut the negative-span
 rate $\rtFactorLow$--$\rtFactorHigh\times$ at unchanged background load on \kafka{}, and
@@ -938,8 +942,10 @@ confirmed. Python's rate there was $\pyOverJavaX$ and $\pyOverJavaArm$ times Jav
 and Neoverse~N2 pairs, above the registered limit of $1.5$ (Supplement~S6). The constants are
 those of one EEVDF-era kernel. Designs that pin a busy-polling thread to a dedicated core, or
 timestamp in hardware, remove the waiting state, and we make no claim about them. We read the
-kernel's timestamps only from packet captures, at a single publish rate on a single machine pair
-and kernel.
+kernel's timestamps from packet captures and, through a Python module, on the clients' own
+sockets, at one publish rate on one machine pair and kernel. On that virtual network the kernel
+gave the sockets a departing packet's timestamp only as it entered the device queue, where it waits
+for the network driver.
 
 The deletion is demonstrated in one benchmark, in its embedded mode, and reproduced in one
 independent program of our own. The benchmark's distributed mode failed on every attempt on the
@@ -965,7 +971,8 @@ industry such values are deleted, replaced or never measured, a positivity filte
 millisecond clock deletes the fastest messages too, and no report we audited says how many
 samples it kept. A latency timed between the kernel's timestamps, as each message leaves the
 client machine and returns, holds none of these waits. Under load it held still while, at normal
-priority, the end-to-end latency's tail rose $\fullFixTailRatioLo$--$\fullFixTailRatioHi$-fold.
+priority, the end-to-end latency's tail rose $\fullFixTailRatioLo$--$\fullFixTailRatioHi$-fold. A
+tool can read those timestamps on its own sockets.
 Before acting on a broker latency below a
 few milliseconds, ask which timestamp
 it was timed from, how many samples the tool kept, and how many it discarded, by sign.

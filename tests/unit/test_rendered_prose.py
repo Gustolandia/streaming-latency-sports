@@ -109,7 +109,10 @@ ABBREVIATIONS = frozenset((
 #: cut at all and of the five that cut nothing, each read only mid-sentence, so
 #: harnessMessageKeepWordCap went quiet and harnessMessageCutAllWordCap and
 #: harnessMessageUncutWordCap came in.
-UNUSED_MACRO_CEILING = 72
+#: 73 since 14 Oct 2026: freeze 40's count of the runs a pause held, soFixPausedRuns, is read only
+#: as its spelled twin, soFixPausedRunsWord, as R1's recvPausedRuns is; the digits stay emitted
+#: because the twin is made from them.
+UNUSED_MACRO_CEILING = 73
 
 
 def rendered(name):

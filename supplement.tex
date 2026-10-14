@@ -889,10 +889,74 @@ background load, as the plan expected of processors that must wake to take the i
 words this delay as the card's arrival less the kernel's. The delay reported is the kernel's less
 the card's. The largest move of the median of $W$, $\fullFixMedianMoveUs\,\mu$s on \redis{} at
 real-time priority, was a fall under load. Of that fall, $\fullFixCardMoveUs\,\mu$s lay between
-the kernel's departure timestamp and the card's arrival timestamp. We have not tested why. A
-program can read such timestamps through the kernel's \texttt{SO\_TIMESTAMPING} socket option,
-without a capture. We did not test that form. The plan, the register of every run and the reading
-are in the repository under \brk{docs/results/full_fix}, read by \brk{scripts/full_fix.py}.
+the kernel's departure timestamp and the card's arrival timestamp. We have not tested why. A tool
+can read the kernel's timestamps on its own sockets, without a capture, and \ref{s:sofix} tests
+whether they agree with the captures. The plan, the register of every run and the reading are in
+the repository under \brk{docs/results/full_fix}, read by \brk{scripts/full_fix.py}.
+
+\subsection{S3.10. Read on the clients' own sockets, the kernel's timestamps agreed with the captures to within microseconds}
+\label{s:sofix}
+
+A benchmark tool would not run a packet capture. It would ask the kernel for its timestamps on its
+own sockets, through the \texttt{SO\_TIMESTAMPING} \emph{socket option}, a setting a program asks
+the kernel for on one of its sockets. We tested that form by a second plan and five predictions
+fixed before any of its runs, with the captures of \ref{s:fullfix} running in the same runs as the
+reference.
+
+The runs repeated the design of \ref{s:fullfix}, with the same pair and both brokers, no
+background load on the client machine or $\fullFixLoadPct\%$, and normal or real-time priority for
+the producer and the consumer together. Eight setups ran in six shuffled rounds, and all
+$\soFixRuns$ runs passed the integrity rule. A small module replaced the socket class in the
+producer's and the consumer's processes before their client libraries opened a connection. On
+each connection to the broker it turned the option on and read two timestamps for each message.
+The first, $t_{\mathrm{tx,so}}$, is the kernel's timestamp of the producer's write that carried
+the message out. The kernel returns it on the socket's \emph{error queue}, where it leaves
+transmit timestamps for the program to collect, with the byte offset of the write's last byte. The
+second, $t_{\mathrm{rx,so}}$, is the kernel's timestamp of the packet that brought the message in,
+returned with the consumer's read. On this virtual network the kernel gave no transmit timestamp
+as the driver handed a packet on. So, as the plan allowed, the transmit timestamp was taken as the
+packet entered the \emph{device queue}, where the kernel holds a packet before the network driver
+takes it. From the two the sockets give the kernel-timed latency $W_{\mathrm{so}} =
+t_{\mathrm{rx,so}} - t_{\mathrm{tx,so}}$, to set beside the captures' $W$.
+
+\begin{table}[tb]
+\caption{\textbf{Kernel-timed latency read on the clients' sockets matched the captures'.} One row
+for each broker, background load on the client machine, and priority of the producer and the
+consumer together. $W$ is the kernel-timed latency from the captures, and $W_{\mathrm{so}}$ the
+same latency from the sockets. $D$ runs from the publish call to the consumer's timestamp. Each
+figure is a setup's median over its six runs of each run's statistic, in microseconds.}
+\label{stab:sofix}
+\centering
+\footnotesize
+\input{docs/generated/so_fix_table}
+\end{table}
+
+The predictions held, all five (Table~\ref{stab:sofix}). The first asked that the sockets and the
+captures agree. In every setup the median of $|W_{\mathrm{so}} - W|$ was
+$\soFixAgreeMedianLoUs$--$\soFixAgreeMedianHiUs\,\mu$s, against the $\soFixAgreeMedianBarUs\,\mu$s
+allowed, and its 99th percentile at most $\soFixAgreeTailHiUs\,\mu$s, against
+$\soFixAgreeTailBarUs\,\mu$s. The receive timestamps were identical for $\soFixSameReceivePct\%$
+or more of each run's messages, and within $\soFixReceiveDiffUs\,\mu$s for 99\% of them, so the
+difference is the transmit timestamp's. Taken at the device queue, it came
+$\soFixQueueLeadLoUs$--$\soFixQueueLeadHiUs\,\mu$s before the capture's in each run's median, the
+time before the capture copies the packet. The second and third asked that $W_{\mathrm{so}}$ hold
+still as $W$ did. Its median moved by at most $\soFixMedianMovePct\%$ across load and priority,
+against $\fullFixMedianMarginPct\%$, and its 99th percentile by at most $\soFixTailMovePct\%$,
+against $\fullFixTailMarginPct\%$. The fourth asked that nothing be lost. None of the
+$\soFixMessages$ messages had $W_{\mathrm{so}}$ at or below zero, and every message had both
+socket timestamps. The fifth asked that load still lengthen $D$ in the same runs. At normal
+priority it raised the 99th percentile of $D$ $\soFixTailRatioLo$--$\soFixTailRatioHi$-fold, where
+the plan required $\fullFixEffectRatio$-fold, and moved the mean of $W_{\mathrm{so}}$ by at most
+$\soFixWireSharePct\%$ of the rise in the mean of $D$, against the $\fullFixWireShareBarPct\%$
+allowed.
+
+In \soFixPausedRunsWord{} \kafka{} runs a pause held messages more than $150$~ms, in $D$ and in
+$W_{\mathrm{so}}$ alike, so the pause lay between the kernel's timestamps, not in the clients'
+threads. A setup's median sets those runs aside. The module copies every byte the clients write
+and read, in Python. That work falls in the clients' own time, not in $W_{\mathrm{so}}$, which runs
+between two of the kernel's timestamps. The plan, the register of every run and the reading are in
+the repository under \brk{docs/results/so_fix}, read by \brk{scripts/so_fix.py}. The module is
+\brk{scripts/so_timestamps.py}.
 
 \section{S4. The positivity filter and the retention law in full}
 \label{s:failure2}

@@ -121,6 +121,10 @@ class TestTheRuns:
         pilot = rr.run_row(str(run(tmp_path, "law_f1_pilot2_r001-F1-redis-l88-ord-a1",
                                    dict(params, backend="redis", load_pct=88, priority=None))), {})
         assert pilot["campaign"] == "f1_pilot2" and pilot["priority"] is None
+        assert row["so_timestamps"] is None, "F1's clients read no socket timestamps"
+        f2 = rr.run_row(str(run(tmp_path, "law_f2_r001-F2-kafka-l0-ord-a1",
+                                dict(params, so_timestamps="sched", hw_capture=None))), {})
+        assert (f2["campaign"], f2["so_timestamps"], f2["hw_capture"]) == ("f2", "sched", None)
 
     def test_an_r1_run_names_its_stampless_queue_and_both_of_its_settings(self, tmp_path):
         """R1 (3 Oct 2026) named its first queue r1, with no stamp, raised the consumer alone and

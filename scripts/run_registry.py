@@ -33,7 +33,8 @@ RUN_FIELDS = (
     "run", "campaign", "pair", "driver", "driver_size", "broker_size", "image", "commit",
     "block", "setup", "round", "attempt", "backend", "load_pct", "slice_set_ns", "point",
     "delay_set_ms", "delay_held_ms", "ack_batch", "cpus", "language", "priority",
-    "consumer_priority", "recv_capture", "send_capture", "hw_capture", "plan", "recorded_half",
+    "consumer_priority", "recv_capture", "send_capture", "hw_capture", "so_timestamps", "plan",
+    "recorded_half",
     "kernel", "config_hz",
     "tick_ms", "cpu_model", "online_cpus", "slice_in_force_ns", "clocksource", "verdict",
     "trip_median_ms", "gotit_median_ms", "measured_negative_rate", "messages", "gotit_brake",
@@ -44,9 +45,11 @@ CAMPAIGN_FIELDS = (
     "last_finished_utc")
 #: The settings a queue row's params carry. R1 (3 Oct 2026) added go-first for the consumer
 #: alone and the receiver's full capture; no earlier block sets either. F1 (13 Oct 2026) added
-#: the sender's capture and the card's own stamps of the receiver's packets.
+#: the sender's capture and the card's own stamps of the receiver's packets; F2 (14 Oct 2026)
+#: where the clients' sockets took their transmit timestamps.
 PLAN_KEYS = ("backend", "load_pct", "point", "ack_batch", "cpus", "language", "priority",
-             "consumer_priority", "recv_capture", "send_capture", "hw_capture", "plan")
+             "consumer_priority", "recv_capture", "send_capture", "hw_capture", "so_timestamps",
+             "plan")
 
 
 def _json(path):

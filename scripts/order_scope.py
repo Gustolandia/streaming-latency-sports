@@ -63,8 +63,20 @@ def rate_of(setup):
     head = setup.split("-", 1)[0]
     digits = "".join(c for c in head if c.isdigit())
     return int(digits) if head[:1] == "L" and digits else None
-#: The brokers' ports, for finding their connections in a capture.
-PORTS = {"kafka": 9092, "redis": 6379}
+#: The brokers' ports, for finding their connections in a capture where a journal names none. The
+#: kit's Kafka listens on 19092 (cloud/brokers.sh), not Kafka's usual 9092; the pilot's first
+#: reading of Kafka's packets per read found nothing until the ports came from the journal itself.
+PORTS = {"kafka": 19092, "redis": 6379}
+
+
+def journal_segments(pcap, conns, backend, broker, local):
+    """{local port: incoming segments} from a capture, for every port the journal's connections met
+    the broker on; the broker's usual port where the journal holds none."""
+    ports = sorted(set(c.peer_port for c in conns.values() if c.peer_host == broker))
+    found = {}
+    for port in ports or [PORTS.get(backend)]:
+        found.update(sj.incoming_segments(pcap, broker, port, local))
+    return found
 
 #: K-v and L-a: how far two instruments' timestamps may lie apart at a setup's median, in us.
 AGREE_US = 20.0
@@ -202,8 +214,8 @@ def read_order_run(run_dir, driver, broker, receiver, warmup_s):
     pcap = os.path.join(run_dir, "sender_full.pcap")
     checks = []
     if os.path.exists(pcap):
-        segments = sj.incoming_segments(pcap, broker, PORTS.get(backend), driver)
         conns = sj.load(os.path.join(run_dir, "producer_journal"))
+        segments = journal_segments(pcap, conns, backend, broker, driver)
         checks = [abs(j - c) / 1e3 for j, c in sj.acknowledgment_checks(conns, backend, segments)]
     out["ack_checked"] = len(checks)
     out["ack_diff_median"], out["ack_diff_p99"] = _median(checks), _p99(checks)
@@ -251,10 +263,11 @@ def read_ladder_run(run_dir, driver, broker, receiver, warmup_s):
                                            if not m["flagged"] and m["Wso"] is not None])
     spans = [m["S"] for m in msgs if m["S"] is not None]
     out["S_count"], out["S_neg"] = len(spans), sum(1 for s in spans if s < 0)
-    segments = sj.incoming_segments(os.path.join(run_dir, "receiver_full.pcap"), broker,
-                                    PORTS.get(params.get("backend")), receiver)
+    conns = sj.load(os.path.join(run_dir, "consumer_journal"))
+    segments = journal_segments(os.path.join(run_dir, "receiver_full.pcap"), conns,
+                                params.get("backend"), broker, receiver)
     reads = multi = 0
-    for conn in sj.load(os.path.join(run_dir, "consumer_journal")).values():
+    for conn in conns.values():
         segs = segments.get(str(conn.local_port))
         if not segs:
             continue

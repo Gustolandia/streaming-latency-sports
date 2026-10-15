@@ -32,6 +32,16 @@ PROC = Path("/proc")
 #: is not the load we set is a fault, and a fault should leave behind what caused it.
 BUSIEST_EVERY = 60
 BUSIEST_KEPT = 6
+#: Freeze 41 (15 Oct 2026): the clients' own processes, by a word of their command line. At 500 and
+#: 5,000 messages a second the clients use several points of the machine, which the integrity
+#: rule's load check counted as background load: the pilot's idle Kafka run at 500 a second read
+#: 7.1% against 0%. Their share is now written beside the machine's, so that the load the run set
+#: can be read without them.
+CLIENT_MARKS = ("kafka_producer.py", "kafka_consumer.py", "redis_producer.py",
+                "redis_consumer.py", "LawProducer", "LawConsumer")
+#: How often, in samples, the clients' processes are looked for again: they start after the
+#: sampler does.
+CLIENT_SCAN_EVERY = 4
 
 
 def read_cpu_times(path=PROC_STAT):
@@ -94,6 +104,38 @@ def process_times(proc=PROC):
     return found
 
 
+def client_pids(proc=PROC, marks=CLIENT_MARKS):
+    """The ids of the processes whose command line names one of the clients."""
+    found = set()
+    try:
+        entries = list(proc.iterdir())
+    except OSError:
+        return found  # no /proc here, as in process_times
+    for entry in entries:
+        if not entry.name.isdigit():
+            continue
+        try:
+            line = (entry / "cmdline").read_bytes().replace(b"\0", b" ").decode("utf-8",
+                                                                                 "replace")
+        except OSError:
+            continue  # it ended while we were reading it
+        if any(mark in line for mark in marks):
+            found.add(entry.name)
+    return found
+
+
+def jiffies_of(pids, proc=PROC):
+    """{pid: processor time in jiffies} for those of `pids` that are still there."""
+    found = {}
+    for pid in pids:
+        try:
+            rest = (proc / pid / "stat").read_text(encoding="utf-8").rsplit(") ", 1)[1].split()
+            found[pid] = int(rest[11]) + int(rest[12])
+        except (OSError, ValueError, IndexError):
+            continue
+    return found
+
+
 def busiest(before, after, kept=BUSIEST_KEPT):
     """The processes that used the most processor time between two readings."""
     grew = []
@@ -118,10 +160,11 @@ def sample_loop(out_path, interval, stop, stat_path=PROC_STAT, load_path=PROC_LO
     who_path = out_path.with_name(out_path.stem + "_busiest.csv")
     prev = read_cpu_times(stat_path)
     seen = process_times(proc) if busiest_every else {}
+    clients, client_seen, looks = set(), {}, 0
     n = 0
     with out_path.open("w", newline="", encoding="utf-8") as fh, \
             who_path.open("w", newline="", encoding="utf-8") as who_fh:
-        w = csv.DictWriter(fh, fieldnames=["t_wall", "rho", "loadavg"])
+        w = csv.DictWriter(fh, fieldnames=["t_wall", "rho", "loadavg", "rho_clients"])
         w.writeheader()
         who = csv.DictWriter(who_fh, fieldnames=["t_wall", "pid", "name", "jiffies"])
         who.writeheader()
@@ -129,11 +172,23 @@ def sample_loop(out_path, interval, stop, stat_path=PROC_STAT, load_path=PROC_LO
             time.sleep(interval)
             cur = read_cpu_times(stat_path)
             rho = utilisation(prev, cur)
+            elapsed = cur[0] - prev[0]
             prev = cur
+            # The clients' share of the same interval: the processor time their processes used,
+            # over all the machine's processor time. A process seen for the first time counts
+            # from its next sample on.
+            if looks % CLIENT_SCAN_EVERY == 0:
+                clients |= client_pids(proc)
+            looks += 1
+            client_now = jiffies_of(clients, proc)
+            used = sum(client_now[p] - client_seen[p] for p in client_now
+                       if p in client_seen and client_now[p] >= client_seen[p])
+            client_seen = client_now
             if rho is None:
                 continue
             w.writerow({"t_wall": time.time(), "rho": round(rho, 5),
-                        "loadavg": read_loadavg(load_path)})
+                        "loadavg": read_loadavg(load_path),
+                        "rho_clients": round(min(1.0, used / float(elapsed)), 5)})
             fh.flush()
             n += 1
             if busiest_every and n % busiest_every == 0:

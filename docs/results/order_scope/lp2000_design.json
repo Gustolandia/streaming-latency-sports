@@ -1,10 +1,10 @@
 {
-  "about": "Freeze 41, block L, the rung at 5000 messages a second: run with RATE=5000 DURATION=70 WARMUP_S=20. Queue: python3 scripts/run_queue.py make --design docs/results/order_scope/l5000_design.json --out runs/azure/queues/l5000.csv",
-  "rounds": 4,
-  "seed": 20261021,
+  "about": "Freeze 41, block L's pilot at the fallback top rung (instruments only, never judged): one run per broker and load at 2,000 messages a second, after 5,000 proved out of reach. Run with RATE=2000 DURATION=70 WARMUP_S=20. Queue: python3 scripts/run_queue.py make --design docs/results/order_scope/lp2000_design.json --out runs/azure/queues/lp2000.csv",
+  "rounds": 1,
+  "seed": 20261030,
   "setups": [
     {
-      "id": "L5000-kafka-l0",
+      "id": "LP2000-kafka-l0",
       "slice_ns": 3000000,
       "delay_ms": 0,
       "backend": "kafka",
@@ -16,7 +16,7 @@
       "send_capture_both": true
     },
     {
-      "id": "L5000-kafka-l88",
+      "id": "LP2000-kafka-l88",
       "slice_ns": 3000000,
       "delay_ms": 0,
       "backend": "kafka",
@@ -28,7 +28,7 @@
       "send_capture_both": true
     },
     {
-      "id": "L5000-redis-l0",
+      "id": "LP2000-redis-l0",
       "slice_ns": 3000000,
       "delay_ms": 0,
       "backend": "redis",
@@ -40,7 +40,7 @@
       "send_capture_both": true
     },
     {
-      "id": "L5000-redis-l88",
+      "id": "LP2000-redis-l88",
       "slice_ns": 3000000,
       "delay_ms": 0,
       "backend": "redis",

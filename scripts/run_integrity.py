@@ -159,18 +159,28 @@ def rate_check(sent_after, rate):
 
 
 def load_check(run_dir, load_pct, first_ns, last_ns):
-    """The mean measured load while messages were being sent, against the setting."""
-    samples = []
+    """The mean measured load while messages were being sent, against the setting.
+
+    Freeze 41 (15 Oct 2026): where the sampler wrote the clients' own share of the machine, the
+    load checked is the machine's less theirs, the background load the run set. At 50 messages a
+    second the clients used under a point and nothing changes; at 500 and 5,000 they use several,
+    and an idle run would otherwise fail for the clients' work alone."""
+    samples, less = [], False
     with open(os.path.join(run_dir, "utilisation.csv"), newline="", encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
             try:
                 at, rho = float(row["t_wall"]), float(row["rho"])
             except (KeyError, TypeError, ValueError):
                 continue
+            try:
+                rho -= float(row.get("rho_clients"))
+                less = True
+            except (TypeError, ValueError):
+                pass
             if first_ns <= at * 1e9 <= last_ns:
                 samples.append(100.0 * rho)
-    limit = "%g%% within %g points, from at least %d samples" % (load_pct, LOAD_POINTS,
-                                                                  MIN_LOAD_SAMPLES)
+    limit = "%g%% within %g points, from at least %d samples%s" % (
+        load_pct, LOAD_POINTS, MIN_LOAD_SAMPLES, ", less the clients' own" if less else "")
     if len(samples) < MIN_LOAD_SAMPLES:
         return outcome(False, None, limit,
                        "only %d load samples fell while messages were sent" % len(samples))

@@ -170,6 +170,68 @@ class TestWhatHeldTheMachine:
             "t_wall,pid,name,jiffies"
 
 
+class TestTheClientsOwnShare:
+    """Freeze 41 (15 Oct 2026): the clients' processor time is written beside the machine's, so
+    that the integrity rule can read the background load without it at high publish rates."""
+
+    def fake_proc(self, tmp_path, pids):
+        """A /proc whose processes carry a command line and a processor time."""
+        proc = tmp_path / "proc"
+        proc.mkdir(exist_ok=True)
+        for pid, (cmdline, jiffies) in pids.items():
+            where = proc / str(pid)
+            where.mkdir(exist_ok=True)
+            (where / "cmdline").write_bytes(cmdline.replace(" ", "\0").encode("utf-8") + b"\0")
+            fields = ["0"] * 20
+            fields[10], fields[11] = str(jiffies), "0"
+            (where / "stat").write_text("%s (python3) S %s\n" % (pid, " ".join(fields)),
+                                        encoding="utf-8")
+        return proc
+
+    def test_the_clients_are_found_by_their_command_line(self, tmp_path):
+        proc = self.fake_proc(tmp_path, {
+            11: ("python3 scripts/kafka_producer.py --rate 50", 5),
+            12: ("sudo ip netns exec sblrecv python3 scripts/redis_consumer.py", 1),
+            13: ("python3 scripts/util_sampler.py --out u.csv", 9),
+            14: ("stress-ng --cpu 8", 99)})
+        (proc / "15").mkdir()
+        (proc / "self").mkdir()
+        assert util_sampler.client_pids(proc) == {"11", "12"}
+        assert util_sampler.client_pids(tmp_path / "nowhere") == set()
+
+    def test_the_time_of_a_process_that_is_gone_or_unreadable_is_left_out(self, tmp_path):
+        proc = self.fake_proc(tmp_path, {11: ("python3 scripts/kafka_producer.py", 40)})
+        (proc / "12").mkdir()
+        (proc / "12" / "stat").write_text("12 (python3) S 1 2\n", encoding="utf-8")
+        assert util_sampler.jiffies_of({"11", "12", "13"}, proc) == {"11": 40}
+
+    def test_their_share_is_written_beside_the_utilisation(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(util_sampler.time, "sleep", lambda _s: None)
+        readings = iter([(1000, 900), (2000, 1700), (3000, 2500), (4000, 3300), (5000, 4100)])
+        monkeypatch.setattr(util_sampler, "read_cpu_times",
+                            lambda _p=None: next(readings, (5000, 4100)))
+        monkeypatch.setattr(util_sampler, "CLIENT_SCAN_EVERY", 1)
+        load = _loadavg(tmp_path, 1.0)
+        proc = self.fake_proc(tmp_path, {21: ("python3 scripts/kafka_consumer.py", 0)})
+        ticks = {"n": 0}
+
+        def stop():
+            ticks["n"] += 1
+            # the consumer uses 70 jiffies of each 1,000 the machine counts, and once ended
+            # its counter cannot run backwards into the share
+            jiffies = {1: 0, 2: 70, 3: 140, 4: 100}.get(ticks["n"], 100)
+            self.fake_proc(tmp_path, {21: ("python3 scripts/kafka_consumer.py", jiffies)})
+            return ticks["n"] > 4
+        out = tmp_path / "util.csv"
+        assert sample_loop(out, 0.0, stop, load_path=load, proc=proc, busiest_every=0) == 4
+        rows = out.read_text(encoding="utf-8").strip().split("\n")
+        assert rows[0] == "t_wall,rho,loadavg,rho_clients"
+        shares = [float(r.split(",")[3]) for r in rows[1:]]
+        assert shares == [0.0, pytest.approx(0.07), pytest.approx(0.07), 0.0], (
+            "nothing at the consumer's first sample, then its share each sample; a counter "
+            "that fell adds nothing")
+
+
 class TestSampleLoop:
     def test_writes_samples_until_stopped(self, temp_dir, monkeypatch):
         monkeypatch.setattr(util_sampler.time, "sleep", lambda _s: None)
@@ -196,7 +258,7 @@ class TestSampleLoop:
         n = sample_loop(out, 0.01, lambda: next(stops, True), load_path=load)
         assert n == 2
         rows = out.read_text(encoding="utf-8").strip().split("\n")
-        assert rows[0] == "t_wall,rho,loadavg"
+        assert rows[0] == "t_wall,rho,loadavg,rho_clients"
         assert float(rows[1].split(",")[1]) == pytest.approx(1.0), "no idle time elapsed"
         assert float(rows[2].split(",")[2]) == pytest.approx(4.0)
 

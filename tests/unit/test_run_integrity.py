@@ -314,6 +314,26 @@ class TestRepeat:
         found = evaluate(make_run(tmp_path, **change))
         assert found["verdict"] == "repeat" and any(fragment in r for r in found["reasons"]), found
 
+    def test_the_clients_own_share_is_not_counted_as_background_load(self, tmp_path):
+        """Freeze 41 (15 Oct 2026): at 500 messages a second the clients used 7 points of an idle
+        machine, and the check read that as load. Where the sampler wrote their share, the load
+        checked is the machine's less theirs; where it did not, the machine's, as before."""
+        run = make_run(tmp_path, name="busy_clients", load=0.0,
+                       params={"backend": "kafka", "load_pct": 0, "delay_ms": 2.0})
+        first, last = START / 1e9, (START + 399 * 100e6) / 1e9
+        rows = [[first + k * (last - first) / 60, 0.074, 3.0, 0.071] for k in range(61)]
+        rows += [[first + 1, "0.5", "1", "not a share"]]
+        write_csv(os.path.join(run, "utilisation.csv"), ["t_wall", "rho", "loadavg", "rho_clients"],
+                  rows)
+        found = evaluate(run)
+        load = found["checks"]["load"]
+        assert load["ok"] is True and "less the clients' own" in load["limit"], load
+        alone = make_run(tmp_path, name="clients_counted", load=0.0,
+                         params={"backend": "kafka", "load_pct": 0, "delay_ms": 2.0},
+                         load_samples=[[first + k * (last - first) / 60, 0.074, 3.0]
+                                       for k in range(61)])
+        assert "the measured load was 7.4% against 0%" in " ".join(evaluate(alone)["reasons"])
+
     def test_too_few_load_samples_and_rows_that_are_not_samples(self, tmp_path):
         inside = START / 1e9 + 15
         rows = [[inside, 0.75, 1.0], ["x", "0.7", "1"], ["", "", ""], [inside]]

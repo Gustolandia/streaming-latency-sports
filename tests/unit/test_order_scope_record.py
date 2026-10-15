@@ -40,9 +40,11 @@ def test_every_design_file_names_a_block_of_the_design():
         assert "| %s, " % block in text, (path.name, block)
 
 
-#: Each judged block's files, as the design's table counts its runs.
+#: Each judged block's files, as the design's table counts its runs. Block L's top rung is 2,000
+#: messages a second: the pilot found the clients could not hold 5,000, and DESIGN.md names 2,000
+#: as the rung that then replaces it.
 JUDGED = {"K": ["k_design.json"], "R": ["r_design.json"], "P": ["p_design.json"],
-          "L": ["l50_design.json", "l500_design.json", "l5000_design.json"],
+          "L": ["l50_design.json", "l500_design.json", "l2000_design.json"],
           "I": ["i_default_design.json", "i_poll_design.json"]}
 
 
@@ -64,9 +66,10 @@ def test_each_block_runs_what_the_design_table_counts():
         assert len(set(ids)) == len(ids) and all(i.startswith(block) for i in ids), block
 
 
-#: The pilot's files: K and R in one queue, L one per rung, I one run on the idle=poll boot.
+#: The pilot's files: K and R in one queue, L one per rung (and the fallback rung, at both loads),
+#: I one run on the idle=poll boot.
 PILOTS = ["k_pilot_design.json", "lp50_design.json", "lp500_design.json", "lp5000_design.json",
-          "ip_design.json"]
+          "ip_design.json", "lp2000_design.json"]
 
 
 def test_the_pilots_cannot_be_judged():
@@ -85,6 +88,8 @@ def test_the_pilots_cannot_be_judged():
     assert sorted(p.name for p in HERE.glob("*_design.json")) == listed
     assert [osc.rate_of(s["id"]) for f in PILOTS[1:4] for s in design(f)["setups"]] == [
         50, 50, 500, 500, 5000, 5000]
+    assert {osc.rate_of(s["id"]) for s in design("lp2000_design.json")["setups"]} == {2000}
+    assert {s["load_pct"] for s in design("lp2000_design.json")["setups"]} == {0, 88}
 
 
 def test_every_setup_records_what_its_predictions_read():
@@ -94,7 +99,7 @@ def test_every_setup_records_what_its_predictions_read():
     for f in JUDGED["K"] + JUDGED["R"] + JUDGED["I"]:
         assert all(s.get("so_journal") is True and s.get("so_timestamps") == "sched"
                    for s in design(f)["setups"]), f
-    for f in JUDGED["L"] + PILOTS[1:4]:
+    for f in JUDGED["L"] + PILOTS[1:4] + PILOTS[5:]:
         assert all(s.get("so_journal") == "consumer" and s.get("so_timestamps") == "sched"
                    for s in design(f)["setups"]), f
     for f in JUDGED["K"] + JUDGED["L"]:

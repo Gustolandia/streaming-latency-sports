@@ -220,6 +220,26 @@ class TestReadingRuns:
         assert (row["reads"], row["reads_multi"]) == (2, 0)
         assert (row["S_count"], row["S_neg"]) == (2, 0)
 
+    def test_the_broker_port_comes_from_the_journal_not_from_a_guess(self, tmp_path, monkeypatch):
+        """The kit's Kafka listened on 19092, and the reader that assumed 9092 matched none of
+        the pilot's Kafka packets; a journal names its own ports."""
+        monkeypatch.setitem(osc.PORTS, "kafka", 29092)
+        run = make_run(str(tmp_path), "law_k_r001-K-kafka-l0-ord-a1", "K-kafka-l0-ord",
+                       {"backend": "kafka", "load_pct": 0}, [msg(), msg(pub=20000, tx=20100,
+                       rx_ack=20600, ack=20700, req=20050, rx=20900, recv=21000)])
+        monkeypatch.setitem(osc.PORTS, "kafka", 9092)
+        row, _ = osc.read_order_run(run, DRIVER, BROKER, RECEIVER, 0)
+        assert row["ack_checked"] == 2 and row["ack_diff_median"] == pytest.approx(2.0)
+        monkeypatch.setitem(osc.PORTS, "kafka", 29092)
+        lad = make_run(str(tmp_path), "law_l500_r001-L500-kafka-l0-a1", "L500-kafka-l0",
+                       {"backend": "kafka", "load_pct": 0}, [msg()], journals=True)
+        monkeypatch.setitem(osc.PORTS, "kafka", 9092)
+        assert osc.read_ladder_run(lad, DRIVER, BROKER, RECEIVER, 0)[0]["reads"] == 1, (
+            "the consumer's read is found on the port its journal names")
+        empty = osc.journal_segments(os.path.join(run, "sender_full.pcap"), {}, "kafka", BROKER,
+                                     DRIVER)
+        assert empty == {}, "no journal: the usual port, which this capture never used"
+
     def test_a_setup_outside_the_ladder_has_no_rung_and_a_journal_off_the_capture_is_left(
             self, tmp_path):
         run = make_run(str(tmp_path), "law_x_r001-X-kafka-a1", "X-kafka",

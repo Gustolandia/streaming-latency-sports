@@ -18,14 +18,18 @@ import sched_settings as ss  # noqa: E402
 
 AMD = "processor : 0\nmodel name : AMD EPYC 9V74 80-Core Processor\n"
 ARM = "processor : 0\nCPU implementer : 0x41\nCPU part : 0xd49\n"
+#: A feature line of the kind a 6.8 kernel shows in debugfs: every feature on one line, the off
+#: ones with NO_ in front, and a space before the newline. RUN_TO_PARITY is on, as by default.
+FEATURES = ("PLACE_LAG PLACE_DEADLINE_INITIAL RUN_TO_PARITY NO_NEXT_BUDDY WAKEUP_PREEMPTION "
+            "NO_HRTICK NO_HRTICK_DL NONTASK_CAPACITY TTWU_QUEUE SIS_UTIL ")
 
 
 def fake_root(tmp_path, release="6.8.0-1017-azure", hz="1000", slice_ns="3000000", scaling="1",
               preempt="none (voluntary) full", online="0-7", cpuinfo=AMD,
-              clocksource="hyperv_clocksource_tsc_page"):
+              clocksource="hyperv_clocksource_tsc_page", features=FEATURES):
     values = {"release": release, "base_slice_ns": slice_ns, "tunable_scaling": scaling,
               "preempt": preempt, "online": online, "cpuinfo": cpuinfo,
-              "clocksource": clocksource}
+              "clocksource": clocksource, "sched_features": features}
     for key, rel in ss.FILES.items():
         if values[key] is None:
             continue
@@ -237,4 +241,117 @@ class TestMain:
 
     def test_set_slice_where_debugfs_is_absent(self, tmp_path):
         code, text = self.run(["--root", str(tmp_path / "nowhere"), "set-slice", "2250000"])
+        assert code == 1 and text.startswith("ERROR:")
+
+
+class TestSchedulerFeatures:
+    """Freeze 41 (15 Oct 2026). Block R runs with the scheduler's RUN_TO_PARITY feature on, the
+    kernel's default, and off. Every other run is held to on wherever the kernel shows its
+    features, so a feature that a crashed run left off fails the next run instead of
+    contaminating it; where the kernel shows none, the features are recorded as unknown."""
+
+    def run(self, argv):
+        out = io.StringIO()
+        return ss.main(argv, out=out), out.getvalue()
+
+    def check(self, root, *args):
+        code, text = self.run(["--root", root, "check"] + list(args))
+        return code, json.loads(text)
+
+    def test_they_are_read_with_each_off_one_under_its_own_name(self, tmp_path):
+        features = ss.read_settings(fake_root(tmp_path))["sched_features"]
+        assert features["RUN_TO_PARITY"] is True and features["PLACE_LAG"] is True
+        assert features["HRTICK"] is False and features["NEXT_BUDDY"] is False
+        assert not [name for name in features if name.startswith("NO_")]
+        assert len(features) == 10, "every feature on the line, and nothing else"
+
+    @pytest.mark.parametrize("features", [None, "", " \n"])
+    def test_a_kernel_that_shows_none_has_them_recorded_as_unknown(self, tmp_path, features):
+        """An older kernel, or a machine without debugfs: named under "missing", not guessed."""
+        s = ss.read_settings(fake_root(tmp_path, features=features))
+        assert s["sched_features"] is None and s["missing"] == ["sched_features"]
+        assert ss.problems(s) == [], "a record nothing was asked of is not a problem"
+
+    def test_one_is_turned_off_and_back_on_and_read_back_each_time(self, tmp_path):
+        root = fake_root(tmp_path)
+        assert ss.set_feature("NO_RUN_TO_PARITY", root) == "NO_RUN_TO_PARITY"
+        assert ss.read_settings(root)["sched_features"]["RUN_TO_PARITY"] is False
+        assert ss.set_feature("RUN_TO_PARITY", root) == "RUN_TO_PARITY"
+        assert ss.read_settings(root)["sched_features"]["RUN_TO_PARITY"] is True
+        written = (tmp_path / ss.FILES["sched_features"]).read_text(encoding="utf-8")
+        assert written == "RUN_TO_PARITY\n", "the name alone, as debugfs takes it"
+
+    def test_a_state_the_kernel_did_not_keep_is_refused(self, tmp_path, monkeypatch):
+        root = fake_root(tmp_path)
+        monkeypatch.setattr(ss, "_read", lambda r, rel: "PLACE_LAG RUN_TO_PARITY")
+        with pytest.raises(ss.FeatureNotApplied, match="wrote NO_RUN_TO_PARITY .* read back"):
+            ss.set_feature("NO_RUN_TO_PARITY", root)
+
+    def test_features_that_cannot_be_read_back_are_refused_too(self, tmp_path, monkeypatch):
+        root = fake_root(tmp_path)
+        monkeypatch.setattr(ss, "_read", lambda r, rel: None)
+        with pytest.raises(ss.FeatureNotApplied, match="read back None"):
+            ss.set_feature("RUN_TO_PARITY", root)
+
+    @pytest.mark.parametrize("name", ["run_to_parity", "NO_", "NO_NO_HRTICK", "RUN TO PARITY",
+                                      "", "2DOUBLE_TICK"])
+    def test_a_name_that_is_no_features_is_refused_before_anything_is_written(self, tmp_path,
+                                                                              name):
+        root = fake_root(tmp_path)
+        with pytest.raises(ValueError, match="NAME or NO_NAME"):
+            ss.set_feature(name, root)
+        assert ss.read_settings(root)["sched_features"]["RUN_TO_PARITY"] is True
+
+    def test_a_run_that_asks_for_it_off_is_held_to_off(self, tmp_path):
+        root = fake_root(tmp_path)
+        code, found = self.check(root, "--feature", "NO_RUN_TO_PARITY")
+        assert code == 1 and found["problems"] == [
+            "the scheduler feature RUN_TO_PARITY is on, not off"]
+        ss.set_feature("NO_RUN_TO_PARITY", root)
+        code, found = self.check(root, "--feature", "NO_RUN_TO_PARITY")
+        assert code == 0 and found["ok"] is True
+        assert found["settings"]["sched_features"] == {"RUN_TO_PARITY": False}, \
+            "and the state it was held to is in the record the run keeps"
+
+    def test_a_feature_a_crashed_run_left_off_fails_the_next_run(self, tmp_path):
+        """The hold every run without a feature of its own is under."""
+        left = FEATURES.replace(" RUN_TO_PARITY", " NO_RUN_TO_PARITY")
+        code, found = self.check(fake_root(tmp_path / "left", features=left),
+                                 "--feature-if-known", "RUN_TO_PARITY")
+        assert code == 1 and found["problems"] == [
+            "the scheduler feature RUN_TO_PARITY is off, not on"]
+        code, found = self.check(fake_root(tmp_path / "default"),
+                                 "--feature-if-known", "RUN_TO_PARITY")
+        assert code == 0 and found["problems"] == []
+
+    @pytest.mark.parametrize("features", [None, "PLACE_LAG NO_HRTICK"])
+    def test_a_kernel_that_cannot_show_it_holds_no_run_to_the_default(self, tmp_path, features):
+        """No features to be read, or an older kernel that has no RUN_TO_PARITY at all."""
+        code, found = self.check(fake_root(tmp_path, features=features),
+                                 "--feature-if-known", "RUN_TO_PARITY")
+        assert code == 0 and found["problems"] == []
+
+    @pytest.mark.parametrize("features,said", [
+        (None, "the scheduler's features could not be read"),
+        ("PLACE_LAG NO_HRTICK", "the kernel has no scheduler feature RUN_TO_PARITY")])
+    def test_but_a_run_that_asks_for_one_by_name_is_held_to_it_there_too(self, tmp_path,
+                                                                         features, said):
+        code, found = self.check(fake_root(tmp_path, features=features),
+                                 "--feature", "NO_RUN_TO_PARITY")
+        assert code == 1 and found["problems"] == [said]
+
+    def test_a_name_that_is_no_features_stops_the_command_before_it_reads(self, tmp_path,
+                                                                         capsys):
+        for argv in (["check", "--feature", "no_run_to_parity"],
+                     ["check", "--feature-if-known", "NO_"], ["set-feature", "RUN TO PARITY"]):
+            with pytest.raises(SystemExit) as stopped:
+                ss.main(["--root", fake_root(tmp_path)] + argv, out=io.StringIO())
+            assert stopped.value.code == 2, argv
+            assert "NAME or NO_NAME" in capsys.readouterr().err
+
+    def test_set_feature(self, tmp_path):
+        code, text = self.run(["--root", fake_root(tmp_path), "set-feature", "NO_RUN_TO_PARITY"])
+        assert code == 0 and "scheduler feature NO_RUN_TO_PARITY set, and read back" in text
+        code, text = self.run(["--root", str(tmp_path / "nowhere"), "set-feature",
+                               "RUN_TO_PARITY"])
         assert code == 1 and text.startswith("ERROR:")

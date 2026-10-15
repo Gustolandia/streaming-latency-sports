@@ -11,6 +11,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -27,7 +28,7 @@ from posix_shell import bash, linux_bash, tool  # noqa: E402
 
 def test_the_kit_has_the_scripts_the_guide_describes():
     assert [p.name for p in SHELL] == ["a2_session.sh", "campaign.sh", "chain.sh", "cpus.sh",
-                                       "kernels.sh",
+                                       "idle.sh", "kernels.sh",
                                        "machine_facts.sh", "pilot.sh", "queue.sh", "replicate_oracle.sh",
                                        "resume.sh", "session.sh", "stage0.sh", "stage1.sh",
                                        "stop_self.sh", "stop_when_idle.sh", "tools.sh",
@@ -1151,9 +1152,10 @@ class TestT2ForcedNegatives:
 
 
 QUEUE = KIT / "queue.sh"
+IDLE = KIT / "idle.sh"
 
 
-def _queue_call(tmp_path, call):
+def _queue_call(tmp_path, call, extra_env=None):
     """One of queue.sh's own functions, sourced in a scratch checkout and asked a question.
 
     Sourcing runs the dispatch at the foot of the script, which with no argument is `show`, and
@@ -1162,7 +1164,7 @@ def _queue_call(tmp_path, call):
     """
     root = _scratch_checkout(tmp_path)
     script = "cd '%s' && . cloud/azure/queue.sh >/dev/null 2>&1; %s" % (root.as_posix(), call)
-    done = bash(["-c", script], capture_output=True, text=True)
+    done = bash(["-c", script], capture_output=True, text=True, extra_env=extra_env)
     return done.stdout.strip()
 
 
@@ -1180,6 +1182,9 @@ def _scratch_checkout(tmp_path):
     for where in ("cloud/azure", "cloud/campaigns", "data/plans/scratch"):
         (root / where).mkdir(parents=True, exist_ok=True)
     shutil.copy(QUEUE, root / "cloud" / "azure" / "queue.sh")
+    # Freeze 41: the queue reads whether a boot has idle=poll through idle.sh, as it reads a core
+    # count through cpus.sh.
+    shutil.copy(IDLE, root / "cloud" / "azure" / "idle.sh")
     shutil.copy(REPO / "cloud" / "campaigns" / "common.sh", root / "cloud" / "campaigns")
     (root / "data" / "plans" / "scratch" / "replay_plan.csv").write_text("event_id\n",
                                                                           encoding="utf-8")
@@ -2399,7 +2404,10 @@ def test_the_helper_blocks_runs_record_every_event_and_name_their_threads():
     # Freeze 40 (14 Oct 2026) appends each client's socket file, empty unless a row asks.
     assert '-PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA $record_args $so_prod"' in run
     assert '-CONSUMER_EXTRA "$record_args $read_args $so_cons"' in run
-    assert '-PRODUCER_EXTRA "$record_args $so_prod"' in run
+    # Freeze 41 (15 Oct 2026): and the Redis producer's send workers after them, where a row names
+    # a count (test_freeze_41s_one_worker_setups_reach_the_redis_producer_and_no_other).
+    assert '-PRODUCER_EXTRA "$record_args $so_prod${SEND_WORKERS:+ --send-workers $SEND_WORKERS}"' \
+        in run
     assert ('-CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA${ACK_BATCH:+ --ack-batch $ACK_BATCH}'
             ' $record_args $so_cons"') in run
     assert run.index('local record_args=""') < run.index('record_args="--thread-record"')
@@ -2484,16 +2492,17 @@ def test_freeze_40s_switch_reaches_the_runner():
     assert _row_reader_says({})["SO_STAMPS"] == ""
 
 
-def _socket_files(tmp_path, so_stamps):
+def _socket_files(tmp_path, so_stamps, so_journal=""):
     """What freeze 40's lines hand each client, run as the runner runs them, with an unset
-    variable an error."""
+    variable an error; freeze 41's journal among them, where a row asks for one."""
     code = (KIT / "campaign.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
     first = "  # Freeze 40 (14 Oct 2026): the clients read"
     block = first + code.split(first, 1)[1].split("  began=$(date -u +%s)", 1)[0]
     script = "\n".join(["set -uo pipefail", "lines () {", block,
                         '  echo "producer=$so_prod"', '  echo "consumer=$so_cons"', "}",
                         "lines", ""])
-    said = bash(["-c", script], extra_env={"RUN_DIR": "runs/law_f2_r001", "SO_STAMPS": so_stamps},
+    said = bash(["-c", script], extra_env={"RUN_DIR": "runs/law_f2_r001", "SO_STAMPS": so_stamps,
+                                           "SO_JOURNAL": so_journal},
                 capture_output=True, text=True, check=True).stdout
     return dict(line.split("=", 1) for line in said.splitlines())
 
@@ -2534,7 +2543,8 @@ def _r1_runner(tmp_path, name, **switches):
         '  echo "consumer=$consumer_wrap"', '  echo "producer=$wrap_sched"', stop, "}", "r1", ""])
     env = {"CALLS": calls.as_posix(), "RUN_DIR": run_dir.as_posix(), "BROKER_PRIV": "10.9.9.9",
            "DRIVER_PRIV": "10.8.8.8", "RECEIVER_IP": "10.7.7.7", "ME": "tester", "PRIORITY": "",
-           "CONSUMER_PRIORITY": "", "RECV_CAPTURE": "", "SEND_CAPTURE": "", "HW_CAPTURE": ""}
+           "CONSUMER_PRIORITY": "", "RECV_CAPTURE": "", "SEND_CAPTURE": "", "HW_CAPTURE": "",
+           "SEND_CAPTURE_BOTH": "", "CAPTURE_BUFFER": ""}
     env.update(switches)
     said = bash(["-c", script], extra_env=env, capture_output=True, text=True, check=True).stdout
     handed = dict(line.split("=", 1) for line in said.splitlines())
@@ -2835,3 +2845,553 @@ class TestFreeze38sOneTool:
         ref = self.tools().split("\nreference_for () {", 1)[1].split("\n}\n", 1)[0]
         mine = ref.split("    pubsub-loadtest)", 1)[1].split("return 0 ;;", 1)[0]
         assert '"trips_ms": [1.5 * printed[1]]' in mine
+
+
+# --- Freeze 41 (15 Oct 2026): the acknowledgment's own arrival, and where the kernel-timed latency
+# holds (docs/results/order_scope/DESIGN.md). What its five blocks ask of the kit: the clients'
+# journal (K, R, I, L), both directions of the sender (K), one send worker (K), the scheduler's
+# RUN_TO_PARITY feature (R), campaigns at other rates (L) and a boot with idle=poll (I).
+
+#: The arguments of the kind an Azure image boots its stock kernel with, after the image itself.
+STOCK_ARGS = "root=PARTUUID=0b1c2d3e ro console=tty1 console=ttyS0 earlyprintk=ttyS0 panic=-1"
+
+
+def _write(path, text):
+    """A file as Linux writes one, with no carriage return on any platform; returns its path."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(text.encode("utf-8"))
+    return path
+
+
+def test_freeze_41s_switches_reach_the_runner_and_a_row_without_them_sets_none():
+    """A row's six new settings become the runner's six variables. A row of any earlier block
+    names none of them and leaves all six empty, so its run is launched exactly as before."""
+    k = _row_reader_says({"so_timestamps": "sched", "so_journal": True, "send_capture": True,
+                          "send_capture_both": True, "send_workers": 1, "idle_poll": False})
+    assert (k["SO_JOURNAL"], k["SEND_CAPTURE_BOTH"], k["SEND_WORKERS"], k["IDLE_POLL"]) == (
+        "1", "1", "1", "0")
+    r = _row_reader_says({"sched_features": "NO_RUN_TO_PARITY", "idle_poll": True})
+    assert (r["SCHED_FEATURES"], r["IDLE_POLL"]) == ("NO_RUN_TO_PARITY", "1")
+    ladder = _row_reader_says({"so_journal": "consumer", "capture_buffer": True})
+    assert (ladder["SO_JOURNAL"], ladder["CAPTURE_BUFFER"]) == ("consumer", "1")
+    assert _row_reader_says({"send_workers": 0})["SEND_WORKERS"] == "0", \
+        "a count of none is handed on for the runner to refuse, not dropped for the default"
+    earlier = _row_reader_says({"so_timestamps": "sched", "send_capture": True})
+    for name in ("SO_JOURNAL", "SEND_CAPTURE_BOTH", "CAPTURE_BUFFER", "SEND_WORKERS",
+                 "SCHED_FEATURES", "IDLE_POLL"):
+        assert earlier[name] == "", name
+
+
+@needs_bash
+def test_freeze_41s_journal_is_handed_to_the_clients_that_keep_one(tmp_path):
+    """Blocks K, R and I journal both clients' broker connections and block L the consumer's
+    alone, each under a path stem beside the run, after the socket timestamps that write it. A row
+    that asks for no journal hands each client exactly what freeze 40 did."""
+    so = "--so-timestamps runs/law_f2_r001/%s_so.csv --so-transmit sched"
+    journal = " --so-journal runs/law_f2_r001/%s_journal"
+    assert _socket_files(tmp_path, "sched", "1") == {
+        "producer": so % "producer" + journal % "producer",
+        "consumer": so % "consumer" + journal % "consumer"}
+    assert _socket_files(tmp_path, "sched", "consumer") == {
+        "producer": so % "producer", "consumer": so % "consumer" + journal % "consumer"}
+    assert _socket_files(tmp_path, "sched") == {"producer": so % "producer",
+                                                "consumer": so % "consumer"}
+
+
+def _setup_says(tmp_path, cmdline=None, **setting):
+    """The REASON freeze 41's checks of a setup give, from their lines in run_one, run as the
+    runner runs them, with an unset variable an error; empty when the setup can run as written.
+    `cmdline` is this boot's command line, in a file of its own, or None for no file at all."""
+    code = (KIT / "campaign.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
+    run = code.split("run_one () {", 1)[1]
+    first = "  # Freeze 41 (15 Oct 2026): a setup that asks"
+    block = first + run.split(first, 1)[1].split(
+        "  sudo python3 scripts/sched_settings.py set-cpus", 1)[0]
+    boot = Path(tempfile.mkdtemp(dir=str(tmp_path))) / "cmdline"
+    if cmdline is not None:
+        _write(boot, cmdline + "\n")
+    script = "\n".join(["set -uo pipefail", "checks () {", block, "}", 'REASON=""', "checks",
+                        'echo "REASON=$REASON"', ""])
+    env = dict({"BACKEND": "redis", "SO_JOURNAL": "", "SO_STAMPS": "", "SEND_CAPTURE": "",
+                "SEND_CAPTURE_BOTH": "", "SEND_WORKERS": "", "SCHED_FEATURES": "",
+                "IDLE_POLL": "", "BOOT_CMDLINE": boot.as_posix()}, **setting)
+    said = bash(["-c", script], extra_env=env, capture_output=True, text=True,
+                check=True).stdout
+    return said.strip().rsplit("REASON=", 1)[1]
+
+
+@needs_bash
+@pytest.mark.parametrize("setting,said", [
+    ({"SO_JOURNAL": "1"}, "so_journal needs so_timestamps"),
+    ({"SO_JOURNAL": "consumer"}, "so_journal needs so_timestamps"),
+    ({"SO_JOURNAL": "both", "SO_STAMPS": "sched"},
+     'so_journal is true, for both clients, or "consumer", not "both"'),
+    ({"SEND_CAPTURE_BOTH": "1"}, "send_capture_both needs send_capture"),
+    ({"SEND_WORKERS": "1", "BACKEND": "kafka"},
+     "send_workers is the Redis producer's setting, and this run is kafka"),
+    ({"SEND_WORKERS": "0"}, 'send_workers is a whole number of at least one, not "0"'),
+    ({"SEND_WORKERS": "01"}, 'send_workers is a whole number of at least one, not "01"'),
+    ({"SEND_WORKERS": "True"}, 'send_workers is a whole number of at least one, not "True"'),
+    ({"SCHED_FEATURES": "NO_HRTICK"},
+     'sched_features is RUN_TO_PARITY or NO_RUN_TO_PARITY, not "NO_HRTICK"')])
+def test_a_setup_the_runner_cannot_give_as_written_fails_before_the_machine_is_touched(
+        tmp_path, setting, said):
+    """Each of these would otherwise run and be filed under a setting it did not have: a journal
+    nothing writes, a one-way capture read as two-way, the producer's sixteen workers read as one,
+    or a scheduler feature that nothing puts back after the run."""
+    assert _setup_says(tmp_path, **setting).startswith(said)
+
+
+@needs_bash
+@pytest.mark.parametrize("setting", [
+    {}, {"SO_JOURNAL": "1", "SO_STAMPS": "sched"}, {"SO_JOURNAL": "consumer", "SO_STAMPS": "sched"},
+    {"SEND_CAPTURE_BOTH": "1", "SEND_CAPTURE": "1"}, {"SEND_WORKERS": "1"},
+    {"SEND_WORKERS": "16"}, {"SCHED_FEATURES": "NO_RUN_TO_PARITY"},
+    {"SCHED_FEATURES": "RUN_TO_PARITY"}])
+def test_and_a_setup_it_can_give_passes_those_checks(tmp_path, setting):
+    assert _setup_says(tmp_path, **setting) == ""
+
+
+@needs_bash
+@pytest.mark.parametrize("cmdline,wanted,said", [
+    (STOCK_ARGS + " idle=poll", "1", ""),
+    ("idle=poll " + STOCK_ARGS, "1", ""),
+    (STOCK_ARGS, "1", "the setup asks for idle=poll and this boot's command line does not hold it"),
+    (STOCK_ARGS + " idle=polling", "1",
+     "the setup asks for idle=poll and this boot's command line does not hold it"),
+    (STOCK_ARGS + " xidle=poll", "1",
+     "the setup asks for idle=poll and this boot's command line does not hold it"),
+    (STOCK_ARGS, "0", ""),
+    (STOCK_ARGS + " idle=halt", "0", ""),
+    (STOCK_ARGS + " idle=poll", "0",
+     "the setup asks for the default boot and this boot's command line holds idle=poll"),
+    (None, "1", "could not be read, so the boot the setup names cannot be confirmed"),
+    (None, "0", "could not be read, so the boot the setup names cannot be confirmed"),
+    (None, "", "")])
+def test_a_run_of_block_i_counts_only_on_the_boot_its_setup_names(tmp_path, cmdline, wanted,
+                                                                   said):
+    """The two boots differ in idle= and in nothing else, so nothing but the boot's own command
+    line tells a run on one from a run on the other. A setup that names no boot is not asked."""
+    found = _setup_says(tmp_path, cmdline, IDLE_POLL=wanted)
+    assert (found.endswith(said) and found != "") if said else found == ""
+
+
+def _machine_settings(tmp_path, features):
+    """A machine's scheduler files as sched_settings.py reads them, in a fake tree: the stock 6.8
+    kernel on eight CPUs, its features as debugfs shows them, or no features file at all."""
+    root = tmp_path / "machine"
+    for rel, text in (("proc/sys/kernel/osrelease", "6.8.0-1064-azure"),
+                      ("boot/config-6.8.0-1064-azure", "CONFIG_HZ=250"),
+                      ("sys/kernel/debug/sched/base_slice_ns", "2800000"),
+                      ("sys/kernel/debug/sched/tunable_scaling", "1"),
+                      ("sys/devices/system/cpu/online", "0-7"),
+                      ("sys/kernel/debug/sched/features", features)):
+        if text is not None:
+            _write(root / rel, text + "\n")
+    return root
+
+
+#: A feature line of the kind debugfs shows on a kernel at its defaults, RUN_TO_PARITY on, and
+#: the same line as a run of block R that set NO_RUN_TO_PARITY and then crashed would leave it.
+DEFAULT_FEATURES = "PLACE_LAG PLACE_DEADLINE_INITIAL RUN_TO_PARITY NO_NEXT_BUDDY NO_HRTICK "
+LEFT_OFF = DEFAULT_FEATURES.replace(" RUN_TO_PARITY", " NO_RUN_TO_PARITY")
+
+#: sudo standing in for itself by running sched_settings.py against the fake machine, and writing
+#: down how it was called.
+_SUDO_SCHED = ('sudo () { echo "$*" >> "$CALLS"; shift 2; '
+               'python3 scripts/sched_settings.py --root "$MACHINE" "$@"; }')
+
+
+def _settings_lines(tmp_path, features, **setting):
+    """A run's settings lines, from the slice to the check before the run, run as the runner runs
+    them, with sched_settings.py itself reading and writing a fake machine. (The REASON, what the
+    check before the run wrote, and how sched_settings.py was called.)"""
+    code = (KIT / "campaign.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
+    run = code.split("run_one () {", 1)[1]
+    first = '  if [ -n "$SLICE_NS" ]; then'
+    last = 'REASON="the settings before the run do not match the setup"; return; }'
+    block = first + run.split(first, 1)[1].split(last, 1)[0] + last
+    machine = _machine_settings(tmp_path, features)
+    calls, run_dir = tmp_path / "calls.txt", tmp_path / "run"
+    run_dir.mkdir()
+    script = "\n".join(["set -uo pipefail", _SUDO_SCHED, "settings () {", "  local check_args=()",
+                        block, "}", 'REASON=""', "settings", 'echo "REASON=$REASON"', ""])
+    env = dict({"CALLS": calls.as_posix(), "RUN_DIR": run_dir.as_posix(),
+                "MACHINE": machine.as_posix(), "SLICE_NS": "", "HZ": "", "SCHED_FEATURES": ""},
+               **setting)
+    said = bash(["-c", script], cwd=REPO, extra_env=env, capture_output=True, text=True,
+                check=True).stdout
+    before = run_dir / "settings_before.json"
+    return (said.strip().rsplit("REASON=", 1)[1],
+            json.loads(before.read_text(encoding="utf-8")) if before.exists() else None,
+            calls.read_text(encoding="utf-8").splitlines() if calls.exists() else [])
+
+
+@needs_bash
+def test_block_r_sets_its_feature_and_the_check_before_the_run_holds_the_machine_to_it(tmp_path):
+    """A setup that names NO_RUN_TO_PARITY has it written through debugfs beside the slice, and
+    the check before the run holds the machine to it and records the features with the rest."""
+    reason, before, calls = _settings_lines(tmp_path, DEFAULT_FEATURES,
+                                            SCHED_FEATURES="NO_RUN_TO_PARITY")
+    assert reason == "" and before["ok"] is True
+    assert before["settings"]["sched_features"]["RUN_TO_PARITY"] is False
+    assert calls == ["python3 scripts/sched_settings.py set-feature NO_RUN_TO_PARITY",
+                     "python3 scripts/sched_settings.py check --feature NO_RUN_TO_PARITY"]
+
+
+@needs_bash
+def test_every_other_run_is_held_to_the_default_so_a_feature_left_off_fails_it(tmp_path):
+    """A run whose setup names no feature sets none, and its check holds the machine to
+    RUN_TO_PARITY on. A feature that a crashed run of block R left off fails the next run before
+    any traffic, rather than contaminating it."""
+    reason, before, calls = _settings_lines(tmp_path / "default", DEFAULT_FEATURES)
+    assert reason == "" and before["ok"] is True
+    assert calls == ["python3 scripts/sched_settings.py check --feature-if-known RUN_TO_PARITY"]
+    reason, before, _ = _settings_lines(tmp_path / "left", LEFT_OFF)
+    assert reason == "the settings before the run do not match the setup"
+    assert before["problems"] == ["the scheduler feature RUN_TO_PARITY is off, not on"]
+
+
+@needs_bash
+def test_a_kernel_that_shows_no_features_fails_no_run_for_them_and_records_them_unknown(tmp_path):
+    """An older kernel, or one without debugfs: there is nothing to hold a run to."""
+    reason, before, _ = _settings_lines(tmp_path, None)
+    assert reason == "" and before["ok"] is True
+    assert before["settings"]["sched_features"] is None
+    assert "sched_features" in before["settings"]["missing"]
+
+
+def _features_back(tmp_path, features, sched_features):
+    """features_back as the runner defines it, run with sudo standing in as above. (What it wrote,
+    the features the machine shows after it, and how sched_settings.py was called.)"""
+    code = (KIT / "campaign.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
+    body = "features_back () {" + code.split("\nfeatures_back () {", 1)[1].split("\n}\n", 1)[0]
+    machine = _machine_settings(tmp_path, features)
+    calls, out = tmp_path / "calls.txt", tmp_path / "feature_back.txt"
+    script = "\n".join(["set -uo pipefail", 'log () { echo "$*"; }', _SUDO_SCHED, body, "}",
+                        'features_back "$OUT"', ""])
+    env = {"CALLS": calls.as_posix(), "MACHINE": machine.as_posix(), "OUT": out.as_posix(),
+           "SCHED_FEATURES": sched_features}
+    bash(["-c", script], cwd=REPO, extra_env=env, capture_output=True, text=True, check=True)
+    shown = (machine / "sys/kernel/debug/sched/features").read_text(encoding="utf-8").split()
+    return (out.read_text(encoding="utf-8") if out.exists() else None, shown,
+            calls.read_text(encoding="utf-8").splitlines() if calls.exists() else [])
+
+
+@needs_bash
+def test_a_run_that_set_a_feature_puts_the_default_back_and_any_other_run_touches_nothing(
+        tmp_path):
+    said, shown, calls = _features_back(tmp_path / "r", LEFT_OFF, "NO_RUN_TO_PARITY")
+    assert "RUN_TO_PARITY" in shown and "NO_RUN_TO_PARITY" not in shown
+    assert calls == ["python3 scripts/sched_settings.py set-feature RUN_TO_PARITY"]
+    assert "scheduler feature RUN_TO_PARITY set, and read back" in said
+    said, shown, calls = _features_back(tmp_path / "k", LEFT_OFF, "")
+    assert (said, calls) == (None, []) and "NO_RUN_TO_PARITY" in shown, \
+        "a run that names no feature changed none; what it finds is its own check's to judge"
+
+
+def test_the_default_goes_back_after_every_run_that_set_a_feature_however_it_ended():
+    """However run_one returned -- a failed check, a failed trial, or a run that counted -- the
+    loop puts the default back before the queue is told, and a campaign stopped in the middle of
+    a run puts it back on its way out. The check after the run, which writes
+    settings_after.json, comes first and takes the same arguments as the check before it, so it
+    holds the treatment the run had."""
+    code = (KIT / "campaign.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
+    loop = code.split("\nwhile true; do", 1)[1]
+    assert loop.index("\n  run_one\n") \
+        < loop.index('\n  features_back "$RUN_DIR/feature_back.txt"\n') \
+        < loop.index("run_queue.py finish")
+    leaving = code.split("finish_campaign () {", 1)[1].split("\n}", 1)[0]
+    assert "features_back /dev/null" in leaving, "into no run's folder"
+    run = code.split("run_one () {", 1)[1].split("\n}\n", 1)[0]
+    assert run.index('check_args+=(--feature "$SCHED_FEATURES")') \
+        < run.index('check "${check_args[@]}" > "$RUN_DIR/settings_before.json"') \
+        < run.index('check "${check_args[@]}" > "$RUN_DIR/settings_after.json"')
+
+
+@needs_bash
+def test_freeze_41s_sender_capture_keeps_both_directions_in_a_larger_buffer(tmp_path):
+    """Block K checks each acknowledgment's arrival in the journal against the arrival the capture
+    saw, so the sender's capture keeps the broker's packets to the driver as well as the driver's
+    to the broker, still without ssh. Both full captures then get a 32 MiB buffer, placed after
+    the file name so that the patterns that stop them still find them, and not their own sudo."""
+    _, calls = _r1_runner(tmp_path, "both", SEND_CAPTURE="1", SEND_CAPTURE_BOTH="1",
+                          RECV_CAPTURE="1")
+    run = (tmp_path / "both").as_posix()
+    started = [c for c in calls if "pkill" not in c]
+    assert started == [
+        "sudo ip netns exec sblrecv tcpdump -i any -s 0 --time-stamp-precision=nano -w "
+        "%s/receiver_full.pcap -B 32768 host 10.9.9.9" % run,
+        "sudo tcpdump -i eth0 -s 0 --time-stamp-precision=nano -w %s/sender_full.pcap -B 32768 "
+        "host 10.8.8.8 and host 10.9.9.9 and not port 22" % run]
+    stops = [c.split(" -f ", 1) for c in calls if "pkill" in c]
+    assert [how for how, _ in stops] == ["sudo pkill -INT", "sudo pkill -KILL"] * 2
+    for (how, pattern), target in zip(stops, (started[0], started[0], started[1], started[1])):
+        assert re.search(pattern, target), "pkill -f finds the capture by its command line"
+        assert not re.search(pattern, "%s -f %s" % (how, pattern))
+    # The buffer alone, asked for where a block captures one way at a high rate (block L).
+    _, calls = _r1_runner(tmp_path, "buffered", SEND_CAPTURE="1", RECV_CAPTURE="1",
+                          CAPTURE_BUFFER="1")
+    run = (tmp_path / "buffered").as_posix()
+    assert [c for c in calls if "pkill" not in c] == [
+        "sudo ip netns exec sblrecv tcpdump -i any -s 0 --time-stamp-precision=nano -w "
+        "%s/receiver_full.pcap -B 32768 host 10.9.9.9" % run,
+        "sudo tcpdump -i eth0 -s 0 --time-stamp-precision=nano -w %s/sender_full.pcap -B 32768 "
+        "src host 10.8.8.8 and dst host 10.9.9.9 and not port 22" % run]
+
+
+def _trial_handed(tmp_path, backend, send_workers=""):
+    """What the runner hands the trial runner, from its lines from the start of the trial to its
+    end, run as the runner runs them with an unset variable an error, and `timeout` standing in
+    for the trial by writing down its arguments, one to a line. (Those, and the producer's socket
+    arguments the run was given.)"""
+    code = (KIT / "campaign.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
+    run = code.split("run_one () {", 1)[1]
+    first = "  began=$(date -u +%s)"
+    block = first + run.split(first, 1)[1].split("  ended=$(date -u +%s)", 1)[0]
+    calls = tmp_path / ("handed_%s_%s.txt" % (backend, send_workers or "none"))
+    script = "\n".join(["set -uo pipefail", 'timeout () { printf "%s\\n" "$@" > "$CALLS"; }',
+                        "trial () {", "  local rc began", block, "}", "trial", ""])
+    so = "--so-timestamps %s/producer_so.csv --so-transmit sched" % tmp_path.as_posix()
+    env = {"CALLS": calls.as_posix(), "BACKEND": backend, "SEND_WORKERS": send_workers,
+           "RUN_ID": "law_k_r001", "RUN_DIR": tmp_path.as_posix(), "DURATION": "130",
+           "run_plan": "plan.csv", "run_speedup": "1", "run_maxt": "130",
+           "KAFKA_BOOTSTRAP": "10.9.9.9:19092", "KAFKA_PRODUCER_EXTRA": "--max-inflight 64",
+           "REDIS_HOST": "10.9.9.9", "REDIS_PORT": "6379",
+           "REDIS_CONSUMER_EXTRA": "--ack-batch 200", "ACK_BATCH": "", "record_args": "",
+           "read_args": "", "so_prod": so, "so_cons": so.replace("producer", "consumer"),
+           "consumer_wrap": "sudo ip netns exec sblrecv sudo -u tester", "wrap_sched": ""}
+    bash(["-c", script], extra_env=env, capture_output=True, text=True, check=True)
+    return calls.read_text(encoding="utf-8").splitlines(), so
+
+
+@needs_bash
+def test_freeze_41s_one_worker_setups_reach_the_redis_producer_and_no_other(tmp_path):
+    """Block K's two one-worker setups hand the Redis producer --send-workers 1, after everything
+    it was handed before. A setup that names no count hands it exactly what freeze 40 did, and the
+    Kafka producer, which has no such setting, is never handed one."""
+    def producer(handed):
+        return handed[handed.index("-PRODUCER_EXTRA") + 1]
+    one, so = _trial_handed(tmp_path, "redis", "1")
+    assert "scripts/run_redis_trial.sh" in one
+    assert producer(one) == " %s --send-workers 1" % so
+    plain, so = _trial_handed(tmp_path, "redis")
+    assert producer(plain) == " %s" % so, '"$record_args $so_prod", as before'
+    kafka, so = _trial_handed(tmp_path, "kafka", "1")
+    assert "scripts/run_kafka_trial.sh" in kafka
+    assert producer(kafka) == "--max-inflight 64  %s" % so
+    assert not [arg for arg in kafka if "--send-workers" in arg]
+
+
+#: A menu file like the one Ubuntu ships in /etc/grub.d, before anything of ours is written to it.
+UBUNTU_CUSTOM = ("#!/bin/sh\nexec tail -n +3 $0\n# This file provides an easy way to add custom "
+                 "menu entries.  Simply type the\n# menu entries you want to add after this "
+                 "comment.  Be careful not to change\n# the 'exec tail' line above.\n")
+#: The same file once cpus.sh has asked for two CPUs: cpus.sh's own entry is its whole content.
+CPUS_CUSTOM = ("#!/bin/sh\nexec tail -n +3 $0\n# Written by cloud/azure/cpus.sh.\n"
+               "menuentry 'sbl: 6.8.0-1064-azure, 2 CPUs' --id sbl-cpus {\n"
+               "  linux /boot/vmlinuz-6.8.0-1064-azure %s nr_cpus=2\n}\n" % STOCK_ARGS)
+
+
+def _idle_sh(tmp_path, argv, cmdline=None, custom=UBUNTU_CUSTOM, kept=None, menu_takes=True):
+    """idle.sh, run in a scratch checkout against a fake machine: its command line; two stock
+    kernels and one of A2's tick builds; the menu file in /etc/grub.d and the copy kept aside, if
+    any; and stand-ins for sudo, findmnt, update-grub and grub-reboot that write down how they
+    were called. update-grub does what grub-mkconfig does with /etc/grub.d -- runs each numbered
+    file and gathers what it prints into the menu -- unless `menu_takes` is false.
+    (The finished process, the machine, the calls.)"""
+    checkout = _scratch_checkout(tmp_path)
+    machine, stubs, calls = tmp_path / "machine", tmp_path / "bin", tmp_path / "calls.txt"
+    for kernel in ("6.8.0-1017-azure", "6.8.0-1064-azure", "6.8.12-sbl1000"):
+        _write(machine / "boot" / ("vmlinuz-" + kernel), "")
+        _write(machine / "boot" / ("initrd.img-" + kernel), "")
+    _write(machine / "boot" / "grub" / "grub.cfg", "")
+    if cmdline is not None:
+        _write(machine / "proc" / "cmdline", cmdline + "\n")
+    if custom is not None:
+        _write(machine / "etc" / "grub.d" / "40_custom", custom)
+    if kept is not None:
+        _write(machine / "etc" / "grub.d" / "40_custom.sbl-orig", kept)
+    for name, body in (
+            ("sudo", 'echo "sudo $*" >> "$CALLS"\nexec "$@"\n'),
+            ("findmnt", "echo 0f1e2d3c-4b5a-4968-8776-655443322110\n"),
+            ("update-grub", 'echo update-grub >> "$CALLS"\n'
+                            '[ "$MENU_TAKES" = 1 ] || exit 0\n'
+                            ': > "$SBL_ROOT/boot/grub/grub.cfg"\n'
+                            'for f in "$SBL_ROOT"/etc/grub.d/[0-9][0-9]_*; do\n'
+                            '  case "$f" in *.sbl-orig) continue ;; esac\n'
+                            '  sh "$f" >> "$SBL_ROOT/boot/grub/grub.cfg"\n'
+                            'done\n'),
+            ("grub-reboot", 'echo "grub-reboot $*" >> "$CALLS"\n')):
+        os.chmod(_write(stubs / name, "#!/bin/sh\n" + body), 0o755)
+    done = bash(["cloud/azure/idle.sh"] + argv, cwd=checkout, path_first=[stubs],
+                extra_env={"SBL_ROOT": machine.as_posix(), "CALLS": calls.as_posix(),
+                           "MENU_TAKES": "1" if menu_takes else "0"},
+                capture_output=True, text=True)
+    return done, machine, (calls.read_text(encoding="utf-8").splitlines()
+                           if calls.exists() else [])
+
+
+@needs_bash
+def test_idle_poll_is_asked_for_once_on_the_stock_kernel_from_the_running_boots_arguments(
+        tmp_path):
+    """The entry is the running boot's own arguments, less the image it booted and any idle= or
+    core count a boot of this kit left there, plus idle=poll; on the newest stock kernel, not a
+    tick build; and selected for the next boot only. The script does not reboot: it says to."""
+    cmdline = ("BOOT_IMAGE=/boot/vmlinuz-6.8.0-1064-azure %s idle=halt nr_cpus=2 "
+               "intel_idle.max_cstate=1" % STOCK_ARGS)
+    done, machine, calls = _idle_sh(tmp_path, ["boot", "poll"], cmdline)
+    assert done.returncode == 0, done.stdout + done.stderr
+    entry = (machine / "etc" / "grub.d" / "42_sbl_idle").read_text(encoding="utf-8").splitlines()
+    assert "menuentry 'sbl: 6.8.0-1064-azure, idle=poll' --id sbl-idle {" in entry
+    assert ("  linux /boot/vmlinuz-6.8.0-1064-azure %s intel_idle.max_cstate=1 idle=poll"
+            % STOCK_ARGS) in entry
+    assert "  initrd /boot/initrd.img-6.8.0-1064-azure" in entry
+    assert "  search --no-floppy --fs-uuid --set=root 0f1e2d3c-4b5a-4968-8776-655443322110" \
+        in entry
+    assert [c for c in calls if c.startswith("grub-reboot")] == ["grub-reboot sbl-idle"]
+    assert not [c for c in calls if c.split()[:2] in (["sudo", "reboot"], ["sudo", "systemctl"],
+                                                      ["sudo", "shutdown"])]
+    assert "reboot now, then run: bash cloud/azure/idle.sh status" in done.stdout
+
+
+@needs_bash
+def test_idle_sh_leaves_cpus_sh_s_menu_file_alone_and_both_entries_reach_the_menu(tmp_path):
+    """cpus.sh writes the whole of 40_custom and puts its saved copy back to restore, so idle.sh
+    keeps its entry in a file of its own. Where cpus.sh has asked for a core count, its file and
+    the copy it kept aside are as they were, and the menu holds both entries; on a fresh machine
+    the image's own file is kept aside, as cpus.sh keeps it, and left as it is."""
+    cmdline = "BOOT_IMAGE=/boot/vmlinuz-6.8.0-1064-azure " + STOCK_ARGS
+    done, machine, _ = _idle_sh(tmp_path / "after_cpus", ["boot", "poll"], cmdline,
+                                custom=CPUS_CUSTOM, kept=UBUNTU_CUSTOM)
+    assert done.returncode == 0, done.stdout + done.stderr
+    grub_d = machine / "etc" / "grub.d"
+    assert (grub_d / "40_custom").read_bytes() == CPUS_CUSTOM.encode("utf-8")
+    assert (grub_d / "40_custom.sbl-orig").read_bytes() == UBUNTU_CUSTOM.encode("utf-8")
+    menu = (machine / "boot" / "grub" / "grub.cfg").read_text(encoding="utf-8")
+    assert "--id sbl-cpus {" in menu and "--id sbl-idle {" in menu
+    done, machine, _ = _idle_sh(tmp_path / "fresh", ["boot", "poll"], cmdline)
+    assert done.returncode == 0, done.stdout + done.stderr
+    grub_d = machine / "etc" / "grub.d"
+    assert (grub_d / "40_custom").read_bytes() == UBUNTU_CUSTOM.encode("utf-8")
+    assert (grub_d / "40_custom.sbl-orig").read_bytes() == UBUNTU_CUSTOM.encode("utf-8")
+
+
+@needs_bash
+def test_an_entry_that_did_not_reach_the_menu_is_never_selected(tmp_path):
+    """grub-reboot naming an id the menu does not hold would leave the next boot to whatever grub
+    makes of it, so a menu that did not take the entry stops the script before grub-reboot."""
+    done, _, calls = _idle_sh(tmp_path, ["boot", "poll"],
+                              "BOOT_IMAGE=/boot/vmlinuz-6.8.0-1064-azure " + STOCK_ARGS,
+                              menu_takes=False)
+    assert done.returncode == 1 and "STOP_RULE: the entry did not reach the menu" in done.stdout
+    assert "update-grub" in calls and not [c for c in calls if "grub-reboot" in c]
+
+
+@needs_bash
+@pytest.mark.parametrize("argv,cmdline,said", [
+    (["boot", "halt"], STOCK_ARGS, 'the one idle= this boots is poll, not "halt"'),
+    (["boot"], STOCK_ARGS, 'the one idle= this boots is poll, not ""'),
+    (["boot", "poll"], "BOOT_IMAGE=/boot/vmlinuz-6.8.0-1064-azure idle=poll",
+     "came back empty; refusing to write a boot entry from it"),
+    (["boot", "poll"], None, "came back empty; refusing to write a boot entry from it")])
+def test_idle_sh_writes_no_entry_it_cannot_stand_behind(tmp_path, argv, cmdline, said):
+    done, machine, calls = _idle_sh(tmp_path, argv, cmdline)
+    assert done.returncode == 1 and "STOP_RULE: " in done.stdout and said in done.stdout
+    assert not (machine / "etc" / "grub.d" / "42_sbl_idle").exists()
+    assert not [c for c in calls if "grub-reboot" in c]
+
+
+@needs_bash
+def test_idle_sh_says_how_it_is_used(tmp_path):
+    done, _, _ = _idle_sh(tmp_path, [], STOCK_ARGS)
+    assert done.returncode == 2
+    assert "usage: bash cloud/azure/idle.sh boot poll | status" in done.stderr
+
+
+@needs_bash
+@pytest.mark.parametrize("cmdline,holds", [
+    (STOCK_ARGS + " idle=poll", True), ("idle=poll " + STOCK_ARGS, True),
+    (STOCK_ARGS + " idle=poll intel_idle.max_cstate=1", True), (STOCK_ARGS, False),
+    (STOCK_ARGS + " idle=polling", False), (STOCK_ARGS + " xidle=poll", False),
+    (STOCK_ARGS + " idle=halt", False)])
+def test_idle_sh_and_the_runner_read_a_boot_the_same_way(tmp_path, cmdline, holds):
+    """The queue asks idle.sh whether a boot holds idle=poll, and the runner reads /proc/cmdline
+    itself before each of block I's runs. Both read it as an argument of its own, and agree."""
+    done, _, _ = _idle_sh(tmp_path, ["status"], cmdline)
+    assert done.returncode == 0
+    assert done.stdout == ("idle=poll on\n" if holds else "idle=poll off\n")
+    assert (_setup_says(tmp_path, cmdline, IDLE_POLL="1") == "") is holds
+    assert (_setup_says(tmp_path, cmdline, IDLE_POLL="0") == "") is not holds
+
+
+@needs_bash
+def test_idle_sh_will_not_guess_a_boot_whose_command_line_it_cannot_read(tmp_path):
+    done, _, _ = _idle_sh(tmp_path, ["status"], None)
+    assert done.returncode == 1 and "could not be read" in done.stdout
+    assert "idle=poll on" not in done.stdout and "idle=poll off" not in done.stdout
+
+
+def test_the_queue_names_the_idlepoll_boot_among_its_boots():
+    code = QUEUE.read_text(encoding="utf-8")
+    assert "#   boot=      hz1000 | hz250 | hz100 | stock | cpu2 | cpu4 | cpu8 | idlepoll | none" \
+        in code
+
+
+@needs_bash
+@pytest.mark.parametrize("boot,release,cmdline,ok", [
+    ("idlepoll", "6.8.0-1064-azure", STOCK_ARGS + " idle=poll", True),
+    ("idlepoll", "6.8.0-1064-azure", STOCK_ARGS, False),
+    ("idlepoll", "6.8.12-sbl1000", STOCK_ARGS + " idle=poll", False),
+    ("idlepoll", "6.8.0-1064-azure", None, False),
+    ("stock", "6.8.0-1064-azure", STOCK_ARGS, True),
+    ("stock", "6.8.0-1064-azure", STOCK_ARGS + " idle=poll", False),
+    ("stock", "6.8.0-1064-azure", None, False),
+    ("stock", "6.8.12-sbl1000", STOCK_ARGS, False),
+    ("none", "6.8.12-sbl1000", STOCK_ARGS + " idle=poll", True)])
+def test_the_queue_checks_block_is_boot_and_that_no_other_boot_has_idle_poll(
+        tmp_path, boot, release, cmdline, ok):
+    """idlepoll must come back on the stock kernel with idle=poll, and every other boot without
+    it. A boot that came back on the wrong entry would pass every other check and have its runs
+    filed under the other boot's name. none reboots nothing and is not asked."""
+    machine = tmp_path / "machine"
+    if cmdline is not None:
+        _write(machine / "proc" / "cmdline", cmdline + "\n")
+    said = _queue_call(tmp_path, 'uname () { echo "%s"; }; verify_boot %s; echo "rc=$?"'
+                       % (release, boot), extra_env={"SBL_ROOT": machine.as_posix()})
+    assert said.splitlines()[-1] == ("rc=0" if ok else "rc=1"), said
+
+
+@needs_bash
+def test_the_queue_asks_idle_sh_for_the_idlepoll_boot_and_for_no_other(tmp_path):
+    root = _scratch_checkout(tmp_path)
+    _write(root / "cloud" / "azure" / "idle.sh", 'echo "$*" > asked.txt\n')
+    record = root / "asked.txt"
+    for boot, asked in (("idlepoll", "boot poll\n"), ("stock", None), ("none", None)):
+        if record.exists():
+            record.unlink()
+        script = "cd '%s' && . cloud/azure/queue.sh >/dev/null 2>&1; ask_for_boot %s" % (
+            root.as_posix(), boot)
+        bash(["-c", script], capture_output=True, text=True)
+        found = record.read_text(encoding="utf-8") if record.exists() else None
+        assert found == asked, boot
+
+
+@needs_bash
+def test_a_command_job_can_run_a_campaign_at_another_rate(tmp_path):
+    """Block L runs campaigns at 500 and 5,000 messages a second, each a command job with the
+    campaign's rate, duration and warm-up written before it. The loop runs a command through
+    bash -c, so those settings reach the command's environment; this runs the loop's own line."""
+    root = _scratch_checkout(tmp_path)
+    _write(root / "probe.sh",
+           'echo "rate=$RATE duration=$DURATION warmup=$WARMUP_S queue=$1"\n')
+    code = QUEUE.read_text(encoding="utf-8").replace("\r\n", "\n")
+    booted = code.split("      booted)", 1)[1].split("\n        ;;", 1)[0]
+    line = next(text.strip() for text in booted.splitlines() if "timeout 43200" in text)
+    job = ("boot=idlepoll cmd=RATE=500 DURATION=70 WARMUP_S=20 bash probe.sh "
+           "runs/azure/queues/l500.csv")
+    out = (tmp_path / "cmd.log").as_posix()
+    said = _queue_call(tmp_path, 'cmd="$(field "%s" cmd)"; out="%s"; %s; cat "$out"'
+                       % (job, out, line))
+    assert said == "rate=500 duration=70 warmup=20 queue=runs/azure/queues/l500.csv"
+    assert _queue_call(tmp_path, 'field "%s" boot' % job) == "idlepoll"

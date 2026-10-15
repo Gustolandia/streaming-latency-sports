@@ -1,0 +1,47 @@
+{
+  "about": "Freeze 41, block R: the scheduler's RUN_TO_PARITY feature on or off at 88% load and normal priority. Queue: python3 scripts/run_queue.py make --design docs/results/order_scope/r_design.json --out runs/azure/queues/r.csv",
+  "rounds": 6,
+  "seed": 20261017,
+  "setups": [
+    {
+      "id": "R-kafka-rtp",
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "backend": "kafka",
+      "load_pct": 88,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "sched_features": "RUN_TO_PARITY"
+    },
+    {
+      "id": "R-kafka-nortp",
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "backend": "kafka",
+      "load_pct": 88,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "sched_features": "NO_RUN_TO_PARITY"
+    },
+    {
+      "id": "R-redis-rtp",
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "backend": "redis",
+      "load_pct": 88,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "sched_features": "RUN_TO_PARITY"
+    },
+    {
+      "id": "R-redis-nortp",
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "backend": "redis",
+      "load_pct": 88,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "sched_features": "NO_RUN_TO_PARITY"
+    }
+  ]
+}

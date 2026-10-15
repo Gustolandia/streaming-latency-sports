@@ -1,0 +1,27 @@
+{
+  "about": "Freeze 41, block I, on the idle=poll boot. Queue: python3 scripts/run_queue.py make --design docs/results/order_scope/i_poll_design.json --out runs/azure/queues/i_poll.csv",
+  "rounds": 4,
+  "seed": 20261024,
+  "setups": [
+    {
+      "id": "I-kafka-poll",
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "backend": "kafka",
+      "load_pct": 88,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "idle_poll": true
+    },
+    {
+      "id": "I-redis-poll",
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "backend": "redis",
+      "load_pct": 88,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "idle_poll": true
+    }
+  ]
+}

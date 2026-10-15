@@ -19,6 +19,7 @@ What is read. Each item is a Linux interface, and an item that cannot be read is
     online CPUs        /sys/devices/system/cpu/online
     CPU model          /proc/cpuinfo
     clock source       /sys/devices/system/clocksource/clocksource0/current_clocksource
+    scheduler features /sys/kernel/debug/sched/features          (root; debugfs; NO_ marks one off)
 
 It also computes the slice the kernel's own rule gives this release on this many CPUs, so a
 default that does not follow the rule shows up. The rule's constant fell from 750000 to 700000 ns
@@ -27,10 +28,19 @@ in Linux 6.15 ("sched: Reduce the default slice to avoid tasks getting an extra 
 The slice can be changed without a reboot and the tick cannot. That is why a campaign shuffles
 the slice run by run but treats the tick as a session.
 
+Freeze 41 (15 Oct 2026) reads the scheduler's features too, and sets one. Block R runs with the
+RUN_TO_PARITY feature on, the kernel's default, and off. Every other run is held to the default
+wherever the kernel shows its features, so a feature that a crashed run left off fails the next
+run rather than contaminating it. Where the kernel shows none (an older kernel, or no debugfs),
+the features are recorded as unknown, under "missing", and that alone is not a problem.
+
 CLI:
     sudo python3 scripts/sched_settings.py read
     sudo python3 scripts/sched_settings.py set-slice 1500000
     sudo python3 scripts/sched_settings.py check --slice-ns 1500000 --hz 1000
+    sudo python3 scripts/sched_settings.py set-feature NO_RUN_TO_PARITY
+    sudo python3 scripts/sched_settings.py check --feature NO_RUN_TO_PARITY
+    sudo python3 scripts/sched_settings.py check --feature-if-known RUN_TO_PARITY
 """
 import argparse
 import json
@@ -49,6 +59,7 @@ FILES = {
     "online": "sys/devices/system/cpu/online",
     "cpuinfo": "proc/cpuinfo",
     "clocksource": "sys/devices/system/clocksource/clocksource0/current_clocksource",
+    "sched_features": "sys/kernel/debug/sched/features",
 }
 
 #: tunable_scaling's values, named as kernel/sched/fair.c names them.
@@ -60,11 +71,14 @@ SMALLER_SLICE_NS = 700_000
 
 #: Without these a run cannot be checked against the law. The others are recorded for a reader.
 ESSENTIAL = ("release", "config_hz", "base_slice_ns", "online_cpus")
-RECORDED = ("tunable_scaling", "preempt", "cpu_model", "clocksource")
+RECORDED = ("tunable_scaling", "preempt", "cpu_model", "clocksource", "sched_features")
 
 
 #: Where the kernel lists each CPU's directory; cpu0 usually has no `online` file and stays on.
 CPU_DIR = "sys/devices/system/cpu"
+
+#: A scheduler feature's own name, as kernel/sched/features.h spells it.
+FEATURE = re.compile(r"[A-Z][A-Z0-9_]*")
 
 
 class SliceNotApplied(RuntimeError):
@@ -73,6 +87,10 @@ class SliceNotApplied(RuntimeError):
 
 class CpusNotApplied(RuntimeError):
     """The kernel did not list the number of online CPUs that was asked for."""
+
+
+class FeatureNotApplied(RuntimeError):
+    """The kernel did not show a scheduler feature in the state that was written."""
 
 
 def _read(root, rel):
@@ -124,6 +142,61 @@ def active_choice(text):
     return m.group(1) if m else None
 
 
+def sched_features(text):
+    """The scheduler's features as {name: on}, from the one line debugfs shows, or None.
+
+    The line names every feature the kernel has, with NO_ in front of each one that is off, so
+    'PLACE_LAG RUN_TO_PARITY NO_NEXT_BUDDY' has RUN_TO_PARITY on and NEXT_BUDDY off. No line, or
+    an empty one, is a kernel whose features cannot be read, and gives None.
+    """
+    words = (text or "").split()
+    if not words:
+        return None
+    return {w[3:] if w.startswith("NO_") else w: not w.startswith("NO_") for w in words}
+
+
+def feature_wanted(name):
+    """(the feature, whether it is to be on) for NAME, which turns it on, or NO_NAME, off."""
+    base = name[3:] if name.startswith("NO_") else name
+    if not FEATURE.fullmatch(base) or base.startswith("NO_"):
+        raise ValueError("a scheduler feature is NAME or NO_NAME, in capitals, not %r" % name)
+    return base, not name.startswith("NO_")
+
+
+def feature_argument(name):
+    """The command line's reading of a feature: the name itself, once it is a feature's."""
+    try:
+        feature_wanted(name)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+    return name
+
+
+#: A feature's state, in the words a problem is written in.
+ON_OFF = {True: "on", False: "off"}
+
+
+def feature_problem(features, name, known_only=False):
+    """Why the scheduler's features are not as NAME (on) or NO_NAME (off) asks; None if they are.
+
+    A feature a run asks for by name is held to it everywhere: a kernel that shows no features,
+    or none of that name, cannot confirm it. known_only is the hold every other run is under, and
+    there such a kernel passes, because it has nothing to hold the run to; its features are
+    recorded as unknown instead.
+    """
+    base, on = feature_wanted(name)
+    state = None if features is None else features.get(base)
+    if state is None:
+        if known_only:
+            return None
+        if features is None:
+            return "the scheduler's features could not be read"
+        return "the kernel has no scheduler feature %s" % base
+    if state != on:
+        return "the scheduler feature %s is %s, not %s" % (base, ON_OFF[state], ON_OFF[on])
+    return None
+
+
 def release_version(release):
     """(major, minor) of a kernel release string, or None."""
     m = re.match(r"(\d+)\.(\d+)", release or "")
@@ -173,6 +246,7 @@ def read_settings(root="/"):
         "online_cpus": count_cpu_list(raw["online"]) if raw["online"] else None,
         "cpu_model": cpu_model(raw["cpuinfo"]),
         "clocksource": raw["clocksource"] or None,
+        "sched_features": sched_features(raw["sched_features"]),
     }
     settings["rule_slice_ns"] = rule_slice_ns(release, settings["online_cpus"],
                                               settings["tunable_scaling"])
@@ -214,7 +288,20 @@ def set_online_cpus(n, root="/"):
     return n
 
 
-def problems(settings, slice_ns=None, hz=None, cpus=None):
+def set_feature(name, root="/"):
+    """Write a scheduler feature, NAME to turn it on or NO_NAME to turn it off, and read the
+    features back; returns the name. A kernel without that feature refuses the write itself."""
+    base, on = feature_wanted(name)
+    path = os.path.join(root, FILES["sched_features"])
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(name + "\n")
+    got = _read(root, FILES["sched_features"])
+    if (sched_features(got) or {}).get(base) is not on:
+        raise FeatureNotApplied("wrote %s to %s and read back %r" % (name, path, got))
+    return name
+
+
+def problems(settings, slice_ns=None, hz=None, cpus=None, feature=None, feature_if_known=None):
     """Why these settings cannot back a run expecting `slice_ns`, `hz` and `cpus`; empty if they can.
 
     The core count is checked here and not only where it is set, because on Azure it cannot be set
@@ -222,6 +309,9 @@ def problems(settings, slice_ns=None, hz=None, cpus=None):
     to have failed. What is left is to read the machine and refuse if it is not the one asked for.
     Booting with `maxcpus=N` gives a machine that agrees for about a second and then does not, so
     this is the check that catches it.
+
+    `feature` is a scheduler feature a run asks for by name, NAME on or NO_NAME off, and
+    `feature_if_known` the hold a run without one is under (feature_problem says how they differ).
     """
     out = ["%s could not be read" % k for k in ESSENTIAL if k in settings["missing"]]
     if slice_ns is not None and settings["base_slice_ns"] != slice_ns:
@@ -230,6 +320,10 @@ def problems(settings, slice_ns=None, hz=None, cpus=None):
         out.append("CONFIG_HZ is %s, not %d" % (settings["config_hz"], hz))
     if cpus is not None and settings["online_cpus"] != cpus:
         out.append("%s CPUs are online, not %d" % (settings["online_cpus"], cpus))
+    for name, known_only in ((feature, False), (feature_if_known, True)):
+        found = name and feature_problem(settings.get("sched_features"), name, known_only)
+        if found:
+            out.append(found)
     return out
 
 
@@ -244,21 +338,33 @@ def main(argv=None, out=None):
     p.add_argument("ns", type=int)
     p = sub.add_parser("set-cpus")
     p.add_argument("n", type=int)
+    p = sub.add_parser("set-feature")
+    p.add_argument("name", type=feature_argument,
+                   help="NAME turns a scheduler feature on, NO_NAME turns it off")
     p = sub.add_parser("check")
     p.add_argument("--slice-ns", type=int)
     p.add_argument("--hz", type=int)
     p.add_argument("--cpus", type=int,
                    help="how many CPUs this session is meant to be running on")
+    p.add_argument("--feature", type=feature_argument,
+                   help="a scheduler feature as the run asked for it, NAME on or NO_NAME off; "
+                        "a kernel that cannot show it is a problem")
+    p.add_argument("--feature-if-known", type=feature_argument,
+                   help="the same where the kernel shows its features and has this one; "
+                        "elsewhere it passes, and the features are recorded as unknown")
     args = ap.parse_args(argv)
-    if args.command in ("set-slice", "set-cpus"):
+    if args.command in ("set-slice", "set-cpus", "set-feature"):
         try:
             if args.command == "set-slice":
                 set_base_slice(args.ns, args.root)
                 print("base slice set to %d ns, and read back" % args.ns, file=out)
-            else:
+            elif args.command == "set-cpus":
                 set_online_cpus(args.n, args.root)
                 print("%d CPUs online, and read back" % args.n, file=out)
-        except (OSError, ValueError, SliceNotApplied, CpusNotApplied) as exc:
+            else:
+                set_feature(args.name, args.root)
+                print("scheduler feature %s set, and read back" % args.name, file=out)
+        except (OSError, ValueError, SliceNotApplied, CpusNotApplied, FeatureNotApplied) as exc:
             print("ERROR: %s" % exc, file=out)
             return 1
         return 0
@@ -266,7 +372,8 @@ def main(argv=None, out=None):
     if args.command == "read":
         print(json.dumps(settings, indent=2, sort_keys=True), file=out)
         return 0
-    found = problems(settings, args.slice_ns, args.hz, args.cpus)
+    found = problems(settings, args.slice_ns, args.hz, args.cpus, args.feature,
+                     args.feature_if_known)
     print(json.dumps({"ok": not found, "problems": found, "settings": settings},
                      indent=2, sort_keys=True), file=out)
     return 1 if found else 0

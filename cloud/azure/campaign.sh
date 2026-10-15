@@ -13,7 +13,11 @@
 #                package manager running; otherwise the run fails before it starts;
 #   1. settings  online CPUs (all of them unless the setup names a count), then the base slice
 #                unless the setup keeps the kernel's own; both read back, with the tick, and a
-#                mismatch fails the run before any traffic;
+#                mismatch fails the run before any traffic. Freeze 41: a setup that names a
+#                scheduler feature has it set the same way, and every other run is held to
+#                RUN_TO_PARITY on, the kernel's default, wherever the kernel shows its features;
+#                a setup that names a boot (idle=poll or not) is held to /proc/cmdline; and a
+#                setup that asks for what this runner cannot give as written fails here;
 #   2. delay     the receiver-only delay on the broker, measured by ping from both sides beyond
 #                the same ping taken with no delay just before (the measured value is what the
 #                analysis uses), while the broker's own capture of those pings times how long it
@@ -34,6 +38,8 @@
 #                lane.json naming the machine pair and the commit, and the queue marks the run
 #                done or failed. A directory that already exists stops the campaign: keys repeat
 #                from one queue to the next, and a run never writes into another run's files.
+#                A run that set a scheduler feature puts the kernel's default back once it has
+#                ended, whichever way it ended.
 #
 # A run is repeated only when a step failed or a condition it was meant to have did not take:
 # too few messages, the send rate or the load off target, the delay or the settings not as set,
@@ -69,6 +75,9 @@ TRACE_BT="runs/azure/runqlat.bt"
 EVENTS_BT="runs/azure/waits.bt"
 ALL_CPUS=$(nproc --all)
 ME=$(id -un)
+#: Freeze 41 (15 Oct 2026): the running boot's own command line, which a setup that names a boot
+#: is held to (block I: idle=poll or not).
+BOOT_CMDLINE="/proc/cmdline"
 
 log () { echo "$(date -u +%FT%TZ) $*"; }
 broker_delay () {
@@ -84,8 +93,19 @@ reap () {
   pkill -9 -x stress-ng 2>/dev/null
   sleep 2
 }
+#: Freeze 41 (15 Oct 2026): RUN_TO_PARITY back on, the kernel's default, after a run whose setup
+#: set a scheduler feature, however that run ended, so that the next run starts where the kernel
+#: does. A run that names no feature changed none, and nothing is done for it. Where the default
+#: cannot be put back, the next run's settings check finds the feature off and fails that run.
+features_back () {
+  [ -n "${SCHED_FEATURES:-}" ] || return 0
+  sudo python3 scripts/sched_settings.py set-feature RUN_TO_PARITY > "$1" 2>&1 \
+    || log "RUN_TO_PARITY could not be put back on; the next run's settings check will say so"
+}
 finish_campaign () {
   reap
+  # A campaign stopped in the middle of such a run is put back here, into no run's folder.
+  features_back /dev/null
   sudo python3 scripts/sched_settings.py set-cpus "$ALL_CPUS" >/dev/null 2>&1
   remote_broker "cd sbl && sudo python3 scripts/receiver_delay.py broker-clear --apply" \
     >/dev/null 2>&1
@@ -237,12 +257,66 @@ run_one () {
   if sudo fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock >/dev/null 2>&1; then
     REASON="a package manager is running on the driver"; return
   fi
+  # Freeze 41 (15 Oct 2026): a setup that asks for what this runner cannot give as written fails
+  # here, before it changes anything on the machine. The journal is kept by the socket
+  # timestamps, so it needs them; both directions widen the sender's capture, so they need that
+  # capture; the send workers are the Redis producer's; and the one scheduler feature a run sets
+  # is the one it knows how to put back.
+  case "$SO_JOURNAL" in
+    ""|1|consumer) ;;
+    *) REASON="so_journal is true, for both clients, or \"consumer\", not \"$SO_JOURNAL\""; return ;;
+  esac
+  if [ -n "$SO_JOURNAL" ] && [ -z "$SO_STAMPS" ]; then
+    REASON="so_journal needs so_timestamps: the journal is written by the socket timestamps"; return
+  fi
+  if [ -n "$SEND_CAPTURE_BOTH" ] && [ -z "$SEND_CAPTURE" ]; then
+    REASON="send_capture_both needs send_capture: it widens the sender's capture"; return
+  fi
+  if [ -n "$SEND_WORKERS" ]; then
+    case "$SEND_WORKERS" in
+      *[!0-9]*|0*) REASON="send_workers is a whole number of at least one, not \"$SEND_WORKERS\""; return ;;
+    esac
+    [ "$BACKEND" = redis ] || {
+      REASON="send_workers is the Redis producer's setting, and this run is $BACKEND"; return; }
+  fi
+  case "$SCHED_FEATURES" in
+    ""|RUN_TO_PARITY|NO_RUN_TO_PARITY) ;;
+    *) REASON="sched_features is RUN_TO_PARITY or NO_RUN_TO_PARITY, not \"$SCHED_FEATURES\""; return ;;
+  esac
+  # Freeze 41 (15 Oct 2026): block I runs on two boots of the stock kernel, its default and one with
+  # idle=poll on the command line (cloud/azure/idle.sh), and a run counts for the boot its setup
+  # names only if this boot's own command line says so. Read as idle.sh reads it, as a word.
+  if [ -n "$IDLE_POLL" ]; then
+    [ -r "$BOOT_CMDLINE" ] || {
+      REASON="$BOOT_CMDLINE could not be read, so the boot the setup names cannot be confirmed"; return; }
+    local boot_args polls=0
+    boot_args=" $(cat "$BOOT_CMDLINE") "
+    case "$boot_args" in *" idle=poll "*) polls=1 ;; esac
+    if [ "$IDLE_POLL" = 1 ] && [ "$polls" != 1 ]; then
+      REASON="the setup asks for idle=poll and this boot's command line does not hold it"; return
+    fi
+    if [ "$IDLE_POLL" != 1 ] && [ "$polls" != 0 ]; then
+      REASON="the setup asks for the default boot and this boot's command line holds idle=poll"; return
+    fi
+  fi
   sudo python3 scripts/sched_settings.py set-cpus "$want_cpus" > "$RUN_DIR/set_cpus.txt" 2>&1 || {
     REASON="online CPUs did not become $want_cpus"; return; }
   if [ -n "$SLICE_NS" ]; then
     sudo python3 scripts/sched_settings.py set-slice "$SLICE_NS" > "$RUN_DIR/set_slice.txt" 2>&1 || {
       REASON="the base slice did not take $SLICE_NS ns"; return; }
     check_args+=(--slice-ns "$SLICE_NS")
+  fi
+  # Freeze 41 (15 Oct 2026): block R's runs are made with the scheduler's RUN_TO_PARITY feature on
+  # or off, written through debugfs here and held by the checks before and after the run, as the
+  # slice is; the default goes back once the run has ended (features_back). Every other run is held
+  # to that default wherever the kernel shows its features, so that a feature a crashed run left
+  # off fails the next run instead of contaminating it.
+  if [ -n "$SCHED_FEATURES" ]; then
+    sudo python3 scripts/sched_settings.py set-feature "$SCHED_FEATURES" > "$RUN_DIR/set_feature.txt" 2>&1 || {
+      REASON="the scheduler feature $SCHED_FEATURES did not take"; return; }
+    check_args+=(--feature "$SCHED_FEATURES")
+  else
+    check_args+=(--feature-if-known RUN_TO_PARITY)
   fi
   [ -n "$HZ" ] && check_args+=(--hz "$HZ")
   sudo python3 scripts/sched_settings.py check "${check_args[@]}" > "$RUN_DIR/settings_before.json" || {
@@ -361,9 +435,17 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   # full length, so that each message's receipt can be timed from the kernel's own timestamp.
   local consumer_wrap="sudo ip netns exec sblrecv sudo -u $ME" recv_full=""
   [ -n "$CONSUMER_PRIORITY" ] && consumer_wrap="sudo chrt -f 80 $consumer_wrap"
+  # Freeze 41 (15 Oct 2026): a 32 MiB capture buffer (tcpdump -B, in KiB) where a setup captures
+  # both directions of the sender, or asks for it, so that the kernel drops none of the packets the
+  # journal is checked against. It goes after the file name, so each capture's own command line
+  # still starts with the pattern that stops it below; every earlier block's captures start
+  # exactly as before.
+  local capture_buffer=()
+  if [ -n "$SEND_CAPTURE_BOTH" ] || [ -n "$CAPTURE_BUFFER" ]; then capture_buffer=(-B 32768); fi
   if [ -n "$RECV_CAPTURE" ]; then
     sudo ip netns exec sblrecv tcpdump -i any -s 0 --time-stamp-precision=nano \
-      -w "$RUN_DIR/receiver_full.pcap" host "$BROKER_PRIV" > "$RUN_DIR/receiver_full.err" 2>&1 &
+      -w "$RUN_DIR/receiver_full.pcap" "${capture_buffer[@]}" host "$BROKER_PRIV" \
+      > "$RUN_DIR/receiver_full.err" 2>&1 &
     recv_full=$!
     sleep 2
   fi
@@ -371,11 +453,16 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   # length and to the nanosecond, so that each message's departure is timed from the kernel's own
   # timestamp as R1 timed its arrival. The driver's own connections to the broker, the commands
   # this script sends it over ssh, are left out.
-  local send_full=""
+  # Freeze 41 (15 Oct 2026): block K keeps the broker's packets to the driver as well, the
+  # acknowledgments among them, so that the journal's t_rx_ack can be checked against the arrival
+  # the capture saw. Still the driver's own traffic with the broker, and still without ssh.
+  local send_full="" send_filter=(src host "$DRIVER_PRIV" and dst host "$BROKER_PRIV" and not port 22)
+  if [ -n "$SEND_CAPTURE_BOTH" ]; then
+    send_filter=(host "$DRIVER_PRIV" and host "$BROKER_PRIV" and not port 22)
+  fi
   if [ -n "$SEND_CAPTURE" ]; then
     sudo tcpdump -i eth0 -s 0 --time-stamp-precision=nano -w "$RUN_DIR/sender_full.pcap" \
-      src host "$DRIVER_PRIV" and dst host "$BROKER_PRIV" and not port 22 \
-      > "$RUN_DIR/sender_full.err" 2>&1 &
+      "${capture_buffer[@]}" "${send_filter[@]}" > "$RUN_DIR/sender_full.err" 2>&1 &
     send_full=$!
     sleep 2
   fi
@@ -410,6 +497,11 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   if [ -n "$SO_STAMPS" ]; then
     so_prod="--so-timestamps $RUN_DIR/producer_so.csv --so-transmit $SO_STAMPS"
     so_cons="--so-timestamps $RUN_DIR/consumer_so.csv --so-transmit $SO_STAMPS"
+    # Freeze 41 (15 Oct 2026): and, where the setup asks, every read and write those connections
+    # make, with their kernel timestamps, under a path stem beside the run: both clients' for
+    # blocks K, R and I, the consumer's alone for block L.
+    [ "$SO_JOURNAL" = 1 ] && so_prod="$so_prod --so-journal $RUN_DIR/producer_journal"
+    [ -n "$SO_JOURNAL" ] && so_cons="$so_cons --so-journal $RUN_DIR/consumer_journal"
   fi
   began=$(date -u +%s)
   if [ "$BACKEND" = kafka ]; then
@@ -424,10 +516,12 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
       -IDLE_SECONDS 15 "${client_args[@]}" > "$RUN_DIR/trial.log" 2>&1
     rc=$?
   else
+    # Freeze 41 (15 Oct 2026): block K's two one-worker setups send through one XADD worker instead
+    # of the producer's sixteen; a setup that names no count keeps the producer's own.
     SBL_CONSUMER_WRAP="$consumer_wrap" SBL_SCHED_WRAP="$wrap_sched" \
       timeout -k 30 $(( DURATION + 300 )) bash scripts/run_redis_trial.sh "$RUN_ID" "$run_plan" \
       "$run_speedup" "$run_maxt" -RedisHost "$REDIS_HOST" -PORT "$REDIS_PORT" \
-      -PRODUCER_EXTRA "$record_args $so_prod" \
+      -PRODUCER_EXTRA "$record_args $so_prod${SEND_WORKERS:+ --send-workers $SEND_WORKERS}" \
       -CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA${ACK_BATCH:+ --ack-batch $ACK_BATCH} $record_args $so_cons" \
       -IDLE_SECONDS 15 > "$RUN_DIR/trial.log" 2>&1
     rc=$?
@@ -552,6 +646,17 @@ values = {
     "HW_CAPTURE": "1" if p.get("hw_capture") else "",
     # Freeze 40 (14 Oct 2026): where the clients' socket timestamps take the transmit time, or none.
     "SO_STAMPS": str(p.get("so_timestamps") or ""),
+    # Freeze 41 (15 Oct 2026): the clients' journal of their broker connections (true for both,
+    # "consumer" for the consumer alone); both directions of the sender's capture; the larger
+    # capture buffer; the Redis producer's send workers; the scheduler feature the run is made
+    # under; and the boot it needs, with idle=poll (1) or without (0). A row that names none of
+    # them leaves all six empty, and its run is launched exactly as before.
+    "SO_JOURNAL": "1" if p.get("so_journal") is True else str(p.get("so_journal") or ""),
+    "SEND_CAPTURE_BOTH": "1" if p.get("send_capture_both") else "",
+    "CAPTURE_BUFFER": "1" if p.get("capture_buffer") else "",
+    "SEND_WORKERS": "" if p.get("send_workers") is None else str(p["send_workers"]),
+    "SCHED_FEATURES": str(p.get("sched_features") or ""),
+    "IDLE_POLL": "" if p.get("idle_poll") is None else ("1" if p["idle_poll"] else "0"),
     "TRACE": 1 if int(hashlib.sha256(row["key"].encode()).hexdigest(), 16) % 2 == 0 else 0,
     "HZ": round(1000 / tick) if tick else "",
 }
@@ -570,10 +675,11 @@ PY
   echo "$ROW" > "$RUN_DIR/queue_row.json"
   printf '{"lane": "%s", "profile": "%s", "driver": "%s", "commit": "%s"}\n' "$LANE" \
     "${AZ_PROFILE:-unknown}" "$(hostname)" "$(git rev-parse HEAD 2>/dev/null)" > "$RUN_DIR/lane.json"
-  log "run $KEY: $BACKEND, load $LOAD%, slice ${SLICE_NS:-kernel default}, delay $DELAY_MS ms${PRIORITY:+, go-first}${CONSUMER_PRIORITY:+, go-first consumer}${RECV_CAPTURE:+, receiver capture}${SEND_CAPTURE:+, sender capture}${HW_CAPTURE:+, card capture}${SO_STAMPS:+, socket timestamps ($SO_STAMPS)}${CPUS:+, $CPUS CPUs online}"
+  log "run $KEY: $BACKEND, load $LOAD%, slice ${SLICE_NS:-kernel default}, delay $DELAY_MS ms${PRIORITY:+, go-first}${CONSUMER_PRIORITY:+, go-first consumer}${RECV_CAPTURE:+, receiver capture}${SEND_CAPTURE:+, sender capture}${HW_CAPTURE:+, card capture}${SO_STAMPS:+, socket timestamps ($SO_STAMPS)}${SO_JOURNAL:+, journal=$SO_JOURNAL}${SEND_CAPTURE_BOTH:+, both directions of the sender}${SEND_WORKERS:+, $SEND_WORKERS send workers}${SCHED_FEATURES:+, $SCHED_FEATURES}${IDLE_POLL:+, idle_poll=$IDLE_POLL}${CPUS:+, $CPUS CPUs online}"
   REASON=""
   STOP_REASON=""
   run_one
+  features_back "$RUN_DIR/feature_back.txt"
   if [ -n "$REASON" ]; then
     echo "  [FAIL] $KEY: $REASON"
     python3 scripts/run_queue.py finish --queue "$QUEUE" --key "$KEY" --status failed \

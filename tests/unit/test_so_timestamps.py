@@ -84,6 +84,7 @@ class Kernel(object):
             self.sent += bytes(data)
 
         monkeypatch.setattr(so, "_getpeername", getpeername)
+        monkeypatch.setattr(so, "_getsockname", lambda sock: ("10.1.1.10", 40001))
         monkeypatch.setattr(so, "_setsockopt", setsockopt)
         monkeypatch.setattr(so, "_recvmsg", recvmsg)
         monkeypatch.setattr(so, "_recvmsg_into", recvmsg_into)
@@ -229,6 +230,74 @@ class TestTheSocket:
         assert (tmp_path / "bare_summary.json").exists()
 
 
+class TestTheJournal:
+    """Freeze 41: every byte each way, one row per read, every transmit timestamp, so that the
+    acknowledgments and the consumer's requests can be matched after the run."""
+
+    def test_every_byte_read_and_timestamp_is_kept_per_connection(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(socket, "socket", socket.socket)
+        stem = tmp_path / "run" / "producer_journal"
+        ledger = so.install([PORT], "sched", journal=str(stem))
+        kernel = Kernel().install(monkeypatch)
+        sock = client()
+        one = record("constant-000007")
+        assert sock.send(one) == 40
+        sock.sendall(one[40:])
+        kernel.queue.append(queue_entry(T0 + 10, 39, info=1))
+        kernel.queue.append(queue_entry(T0 + 20, len(one) - 1, info=1))
+        kernel.arriving += [(b"ack-one", T0 + 500), (b"ack-two", None)]
+        assert sock.recv(64) == b"ack-one"
+        buf = bytearray(64)
+        assert sock.recv_into(buf) == 7
+        summary = ledger.write(str(tmp_path / "run" / "producer_so.csv"))
+        assert (summary["journal_connections"], summary["journal_reads"]) == (1, 2)
+        assert (tmp_path / "run" / "producer_journal_conn0_out.bin").read_bytes() == one
+        assert (tmp_path / "run" / "producer_journal_conn0_in.bin").read_bytes() == \
+            b"ack-oneack-two"
+        reads = (tmp_path / "run" / "producer_journal_reads.csv").read_text(
+            encoding="utf-8").splitlines()
+        assert reads == ["conn,end,bytes,ns", "0,7,7,%d" % (T0 + 500), "0,14,7,"]
+        keys = (tmp_path / "run" / "producer_journal_txkeys.csv").read_text(
+            encoding="utf-8").splitlines()
+        assert keys == ["conn,key,ns", "0,39,%d" % (T0 + 10), "0,%d,%d" % (len(one) - 1, T0 + 20)]
+        streams = (tmp_path / "run" / "producer_journal_streams.csv").read_text(
+            encoding="utf-8").splitlines()
+        assert streams == ["conn,local_port,peer_host,peer_port", "0,40001,10.1.1.21,%d" % PORT]
+        sock.close()
+
+    def test_a_connection_never_timestamped_writes_no_files_and_a_bare_stem_works(
+            self, monkeypatch, tmp_path):
+        monkeypatch.setattr(socket, "socket", socket.socket)
+        monkeypatch.chdir(tmp_path)
+        ledger = so.install([PORT], journal="bare")
+        Kernel(peer=("10.1.1.21", 6379)).install(monkeypatch)
+        monkeypatch.setattr(so, "_getsockname", lambda sock: "not a tuple")
+        other = client()
+        other.sendall(b"elsewhere")
+        refused = so.Ledger("software", journal=None)
+        assert refused.journal is None
+        summary = ledger.write("bare.csv")
+        assert summary["journal_connections"] == 0
+        assert (tmp_path / "bare_reads.csv").read_text(encoding="utf-8") == "conn,end,bytes,ns\n"
+        assert not list(tmp_path.glob("bare_conn*")), "no connection was timestamped"
+        stream = so._Stream(None)
+        so.Journal(str(tmp_path / "j")).open(stream, "unix", ("10.1.1.21", PORT))
+        assert stream.index == 0 and stream.files["out"] is not None
+        for fh in stream.files.values():
+            fh.close()
+
+    def test_a_run_asks_for_the_journal_by_its_switch(self, monkeypatch, tmp_path):
+        ap = argparse.ArgumentParser()
+        so.add_arguments(ap)
+        monkeypatch.setattr(socket, "socket", socket.socket)
+        on = ap.parse_args(["--so-timestamps", str(tmp_path / "c.csv"),
+                            "--so-journal", str(tmp_path / "c_journal")])
+        ledger = so.start(on, PORT)
+        assert ledger.journal is not None and ledger.journal.stem == str(tmp_path / "c_journal")
+        plain = ap.parse_args(["--so-timestamps", str(tmp_path / "d.csv")])
+        assert so.start(plain, PORT).journal is None
+
+
 class TestTheSystemCalls:
     def test_the_queue_is_asked_about_without_waiting(self, monkeypatch):
         """poll() with a timeout of zero, for POLLERR, which it reports unasked. Stood in for, as
@@ -257,12 +326,13 @@ class TestTheSystemCalls:
 
         class Base(object):
             pass
-        for name in ("getpeername", "setsockopt", "send", "sendall", "recv", "recv_into",
-                     "recvmsg", "recvmsg_into", "close"):
+        for name in ("getpeername", "getsockname", "setsockopt", "send", "sendall", "recv",
+                     "recv_into", "recvmsg", "recvmsg_into", "close"):
             setattr(Base, name, staticmethod(
                 lambda *a, _n=name: calls.append((_n,) + a[1:]) or _n))
         monkeypatch.setattr(so, "_BASE", Base)
         so._getpeername("s")
+        so._getsockname("s")
         so._setsockopt("s", 7)
         so._send("s", b"x", 0)
         so._sendall("s", b"x", 0)
@@ -271,9 +341,10 @@ class TestTheSystemCalls:
         so._recvmsg("s", 1, 2, 3)
         so._recvmsg_into("s", ["b"], 2, 3)
         so._close("s")
-        assert [c[0] for c in calls] == ["getpeername", "setsockopt", "send", "sendall", "recv",
-                                         "recv_into", "recvmsg", "recvmsg_into", "close"]
-        assert calls[1] == ("setsockopt", socket.SOL_SOCKET, so.SO_TIMESTAMPING, 7)
+        assert [c[0] for c in calls] == ["getpeername", "getsockname", "setsockopt", "send",
+                                         "sendall", "recv", "recv_into", "recvmsg",
+                                         "recvmsg_into", "close"]
+        assert calls[2] == ("setsockopt", socket.SOL_SOCKET, so.SO_TIMESTAMPING, 7)
 
 
 class TestTheClientsLines:

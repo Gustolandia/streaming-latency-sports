@@ -78,6 +78,10 @@ def _getpeername(sock):
     return _BASE.getpeername(sock)
 
 
+def _getsockname(sock):
+    return _BASE.getsockname(sock)
+
+
 def _setsockopt(sock, flags):
     _BASE.setsockopt(sock, socket.SOL_SOCKET, SO_TIMESTAMPING, flags)
 
@@ -171,19 +175,83 @@ class _Stream(object):
         self.keys = {}
         self.sends = []
         self.closed = False
+        self.index = None
+        self.files = None
+
+
+class Journal(object):
+    """Freeze 41: every byte the broker connections carry, each way, and one row per read.
+
+    Freeze 40 kept only the reads and the send calls that carried an event id, so the producer's
+    reads of its acknowledgments were timestamped by the kernel and thrown away. The journal keeps
+    them all, with the stream offset after each read and the kernel's receive timestamp of the
+    packet that completed it, and every transmit timestamp with the offset of its send call's last
+    byte. Which acknowledgment answered which message, and which request delivered it, is then
+    read after the run from the broker's own wire format (scripts/so_journal.py), so the client
+    libraries stay unchanged. Each connection's bytes go straight to their own file, so a fast
+    run holds no more of them in memory than one buffer."""
+
+    def __init__(self, stem):
+        self.stem = stem
+        self.reads = []
+        self.streams = []
+        folder = os.path.dirname(stem)
+        if folder:
+            os.makedirs(folder, exist_ok=True)
+
+    def path(self, index, way):
+        return "%s_conn%d_%s.bin" % (self.stem, index, way)
+
+    def open(self, stream, local, peer):
+        """Give a newly timestamped connection its number and its two files."""
+        stream.index = len(self.streams)
+        stream.files = {way: open(self.path(stream.index, way), "wb", buffering=1 << 20)
+                        for way in ("out", "in")}
+        self.streams.append((stream.index, local[1] if isinstance(local, tuple) else "",
+                             peer[0], peer[1]))
+
+    def sent(self, stream, chunk):
+        stream.files["out"].write(chunk)
+
+    def read(self, stream, chunk, ns):
+        stream.files["in"].write(chunk)
+        self.reads.append((stream.index, stream.read + len(chunk), len(chunk), ns))
+
+    def write(self, streams):
+        """Close every connection's files and write the reads, the transmit timestamps and the
+        connections beside them. Every stream here was opened by this journal: the ledger opens
+        a stream's files under the same lock that adds it."""
+        for stream in streams:
+            for fh in stream.files.values():
+                fh.close()
+        with open(self.stem + "_reads.csv", "w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh, lineterminator="\n")
+            w.writerow(["conn", "end", "bytes", "ns"])
+            w.writerows((i, end, n, "" if ns is None else ns) for i, end, n, ns in self.reads)
+        with open(self.stem + "_txkeys.csv", "w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh, lineterminator="\n")
+            w.writerow(["conn", "key", "ns"])
+            for stream in streams:
+                w.writerows((stream.index, key, stream.keys[key]) for key in sorted(stream.keys))
+        with open(self.stem + "_streams.csv", "w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh, lineterminator="\n")
+            w.writerow(["conn", "local_port", "peer_host", "peer_port"])
+            w.writerows(self.streams)
+        return len(self.streams)
 
 
 class Ledger(object):
     """Everything the process's timestamping sockets saw, and the counts that say how complete it
     is. Shared by the client library's threads."""
 
-    def __init__(self, where="software"):
+    def __init__(self, where="software", journal=None):
         self.where = where
         self.flags = (TRANSMIT[where] | SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_SOFTWARE
                       | SOF_TIMESTAMPING_OPT_ID | SOF_TIMESTAMPING_OPT_TSONLY)
         self.lock = threading.Lock()
         self.streams = []
         self.reads = {}
+        self.journal = Journal(journal) if journal else None
         self.counts = {"connections": 0, "refused": 0, "transmit_timestamps": 0,
                        "other_queue_entries": 0, "reads": 0, "reads_without_timestamp": 0}
 
@@ -196,6 +264,8 @@ class Ledger(object):
             stream.sends += carried(chunk, stream.tail_sent, stream.sent)
             stream.sent += len(chunk)
             stream.tail_sent = (stream.tail_sent + chunk)[-JOINT:]
+            if self.journal is not None:
+                self.journal.sent(stream, chunk)
 
     def read(self, stream, chunk, ns):
         with self.lock:
@@ -204,6 +274,8 @@ class Ledger(object):
                 self.counts["reads_without_timestamp"] += 1
             for eid, offset in carried(chunk, stream.tail_read, stream.read):
                 self.reads.setdefault(eid, []).append((offset, ns))
+            if self.journal is not None:
+                self.journal.read(stream, chunk, ns)
             stream.read += len(chunk)
             stream.tail_read = (stream.tail_read + chunk)[-JOINT:]
 
@@ -248,6 +320,10 @@ class Ledger(object):
                        ids_sent_untimed=sum(1 for _, way, ns in rows if way == "tx" and ns is None),
                        ids_read=sum(1 for _, way, _ in rows if way == "rx"),
                        ids_read_untimed=sum(1 for _, way, ns in rows if way == "rx" and ns is None))
+        if self.journal is not None:
+            with self.lock:
+                summary["journal_connections"] = self.journal.write(self.streams)
+                summary["journal_reads"] = len(self.journal.reads)
         with open(os.path.splitext(path)[0] + "_summary.json", "w", encoding="utf-8") as fh:
             json.dump(summary, fh, indent=2, sort_keys=True)
             fh.write("\n")
@@ -304,6 +380,8 @@ class TimestampingSocket(_BASE):
         with ledger.lock:
             ledger.streams.append(stream)
             ledger.counts["connections"] += 1
+            if ledger.journal is not None:
+                ledger.journal.open(stream, _getsockname(self), peer)
         self._sbl_state = stream
         return stream
 
@@ -354,10 +432,11 @@ class TimestampingSocket(_BASE):
         _close(self)
 
 
-def install(ports, where="software"):
+def install(ports, where="software", journal=None):
     """Replace socket.socket in this process with TimestampingSocket, timestamping connections to
-    `ports`, the transmit timestamp taken where `where` says. Returns the ledger to write."""
-    ledger = Ledger(where)
+    `ports`, the transmit timestamp taken where `where` says, and every byte and read journaled
+    under the path stem `journal` when one is given. Returns the ledger to write."""
+    ledger = Ledger(where, journal)
     TimestampingSocket._ports = tuple(int(p) for p in ports)
     TimestampingSocket._ledger = ledger
     socket.socket = TimestampingSocket
@@ -373,6 +452,9 @@ def add_arguments(ap):
                          "through SO_TIMESTAMPING, and write them to this CSV")
     ap.add_argument("--so-transmit", default="software", choices=sorted(TRANSMIT),
                     help="where the kernel takes the transmit timestamp")
+    ap.add_argument("--so-journal", default=None,
+                    help="write every read and write the broker connections make, with their "
+                         "kernel timestamps, under this path stem")
 
 
 def port_of(address, default):
@@ -383,7 +465,9 @@ def port_of(address, default):
 
 def start(args, port):
     """The ledger, with the socket class replaced, when the run asked for it; else None."""
-    return install([port], args.so_transmit) if args.so_timestamps else None
+    if not args.so_timestamps:
+        return None
+    return install([port], args.so_transmit, getattr(args, "so_journal", None))
 
 
 def finish(ledger, args):

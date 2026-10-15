@@ -19,8 +19,11 @@
 #
 # A job is one line of key=value:
 #
-#   boot=      hz1000 | hz250 | hz100 | stock | cpu2 | cpu4 | cpu8 | none
-#              none is the only one that does not reboot; stock reboots onto the pinned default
+#   boot=      hz1000 | hz250 | hz100 | stock | cpu2 | cpu4 | cpu8 | idlepoll | none
+#              none is the only one that does not reboot; stock reboots onto the pinned default;
+#              idlepoll is that default boot with idle=poll added, booted once (freeze 41's
+#              block I, cloud/azure/idle.sh). Every boot but none is checked when it is back up,
+#              and every one but idlepoll must come back without idle=poll
 #   block=     the campaign to run when the machine is back up (A2, A5, A4, ...). Leave it out,
 #              with boot=none, for a job that starts nothing and only waits for the session
 #              already on the pair -- which is how a list is put on a machine mid-session.
@@ -35,7 +38,10 @@
 #   anchor=    the anchor slice
 #   clients=   "python java", for a session that opens A8
 #   cmd=       a command to run instead of a campaign, for work no calibration places -- the
-#              tools block. It holds spaces, so it takes the rest of the line.
+#              tools block. It holds spaces, so it takes the rest of the line. It is run by
+#              bash -c, so it may begin with settings for the command it runs:
+#              cmd=RATE=500 DURATION=70 WARMUP_S=20 bash cloud/azure/campaign.sh runs/azure/queues/l500.csv
+#              runs a campaign at 500 messages a second for 70 s (freeze 41's block L).
 #   note=      the rounds note. It holds spaces, so it takes the rest of the line.
 #
 # A job carries at most one of cmd= and note=, and whichever it carries comes last.
@@ -176,6 +182,13 @@ verify_boot () {
   case "$boot" in
     none) return 0 ;;
     stock) case "$running" in *sbl*) log "  wanted the stock kernel and this is $running"; return 1 ;; esac ;;
+    # Freeze 41 (15 Oct 2026): block I's second boot, which idle.sh builds on the stock kernel.
+    # A machine that came back on the default entry instead would pass every other check here
+    # and have its runs filed under idle=poll, so the token itself is read.
+    idlepoll)
+           case "$running" in *sbl*) log "  wanted the stock kernel with idle=poll and this is $running"; return 1 ;; esac
+           [ "$(bash cloud/azure/idle.sh status 2>/dev/null)" = "idle=poll on" ] \
+             || { log "  wanted idle=poll and this boot's command line does not hold it"; return 1; } ;;
     hz*)   local hz="${boot#hz}"
            case "$running" in *"sbl$hz") ;; *) log "  wanted HZ=$hz and this is $running"; return 1 ;; esac
            bash cloud/azure/kernels.sh check "$hz" >/dev/null 2>&1 \
@@ -189,6 +202,14 @@ verify_boot () {
            bash cloud/azure/cpus.sh check "$n" >/dev/null 2>&1 \
              || { log "  the machine did not come up with $n CPUs"; return 1; } ;;
   esac
+  # Freeze 41 (15 Oct 2026): and every other boot comes back without idle=poll. Its entry is
+  # booted once, so the restart after it should be the default boot again, and block I's
+  # default-boot runs are a stock job's. And cpus.sh copies the running boot's command line, so a
+  # core count asked for from the idle=poll boot would carry idle=poll into an A5 session.
+  if [ "$boot" != idlepoll ]; then
+    [ "$(bash cloud/azure/idle.sh status 2>/dev/null)" = "idle=poll off" ] \
+      || { log "  wanted $boot without idle=poll, and this boot holds it or cannot say"; return 1; }
+  fi
   return 0
 }
 
@@ -200,6 +221,7 @@ ask_for_boot () {
     hz*)  bash cloud/azure/kernels.sh boot "${boot#hz}" >/dev/null 2>&1 ;;
     cpu8) bash cloud/azure/cpus.sh restore >/dev/null 2>&1 ;;
     cpu*) bash cloud/azure/cpus.sh boot "${boot#cpu}" >/dev/null 2>&1 ;;
+    idlepoll) bash cloud/azure/idle.sh boot poll >/dev/null 2>&1 ;;
   esac
 }
 

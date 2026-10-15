@@ -34,6 +34,7 @@ RUN_FIELDS = (
     "block", "setup", "round", "attempt", "backend", "load_pct", "slice_set_ns", "point",
     "delay_set_ms", "delay_held_ms", "ack_batch", "cpus", "language", "priority",
     "consumer_priority", "recv_capture", "send_capture", "hw_capture", "so_timestamps", "plan",
+    "so_journal", "send_capture_both", "send_workers", "sched_features", "idle_poll",
     "recorded_half",
     "kernel", "config_hz",
     "tick_ms", "cpu_model", "online_cpus", "slice_in_force_ns", "clocksource", "verdict",
@@ -46,10 +47,13 @@ CAMPAIGN_FIELDS = (
 #: The settings a queue row's params carry. R1 (3 Oct 2026) added go-first for the consumer
 #: alone and the receiver's full capture; no earlier block sets either. F1 (13 Oct 2026) added
 #: the sender's capture and the card's own stamps of the receiver's packets; F2 (14 Oct 2026)
-#: where the clients' sockets took their transmit timestamps.
+#: where the clients' sockets took their transmit timestamps. Freeze 41 (15 Oct 2026) added the
+#: clients' journal of their reads and writes, both directions of the sender's capture, the Redis
+#: producer's worker count, the scheduler feature a run set, and the boot it needed.
 PLAN_KEYS = ("backend", "load_pct", "point", "ack_batch", "cpus", "language", "priority",
              "consumer_priority", "recv_capture", "send_capture", "hw_capture", "so_timestamps",
-             "plan")
+             "plan", "so_journal", "send_capture_both", "send_workers", "sched_features",
+             "idle_poll")
 
 
 def _json(path):

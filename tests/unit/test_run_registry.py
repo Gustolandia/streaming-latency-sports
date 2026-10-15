@@ -126,6 +126,27 @@ class TestTheRuns:
                                 dict(params, so_timestamps="sched", hw_capture=None))), {})
         assert (f2["campaign"], f2["so_timestamps"], f2["hw_capture"]) == ("f2", "sched", None)
 
+    def test_a_freeze_41_run_names_its_journal_and_the_settings_its_block_set(self, tmp_path):
+        """Freeze 41 (15 Oct 2026) journals the clients' reads and writes, captures both
+        directions of the sender's connection, runs Redis with one send worker, sets a scheduler
+        feature, and needs a boot; the registry carries each, and a row that sets none says so."""
+        params = {"backend": "redis", "load_pct": 88, "delay_ms": 0, "slice_ns": 3000000,
+                  "so_timestamps": "sched", "so_journal": True, "send_capture": True,
+                  "send_capture_both": True, "send_workers": 1, "priority": True}
+        row = rr.run_row(str(run(tmp_path, "law_k_r001-K-redis-l88-rt-w1-a1", params)), {})
+        assert (row["campaign"], row["so_journal"], row["send_capture_both"]) == ("k", True, True)
+        assert row["send_workers"] == 1 and row["sched_features"] is None
+        r = rr.run_row(str(run(tmp_path, "law_r_r001-R-kafka-nortp-a1",
+                               {"backend": "kafka", "load_pct": 88, "so_journal": True,
+                                "sched_features": "NO_RUN_TO_PARITY"})), {})
+        assert r["sched_features"] == "NO_RUN_TO_PARITY" and r["idle_poll"] is None
+        i = rr.run_row(str(run(tmp_path, "law_i_poll_r001-I-redis-poll-a1",
+                               {"backend": "redis", "load_pct": 88, "idle_poll": True,
+                                "so_journal": "consumer"})), {})
+        assert (i["campaign"], i["idle_poll"], i["so_journal"]) == ("i_poll", True, "consumer")
+        assert set(("so_journal", "send_capture_both", "send_workers", "sched_features",
+                    "idle_poll")) <= set(rr.RUN_FIELDS)
+
     def test_an_r1_run_names_its_stampless_queue_and_both_of_its_settings(self, tmp_path):
         """R1 (3 Oct 2026) named its first queue r1, with no stamp, raised the consumer alone and
         captured the receiver's packets in every run. The registry says all three."""

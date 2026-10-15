@@ -408,6 +408,17 @@ class TestFilesAndTheCommandLine:
         assert osc.read_table(str(tmp_path / "absent.csv")) == []
         assert osc.read_table(None) == []
 
+    def test_a_pilot_never_joins_a_judged_block_and_its_rung_is_read_from_its_id(self):
+        """Block L's prefix is a single letter, so its rung after it is what separates its runs
+        from its pilot's (LP50-...), which share a folder only by mistake."""
+        assert osc.in_block("L500-kafka-l0", "L") and not osc.in_block("LP500-kafka-l0", "L")
+        assert osc.in_block("K-redis-l0-rt", "K") and not osc.in_block("KP-redis-l0-rt", "K")
+        assert not osc.in_block("RP-kafka-run_to_parity", "R")
+        assert not osc.in_block("IP-redis-poll", "I") and osc.in_block("I-redis-poll", "I")
+        assert not osc.in_block("L-kafka", "L") and not osc.in_block("", "L")
+        assert osc.rate_of("L5000-redis-l88") == 5000 and osc.rate_of("LP50-kafka-l0") == 50
+        assert osc.rate_of("K-kafka-l0-ord") is None and osc.rate_of("LP-kafka") is None
+
     def test_a_run_without_its_setup_reads_as_none(self, tmp_path):
         run = str(tmp_path / "law_x")
         os.makedirs(run)

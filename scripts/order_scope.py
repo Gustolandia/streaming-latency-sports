@@ -45,8 +45,24 @@ import recv_wait as rw  # noqa: E402
 import so_fix  # noqa: E402
 import so_journal as sj  # noqa: E402
 
-#: Where each block's setups start, by the prefix of their ids in the queue.
+#: Where each block's setups start, by the prefix of their ids in the queue. Block L's ids carry
+#: their rung right after it (L50-, L500-, L5000-), so a pilot's (KP-, RP-, LP50-, IP-) never
+#: matches a judged block.
 PREFIX = {"K": "K-", "R": "R-", "P": "P-", "L": "L", "I": "I-"}
+
+
+def in_block(setup, block):
+    """Whether a setup id belongs to a judged block: its prefix, and for block L a digit after it."""
+    if block == "L":
+        return setup[:1] == "L" and setup[1:2].isdigit()
+    return setup.startswith(PREFIX[block])
+
+
+def rate_of(setup):
+    """The publish rate a block L setup, or its pilot's, names in its id: L500-... or LP500-..."""
+    head = setup.split("-", 1)[0]
+    digits = "".join(c for c in head if c.isdigit())
+    return int(digits) if head[:1] == "L" and digits else None
 #: The brokers' ports, for finding their connections in a capture.
 PORTS = {"kafka": 9092, "redis": 6379}
 
@@ -215,7 +231,7 @@ def read_ladder_run(run_dir, driver, broker, receiver, warmup_s):
     """Block L: one run's W_so against the captures' W, the pull flag, packets per read and S."""
     setup, params, msgs = messages(run_dir, warmup_s)
     out = _base(run_dir, setup, params)
-    out["rate"] = int(setup.split("-", 1)[0][1:]) if setup.startswith("L") else None
+    out["rate"] = rate_of(setup)
     sent = ff.departure_times(os.path.join(run_dir, "sender_full.pcap"), driver, broker)
     got = rw.kernel_times(os.path.join(run_dir, "receiver_full.pcap"), broker, receiver)
     out["messages"] = len(msgs)
@@ -504,7 +520,7 @@ def block_runs(folders, block):
             path = os.path.join(folder, name)
             if not name.startswith("law_") or not os.path.isdir(path):
                 continue
-            if setup_of(path)[0].startswith(PREFIX[block]):
+            if in_block(setup_of(path)[0], block):
                 found.append((path, rw.read_json(os.path.join(path, "integrity.json"))
                               .get("verdict")))
     return found

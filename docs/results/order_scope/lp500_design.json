@@ -1,10 +1,10 @@
 {
-  "about": "Freeze 41's pilot of block L: one run per rung on each broker at no load, not judged; run once per rung with that rung's RATE. Queue: python3 scripts/run_queue.py make --design docs/results/order_scope/l_pilot_design.json --out runs/azure/queues/l_pilot.csv",
+  "about": "Freeze 41, block L's pilot (instruments only, never judged): one run per broker at 500 messages a second, idle, to settle the top rung. Run with RATE=500 DURATION=70 WARMUP_S=20. Queue: python3 scripts/run_queue.py make --design docs/results/order_scope/lp500_design.json --out runs/azure/queues/lp500.csv",
   "rounds": 1,
-  "seed": 20261022,
+  "seed": 20261026,
   "setups": [
     {
-      "id": "LP-kafka",
+      "id": "LP500-kafka-l0",
       "slice_ns": 3000000,
       "delay_ms": 0,
       "backend": "kafka",
@@ -16,7 +16,7 @@
       "send_capture_both": true
     },
     {
-      "id": "LP-redis",
+      "id": "LP500-redis-l0",
       "slice_ns": 3000000,
       "delay_ms": 0,
       "backend": "redis",

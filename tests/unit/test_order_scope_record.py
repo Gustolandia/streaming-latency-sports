@@ -6,10 +6,12 @@ passing unseen, and every design file the pair ran from must name a block the de
 """
 import hashlib
 import json
+import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent.parent
 HERE = REPO / "docs" / "results" / "order_scope"
+sys.path.insert(0, str(REPO / "scripts"))
 
 
 def test_the_design_is_the_one_fingerprinted_before_the_runs():
@@ -62,11 +64,27 @@ def test_each_block_runs_what_the_design_table_counts():
         assert len(set(ids)) == len(ids) and all(i.startswith(block) for i in ids), block
 
 
+#: The pilot's files: K and R in one queue, L one per rung, I one run on the idle=poll boot.
+PILOTS = ["k_pilot_design.json", "lp50_design.json", "lp500_design.json", "lp5000_design.json",
+          "ip_design.json"]
+
+
 def test_the_pilots_cannot_be_judged():
-    """The judge reads a block's runs by their setup's prefix; the pilot's prefixes differ."""
-    for name in ("k_pilot_design.json", "l_pilot_design.json"):
+    """The judge reads a block's runs by their setup's prefix; the pilot's prefixes differ, and
+    every design file in the folder is either a judged block's or the pilot's."""
+    import order_scope as osc
+    for name in PILOTS:
         for s in design(name)["setups"]:
-            assert s["id"][:2] in ("KP", "RP", "LP"), s["id"]
+            assert s["id"][:2] in ("KP", "RP", "LP", "IP"), s["id"]
+            assert not any(osc.in_block(s["id"], b) for b in osc.PREFIX), s["id"]
+            assert design(name)["rounds"] == 1, name
+    for name in sum(JUDGED.values(), []):
+        assert all(any(osc.in_block(s["id"], b) for b in osc.PREFIX)
+                   for s in design(name)["setups"]), name
+    listed = sorted(sum(JUDGED.values(), []) + PILOTS)
+    assert sorted(p.name for p in HERE.glob("*_design.json")) == listed
+    assert [osc.rate_of(s["id"]) for f in PILOTS[1:4] for s in design(f)["setups"]] == [
+        50, 50, 500, 500, 5000, 5000]
 
 
 def test_every_setup_records_what_its_predictions_read():
@@ -76,7 +94,7 @@ def test_every_setup_records_what_its_predictions_read():
     for f in JUDGED["K"] + JUDGED["R"] + JUDGED["I"]:
         assert all(s.get("so_journal") is True and s.get("so_timestamps") == "sched"
                    for s in design(f)["setups"]), f
-    for f in JUDGED["L"] + ["l_pilot_design.json"]:
+    for f in JUDGED["L"] + PILOTS[1:4]:
         assert all(s.get("so_journal") == "consumer" and s.get("so_timestamps") == "sched"
                    for s in design(f)["setups"]), f
     for f in JUDGED["K"] + JUDGED["L"]:

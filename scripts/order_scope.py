@@ -465,15 +465,21 @@ def judge_ladder(rows, bins):
         v = _value(rows, "Dif_median", setup=setup)
         checks.append({"setup": setup, "median_us": v, "holds": v is not None and v <= AGREE_US})
     out["L-a"] = {"verdict": _verdict(checks), "checks": checks}
-    checks = []
+    checks, beyond = [], []
     for rate in sorted(set(r["rate"] for r in rows)):
         for backend in ("kafka", "redis"):
             idle = _value(rows, "Wso_median", rate=rate, backend=backend, load_pct=0)
             busy = _value(rows, "Wso_median", rate=rate, backend=backend, load_pct=88)
+            # D44-10: a rung the pilot found the load could not be held at runs idle only, so
+            # it has no loaded setup to compare; it is out of reach, not a failure.
+            if busy is None and not any(r["rate"] == rate and r["backend"] == backend and
+                                        int(r["load_pct"]) == 88 for r in rows):
+                beyond.append({"rate": rate, "backend": backend, "idle": idle})
+                continue
             holds = None not in (idle, busy) and abs(busy - idle) <= LADDER_MOVE * idle
             checks.append({"rate": rate, "backend": backend, "idle": idle, "busy": busy,
                            "holds": holds})
-    out["L-b"] = {"verdict": _verdict(checks), "checks": checks,
+    out["L-b"] = {"verdict": _verdict(checks), "checks": checks, "out_of_reach": beyond,
                   "holds_at_rates": sorted(set(c["rate"] for c in checks) - set(
                       c["rate"] for c in checks if not c["holds"]))}
     checks, described = [], []

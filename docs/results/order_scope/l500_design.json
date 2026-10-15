@@ -1,5 +1,5 @@
 {
-  "about": "Freeze 41, block L, the rung at 500 messages a second: run with RATE=500 DURATION=70 WARMUP_S=20. Queue: python3 scripts/run_queue.py make --design docs/results/order_scope/l500_design.json --out runs/azure/queues/l500.csv",
+  "about": "Freeze 41, block L, the rung at 500 messages a second: run with RATE=500 DURATION=70 WARMUP_S=20. Queue: python3 scripts/run_queue.py make --design docs/results/order_scope/l500_design.json --out runs/azure/queues/l500.csv The pilot held 83.5% (Kafka) and 85.7% (Redis) of an 88% load beside the clients at this rate, at or past the integrity rule's 3-point edge, so this rung runs its idle setups only (D44-10).",
   "rounds": 4,
   "seed": 20261020,
   "setups": [
@@ -16,35 +16,11 @@
       "send_capture_both": true
     },
     {
-      "id": "L500-kafka-l88",
-      "slice_ns": 3000000,
-      "delay_ms": 0,
-      "backend": "kafka",
-      "load_pct": 88,
-      "recv_capture": true,
-      "send_capture": true,
-      "so_timestamps": "sched",
-      "so_journal": "consumer",
-      "send_capture_both": true
-    },
-    {
       "id": "L500-redis-l0",
       "slice_ns": 3000000,
       "delay_ms": 0,
       "backend": "redis",
       "load_pct": 0,
-      "recv_capture": true,
-      "send_capture": true,
-      "so_timestamps": "sched",
-      "so_journal": "consumer",
-      "send_capture_both": true
-    },
-    {
-      "id": "L500-redis-l88",
-      "slice_ns": 3000000,
-      "delay_ms": 0,
-      "backend": "redis",
-      "load_pct": 88,
       "recv_capture": true,
       "send_capture": true,
       "so_timestamps": "sched",

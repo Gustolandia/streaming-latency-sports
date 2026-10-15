@@ -381,6 +381,28 @@ class TestJudgingTheOthers:
         assert out["L-b"]["holds_at_rates"] == [50]
         assert out["L-a"]["verdict"] == out["L-c"]["verdict"] == "not confirmed"
 
+    def test_a_rung_run_idle_only_is_out_of_reach_not_a_failure(self):
+        """D44-10: at 500 and 2,000 messages a second the pilot could not hold an 88% load beside
+        the clients, so those rungs run idle only and L-b is judged where both loads ran."""
+        rows = []
+        for rate, loads in ((50, (0, 88)), (2000, (0,))):
+            for b in ("kafka", "redis"):
+                for load in loads:
+                    rows.append({"setup": "L%d-%s-l%d" % (rate, b, load), "rate": rate,
+                                 "backend": b, "load_pct": load, "Dif_median": "3",
+                                 "Wso_median": 800.0 + 10 * load / 88, "flagged": 0,
+                                 "flag_known": 100, "reads": 100, "reads_multi": 0, "S_neg": 0,
+                                 "S_count": 100, "Wso_flagged_median": "",
+                                 "Wso_unflagged_median": 800.0})
+        out = osc.judge_ladder(rows, [])
+        assert out["L-b"]["verdict"] == "confirmed" and out["L-b"]["holds_at_rates"] == [50]
+        assert [(c["rate"], c["backend"]) for c in out["L-b"]["out_of_reach"]] == [
+            (2000, "kafka"), (2000, "redis")]
+        rows.append(dict(rows[-1], setup="L2000-redis-l88", load_pct=88, Wso_median=""))
+        out = osc.judge_ladder(rows, [])
+        assert out["L-b"]["verdict"] == "not confirmed", (
+            "a loaded setup that ran but read nothing is a failure, not out of reach")
+
     def test_idle_processors(self):
         rows = [{"backend": b, "idle_poll": p, "bump": bump, "S_neg": 100, "dack_median": d,
                  "dack_waited": 5, "timed": 1000}

@@ -46,6 +46,11 @@ def test_every_design_file_names_a_block_of_the_design():
 JUDGED = {"K": ["k_design.json"], "R": ["r_design.json"], "P": ["p_design.json"],
           "L": ["l50_design.json", "l500_design.json", "l2000_design.json"],
           "I": ["i_default_design.json", "i_poll_design.json"]}
+#: Runs the plan's pilot row (D44-10) took out of a block the design's table counts, and why. The
+#: table is fingerprinted and cannot change, so the difference is recorded here, beside its reason.
+PLAN_CHANGES = {"L": (-16, "the pilot held only 83.5-85.7% of an 88% load at 500 messages a "
+                           "second and 80.0-81.9% at 2,000, so those rungs run their idle setups "
+                           "only, and L-b is judged at 50")}
 
 
 def test_each_block_runs_what_the_design_table_counts():
@@ -60,7 +65,7 @@ def test_each_block_runs_what_the_design_table_counts():
     for block, files in JUDGED.items():
         pair, rounds, runs = table[block]
         counted = sum(len(design(f)["setups"]) * design(f)["rounds"] for f in files)
-        assert counted == runs, (block, counted, runs)
+        assert counted == runs + PLAN_CHANGES.get(block, (0, ""))[0], (block, counted, runs)
         assert {design(f)["rounds"] for f in files} == {rounds}, block
         ids = [s["id"] for f in files for s in design(f)["setups"]]
         assert len(set(ids)) == len(ids) and all(i.startswith(block) for i in ids), block
@@ -109,3 +114,29 @@ def test_every_setup_records_what_its_predictions_read():
                    for s in design(f)["setups"]), f
     assert [s["load_pct"] for s in design("r_design.json")["setups"]] == [88] * 4
     assert {s["delay_ms"] for s in design("p_design.json")["setups"]} == {0, 1, 2}
+
+
+def test_the_freeze_is_fingerprinted_and_listed():
+    """The plan is checked against the fingerprints in its folder, as every freeze is, and the
+    freezes' own record lists it."""
+    folder = REPO / "freezes" / "41-experiment-plan"
+    names = []
+    for line in (folder / "SHA256SUMS").read_text(encoding="utf-8").splitlines():
+        digest, name = line.split()
+        assert hashlib.sha256((folder / name).read_bytes()).hexdigest() == digest, name
+        names.append(name)
+    assert sorted(names) == ["experiment_plan.pdf", "experiment_plan.tex"]
+    record = (REPO / "freezes" / "README.md").read_text(encoding="utf-8")
+    assert "[`41-experiment-plan/`](41-experiment-plan/) | 15 October 2026 |" in record
+
+
+def test_the_plans_pilot_row_says_what_the_design_files_run():
+    """D44-10's changes, read against the files the pairs run from."""
+    plan = " ".join((REPO / "freezes" / "41-experiment-plan" / "experiment_plan.tex")
+                    .read_text(encoding="utf-8").split())
+    assert "the top rung is 2,000" in plan and "block L has 32 runs" in plan
+    assert "L-b is judged at 50 messages a second alone" in plan
+    assert sum(len(design(f)["setups"]) * design(f)["rounds"] for f in JUDGED["L"]) == 32
+    for name in ("l500_design.json", "l2000_design.json"):
+        assert {s["load_pct"] for s in design(name)["setups"]} == {0}, name
+    assert {s["load_pct"] for s in design("l50_design.json")["setups"]} == {0, 88}

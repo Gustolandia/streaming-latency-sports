@@ -707,8 +707,24 @@ milliseconds for \kafka{} and Pulsar, and keep the positivity filter (Supplement
 The late reading, a clock read delayed while its thread waits for a core, and the deletion of
 values at or below zero are cheap to detect, and most of what they cost is cheap to repair
 (Table~\ref{tab:checks}). One fix ends the late reading in any tool that times messages: take both
-of a message's timestamps from the kernel, not from the tool's threads. It comes first, and the
-rest find or shrink the late reading in a tool that still reads the clock in its threads.
+of a message's timestamps from the kernel, not from the tool's threads (Fig.~\ref{fig:kernel}). It
+comes first, and the rest find or shrink the late reading in a tool that still reads the clock in
+its threads.
+
+% Set at its first citation, the fix above; make_paper_figures.plot_kernel_fix draws it.
+% 15 Oct 2026: the fix drawn for the industry's reader, beside the text that gives its steps.
+\begin{figure}[tb]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/kernel_timestamps.pdf}
+\caption{\textbf{Timed between the kernel's timestamps, a message's latency holds no thread's
+wait.} The client's threads read the clock at the publish call, $t_{\mathrm{pub}}$, and at
+receipt, $t_{\mathrm{recv}}$, and the consumer's thread first waits for a core. The kernel
+timestamps the message's packet as it leaves, $t_{\mathrm{tx}}$, and as it arrives,
+$t_{\mathrm{rx}}$, without waiting for either thread. The latency between them, $W$, holds the
+network and the broker. Any thread's wait falls in $H_{\mathrm{out}}$ or $H_{\mathrm{in}}$, and
+$D = H_{\mathrm{out}} + W + H_{\mathrm{in}}$ for every message.}
+\label{fig:kernel}
+\end{figure}
 
 \begin{table}[tb]
 \caption{\textbf{Most steps cost little, and most were measured.} What a benchmark author or
@@ -764,7 +780,7 @@ its receive timestamp, the \emph{kernel-timed latency} $W$, therefore holds the 
 broker and none of the clients' waits. The waits are not lost. They fall before and after $W$:
 $H_{\mathrm{out}}$ runs from the publish call to the transmit timestamp, and $H_{\mathrm{in}}$ runs
 from the receive timestamp to the consumer's reading, so that $D = H_{\mathrm{out}} + W +
-H_{\mathrm{in}}$ for every message. A tool can therefore report what the network and the broker
+H_{\mathrm{in}}$ for every message (Fig.~\ref{fig:kernel}). A tool can therefore report what the network and the broker
 did, $W$, beside what the application saw, $D$.
 
 All five predictions we fixed before any run held. Over $\fullFixRuns$ runs on both brokers, timed from packet captures,

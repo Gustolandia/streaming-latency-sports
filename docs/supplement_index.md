@@ -356,8 +356,8 @@ with no gate, and the only one that costs $220 a page.
 
 ## Figure inventory
 
-`docs/results/figures/` holds thirty-three PDFs. Twenty-six are included by at least one
-document: five by the main text, three by the journal supplement and twenty by the postmortem.
+`docs/results/figures/` holds thirty-four PDFs. Twenty-seven are included by at least one
+document: six by the main text, three by the journal supplement and twenty by the postmortem.
 Seven are included by none and are kept deliberately rather than by oversight: four are listed
 below as retained, and three are the candidates of the next section. An internal review round
 (13) asked which was which, so the answer lives here instead of in anyone's memory. A test
@@ -368,14 +368,16 @@ those of the 1 October 2026 build, with the section that carries the figure; bot
 number their figures S1, S2, and so on. The rebuild of 5 October 2026 left the main text three
 figures and the journal supplement four; every figure that left them is in the postmortem or
 listed here as retained. The revision of 6 October 2026 added two to the main text, the
-residual wait and the deletion figure, which left the journal supplement for it.
+residual wait and the deletion figure, which left the journal supplement for it, and the rewrite
+of 15 October 2026 one more, the kernel's timestamps, in Section VI.
 
 | Figure | Where it appears |
 |---|---|
 | `measurement_model` | main text, Fig. 1 since 4 Oct 2026: (a) the whole system, which machine runs what, the two legs, where each timestamp is read, and where each failure enters; (b) the thread timeline, with $A$ and $D$ drawn from $t_{\mathrm{pub}}$ (panel (b) split off round 52) |
 | `s_distribution` | main text, Fig. 2 since 5 Oct 2026: the distribution of $S = t_{\mathrm{recv}} - t_{\mathrm{ack}}$ on one clock at nanosecond resolution, its values below zero in red, beside $D$ on the same messages; panel (a) of `deletion_histogram` alone at column width (`scripts/make_deletion_histogram.py --s-distribution`) |
 | `residual_wait` | main text, Fig. 3 since 6 Oct 2026: each acknowledgment's wait for a core, on both brokers, against the shapes a whole slice and the rest of a slice predict; the column-width panel of `wait_shape` (`scripts/make_wait_shape_figure.py`, `build_paper_panel`) |
-| `remedies` | main text, Fig. 5 since 6 Oct 2026, the repair alone: every group of runs' error timed from the acknowledgment, on the exposure curve, and once the publish latency is added back. Fig. 3 from 5 Oct and Fig. 4 from 4 Oct with a panel (b), every matched pair at normal and real-time priority, which is now the first row of the main text's Table II |
+| `kernel_timestamps` | main text, Fig. 5 since 15 Oct 2026, Section VI's: where the kernel timestamps a message and where the clients' waits fall. The threads' readings at the publish call and at receipt sit over the kernel's transmit and receive timestamps, with the end-to-end latency split into the time before, the kernel-timed latency and the time after (`scripts/make_paper_figures.py`, `plot_kernel_fix`) |
+| `remedies` | main text, Fig. 6 since 15 Oct 2026, Fig. 5 from 6 Oct 2026, the repair alone: every group of runs' error timed from the acknowledgment, on the exposure curve, and once the publish latency is added back. Fig. 3 from 5 Oct and Fig. 4 from 4 Oct with a panel (b), every matched pair at normal and real-time priority, which is now the first row of the main text's Table II |
 | `stall_spectrum` | supplement, Fig. S1 (S3.7), since 4 Oct 2026 (main text Fig. 3 until then; Section IV-C gives every number it draws) |
 | `deletion_phases` | main text, Fig. 4 since 6 Oct 2026, Section V-C's, across both columns and drawn at the paper's 7.16 in again; supplement, Fig. S2 (S4.1), from 5 Oct, drawn at the supplement's 6.5 in width; main text Fig. 3 from 4 Oct, Fig. 4 before (added 28 Sep 2026: the four-phase drawing of one millisecond beside the retention of every captured setting, mechanism beside consequence; its panel (b) is the former single-panel `deletion` figure, whose file and builder were retired with it; Fig. 5 until v6 put the industry's section before the practical implications) |
 | `payload_flip` | supplement, Fig. S2 (S4.3) since 6 Oct 2026, Fig. S3 from 5 Oct; postmortem, Fig. S5 (S10) |

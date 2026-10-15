@@ -41,6 +41,9 @@ GREY = "#555555"
 # end-to-end latency, kept apart from A's producer blue so the two brackets read as two.
 FAILURE_RED = "#b22222"
 END_TO_END = "#2e7d32"
+# 15 Oct 2026: the kernel's two timestamps and the latency between them, W, in a colour no
+# client thread or span already wears.
+KERNEL = "#6a3d9a"
 
 # Injected one-way delay (ms) -> median TTI (ms), from docs/results/cloud/net_d*/.
 # The 0 ms condition is condemned by the integrity gate in both backends and is excluded
@@ -551,6 +554,69 @@ def plot_mechanism(mech_ax):
     # the note was the one element carrying no part of the mechanism itself.
 
 
+def plot_kernel_fix(ax):
+    """Section VI's figure: where the kernel timestamps a message, and where the waits fall.
+
+    15 Oct 2026, the author: the general solution must be clearly explained for the industry.
+    Fig. 1(b) has no room for the kernel's departure timestamp -- the publish arrow and the
+    guides from t_sched and t_pub pass where its label would go -- so the fix has a drawing of
+    its own. Two lanes: the client's threads, which read the clock at the publish call and at
+    receipt and may first wait for a core, over the kernel, which timestamps the packet as it
+    leaves and as it arrives without waiting for either. D is drawn over the whole and its three
+    parts under it, so the eye finds the wait outside W.
+    """
+    ax.set_xlim(0, 10.4)
+    ax.set_ylim(-1.55, 2.05)
+    ax.axis("off")
+    y_thr, y_ker = 1.55, 0.55
+    for y, label, colour in ((y_thr, "client" + NL + "threads", GREY), (y_ker, "kernel", KERNEL)):
+        ax.annotate("", xy=(10.2, y), xytext=(1.55, y),
+                    arrowprops=dict(arrowstyle="->", color=GREY, linewidth=1.0))
+        ax.text(0.05, y, label, fontsize=8, color=colour, ha="left", va="center",
+                linespacing=0.95)
+
+    x_pub, x_tx, x_rx, x_recv = 2.05, 3.55, 7.15, 8.95
+    # the threads' two readings of the clock
+    for x, sym, colour in ((x_pub, r"$t_{\mathrm{pub}}$", KAFKA),
+                           (x_recv, r"$t_{\mathrm{recv}}$", REDIS)):
+        ax.plot([x], [y_thr], marker="o", markersize=5, color=colour)
+        ax.text(x, y_thr + 0.20, sym, fontsize=8, color=colour, ha="center", va="bottom")
+    # The kernel's two timestamps, and the message's path between them. Each label runs inward
+    # from its tick, inside W: centred on t_rx, its box met the wait's label above it by 1.1 pt.
+    for x, sym, side, nudge in ((x_tx, r"leaves, $t_{\mathrm{tx}}$", "left", -0.08),
+                                (x_rx, r"arrives, $t_{\mathrm{rx}}$", "right", 0.08)):
+        ax.plot([x], [y_ker], marker="|", markersize=11, color=KERNEL)
+        ax.text(x + nudge, y_ker + 0.20, sym, fontsize=8, color=KERNEL, ha=side, va="bottom")
+    ax.annotate("", xy=(x_rx - 0.08, y_ker + 0.02), xytext=(x_tx + 0.08, y_ker + 0.02),
+                arrowprops=dict(arrowstyle="->", color=GREY, linewidth=0.9,
+                                linestyle=(0, (3, 2))))
+    ax.text((x_tx + x_rx) / 2, y_ker - 0.16, "network and broker", fontsize=8, color=GREY,
+            ha="center", va="top")
+    # the consumer's wait for a core, after the kernel's receive timestamp
+    ax.annotate("", xy=(x_recv, y_thr), xytext=(x_rx, y_thr),
+                arrowprops=dict(arrowstyle="<->", color=FAILURE_RED, linewidth=1.1))
+    ax.text((x_rx + x_recv) / 2, y_thr - 0.14, "waits for" + NL + "a core", fontsize=8,
+            color=FAILURE_RED, ha="center", va="top", linespacing=0.95)
+
+    # Guides down to the brackets: D's from the threads' readings, W's from the kernel's. D's
+    # label sits midway between W's two guides, clear of both.
+    y_d, y_h = -0.55, -1.15
+    for x, y0, y1 in ((x_pub, y_thr - 0.10, y_d - 0.05), (x_recv, y_thr - 0.10, y_d - 0.05),
+                      (x_tx, y_ker - 0.10, y_h), (x_rx, y_ker - 0.10, y_h)):
+        ax.plot([x, x], [y0, y1], color=GREY, linewidth=0.7, linestyle=(0, (1, 2)), zorder=0)
+    ax.annotate("", xy=(x_recv, y_d), xytext=(x_pub, y_d),
+                arrowprops=dict(arrowstyle="<->", color=END_TO_END, linewidth=1.1))
+    ax.text((x_tx + x_rx) / 2, y_d + 0.12, r"$D$: end-to-end latency", fontsize=8,
+            color=END_TO_END, ha="center", va="bottom")
+    for x0, x1, label, colour in ((x_pub, x_tx, r"$H_{\mathrm{out}}$", GREY),
+                                  (x_tx, x_rx, r"$W$: kernel-timed latency", KERNEL),
+                                  (x_rx, x_recv, r"$H_{\mathrm{in}}$", GREY)):
+        ax.annotate("", xy=(x1, y_h), xytext=(x0, y_h),
+                    arrowprops=dict(arrowstyle="<->", color=colour, linewidth=1.1))
+        ax.text((x0 + x1) / 2, y_h - 0.12, label, fontsize=8, color=colour, ha="center",
+                va="top")
+
+
 def plot_delta(h1_ax):
     """The stamping-asymmetry density, schematic. Supplement only: it is a drawing,
     and the measured version of this object is the traced stall spectrum in the main text.
@@ -970,6 +1036,15 @@ def main(argv=None):
         ax_time.set_title("(b) When each timestamp is read", fontsize=8, loc="left")
         return _save(fig, out, "measurement_model", check_layout=layout_is_shipped)
 
+    def _kernel():
+        # Drawn a little under the column's 3.5 in, so that the cropped file, padding and all,
+        # is enlarged on inclusion and never shrunk: its 8 pt type prints at 8 pt or more, as
+        # the other column figures' does. The axis-free panel is laid out by hand, as Fig. 1's.
+        fig, ax = plt.subplots(figsize=(3.37, 1.60))
+        plot_kernel_fix(ax)
+        fig.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01)
+        return _save(fig, out, "kernel_timestamps", check_layout=layout_is_shipped)
+
     def _delta():
         # Drawn at the width the supplement includes it at. Drawn wider, every label is
         # scaled down on inclusion and 8 pt type lands at 7.3 pt, below the floor.
@@ -1021,6 +1096,7 @@ def main(argv=None):
 
     render("pipeline_schematic", [], _pipeline)
     render("measurement_model", [], _model)
+    render("kernel_timestamps", [], _kernel)
     render("delta_schematic", [], _delta)
     render("quantum_geometry", [], _quantum)
     render("workload_profile", [profiles], _workload)

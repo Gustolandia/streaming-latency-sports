@@ -199,6 +199,39 @@ class TestTheSystemPanel:
             assert want in said, want
 
 
+class TestTheKernelFigure:
+    """Section VI's figure since 15 Oct 2026: the fix, drawn for the industry's reader. The
+    threads' two readings over the kernel's two timestamps, D over the whole and its three parts
+    under it, so the wait for a core lands visibly outside W."""
+
+    def test_it_draws_every_quantity_the_caption_names(self, ax):
+        import make_paper_figures as mpf
+        mpf.plot_kernel_fix(ax)
+        said = [" ".join(t.get_text().split()) for t in ax.texts]
+        for want in ("client threads", "kernel", r"$t_{\mathrm{pub}}$", r"$t_{\mathrm{recv}}$",
+                     r"leaves, $t_{\mathrm{tx}}$", r"arrives, $t_{\mathrm{rx}}$",
+                     "network and broker", "waits for a core", r"$D$: end-to-end latency",
+                     r"$H_{\mathrm{out}}$", r"$W$: kernel-timed latency", r"$H_{\mathrm{in}}$"):
+            assert want in said, want
+        assert not ax.axison, "a schematic, not a plot"
+
+    def test_the_wait_lies_between_the_receive_timestamp_and_the_reading(self, ax):
+        """The point of the drawing: the consumer's wait starts where W ends, at t_rx, and runs
+        to t_recv, so no part of it is inside W."""
+        import make_paper_figures as mpf
+        mpf.plot_kernel_fix(ax)
+        red = [a for a in ax.texts if a.get_text() == ""
+               and a.arrow_patch is not None
+               and a.arrow_patch.get_edgecolor()[:3] == matplotlib.colors.to_rgb(mpf.FAILURE_RED)]
+        assert len(red) == 1, "one wait"
+        (x0, _), (x1, _) = red[0].xyann, red[0].xy
+        kernel = [a for a in ax.texts if a.get_text() == "" and a.arrow_patch is not None
+                  and a.arrow_patch.get_edgecolor()[:3] == matplotlib.colors.to_rgb(mpf.KERNEL)]
+        assert len(kernel) == 1, "one W bracket"
+        (w0, _), (w1, _) = kernel[0].xyann, kernel[0].xy
+        assert w0 < w1 <= x0 < x1, (w0, w1, x0, x1)
+
+
 class TestHelpers:
     def test_read_returns_none_for_a_missing_file(self, temp_dir):
         assert _read(temp_dir / "nope.csv") is None
@@ -231,8 +264,9 @@ class TestMain:
     def test_renders_every_figure(self, temp_dir, capsys):
         assert main(self._inputs(temp_dir)) == 0
         out = temp_dir / "figs"
-        for stem in ("pipeline_schematic", "measurement_model", "workload_profile",
-                     "kickoff_concurrency", "integrity_audit", "network_delay"):
+        for stem in ("pipeline_schematic", "measurement_model", "kernel_timestamps",
+                     "workload_profile", "kickoff_concurrency", "integrity_audit",
+                     "network_delay"):
             assert (out / f"{stem}.pdf").exists(), stem
         assert "skipped" not in capsys.readouterr().out
 

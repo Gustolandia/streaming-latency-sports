@@ -50,7 +50,9 @@ FIGURE_STEMS = ("pipeline_schematic", "measurement_model", "deletion_phases", "p
                 "s_distribution",
                 # 4 Oct 2026: what the remedies buy, whose panel (a) carries the exposure curve
                 # the column figure drew; the column figure was retired with its builder.
-                "remedies")
+                "remedies",
+                # 15 Oct 2026: the fix, drawn in Section VI for the industry's reader.
+                "kernel_timestamps")
 
 
 def caption_of(label):

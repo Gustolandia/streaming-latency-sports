@@ -69,7 +69,7 @@ def test_each_block_runs_what_the_design_table_counts():
 #: The pilot's files: K and R in one queue, L one per rung (and the fallback rung, at both loads),
 #: I one run on the idle=poll boot.
 PILOTS = ["k_pilot_design.json", "lp50_design.json", "lp500_design.json", "lp5000_design.json",
-          "ip_design.json", "lp2000_design.json"]
+          "ip_design.json", "lp2000_design.json", "lp500l88_design.json"]
 
 
 def test_the_pilots_cannot_be_judged():

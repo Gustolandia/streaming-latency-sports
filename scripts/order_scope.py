@@ -138,6 +138,15 @@ def _share(part, whole):
     return part / float(whole) if whole else None
 
 
+def _run_share(rows, part, whole):
+    """A setup's share as DESIGN.md defines a setup's value: the median over its runs of each
+    run's own share, the runs with nothing to divide by left out. 15 Oct 2026, before any judged
+    run was read: R-a, K-e, L-c and block I's decision had pooled messages across runs, which the
+    design keeps for the predictions that say so (K-a, K-b)."""
+    return _median([int(r[part]) / float(r[whole]) for r in rows
+                    if r.get(whole) not in (None, "") and int(r[whole])])
+
+
 def _us(a, b):
     """(a - b) in microseconds, or None if either is missing."""
     return None if a is None or b is None else (a - b) / 1e3
@@ -364,7 +373,7 @@ def judge_order(rows, bins):
         holds = None not in (idle, busy, rt) and busy >= LOAD_RATIO * idle and rt <= RT_RATIO * busy
         checks.append({"backend": backend, "idle": idle, "busy": busy, "rt": rt, "holds": holds})
     out["K-c"] = {"verdict": _verdict(checks), "checks": checks}
-    checks = []
+    checks, others = [], []
     for setup in sorted(set(b["setup"] for b in bins)):
         part = sorted((b for b in bins if b["setup"] == setup), key=lambda b: b["bin"])
         rates = [float(b["observed"]) for b in part]
@@ -373,18 +382,24 @@ def judge_order(rows, bins):
         within = all(float(b["predicted"]) > 0
                      and 1.0 / FACTOR <= float(b["observed"]) / float(b["predicted"]) <= FACTOR
                      for b in near)
-        checks.append({"setup": setup, "falls": falls, "judged_bins": len(near),
-                       "within": within, "holds": falls and within and bool(near)})
-    out["K-d"] = {"verdict": _verdict(checks), "checks": checks}
+        entry = {"setup": setup, "falls": falls, "judged_bins": len(near), "within": within,
+                 "holds": falls and within and bool(near)}
+        # 15 Oct 2026, before any judged run was read: K-d is each broker's setup at 88% load
+        # and normal priority with sixteen workers (DESIGN.md); the judge first judged every
+        # setup that had bins, which the dry run on the pilot's runs showed. The rest are
+        # described.
+        r0 = next((r for r in rows if r["setup"] == setup), None)
+        named = (r0 is not None and int(r0["load_pct"]) == 88 and not r0["priority"]
+                 and not r0["workers"])
+        (checks if named else others).append(entry)
+    out["K-d"] = {"verdict": _verdict(checks), "checks": checks, "described": others}
     decisions = []
     for load in (0, 88):
         one = [r for r in rows if r["backend"] == "redis" and r["load_pct"] == load
                and r["priority"] and r["workers"] == "1"]
         many = [r for r in rows if r["backend"] == "redis" and r["load_pct"] == load
                 and r["priority"] and not r["workers"]]
-        rate_one = _share(sum(int(r["S_neg"]) for r in one), sum(int(r["timed"]) for r in one))
-        rate_many = _share(sum(int(r["S_neg"]) for r in many),
-                           sum(int(r["timed"]) for r in many))
+        rate_one, rate_many = _run_share(one, "S_neg", "timed"), _run_share(many, "S_neg", "timed")
         lock = (None if rate_one is None or not rate_many
                 else rate_one <= GIL_RATIO * rate_many)
         decisions.append({"load_pct": load, "rate_one_worker": rate_one,
@@ -399,18 +414,16 @@ def judge_order(rows, bins):
 def judge_parity(rows, bins):
     """Block R's predictions."""
     out = {}
-    for name, field, pooled in (("R-a", "S_neg", True), ("R-b", "dack_p99", False)):
+    for name, field, share in (("R-a", "S_neg", True), ("R-b", "dack_p99", False)):
         checks = []
         for backend in ("kafka", "redis"):
             on_rows = [r for r in rows if r["backend"] == backend
                        and r["sched_features"] != "NO_RUN_TO_PARITY"]
             off_rows = [r for r in rows if r["backend"] == backend
                         and r["sched_features"] == "NO_RUN_TO_PARITY"]
-            if pooled:
-                on = _share(sum(int(r["S_neg"]) for r in on_rows),
-                            sum(int(r["timed"]) for r in on_rows))
-                off = _share(sum(int(r["S_neg"]) for r in off_rows),
-                             sum(int(r["timed"]) for r in off_rows))
+            if share:
+                on, off = _run_share(on_rows, "S_neg", "timed"), _run_share(off_rows, "S_neg",
+                                                                            "timed")
             else:
                 on = _median([float(r[field]) for r in on_rows if r[field] not in (None, "")])
                 off = _median([float(r[field]) for r in off_rows if r[field] not in (None, "")])
@@ -484,15 +497,14 @@ def judge_ladder(rows, bins):
                       c["rate"] for c in checks if not c["holds"]))}
     checks, described = [], []
     for setup in _setups(rows):
-        flagged, known = _sum(rows, "flagged", setup=setup), _sum(rows, "flag_known", setup=setup)
-        reads, multi = _sum(rows, "reads", setup=setup), _sum(rows, "reads_multi", setup=setup)
-        neg, count = _sum(rows, "S_neg", setup=setup), _sum(rows, "S_count", setup=setup)
-        rate = next(r["rate"] for r in rows if r["setup"] == setup)
-        entry = {"setup": setup, "rate": rate, "flagged_share": _share(flagged, known),
+        runs = [r for r in rows if r["setup"] == setup]
+        rate = runs[0]["rate"]
+        entry = {"setup": setup, "rate": rate,
+                 "flagged_share": _run_share(runs, "flagged", "flag_known"),
                  "Wso_flagged": _value(rows, "Wso_flagged_median", setup=setup),
                  "Wso_unflagged": _value(rows, "Wso_unflagged_median", setup=setup),
-                 "multi_packet_read_share": _share(multi, reads),
-                 "negative_span_rate": _share(neg, count)}
+                 "multi_packet_read_share": _run_share(runs, "reads_multi", "reads"),
+                 "negative_span_rate": _run_share(runs, "S_neg", "S_count")}
         described.append(entry)
         if rate == 50:
             share = entry["flagged_share"]
@@ -506,8 +518,7 @@ def judge_idle(rows, bins):
     shares = {}
     for poll in (False, True):
         picked = [r for r in rows if r["backend"] == "redis" and r["idle_poll"] == poll]
-        shares[poll] = _share(sum(int(r["bump"]) for r in picked),
-                              sum(int(r["S_neg"]) for r in picked))
+        shares[poll] = _run_share(picked, "bump", "S_neg")
     idle_wake = (None if shares[False] is None or shares[True] is None
                  else shares[True] <= BUMP_CUT * shares[False])
     described = []
@@ -516,9 +527,9 @@ def judge_idle(rows, bins):
             described.append({
                 "backend": backend, "idle_poll": poll,
                 "dack_median": _value(rows, "dack_median", backend=backend, idle_poll=poll),
-                "dack_waited_share": _share(
-                    _sum(rows, "dack_waited", backend=backend, idle_poll=poll),
-                    _sum(rows, "timed", backend=backend, idle_poll=poll))})
+                "dack_waited_share": _run_share(
+                    [r for r in rows if r["backend"] == backend and r["idle_poll"] == poll],
+                    "dack_waited", "timed")})
     return {"I": {"decision": {"bump_share_default": shares[False], "bump_share_poll": shares[True],
                                "the_mode_is_idle_wake": idle_wake},
                   "described": described}}

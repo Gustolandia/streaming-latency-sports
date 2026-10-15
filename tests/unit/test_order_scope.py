@@ -321,6 +321,33 @@ class TestJudgingK:
         out = osc.judge_order(rows, k_bins(predicted=(0.0, 0.3, 0.2, 0.1, 0.05)))
         assert out["K-d"]["checks"][0]["within"] is False
 
+    def test_a_setups_share_is_the_median_of_its_runs_not_its_messages_pooled(self):
+        """DESIGN.md: a setup's value is the median over its runs of each run's statistic, unless
+        the prediction says it pools messages. Three runs of unequal size tell the two apart."""
+        runs = [{"S_neg": 10, "timed": 100}, {"S_neg": 1, "timed": 1000},
+                {"S_neg": 5, "timed": 100}, {"S_neg": 3, "timed": 0}]
+        assert osc._run_share(runs, "S_neg", "timed") == pytest.approx(0.05)
+        rows = [dict(r, backend="kafka", sched_features="RUN_TO_PARITY", dack_p99=900.0)
+                for r in runs[:3]]
+        rows.append({"backend": "kafka", "sched_features": "NO_RUN_TO_PARITY", "S_neg": 3,
+                     "timed": 100, "dack_p99": 500.0})
+        check = osc.judge_parity(rows, [])["R-a"]["checks"][0]
+        assert check["on"] == pytest.approx(0.05) and check["holds"] is True, (
+            "pooled, the rate with the rule on would be 16/1200 and the check would fail")
+
+    def test_k_d_judges_only_the_setups_the_design_names(self):
+        """Each broker's setup at 88% load, normal priority and sixteen workers; another setup's
+        bins are described and cannot sink the verdict (the dry run on the pilot found the judge
+        judging every setup with bins)."""
+        bins = k_bins() + [dict(b, setup="K-kafka-l0-ord", observed=0.0) for b in k_bins()]
+        bins += [dict(b, setup="K-redis-l88-rt-w1") for b in k_bins()]
+        out = osc.judge_order(order_rows(), bins)
+        assert [c["setup"] for c in out["K-d"]["checks"]] == ["K-kafka-l88-ord"]
+        assert out["K-d"]["verdict"] == "confirmed"
+        assert sorted(d["setup"] for d in out["K-d"]["described"]) == [
+            "K-kafka-l0-ord", "K-redis-l88-rt-w1"]
+        assert out["K-d"]["described"][0]["holds"] is False
+
     def test_missing_setups_and_values_decide_nothing(self):
         out = osc.judge_order([{"setup": "K-kafka-l0-ord", "backend": "kafka", "load_pct": 0,
                                 "priority": False, "workers": "", "ack_diff_median": "",

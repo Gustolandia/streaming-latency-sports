@@ -517,7 +517,10 @@ def plot_mechanism(mech_ax):
 
     mech_ax.plot([5.85], [y_con], marker="|", markersize=13, color=REDIS)
     # "message", the paper's word: it calls no message a record (15 Oct 2026).
-    mech_ax.text(5.75, y_con - 0.22, r"message arrives, $t_{\mathrm{rx}}$", fontsize=MATH_PT,
+    # 0.15 below the lane, not 0.22, as "clock read" beside it (16 Oct 2026): CI's matplotlib 3.9
+    # sets this maths box about 2.4 pt taller, downward from the top it is anchored by, and at
+    # 0.22 the D bracket's line ran through 4.2% of its core.
+    mech_ax.text(5.75, y_con - 0.15, r"message arrives, $t_{\mathrm{rx}}$", fontsize=MATH_PT,
                  ha="right", va="top")
 
     # The margin m, from the acknowledgment's arrival to the record's (15 Oct 2026, both

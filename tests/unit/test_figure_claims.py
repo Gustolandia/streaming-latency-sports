@@ -52,7 +52,16 @@ FIGURE_STEMS = ("pipeline_schematic", "measurement_model", "deletion_phases", "p
                 # the column figure drew; the column figure was retired with its builder.
                 "remedies",
                 # 15 Oct 2026: the fix, drawn in Section VI for the industry's reader.
-                "kernel_timestamps")
+                "kernel_timestamps",
+                # 15 Oct 2026: the eight matched pairs' real-time factors on both brokers, with
+                # their run-level intervals, for the supplement's S3.1 (both referees).
+                "priority_forest")
+
+#: Figures built for a passage the text has not yet written, each with the date and why. The
+#: inclusion check below exempts them and fails once the text includes one, so that the entry
+#: is removed in the revision that includes it rather than left to vouch for nothing.
+#: Empty since 15 Oct 2026, when Supplement S3.1 took up priority_forest, drawn that day.
+AWAITING_INCLUSION = {}
 
 
 def caption_of(label):
@@ -144,9 +153,10 @@ def test_exposure_curve_and_its_table_share_one_source():
 def test_exposure_caption_reaches_its_numbers_through_the_ledger():
     """Since 5 Oct 2026 the caption gives the band's two ends, not the crossover (the text
     beside it quotes that). They must come through the ledger and be the lags the band is
-    drawn between."""
+    drawn between. 15 Oct 2026: the figure is the journal supplement's Fig. S1 (S2.1), and its
+    label moved with it."""
     import emit_paper_numbers as epn
-    caption = caption_of("fig:exposure")
+    caption = caption_of("sfig:exposure")
     assert "\\exposureLagLo" in caption and "\\exposureLagHi" in caption
     _typical, _hi, _lo, p10, p90 = epn._exposure_lags()
     assert (MACROS["exposureLagLo"], MACROS["exposureLagHi"]) == ("%.0f" % p10, "%.0f" % p90)
@@ -244,7 +254,106 @@ def test_ttrue_span_is_the_one_the_text_states():
 def test_figure_is_built_and_included(stem):
     p = ROOT / "docs" / "results" / "figures" / ("%s.pdf" % stem)
     assert p.is_file() and p.stat().st_size > 1000, "%s not built" % stem
-    assert "figures/%s.pdf" % stem in TEX, "%s built but not included" % stem
+    included = "figures/%s.pdf" % stem in TEX
+    if stem in AWAITING_INCLUSION:
+        assert not included, ("%s is included now; remove its AWAITING_INCLUSION entry (%s)"
+                              % (stem, AWAITING_INCLUSION[stem]))
+    else:
+        assert included, "%s built but not included" % stem
+
+
+def test_a_figure_awaits_inclusion_only_while_it_is_registered():
+    """The exemption names registered figures only, each with its date and reason."""
+    assert set(AWAITING_INCLUSION) <= set(FIGURE_STEMS)
+    assert all(re.match(r"\d{1,2} [A-Z][a-z]{2} \d{4}: \w", reason)
+               for reason in AWAITING_INCLUSION.values())
+
+
+# --- the referees' figures of 15 Oct 2026 --------------------------------------------------
+
+def test_s_distribution_outlines_sum_to_the_pooled_bars():
+    """Fig. 2(a)'s two broker outlines partition the pooled histogram, bin for bin."""
+    import make_deletion_histogram as mdh
+    series, extra = mdh.read_hist()
+    brokers, broker_extra = mdh.read_broker_hist()
+    assert set(brokers) == {"kafka", "redis"}
+    pooled = {lo: c for lo, _hi, c in series["ack"]}
+    summed = {}
+    for rows in brokers.values():
+        for lo, _hi, c in rows:
+            summed[lo] = summed.get(lo, 0) + c
+    assert summed == {lo: c for lo, c in pooled.items() if c}
+    for side in ("under", "over"):
+        assert sum(e[side] for e in broker_extra.values()) == extra["ack"][side]
+
+
+def test_s_distribution_panel_b_draws_every_run_of_the_ladder_and_the_pairs():
+    """Fig. 2(b): every run of E-A3's nine cells and of the eight pairs, on both brokers, and
+    at every pair the median run at normal priority above the median run at real-time."""
+    import statistics
+    import manipulation_runs as mr
+    runs = mr.rate_by_load()
+    assert len(runs) == 2 * (9 + 2 * _int("rtPairs")) * 25
+    by = {}
+    for r in runs:
+        by.setdefault((r["backend"], r["campaign"], r["cell"].rpartition("_")[0],
+                       r["priority"]), []).append(r["rate"])
+    pairs = {k[:3] for k in by if k[3] == "real-time"}
+    assert len(pairs) == 2 * _int("rtPairs")
+    for key in pairs:
+        assert statistics.median(by[key + ("normal",)]) > statistics.median(
+            by[key + ("real-time",)]), key
+
+
+def test_remedies_dots_are_the_median_only_recovery_by_broker():
+    """Fig. 6's dots are |med S + med A - med D| / med D, the recovery Section VI describes,
+    and every group names its broker in the counts the ledger prints."""
+    rows = mrf.repair_rows()
+    pops = si.recovery_populations(split="broker")
+    for key, name in (("kafka", "Kafka"), ("redis", "Redis")):
+        mine = sorted(r[2] for r in rows if r[3] == key)
+        assert mine == pytest.approx(pops[name])
+        assert len(mine) == _int("recovery%sN" % name)
+
+
+def test_remedies_padding_points_are_the_committed_medians():
+    """The padding trajectories: E-A10 and E-A10b, four levels on each broker, A/D as drawn."""
+    import manipulation_runs as mr
+    pts = mrf.padding_points()
+    assert sorted((c, b) for c, b, _p in pts) == [
+        ("E-A10", "kafka"), ("E-A10", "redis"), ("E-A10b", "kafka"), ("E-A10b", "redis")]
+    rows = {(r["campaign"], r["backend"], r["median_d_ms"]): r for r in mr.read_padding()}
+    for campaign, broker, path in pts:
+        assert len(path) == 4
+        assert [d for d, _e in path] == sorted(d for d, _e in path), "D grows with padding"
+        for d, e in path:
+            r = rows[(campaign, broker, d)]
+            assert e == pytest.approx(100.0 * r["median_a_ms"] / r["median_d_ms"])
+
+
+def test_deletion_marks_exactly_the_cells_at_incommensurate_rates():
+    """Fig. 4(b) rings the captured settings paced at a rate Section V-C calls incommensurate."""
+    marked = mrf.incommensurate_points()
+    loose = {c["rate_hz"] for c in si.spread_cells() if not c["commensurate"]}
+    assert len(loose) == _int("spreadIncommensurate")
+    assert {p[2] for p in marked} <= loose
+    assert len(marked) == 8 and {p[2] for p in marked} == {383, 457}
+    drawn = {(r, m) for r, m, _ in mrf.retention_points()}
+    assert all((p[0], p[1]) in drawn for p in marked)
+
+
+def test_priority_forest_draws_every_pair_and_the_ledgers_floor():
+    """The forest's pairs, its dashed floor and its unbounded intervals are the ledger's."""
+    import math
+    import emit_paper_numbers
+    rows = mrf.priority_forest_rows()
+    for key, name in (("kafka", "Kafka"), ("redis", "Redis")):
+        assert len(rows[key]) == _int("rtPairs")
+        # 16 Oct 2026: the floor is rounded down, as a lower bound must be.
+        assert emit_paper_numbers.floor_to_tenth(min(p["lo"] for p in rows[key])) == \
+            MACROS["rt%sLowerBound" % name]
+        assert sum(1 for p in rows[key] if math.isinf(p["hi"])) == _int(
+            "rt%sUnboundedPairs" % name)
 
 
 def test_every_figure_is_referenced_from_the_prose():
@@ -268,3 +377,29 @@ def test_no_figure_is_scaled_on_inclusion():
                         "at the printed width instead" % sorted(scaled))
     assert widths <= {r"\columnwidth", r"\textwidth"}, \
         "unexpected include width: %s" % sorted(widths - {r"\columnwidth", r"\textwidth"})
+
+
+#: 15 Oct 2026: the figures drawn or redrawn for the referees' reports of that day.
+REDRAWN_15_OCT = ("s_distribution", "remedies", "deletion_phases", "exposure_curve",
+                  "recovery_populations", "priority_forest")
+
+
+@pytest.mark.parametrize("stem", REDRAWN_15_OCT)
+def test_a_redrawn_figure_is_never_shrunk_on_the_page(stem):
+    """The legibility gate measures a figure's canvas; the page prints the cropped file, scaled
+    to the width the document includes it at. Fig. 2's labels stood past its canvas on 15 Oct
+    2026, its file came out 3.61 in for the 3.5 in column, and its 8 pt type would have printed
+    at 7.8 pt with every gate green. So no file redrawn that day may be wider than the width a
+    document prints it at, or, while it awaits inclusion, the width it is drawn for."""
+    import figure_legibility
+    import make_result_figures as mrf
+    from pypdf import PdfReader
+    printed = figure_legibility.print_widths()
+    if stem in AWAITING_INCLUSION:
+        printed[stem] = mrf.SUPPLEMENT_WIDTH_IN
+    pdf = ROOT / "docs" / "results" / "figures" / ("%s.pdf" % stem)
+    width = float(PdfReader(str(pdf)).pages[0].mediabox.width) / 72.0
+    # A hair's tolerance: a figure saved whole at exactly its printed width (15 Oct 2026) is
+    # that width to the PDF's rounding, which a strict comparison reads as a millionth too wide.
+    assert width <= printed[stem] + 1e-6, "%s is %.2f in, printed at %.2f in" % (
+        stem, width, printed[stem])

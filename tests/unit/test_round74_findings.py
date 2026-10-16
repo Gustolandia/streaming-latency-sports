@@ -246,7 +246,8 @@ class TestTheRenderedPageCarriesIt:
         flat = "".join(_rendered("paper").split())
         assert "the%ssettingskeptonly" % vals["ombAboveGridPartialWord"] in flat
         assert "in%sways:afilterdropsit" % vals["harnessDisposalClassesWord"] in flat
-        assert "replacesit.Replacementhidesbest" in flat
+        # 16 Oct 2026: the count of what is cut stands between the classes and the superlative.
+        assert "replacesit.AllbutSBKcountnoneofwhattheycut.Replacementhidesbest" in flat
 
     # 5 Oct 2026: the rendered gloss pin retired with the gloss (see R1 above).
 

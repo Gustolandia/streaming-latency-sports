@@ -46,6 +46,10 @@ def openings():
         end = heads[k + 1].start() if k + 1 < len(heads) else len(text)
         body = text[m.end():end]
         body = re.sub(r"\\label\{[^}]*\}", " ", body)
+        # 15 Oct 2026: the Computer Society layout raises the first heading,
+        # \IEEEraisesectionheading{\section{Introduction}\label{sec:intro}}, whose closing
+        # brace would otherwise open the introduction's first sentence.
+        body = re.sub(r"^\s*\}", " ", body)
         body = re.sub(r"\\begin\{enumerate\}|\\end\{enumerate\}|\\item", " ", body)
         body = re.sub(r"\\IEEEPARstart\{(.)\}\{([^}]*)\}", r"\1\2", body)
         body = " ".join(body.split())
@@ -62,7 +66,9 @@ class TestNoSectionOpensOnNavigation:
         # v4 (2026-09-08) restructured to the standard shape: a measurement-model section
         # gained, the chronology subsection and two method paragraphs folded away. The floor
         # is the count a parser finding nothing could not reach, not the previous layout.
-        assert len(got) > 15, "expected the paper's full sectional structure, got %d" % len(got)
+        # 15 Oct 2026: the v9 response fits the Computer Society layout's 12 pages with nine
+        # sections and six subsections; a parser finding nothing still cannot reach 12.
+        assert len(got) >= 12, "expected the paper's full sectional structure, got %d" % len(got)
         assert all(first for _, first in got), "a section opened with nothing"
 
     @pytest.mark.parametrize("heading,first", openings(),

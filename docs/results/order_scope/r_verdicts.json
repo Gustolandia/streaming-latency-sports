@@ -1,0 +1,36 @@
+{
+  "R-a": {
+    "checks": [
+      {
+        "backend": "kafka",
+        "holds": false,
+        "off": 0.13462309542902967,
+        "on": 0.13211708099438652
+      },
+      {
+        "backend": "redis",
+        "holds": false,
+        "off": 0.055533279871692064,
+        "on": 0.060846030473135526
+      }
+    ],
+    "verdict": "not confirmed"
+  },
+  "R-b": {
+    "checks": [
+      {
+        "backend": "kafka",
+        "holds": false,
+        "off": 3884.770245,
+        "on": 3906.1203000000014
+      },
+      {
+        "backend": "redis",
+        "holds": false,
+        "off": 3165.3958350000007,
+        "on": 3166.2700800000002
+      }
+    ],
+    "verdict": "not confirmed"
+  }
+}

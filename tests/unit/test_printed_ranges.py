@@ -45,13 +45,18 @@ def split_endpoint(name):
     """(stem, family, end) for an endpoint macro, or None if the name carries no end token.
 
     `Lo` is tried after `Low` so that `rtFactorLow` is not read as stem `rtFactorw`.
+
+    15 Oct 2026: the end token is the last one in the name, not the first. An end names the
+    macro's end and sits at its tail, or before a unit (`osAMoveLoPct`); `rtRedisLightLoadLo`
+    read its first `Lo`, inside `Load`, as the end and called the range two statistics.
     """
     for family in sorted(FAMILIES, key=lambda f: -max(len(t) for t in f)):
-        for end, token in zip(("lo", "hi"), family):
-            for m in re.finditer(token, name):
-                rest = name[:m.start()] + name[m.end():]
-                if rest and rest != name:
-                    return rest, family, end
+        hits = [(m.end(), end, m) for end, token in zip(("lo", "hi"), family)
+                for m in re.finditer(token, name)]
+        for _, end, m in sorted(hits, key=lambda h: -h[0]):
+            rest = name[:m.start()] + name[m.end():]
+            if rest and rest != name:
+                return rest, family, end
     return None
 
 
@@ -95,6 +100,9 @@ def test_the_rule_reads_infix_tokens_and_the_longer_family_first():
     assert split_endpoint("flipLoSixtyFour") == ("flipSixtyFour", ("Lo", "Hi"), "lo")
     assert split_endpoint("rtFactorLow") == ("rtFactor", ("Low", "High"), "lo")
     assert split_endpoint("ombGridRetentionMin") == ("ombGridRetention", ("Min", "Max"), "lo")
+    # 15 Oct 2026: the end is the last token, so a "Lo" inside "Load" is part of the stem.
+    assert split_endpoint("rtRedisLightLoadLo") == ("rtRedisLightLoad", ("Lo", "Hi"), "lo")
+    assert split_endpoint("rtRedisLightLoadHi") == ("rtRedisLightLoad", ("Lo", "Hi"), "hi")
 
 
 def test_a_range_across_stems_is_caught(tmp_path):

@@ -2498,122 +2498,149 @@ value is the one that applied. It is strong evidence rather than proof.
 
 \subsection{S16.9. The displacement recovery, distribution by distribution}
 
-Section~\mainCost{} reports the recovery's accuracy as four numbers and one comparison. The
-distribution behind them is here, together with the reason the comparison is worded the way
-it is, which for most of this manuscript's life it was not.
+% Rewritten 15 October 2026, the day the recovery's estimator was corrected. The reading this
+% section gave of the old estimator, on the 50 us grid, is in the history of this file.
+Section~\mainCost{} reports the recovery's accuracy as four numbers and one comparison: that the
+data cannot tell apart the groups the check accepts and those it rejects. This section gives the
+distributions behind them, pooled and broker by broker, and shows that the comparison holds only
+inside each broker. It was rewritten on 15 October 2026, the day we found that the errors it
+reported came from an estimator no text described; once the estimator was corrected, the
+argument the section had made no longer held.
 
-The recovery is the identity read backwards. The end-to-end latency is the reported span plus the
-publish latency, so a harness that records its own publish latency can report the end-to-end latency
-it failed to measure. Its error is the recovered value's distance from the true one as a percentage of
-that condition's median end-to-end latency: one number per condition, from
-\texttt{recovery\_err\_us} and \texttt{median\_D\_us} in
-\texttt{docs/results/span\_symmetry.csv}, split by whether the consistency check of
-Section~\mainGate{} accepted the condition.
+The recovery is the identity read backwards. The end-to-end latency is the reported span plus
+the publish latency, $D = S + A$ for every message, so a harness that records its own publish
+latency can report the end-to-end latency it failed to measure. A harness that keeps only
+summaries recovers a median: the median of $S$ plus the median of $A$, whose error is its
+distance from the median of $D$, as a percentage of the median of $D$. Because $D = S + A$ holds
+message by message, that error is the whole gap between the median of a sum and the sum of two
+medians. There is one error per group of runs, read from \texttt{recovery\_err\_us} and
+\texttt{median\_D\_us} in \texttt{docs/results/span\_symmetry.csv}; a group is one condition's
+runs that the consistency check of Section~\mainGate{} accepted, or those it rejected. Until
+15 October 2026 the recovery used the center of symmetry of $S$'s histogram in place of
+its median, and read that center, the median of $A$ and the median of $D$ off the campaign's
+$\recoveryGridStepUs\,\mu$s histogram grid. Every median is now taken over the messages
+themselves, at the nanosecond the timestamps carry.
+
+The table gives the corrected errors, pooled over the brokers and then for each broker.
 
 \begin{center}
-\begin{tabular}{lrrrrl}
+\begin{tabular}{llrrrr}
 \hline
-Conditions & $n$ & Median & Q3 & Worst & Exact (Wilson 95\% CI) \\
+Groups & Verdict & $n$ & Median & Q3 & Worst \\
 \hline
-Check accepts & \recoveryPassN{} & \recoveryErrPass\% & \recoveryErrPassHi\% &
-  \recoveryPassMax\% & \recoveryPassExact\% [$\recoveryPassExactCI$] \\
-Check rejects & \recoveryFailN{} & \recoveryErrFail\% & \recoveryErrFailHi\% &
-  \recoveryFailMax\% & \recoveryFailExact\% [$\recoveryFailExactCI$] \\
+Both brokers & accepted & \recoveryPassN{} & \recoveryErrPass\% & \recoveryErrPassHi\% &
+  \recoveryPassMax\% \\
+ & rejected & \recoveryFailN{} & \recoveryErrFail\% & \recoveryErrFailHi\% &
+  \recoveryFailMax\% \\
+\hline
+\kafka{} & all & \recoveryKafkaN{} & \recoveryErrKafka\% & \recoveryErrKafkaHi\% &
+  \recoveryKafkaMax\% \\
+ & accepted & \recoveryKafkaPassN{} & \recoveryErrKafkaPass\% & \recoveryErrKafkaPassHi\% &
+  \recoveryKafkaPassMax\% \\
+ & rejected & \recoveryKafkaFailN{} & \recoveryErrKafkaFail\% & \recoveryErrKafkaFailHi\% &
+  \recoveryKafkaFailMax\% \\
+\hline
+\redis{} & all & \recoveryRedisN{} & \recoveryErrRedis\% & \recoveryErrRedisHi\% &
+  \recoveryRedisMax\% \\
+ & accepted & \recoveryRedisPassN{} & \recoveryErrRedisPass\% & \recoveryErrRedisPassHi\% &
+  \recoveryRedisPassMax\% \\
+ & rejected & \recoveryRedisFailN{} & \recoveryErrRedisFail\% & \recoveryErrRedisFailHi\% &
+  \recoveryRedisFailMax\% \\
 \hline
 \end{tabular}
 \end{center}
 
-\emph{Q3} is the upper quartile. \emph{Exact} is the share of conditions whose recovered
-end-to-end latency matches the true one to the microsecond the campaign records, with the Wilson
-interval Section~\mainStats{} asks of every proportion.
+\emph{Verdict} is the check's verdict on the group's runs. \emph{Median}, \emph{Q3} and
+\emph{Worst} are the median, the upper quartile and the largest of the groups' errors, in
+percent of each group's median end-to-end latency.
 
-Two readings of that table are available and one of them is wrong. The wrong one, and
-ours until this section was written, is that the two populations differ because their
-medians do. Nothing in these data separates them. That is less than saying they are the
-same: the $90\%$ bootstrap intervals on the two shifts below would support equivalence only
-against a margin of $\recoveryEquivMargin$ points over all conditions and
-$\recoveryNonzeroEquivMargin$ over the non-zero ones, about half the non-zero median errors.
-Section~\mainBrokers{} calls two brokers equivalent only after a TOST against a stated
-margin, no reader would accept a margin of half the quantity compared, and so this section
-claims no equivalence.
-The Hodges--Lehmann shift over all $\recoveryShiftPairs$ pairwise differences, rejected minus
-accepted, is $\recoveryShift$ points ($95\%$ percentile bootstrap: $\recoveryShiftCI$), an interval
-that contains zero; the worst conditions lie within two points of each other; and the upper
-quartiles are within a point and a half of each other. What moves the medians apart is the
-last column: $\recoveryPassExact\%$ of the accepted conditions recover the end-to-end latency exactly,
-and a concentration at zero drags a median down without moving the population it came from.
-A quantile can shift while the distribution does not.
+No group recovers exactly, neither among the $\recoveryPassN$ accepted
+($\recoveryPassExact\%$; Wilson $95\%$: $\recoveryPassExactCI$\%) nor among the $\recoveryFailN$
+rejected ($\recoveryFailExact\%$; Wilson $95\%$: $\recoveryFailExactCI$\%). The exact
+recoveries this section used to count were the grid's. On the grid every error was a
+whole number of $\recoveryGridStepUs\,\mu$s steps, so an error smaller than a step could print as
+zero, and for $\recoveryGridPassExactN$ accepted and $\recoveryGridFailExactN$ rejected groups it
+did. Every one of them was \kafka{}'s. At native resolution the largest of their errors is
+$\recoveryGridExactMaxUs\,\mu$s, less than a step, and no \redis{} group printed as exact. The
+pile at zero on which this section's old argument turned was \kafka{}'s groups, read at a
+resolution too coarse to tell their errors from zero.
 
-Two further checks make that concrete. First, the concentration at zero is not itself a
-population difference. The two exact-recovery shares are $\recoveryPassExact\%$ and
-$\recoveryFailExact\%$, a difference of $\recoveryExactDiff$ points, and its interval
-(Newcombe's $95\%$, built from the same Wilson limits: $\recoveryExactDiffCI$) contains
-zero. Two intervals overlapping would not have shown this --- overlap is not the test --- and
-the difference's own interval does. The rejected conditions recover exactly as well, and any
-reading on which they never do is wrong. Second, remove the exact recoveries from both
-populations and no shift can be detected in what is left. The medians of what remains are
-$\recoveryErrPassNonzero\%$ over the $\recoveryPassNonzeroN$ accepted conditions and
-$\recoveryErrFailNonzero\%$ over the $\recoveryFailNonzeroN$ rejected ones, and they happen
-to cross; but the Hodges--Lehmann shift between those two non-zero populations is
-$\recoveryNonzeroShift$ points ($95\%$ bootstrap: $\recoveryNonzeroShiftCI$). A
-crossing of two medians is the same artifact as a gap between them, and the test that
-dismissed the gap dismisses the crossing. The gap was the spike entire, and above the spike
-these data cannot choose between the populations.
+Pooled over the brokers, the rejected groups recover worse. The Hodges--Lehmann shift over all
+$\recoveryShiftPairs$ pairwise differences, rejected minus accepted, is $\recoveryShift$ points
+($95\%$ percentile bootstrap: $\recoveryShiftCI$), an interval that excludes zero. On the grid
+the same interval contained zero, and this section argued that the gap between the two medians
+was the pile at zero and nothing else. At native resolution there is no pile, so pooled, the
+comparison Section~\mainCost{} draws does not hold. Taken at face value, the shift would say that
+the recovery works less well exactly where it is needed.
+
+The shift is the brokers' mix, not the check's. The two brokers recover to very different
+accuracies, a median error of $\recoveryErrKafka\%$ over \kafka{}'s $\recoveryKafkaN$ groups
+against $\recoveryErrRedis\%$ over \redis{}'s $\recoveryRedisN$, and the two verdicts hold
+different mixes of them: $\recoveryKafkaPassN$ of the $\recoveryPassN$ accepted groups are
+\kafka{}'s, but only $\recoveryKafkaFailN$ of the $\recoveryFailN$ rejected ones. Pooling sets
+mostly \redis{} groups against mostly \kafka{} ones, so the pooled shift measures which broker a
+group came from. Compared inside each broker, rejected minus accepted, the shift is
+$\recoveryKafkaShift$ points on \kafka{} ($95\%$ percentile bootstrap: $\recoveryKafkaShiftCI$)
+and $\recoveryRedisShift$ points on \redis{} ($95\%$ percentile bootstrap:
+$\recoveryRedisShiftCI$). Both intervals contain zero: within either broker, no shift can be detected between the groups
+the check accepts and those it rejects. Figure~\ref{fig:recovery} draws the three comparisons.
 
 \begin{figure}[b]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/recovery_populations.pdf}
-\caption[Two populations with no detectable shift between them]{\textbf{Two populations with
-no detectable shift between them.} (a)~Empirical distribution functions of the recovery
-error over the $\recoveryPassN$ conditions the check accepts and the $\recoveryFailN$ it
-rejects; the dotted line is the band edge the text counts against, the accepted population's
-upper quartile of $\recoveryBandPct\%$. The curves open
-with steps of $\recoveryPassExact\%$ and $\recoveryFailExact\%$ at zero and change order once,
-at $\recoveryEcdfCross\%$. (b)~Every condition, one mark each.}
+\caption[Within each broker, no shift between the verdicts can be detected]{\textbf{Within each
+broker, no shift between the verdicts can be detected.} Empirical distribution functions of the
+recovery error, on a logarithmic axis, over the groups the check accepts and those it rejects:
+(a)~both brokers, $\recoveryPassN$ and $\recoveryFailN$ groups; (b)~\kafka{},
+$\recoveryKafkaPassN$ and $\recoveryKafkaFailN$; (c)~\redis{}, $\recoveryRedisPassN$ and
+$\recoveryRedisFailN$. Each mark is one group. Pooled, the rejected curve rises later, because
+most rejected groups are \redis{}'s and \redis{}'s errors are the larger; inside each broker the
+two curves cross.}
 \label{fig:recovery}
 \end{figure}
 
-A shift cannot carry that sentence on its own, and the gap is worth naming rather than
-leaving. Two distributions can sit at zero offset and still differ in shape, and
-Figure~\ref{fig:recovery} shows that these two do. Counted in three bands of the recovery
-error --- exact, below $\recoveryBandPct\%$, and $\recoveryBandPct\%$ or more --- the accepted
-conditions divide $\recoveryPassExactN$, $\recoveryPassBelowBandN$ and
-$\recoveryPassFromBandN$, close to a third in each; the rejected ones divide $\recoveryFailExactN$,
-$\recoveryFailBelowBandN$ and $\recoveryFailFromBandN$, a smaller pile at zero with most of the
-rest below the band edge. The edge is not a free choice: it is the accepted population's
-upper quartile, the $\recoveryErrPassHi\%$ in the table's Q3 column. The split depends on it: it
-would be exact thirds for an edge above $\recoveryThirdsEdgeLo\%$ and up to
-$\recoveryThirdsEdgeHi\%$, just short of that quartile, and for no other.
-The bands are counted rather than read off a picture as clusters on
-purpose: where a gap in the accepted population looks like a boundary depends on the eye
-drawing it, and splitting that population at its largest gap puts the boundary somewhere
-other than where a first look does. So the distributional claim is tested
-distributionally. The two-sample Kolmogorov--Smirnov statistic is $D = \recoveryKsD$, at
-$p = \recoveryKsP$ over $\recoveryKsPerms$ permutations --- tie-corrected, because the exact
-recoveries are ties at zero and an empirical CDF that steps once per observation reads a gap
-inside a tie that no pair of distributions has. Permutation rather than the asymptotic
-Kolmogorov distribution, which assumes continuous data these samples do not have. The
-stronger claim survives the stronger test.
+Undetected is not absent, and this section claims no equivalence. The $90\%$ bootstrap
+intervals on the two shifts inside the brokers would support equivalence only against margins
+of $\recoveryKafkaEquivMargin$ points on \kafka{} and $\recoveryRedisEquivMargin$ on \redis{}:
+about the whole of \kafka{}'s median error, and two-fifths of \redis{}'s.
+Section~\mainBrokers{} calls two brokers equivalent only after a TOST against a stated margin,
+and no reader would accept a margin that large a share of the quantity compared.
 
-The right reading is the one the second check of Table~\ref{P-tab:checks} needs: the recovery holds
-where the check rejects as well as where it passes. That result is not free. It is the whole
-reason both populations were measured --- a remedy validated only where the check already
-passes has been validated on the population that did not need it --- and had the rejected
-conditions been dropped as spoiled, neither reading could have been told from the other.
+A shift cannot carry that sentence on its own, because two distributions can sit at zero offset
+and still differ in shape. So the distributional claim is tested distributionally, broker by
+broker. The two-sample Kolmogorov--Smirnov statistic between the verdicts is
+$D = \recoveryKafkaKsD$ on \kafka{}, at $p = \recoveryKafkaKsP$, and $D = \recoveryRedisKsD$ on
+\redis{}, at $p = \recoveryRedisKsP$, each $p$ over $\recoveryKsPerms$ permutations of the
+broker's groups. Permutation rather than the asymptotic Kolmogorov distribution, which is a
+large-sample limit, and \kafka{} has only $\recoveryKafkaFailN$ rejected groups. Neither test
+detects a difference in shape, and at these sample sizes that is no evidence that there is none,
+which is why the margins above are stated. The tails in the table agree: on \kafka{} the rejected
+groups' upper quartile and worst error are the smaller, and on \redis{} the two upper quartiles
+lie within a point of each other and the worst rejected group lies below the worst accepted one.
 
-A Hodges--Lehmann shift rather than a rank test's $p$-value, for three reasons. It is a
-shift in the units the sentence is about, so a reader can act on its size. The two
-distributions cross, so a test built on ranks is weak here by construction and a large $p$
-would have carried no information about whether the populations agree. And
-Section~\mainBrokers{} already quotes a Hodges--Lehmann shift for the broker equivalence:
-one statistic, on the same footing in both places and each at the level its question calls
-for --- a $90\%$ interval beside the two one-sided tests of equivalence, a $95\%$ interval for
-this two-sided estimate.
+So the reading the second check of Table~\ref{P-tab:checks} needs survives, on a narrower footing
+than before: the recovery holds where the check rejects as well as where it passes, read broker
+by broker. It does not hold equally well on both brokers. The errors divide by broker, not by
+verdict, so a recovery validated on one broker is not validated on another: \kafka{}'s median
+of $\recoveryErrKafka\%$ is no guide to \redis{}'s $\recoveryErrRedis\%$. That
+result is not free. It is the whole reason both verdicts were measured --- a remedy validated
+only where the check already passes has been validated on the population that did not need it
+--- and had the rejected groups been dropped as spoiled, neither reading could have been told
+from the other.
 
-The median is still not a bound, which is the older lesson this table also serves. A reader
-who reads $\recoveryErrPass\%$ as a guarantee is wrong for a quarter of the accepted
-conditions, where the error reaches $\recoveryErrPassHi\%$, and for one of them it reaches
-$\recoveryPassMax\%$.
+A Hodges--Lehmann shift rather than a rank test's $p$-value, for three reasons. It is a shift in
+the units the sentence is about, so a reader can act on its size. The two verdicts'
+distributions cross on both brokers, so a test built on ranks is weak here by construction and
+a large $p$ would have carried no information about whether the populations agree. And
+Section~\mainBrokers{} already quotes a Hodges--Lehmann shift for the broker equivalence: one
+statistic, on the same footing in both places and each at the level its question calls for ---
+a $90\%$ interval beside the two one-sided tests of equivalence, a $95\%$ interval for this
+two-sided estimate.
+
+The median is still not a bound, which is the older lesson this table also serves. A reader who
+takes \redis{}'s $\recoveryErrRedis\%$ as a guarantee will find a quarter of its groups at
+$\recoveryErrRedisHi\%$ or worse and one at $\recoveryRedisMax\%$. On \kafka{} the same reading
+fails by less, $\recoveryErrKafkaHi\%$ at the upper quartile and $\recoveryKafkaMax\%$ at worst.
 
 % Drafted 28 September 2026 from the pre-registered law campaign's records
 % (docs/results/law/the-strange-results-read-28-sep.md and judged-without-the-paused-runs.md);
@@ -2889,7 +2916,7 @@ validity rather than being folklore.
 \section*{Part III. Apparatus, data and tables}
 \addcontentsline{toc}{section}{Part III. Apparatus, data and tables}
 
-This part is reference material, meant to be looked things up in rather than read through. Section~S18 maps every experiment to the claim it supports, and Section~S19 states the threats to the scheduling attribution with what rules each one out. Sections~S20 to~S23 describe the workload, every setting that can move a latency number, the harness and the transfer procedure. Sections~S24 and~S25 give the campaign ledger's schema and the source evidence behind the count of tools that dispose of a sample silently. Section~S26 collects every table.
+This part is reference material, meant to be looked things up in rather than read through. Section~S18 maps every experiment to the claim it supports, and Section~S19 states the threats to the scheduling attribution with what rules each one out. Sections~S20 to~S23 describe the workload, every setting that can move a latency number, the harness and the transfer procedure. Sections~S24 and~S25 give the campaign ledger's schema and the source evidence behind the count of tools that dispose of a sample silently, with a note on every tool read at source and an account of every tool run. Section~S26 collects every table.
 
 \section{S18. Each campaign moves one variable, and the audit threshold changes no conclusion}
 
@@ -3893,6 +3920,430 @@ Reports printing a median below 1~ms (not registered) & $\reachFinerReports$ \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\subsection{S25.2. Every tool read at source, note by note}
+\label{sec:toolnotes}
+
+The supplementary material's S5 classifies every tool we read at source in its registry table, and
+keeps notes only on the verdicts a reader may question. This subsection keeps the note on every
+tool as that section gave it on 15 October 2026, before it was shortened to fit the editor's page
+budget; the source line behind each verdict is in \texttt{docs/results/external/harness\_registry.csv}.
+\begin{itemize}
+\item The OpenMessaging Benchmark appears twice because it treats its two spans differently. It
+times its \ombGuardedPath{} latency on a \ombGuardedClock{} clock and filters it, and times its
+\ombUnguardedPath{} latency in \ombUnguardedClock{}s and records every sample
+(Section~\mainGuard{}).
+\item librdkafka's \texttt{rdkafka\_performance} also appears twice, and its two spans differ in the
+same place. Its consumer subtracts the timestamp the producer wrote into the message from its own
+wall clock, in microseconds, and keeps the result only if it is above zero and under five minutes.
+For each value it drops it prints a line saying the value was ignored, but it keeps no count. Its
+producer times each message from that timestamp to the delivery report on its own clock and
+records every value.
+\item The \texttt{EndToEndLatency} tool bundled with \kafka{} cannot produce a value below zero,
+because it uses one thread, one monotonic clock and a synchronous publish call. It loses the
+measurement anyway, in two ways. Each sample prints in floating point, but the \texttt{long[]} its
+percentiles come from is filled by the integer division \texttt{elapsed / 1000 / 1000}, so on a
+path faster than a millisecond its p50, p99 and p999 all read zero. And it polls for the message
+only once its synchronous publish call has returned the acknowledgment, so a message that reached
+the consumer first is timed no earlier than its acknowledgment. That message's
+receipt-minus-acknowledgment difference, which this paper measures, is then held at zero by the
+order of two calls, a later time standing in for the arrival, and nothing counts how often. The
+registry classes that as a substitution, as it classes Trogdor's floor and Xinfra Monitor's zero,
+and the test K1 below measured how often. A poll that finds
+nothing stops the run rather than dropping the message. The companion
+\texttt{ProducerPerformance} takes its publish-to-acknowledgment difference on
+\texttt{System.currentTimeMillis()} and casts it to \texttt{int}.
+\item In \texttt{fio} the guard appears in three timing functions, each returning zero for a
+negative interval under the comment ``time warp bug on some kernels?''. Nothing records that it
+fired.
+\item In \texttt{btt}, \texttt{tdelta()} returns one nanosecond whenever the stage timestamps
+are out of order, with no comment, no counter and no mention in the manual page.
+\item The \texttt{wrk2} load generator detects the negative interval, prints a block that begins
+``We are about to crash and die'', and records the value anyway into its own copy of
+\texttt{hdr\_histogram.c}. That copy's \texttt{assert()}s are live in the shipped build, and it
+returns \texttt{false} for an out-of-range index, a refusal the tool never checks. Either the
+assertion aborts the run or the refusal drops the sample, and nothing counts the loss.
+\item In \texttt{emqtt-bench} the \texttt{> 0} guard protects a counter and leaves the histogram
+alone, so nothing is deleted from the histogram; a guard that once deleted from it was removed
+in January 2025.
+Its printed average keeps a value at or below zero in its denominator and leaves it out of its
+numerator, as if it were zero.
+\item In RabbitMQ PerfTest the method that computes the difference, \texttt{getDifference},
+returns its absolute value, so a negative span enters its metrics as a positive one of the same
+size, uncounted. The metrics then record only values at or above zero. From version 2.0.0 of
+2017 until version 2.25.0 of June 2026 they recorded only values above zero, so in the tool's
+millisecond mode every trip shorter than a millisecond was deleted, uncounted.
+\item The NATS CLI appends every difference, negatives included, to the list its minimum, median
+and maximum are read from, but records its percentile table into \texttt{hdrhistogram-go}, whose
+bound check refuses the index a negative value maps to. The CLI ignores the error, so its
+percentile table disagrees with its minimum, median and maximum, and nothing counts the
+difference.
+\item Rezolus counts the samples its scheduler sampler discards, those whose two timestamps
+arrived out of order across CPUs, in a metric that names the cause. The counter was added on 12
+August 2026, and its other samplers have none.
+\item Xinfra Monitor records its end-to-end latency, with no test of its sign, into the metrics
+library its build pins, \texttt{kafka-clients} 2.8.2, whose percentile statistic has a floor of
+zero and pins a value below it to the floor: a negative latency enters its 99th and higher
+percentiles as zero, logged only at debug level, while its average keeps it. Its producer and
+consumer are two services of one process by default and can run as separate processes.
+\item Strimzi Canary observes each duration into a Prometheus histogram whose lowest bucket is
+5~ms, so a negative counts with the fastest messages and shows only as a lower sum. The script the
+repository ships to read its latency log matches durations with \texttt{[0-9]+}, which cannot read
+a minus sign, so it skips every negative.
+\item In \kafka{}'s Trogdor the end-to-end latency is the producing agent's wall clock, written
+into each record, subtracted from the consuming agent's, and recorded as \texttt{Long.max(0L,
+...)}, so every negative becomes the histogram's floor. Trogdor's histogram throws on a negative:
+a negative publish latency is lost inside ProduceBench's acknowledgment callback, and in
+ConsumeBench the exception aborts the task.
+\item RabbitMQ Stream PerfTest has kept only latencies at or above zero since 2 June 2026, release
+1.7.0, the fix for a user's report of a negative latency during a rolling restart. Before that the
+library it records into refused the value itself and said so once, in a warning.
+\item The Yahoo Streaming Benchmark's figure is per window: the processing job's clock at a
+window's last write minus the window's start, which comes from the generator's clock, on another
+host in the cluster the benchmark describes. The tool writes every value, but the notebook it
+ships keeps only windows whose figure reaches the window length, so a window whose latency comes
+out negative is dropped. A user reported values such as $-70{,}646$~ms in 2018, and the report is
+still open.
+\item PerfKit Benchmarker's messaging benchmark subtracts a publisher process's
+\texttt{time.time\_ns()} from a receiver process's on one machine and floor-divides the difference
+to whole milliseconds, so a trip under a millisecond reads zero; its mean and percentiles keep
+every value, sign and all. It measures managed services only: Google Pub/Sub, AWS SQS and Azure
+Service Bus.
+\item SBK cuts a value below zero but counts it, the second tool we read to do so. Such a value is
+kept out of its minimum, maximum, mean and percentiles, and every report prints how many as
+invalid latencies; a zero is kept. Its default timestamps are
+wall-clock milliseconds, and its multi-host mode lets one host subtract another's timestamp, which
+no document mentions.
+\item Redpanda's \texttt{kgo-repeater} subtracts the timestamping worker's wall clock from that of
+whichever member of its consumer group receives the record, another process or host in its
+documented group mode, in whole microseconds. A value at or below zero is kept, unflagged, in the
+sample its 50th, 90th and 99th percentiles are read from, which are the only figures it reports.
+\item The Google Cloud Pub/Sub load test framework subtracts one virtual machine's wall clock from
+another's, in milliseconds, and counts the result into buckets by its logarithm, each bucket half
+again as wide as the one below. Its Java client puts a zero or a negative into the bucket of the
+fastest messages. Its controller, the process that gathers the clients' buckets and prints the
+percentiles, throws when that bucket holds half the values or more. Its Go client, on the build its
+startup script installs, ends with a panic at the first negative. Its Python client raises before
+it acknowledges the message, and its Node client files the value under a key named
+\texttt{NaN}, where nothing counts it.
+\item The Pravega benchmark indexes an array by each latency in whole milliseconds, so the place
+it records the value refuses a negative, as a library does in the tools above. The exception ends
+the thread that keeps its statistics: no later window is printed, nor any final percentile, and the
+only trace is a stack trace at shutdown.
+\item Apache ActiveMQ Artemis's \texttt{artemis perf} runs its producer and its consumer as two
+processes when, as its documentation suggests, they are on two machines, and records the
+difference of their wall clocks in microseconds into HdrHistogram 2.2.2, which throws on a
+negative. The client logs a warning and rolls the session back, and the run's summary still reads
+\texttt{success}.
+\item Quiver has held its two timestamps as unsigned 64-bit integers since December 2021, so a
+difference below zero wraps to some $10^{19}$~ms and enters its average and its top percentiles.
+Its release of 2019 kept the sign, and its live average still does.
+\item RocketMQ's benchmark consumer keeps a value below zero in its average, but its maximum
+starts at zero and only rises, so the value can never appear there.
+\item Apache BookKeeper's benchmark keeps a publish latency only if it is above zero, because a
+zero also marks an add that never completed; a latency of zero is dropped with the failures,
+uncounted. Its clock is monotonic, so no negative can arise.
+\item IBM Sarama's \texttt{kafka-producer-performance} times requests, not messages, on Go's
+monotonic clock, and truncates each to whole milliseconds, so every request under a millisecond
+enters its mean and percentiles as zero. \texttt{mqtt-benchmark} times each publish to its
+acknowledgment on the same kind of clock and keeps every value; it has no subscriber.
+\item Four further tools we read are not in the count, because they do not make the measurement.
+SPECjms2007 defines Delivery Time and never reports it, Redpanda's \texttt{rpk} ships no latency
+benchmark, Pepper-Box times only the call that hands a message to Kafka's client, and xk6-kafka
+times whole calls of the script that runs it, four of whose latency figures are always zero.
+\end{itemize}
+
+\subsection{S25.3. Every tool run, test by test}
+\label{sec:everytoolrun}
+
+The supplementary material's S5 gives each tool run one row of a table, with prose for the six
+tools whose results need explaining. This subsection keeps its account of every run as that
+section gave it on 15 October 2026, before it was shortened to fit the editor's page budget. The
+tables it names, of the tools run and of the tests T3, K1 and S1, are in that section, which still
+gives whole its account of K1, its figures for T3 and the clock's check after the steps of S1;
+those passages are not repeated here.
+
+Reading a tool tells what it does with a value below zero; running it tells
+whether it ever meets one. The registered law campaign ran \toolsRunWord{} benchmarking tools,
+\toolsRoundsWord{} rounds each, in nine blocks, under predictions fixed from their source before
+any run. The supplementary material's table of the tools run names each tool's block by the freeze and plan version that
+registered it, and gives the day the block began and the x86 pair it ran on. Each block's plan was
+public before its runs, the two pairs are of one machine type and processor, and every amendment
+that touched a block is listed in \brk{freezes/README.md}. Five tools the plan had registered with
+the first eleven were left unrun by its version 15, and ran in October under version 33. Two timed
+a managed service: PerfKit Benchmarker's messaging benchmark an Azure Service Bus queue, and the
+Pub/Sub load test Google's own Pub/Sub, from a Google Cloud project. The queue and the project were
+made for their runs and deleted once the runs were home. Apache Artemis's perf client, RocketMQ's benchmark and BookKeeper's benchmark each ran
+against a broker of its own, started alone on the second pair's broker machine, and Quiver ran
+against that Artemis broker. Quiver and the Pravega benchmark, which ran against Pravega's own
+server, were built from source on older toolchains. The same table gives what their
+runs found.
+
+In $\toolsPubsubAside$ of the Pub/Sub load test's $\toolsPubsubRuns$ runs the first attempt
+never began, because its controller's first call to Pub/Sub timed out. Each such attempt measured
+nothing, and was set aside and made again a minute later, as version 41 provides. The first test,
+T1, adds a delay to the path in steps, which cannot reach a managed service, so for PerfKit and the
+Pub/Sub load test it was the zero step alone. Of the others, every tool's figure but two followed the delay at a slope inside the band the plan
+fixed in advance. The Yahoo Streaming
+Benchmark's did not, as version 36 predicted: its slopes ran from $\toolsYsbSlopeLo$ to
+$\toolsYsbSlopeHi$~ms per millisecond added. The prediction's reason, read again after the runs,
+was wrong. It took a window's figure, the time of the window's last write to Redis less the
+window's end, to be set by the once-a-second flush alone. But the flush writes the hundred
+campaigns' windows one after another, and each write waits for four replies from Redis, each of
+which crossed the delay. Within a flush, the writes of one window for successive campaigns were
+$\toolsYsbGapZero$~ms apart with no delay added and $\toolsYsbGapTopLo$ to $\toolsYsbGapTopHi$~ms
+apart with $\toolsYsbTopAddedMs$~ms added. In each round the gap grew by $\toolsYsbGapSlopeLo$ to
+$\toolsYsbGapSlopeHi$~ms per millisecond added, close to the four replies. (The gap is read in the
+$\toolsYsbGapRuns$ of its $\toolsYsbGapOf$ staircase runs whose collected file holds the same
+windows for every campaign, by \brk{scripts/ysb_post_hoc.py}.) The later a campaign's place in the
+flush, the later its window's figure, so a millisecond added could move the figure by hundreds of
+milliseconds.
+
+RocketMQ's benchmark did not follow the delay in any round, against version 39's prediction.
+Read after the runs (\brk{scripts/rocketmq_post_hoc.py}), two things had happened. Its producer
+has no rate of its own and published its 3,000 messages in about three seconds, while its consumer is
+given the run's new queue only when its client next balances its queues, every 20~s. In
+\toolsRocketWaitedWord{} of its $\toolsRocketRunsOf$ runs the producer finished first and the
+broker held the messages until then: \toolsRocketLongWaitsWord{} staircase runs averaged
+$\toolsRocketLongWaitLo$ to $\toolsRocketLongWaitHi$~s, where no run that did not wait averaged
+more than $\toolsRocketRestHi$~ms. The tool also prints the time from the broker's store of each
+message to the consumer, and in those runs it equaled the whole, so the wait came after the broker
+had the messages. The other steps still rose by $\toolsRocketSlopeLo$ to $\toolsRocketSlopeHi$~ms
+per millisecond added, and the store-to-consumer time by $\toolsRocketSTwoCLo$ to
+$\toolsRocketSTwoCHi$, which leaves the producer out. The consumer asks the broker for messages
+and asks again when the answer comes. A message stored just after an answer has left therefore
+waits for the next request, which follows that answer across the delay, and then crosses it
+itself. The prediction counted one crossing where the consumer makes about two. The fourth round's
+reference run, from which T2 takes its offsets, waited too, $\toolsRocketRefWaitMs$~ms, so that round's
+offsets were longer than the others' by about as much.
+
+A second test, T2, moved back the clock of the process that subtracts, at two offsets longer than
+the interval the tool times. A program registered with the plan, the judge, then chose for each
+run among five behaviors: keeps every value, drops the negatives, drops zero and below, replaces
+the negatives with zero, and times against one clock. The second block exposed two faults in the
+judge. First, a tool that kept fewer values than it was asked to publish was ruled out of the
+behaviors that keep every value, but not out of timing against one clock. Yet a tool on one clock
+keeps every value too, so a run of Pulsar's client that kept \toolsPulsarOneClockKept{} of
+\toolsAskedToSend{} latencies was judged to time against one clock. Second, the judge predicts
+each behavior's figures from the trips of a reference, our own client for the same server, not
+from the tool's. A tool with a slow tail of its own can therefore be ruled out of the behavior it
+shows. Version 34 (\brk{freezes/31-experiment-plan}), public before either block was judged
+again, corrects the first fault. It also decides how many clocks a tool reads from the offset
+alone, without the reference. A tool reads two if it lost values, or if its average, median or
+minimum moved by more than half the offset. It reads one if it kept every value and none of those
+figures moved by a quarter of the offset, and the rule leaves it undecided otherwise. Every T2 run
+of both blocks was judged again under both rules, beside the verdict it was given. The corrected
+rule changes two verdicts, both for runs of
+Pulsar's client. The run above becomes undecided, and one undecided run becomes ``drops the
+negatives''.
+
+That table gives each tool's answer in its Clocks column. Its Runs column counts
+the tool's runs with the clock moved back in which version 34's rule gave the same answer. A tool
+is counted below as reading one clock, or two, only if the rule decided some of its runs and every
+run it decided agrees with its Clocks column. Three tools are therefore in neither count, for
+reasons given below: the Pravega benchmark, Apache Artemis's perf client and the Pub/Sub load test.
+Of the tools run, \toolsOneClockWord{} read both timestamps from one clock, and moving the clock
+left their figures within a quarter of the offset in $\toolsOneClockHeld$ of their
+$\toolsOneClockOf$ runs. In the
+other, SBK's minimum, which it prints in whole milliseconds, moved by one, more than a quarter of
+that run's offset. Xinfra Monitor and
+Strimzi Canary are among them: each runs its producer and its consumer in one process. All but
+PerfKit Benchmarker take both timestamps in one process; PerfKit's publisher and receiver are two
+processes of one program on one machine, and T2's offset moved the clock of both. Freeze 21's judge
+left all of PerfKit's clock-moved runs undecided, because its allowance for noise comes from a
+staircase, which PerfKit has none of; version 34's answer from the offset alone is one clock in
+every one of them, as version 37 predicted. BookKeeper's benchmark, which times each add on a
+monotonic clock, is among them, and its own rate limiter enters every latency it keeps. At 50 adds
+a second each add waits about a fiftieth of a second for its permit, inside the call the benchmark
+times, and its median was $\toolsBookkeeperMedianLo$ to $\toolsBookkeeperMedianHi$~ms in every
+round, above the 15~ms version 39 predicted.
+
+The Pravega benchmark takes both timestamps in one process too, but it is not among the
+\toolsOneClockWord{} tools counted as reading one clock. Nothing in its figures moved with the
+clock, yet version 34's rule did not
+find the one clock version 40 predicted. Its T2 moved the machine's own clock rather than use
+libfaketime, because version 40's pilots had found that libfaketime slows the benchmark, a Java
+program, at an offset other than zero, whether or not the monotonic clock moved with the wall
+clock. Under it the benchmark's median rose from 1 to 2~ms, and in some runs its reader waited out
+its one-second timeout. With the machine's clock moved, its median stayed where its control's was
+in every run, and its average moved by at most $\toolsPravegaAvgMoveHi$~ms. The count is what
+misled the rule. The benchmark runs for a fixed minute, set-up included, and counts only what
+arrives in it, so in all but one run its count fell $\toolsCountedShortLo$ to
+$\toolsCountedShortHi$ short of the $\toolsAskedToSend$ asked for, and its controls fell as short.
+Version 34's rule reads a count shorter than its control's as values dropped. In
+\toolsCountedTwoWord{} of the benchmark's \toolsCountedRunsWord{} runs the count came out
+\toolsPravegaBelowControlWord{} below its control's, and the rule answered two. It was undecided in
+the \toolsCountedUndecidedWord{} whose counts matched their controls', and answered one only in the
+\toolsCountedOneWord{} run whose count was whole, where after a stall its writer had published
+faster than its pace to catch up. Freeze 21's judge, which does not hold a short count against one
+clock, found the benchmark timing against one clock in \toolsCountedJudgedOneWord{} of its
+\toolsCountedRunsWord{} runs.
+
+The \toolsTwoClockWord{} tools counted as reading two clocks timestamp a message in one process and
+subtract in another, \texttt{kgo-repeater} on another machine. The judge read
+librdkafka's \texttt{rdkafka\_performance} as keeping every value in \toolsKeepsRoundsWord{} of
+its \toolsRoundsWord{} rounds, but its consumer drops any value at or below zero and prints a line
+for each. No such line appears in any of its runs, and none of its own values came near zero, so
+that verdict tested nothing. \texttt{kgo-repeater} keeps every value: its median fell by the
+offset in every run, below zero once the offset passed its trip. RocketMQ's benchmark adds every
+value to the average it prints, which fell by the offset in every round as version 39 predicted,
+while its maximum, which starts at zero and rises only past it, cannot show a value below zero.
+Pulsar's client drops a value below zero and keeps a zero. Under the
+larger offset it kept $\toolsPulsarKeptLo$ to $\toolsPulsarKeptHi$ of $\toolsAskedToSend$
+latencies, yet its summary printed $\toolsAskedToSend$ records received beside latency figures
+computed from those few. The OpenMessaging Benchmark drops every value at or below zero (the supplementary material's S4.5).
+\texttt{emqtt-bench}'s histogram kept every value, its sum going below zero with the clock. Its
+console printed no latency in any of its offset runs, because it prints its once-a-second average
+only when a counter that adds the latencies above zero changes. Stream PerfTest drops a value below
+zero: under the larger offset it kept $\toolsStreamKeptLo$ to $\toolsStreamKeptHi$ of
+$\toolsAskedToSend$ latencies. \kafka{}'s Trogdor replaces it with zero, so a moved clock can lower
+its figures only as far as zero, that is by its own latency. That is more than half the smaller
+offset and less than half the larger, and so its runs at the larger offset are undecided.
+
+Apache Artemis's perf client reads two clocks as well, and its consumer refuses a value below
+zero. Its histogram throws before it counts such a value, the client logs AMQ132001 and rolls the
+message back, and the broker delivers it again, up to ten times, until it comes out at or above
+zero. Under the offsets it received $\toolsArtemisReceivedLo$ to $\toolsArtemisReceivedHi$
+messages for $\toolsAskedToSend$ published, logged $\toolsArtemisRefusedLo$ to $\toolsArtemisRefusedHi$
+such warnings and reported success, in every round, as version 39 predicted. What its histogram
+kept were the deliveries that came out above zero, many a little above, so its median moved by
+less than half the offset. Version 34's rule therefore answered one or undecided in all
+\toolsArtemisRunsWord{} of its runs, never two. Version 39 had declined to predict that answer, for
+this reason, and the table lists the tool as two clocks with none of its runs so
+answered.
+
+Quiver reads two clocks, because its receiver subtracts the timestamp its publisher wrote into the
+message from a reading of its own clock. It writes both timestamps of every message, which it calls
+a transfer, to a file of its own, and its summary subtracts them in unsigned 64-bit integers. A
+value below zero therefore becomes $2^{64}$ less its size, about $1.8\times10^{19}$~ms: it wraps.
+Under the offsets Quiver's maximum wrapped in every run. At the larger offset
+$\toolsQuiverLargeBelowLo$ to $\toolsQuiverLargeBelowHi$ of its $\toolsQuiverSent$ transfers fell
+below zero, so its median and average wrapped too. Version 40 predicted that both its maximum and
+its average would pass $10^{18}$~ms at both offsets (T2-q). The prediction failed in
+\toolsQuiverFailedWord{} round, in which only $\toolsQuiverFewBelow$ transfer fell below zero at
+the smaller offset, so its average stayed far under $10^{18}$~ms. In that round libfaketime, which
+moved the receiver's clock, also slowed the receiver by about a millisecond, as in the pilots. Its
+usual trip became as long as the offset, so moving the clock back by the offset left its median at
+zero rather than below it. In the other \toolsQuiverHeldWord{} rounds
+$\toolsQuiverSmallBelowLo$ to $\toolsQuiverSmallBelowHi$ of its transfers fell below zero at the
+smaller offset, and T2-q held. Freeze 21's judge left all of its runs undecided, and so did version
+34's judge, because neither has a behavior for a value that wraps. Version 34's answer from the
+offset alone needs none, and it was two in every run.
+
+The Pub/Sub load test reads two clocks, because its subscriber subtracts the time its publisher
+wrote into the message from a reading of its own clock. It counts each value into a bucket by the
+logarithm of its milliseconds, so every value at or below a millisecond, a value below zero
+included, falls into the first bucket, with the fastest. Its controller prints each percentile as
+the bounds of a bucket one below the values in it. The trip T2 took its offsets from was therefore
+the top of the bucket above the median its reference run printed (D41-3). Under the offsets,
+$\toolsPubsubOffsetLo$ to $\toolsPubsubOffsetHi$~ms, the first bucket held $\toolsPubsubZeroLo$
+to $\toolsPubsubZeroHi$ of the $\toolsPubsubCounted$ values its subscriber counted in each run.
+Its search for the median fails once that bucket holds half the values. In every run its controller
+then threw an exception reading ``Programming error: negative values appear in buckets.'', printed
+no figure for its subscriber and wrote no results file, and the runner stopped it at its time
+limit, as version 41 predicted (T2-l). Each control printed its figures and exited normally. Both
+judges therefore left all its runs undecided, and the table lists it as two clocks
+with no run answered either way.
+
+Its T4 run moved its subscriber's clock a second ahead instead, which raised every value by
+1{,}000~ms. Yet in every round it printed its median's range as $\toolsPubsubAheadLo$ to
+$\toolsPubsubAheadHi$~ms, wholly below a second, because it prints the bucket below the values, as
+version 41 predicted (T4-l).
+
+The Yahoo Streaming Benchmark is the one tool whose notebook drops values with no clock moved:
+$\toolsYsbControlDropLo$--$\toolsYsbControlDropHi\%$ of its windows, those whose last write came
+before the window's end, as version 36 foresaw (D36-6). Both judges take their base from a
+reference that drops nothing, and both failed on it. Freeze 21's judge read
+\toolsYsbOneClockWord{} of its \toolsYsbRunsWord{} clock-moved runs as timing against one clock,
+because its allowance for a change is three times the scatter of the tool's figure across the T1
+staircase, and the flush had spread YSB's figure there by hundreds of milliseconds. Version 34's
+judge left all \toolsYsbRunsWord{} undecided, while its answer from the offset alone is two. Read
+directly against YSB's own reference instead, ``drops the negatives'' fits every run. It predicts
+that $\toolsYsbFitPredLo$--$\toolsYsbFitPredHi\%$ of windows are kept, against
+$\toolsYsbFitKeptLo$--$\toolsYsbFitKeptHi\%$ kept, and averages within $\toolsYsbFitAvgHi$~ms of
+those printed. Every run's average fell by $\toolsYsbFellLo$~ms or more from its round's control,
+where one clock predicts no fall. This reading was made after the runs, and the verdicts stand as
+given (\brk{docs/results/tools/ysb_t2_fit.csv}).
+
+The figures of the third test, T3, a background load with and without real-time priority, leave
+out three tools, because a wait for a core cannot be read in theirs. The Yahoo Streaming
+Benchmark's figure is set by its flush, as above, and not by the trip a waiting thread lengthens.
+PerfKit Benchmarker's trip goes to a managed queue in a data center, and its 99th percentile of 100
+messages, set by that queue's own tail, swung between its idle rounds by far more than a wait for a
+core adds. The Pub/Sub load test prints each percentile as a bucket's range, and the range it
+printed for its idle 99th percentile, the median over the four rounds, was some
+$\toolsPubsubTailWidth$~ms wide, wider than the most any tool's 99th percentile rose under the load.
+
+\paragraph{The step test} A tool whose two timestamps come from one clock meets a value below zero
+only if that clock steps back between them, as it did for a user of Stream PerfTest during a
+cluster's rolling restart. T2's constant offset cannot make one, so version 37
+(\brk{freezes/34-experiment-plan}) added S1. Each of five tools ran once as it is and once while
+the driver's wall clock stepped back by 20~ms, or by 50~ms for PerfKit, whose trip is longer, at
+gaps drawn around a fifth of a second, with chrony stopped. A message still
+on its way when the clock steps back is timed short by the step, and so comes out below zero if the
+step is longer than its trip. Every prediction version 37 fixed from the
+tools' sources held in all \sOneRoundsWord{} rounds. PerfKit printed $\sOnePkbLo$ to $\sOnePkbHi$ samples below zero in each stepped run and
+counted them in its mean and percentiles. Strimzi Canary logged $\sOneCanaryLo$ to
+$\sOneCanaryHi$ durations below zero. Stream PerfTest, run as one instance, kept $\sOneStreamLo$ to
+$\sOneStreamHi$ fewer latencies than the messages it consumed, and said nothing. Xinfra Monitor's
+metrics library pinned $\sOneXinfraLo$ to $\sOneXinfraHi$ values to the floor of its percentiles,
+which only its debug line shows: its printed 99th percentile was the control's in every round.
+None of them showed such a value in its control, and \kafka{}'s end-to-end tool, which times with
+a monotonic clock, did not see the steps. T2 had already shown Stream PerfTest's handling, when it
+ran as two instances. The other three could not have been seen without the steps. Versions 38 and
+39 added four tools to S1. SBK counted
+$\sOneSbkLo$ to $\sOneSbkHi$ of its latencies as invalid in each stepped run, and none in its
+controls. \texttt{mqtt-benchmark}, on a monotonic clock, kept its minimum above zero and its mean
+within a millisecond of its control's. Sarama's producer tool, also on a monotonic clock, kept its
+median, but its stepped 99th percentile fell $\sOneSaramaGapLo$ to $\sOneSaramaGapHi$~ms below its
+control's, so S1-i, which allowed a millisecond either way, failed in every round. The steps cannot
+reach its clock, and the figure fell rather than rose: the millisecond allowed was narrower than
+that figure's spread from one run to the next. Artemis's producer, which reads two clocks with its
+consumer, published $\sOneArtemisSentLo$ to $\sOneArtemisSentHi$ of its $\toolsAskedToSend$ messages in
+each stepped run, stopped, and reported success, as version 39 predicted after its pilot. A step
+inside one of its own timed publishes makes a value below zero that its histogram refuses, in a thread
+that catches only the messaging library's own exceptions. Version 40 added two more. In each
+stepped run $\sOneQuiverLo$ to $\sOneQuiverHi$ of Quiver's transfers came out below zero and its
+maximum wrapped, while its controls had none. The Pravega benchmark printed no total in any stepped
+run. At the first value below zero its one statistics task threw an
+\texttt{ArrayIndexOutOfBoundsException} naming that value, and every later statistic was lost.
+Its code then exits with status 0, as it does after printing any exception, so a run that lost its
+statistics ends as one that succeeded; the runs did not record that status. Each control printed
+its total. Version 41 added the Pub/Sub load test, on two clocks, stepped back by 50~ms, as
+PerfKit was, because its trip is longer than 20~ms. Nothing it printed mentioned a value below zero,
+which it puts in its first bucket, with the fastest. Its clients time how long they have run on the
+wall clock, from a start given on that clock. The steps held that clock back, so the clients
+reported their first burst of messages with a running time below zero, $-\sOnePubsubFirstHi$ to
+$-\sOnePubsubFirstLo$~s. Its controller counts only what arrives after the first minute of running
+time, and on the held-back clock that minute lasted longer, so it counted $\sOnePubsubStepCounted$
+values in each stepped run where its controls counted $\sOnePubsubControlCounted$. Version 41
+predicted that the median a stepped run printed would lie in its control's bucket or one either side
+(S1-l). That held in \sOnePubsubHeldWord{} rounds and failed in \sOnePubsubFailedWord{},
+where the stepped median lay two buckets below its control's. The
+steps put $\sOnePubsubZero$ of that run's $\sOnePubsubStepCounted$ values into the first bucket,
+but without them its median still lies two buckets below. Read after the runs, the counts show that
+Pub/Sub delivered faster in that stepped run than in its control minutes before, and the one bucket
+allowed was narrower than that drift.
+
+The per-run verdicts and figures are in \brk{docs/results/tools/tools_t1.csv},
+\brk{tools_t2.csv} and \brk{tools_t3.csv}, folded by \brk{scripts/tools_block.py} from the runs.
+K1's are in \brk{docs/results/tools/k1.csv}, judged by \brk{scripts/kafka_clamp.py}, and S1's in
+\brk{docs/results/tools/s1.csv}, \brk{s1_v38.csv}, \brk{s1_v39.csv}, \brk{s1_v40.csv} and
+\brk{s1_v41.csv}, judged by \brk{scripts/s1_block.py}. The predictions of versions 39, 40 and 41
+about their own tools are in \brk{docs/results/tools/v39.csv}, \brk{v40.csv} and
+\brk{v41.csv}, judged by \brk{scripts/block_v39.py}, \brk{scripts/block_v40.py} and
+\brk{scripts/block_v41.py}. The readings after the runs are in
+\brk{docs/results/tools/ysb_flush.csv} and \brk{ysb_t2_fit.csv} for the Yahoo Streaming Benchmark,
+\brk{rocketmq_waits.csv} and \brk{rocketmq_t1.csv} for RocketMQ's benchmark, and
+\brk{pubsub_runs.csv}, written by \brk{scripts/pubsub_post_hoc.py}, for the Pub/Sub load test.
+The write-ups
+are \brk{docs/results/tools/t1-t4-eleven-tools.md}, with its five recorded faults,
+\brk{docs/results/tools/t1-t4-five-tools.md},
+\brk{docs/results/tools/t1-t4-october-tools.md},
+\brk{docs/results/tools/t1-t4-perfkit-and-s1.md},
+\brk{docs/results/tools/t1-t4-freezes-35-36.md},
+\brk{docs/results/tools/t1-t4-freeze-37.md} and
+\brk{docs/results/tools/t1-t4-freeze-38.md}.
 
 \section{S26. Tables}
 

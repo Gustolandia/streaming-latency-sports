@@ -106,6 +106,25 @@ class TestSummariseRun:
     def test_a_run_with_nothing_joined_yields_no_row(self):
         assert rs.summarise_run("r", "kafka", {n: [] for n, _, _ in rs.SPANS}) is None
 
+    def test_every_publish_timed_chain_carries_its_smallest_value(self):
+        """15 Oct 2026, Table I: the smallest value of t_out - t_pub and of E beside D's and
+        A's, so each chain's distance from zero is printed, not only its count of zeros."""
+        p, c = one_event(sched=0, send=300_000, ack=900_000, recv=1_500_000, output=1_700_000)
+        spans = rs.join_run(rs.parse_rows(prod_csv(p)), rs.parse_rows(cons_csv(c)))
+        row = rs.summarise_run("run-1", "kafka", spans)
+        assert (row["min_output_send_us"], row["min_tti_us"]) == (1400.0, 1700.0)
+        agg = rs.totals([dict(row, min_output_send_us="1400.0", min_tti_us="1700.0"),
+                         dict(row, min_output_send_us="900.0", min_tti_us="2000.0")])
+        assert (agg["output_send_floor_us"], agg["tti_floor_us"]) == (900.0, 1700.0)
+
+    def test_a_ledger_without_the_new_minima_still_totals(self):
+        p, c = one_event()
+        row = rs.summarise_run("r", "kafka", rs.join_run(rs.parse_rows(prod_csv(p)),
+                                                          rs.parse_rows(cons_csv(c))))
+        old = {k: v for k, v in row.items() if k not in ("min_output_send_us", "min_tti_us")}
+        agg = rs.totals([old])
+        assert "output_send_floor_us" not in agg and "tti_floor_us" not in agg
+
     def test_the_consumer_handling_span_is_reported_in_nanoseconds(self):
         """Nanoseconds, because the unit its neighbours use would erase one of the arms.
 

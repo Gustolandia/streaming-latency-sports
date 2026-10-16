@@ -68,8 +68,12 @@ def _field(name, macro):
 
 
 def _names(author_block):
-    """The byline with affiliation footnotes and markup stripped."""
-    body = re.sub(r"\\thanks\s*\{", "\x00{", author_block)
+    """The byline with affiliation footnotes and markup stripped.
+
+    15 Oct 2026: the paper moved to the Computer Society layout, whose footnotes are one
+    \\IEEEcompsocitemizethanks{...} group of \\IEEEcompsocthanksitem entries; it is stripped
+    like a \\thanks{...}."""
+    body = re.sub(r"\\(?:thanks|IEEEcompsocitemizethanks)\s*\{", "\x00{", author_block)
     out, depth = [], 0
     for ch in body:
         if ch == "\x00":
@@ -131,8 +135,9 @@ class TestTheDocumentsAgreeOnWhoWroteThem:
 
     @pytest.mark.parametrize("name", COMPANIONS)
     def test_each_companion_names_every_affiliation_the_paper_does(self, name):
-        paper = _field("paper.tex", "author")
-        block = _field(name, "author")
+        # Line breaks folded: a source line may break inside an institution's name.
+        paper = " ".join(_field("paper.tex", "author").split())
+        block = " ".join(_field(name, "author").split())
         for inst in ("Trinity College Dublin", "Chalmers", "W\\\"urzburg"):
             if re.search(inst, paper):
                 assert re.search(inst, block), (

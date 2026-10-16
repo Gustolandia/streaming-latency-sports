@@ -546,6 +546,9 @@ class TestThePriorityResidualRange:
         assert got["rtResidualMin"] == "%.4f" % min(rates)
         assert got["rtResidualMax"] == "%.4f" % max(rates)
         assert got["rtResidualPairs"] == str(len(rates))
+        # 16 Oct 2026: the twins the paper prints, in percent, rounded once from the rates.
+        assert (got["rtResidualMinPct"], got["rtResidualMaxPct"]) == ("0.17", "1.4")
+        assert got["rtResidualMinPct"] == epn.rate_pct(min(rates))
 
     def test_the_range_straddles_the_constant_the_model_names(self):
         """The finding behind the wording change: 0.004 is a scale, not a bound."""
@@ -568,7 +571,8 @@ class TestThePriorityResidualRange:
         names = {n for n, _ in epn.all_pairs(measured(load_cells(
             Path(__file__).parent.parent.parent / "docs" / "results"
             / "external_campaigns_index.csv")))}
-        assert {"rtResidualMin", "rtResidualMax", "rtResidualPairs"} <= names
+        assert {"rtResidualMin", "rtResidualMax", "rtResidualPairs", "rtResidualMinPct",
+                "rtResidualMaxPct"} <= names
 
 
 class TestTheManipulationCaptionAndItsThreshold:
@@ -1209,7 +1213,8 @@ class TestTheExposureCurve:
                        "exposureErrOne": "100", "exposureGapTen": "11",
                        "exposureCrossover": "1.00",
                        "exposureLagLo": "500", "exposureLagHi": "1500",
-                       "exposureErrTenLo": "5",
+                       # 15 Oct 2026: two figures below ten (`_exposure_pct`).
+                       "exposureErrTenLo": "5.0",
                        "exposureCrossoverHi": "1.50", "exposureErrTenHi": "15"}
 
     def test_the_macros_are_absent_rather_than_wrong_when_the_data_is(self, tmp_path,
@@ -1247,7 +1252,8 @@ class TestTheExposureCurve:
         # On this fixture the lags are 500 and 1500 around a median of 1000, so the band at
         # 10 ms is 5-15% around the 10% point estimate.
         ten = next(ln for ln in body if ln.startswith("$10$~ms"))
-        assert "$5$--$15$" in ten, ten
+        # 15 Oct 2026: two figures below ten, so the band's low end prints 5.0.
+        assert "$5.0$--$15$" in ten, ten
 
     def test_the_band_brackets_the_point_estimate_on_every_row(self, tmp_path):
         """A band that does not contain the number it qualifies is worse than no band."""
@@ -1267,7 +1273,8 @@ class TestTheExposureCurve:
         table = epn.render_exposure_table(str(p))
         row = [r for r in table.splitlines() if r.startswith("$100$~ms")][0]
         assert "$0." in row
-        assert epn._exposure_pct(0.725) == "0.7" and epn._exposure_pct(7.25) == "7"
+        # 15 Oct 2026: two figures below ten as well; 7.25 rounds half to even at one decimal.
+        assert epn._exposure_pct(0.725) == "0.7" and epn._exposure_pct(7.25) == "7.2"
 
 
 
@@ -3095,7 +3102,10 @@ class TestTheToolsBlock:
                        "toolsArtemisRunsWord": "two", "toolsCountedRunsWord": "six",
                        "toolsCountedTwoWord": "four", "toolsCountedUndecidedWord": "one",
                        "toolsCountedOneWord": "one", "toolsCountedShortLo": "43",
-                       "toolsCountedShortHi": "44", "toolsCountedJudgedOneWord": "five"}
+                       "toolsCountedShortHi": "44", "toolsCountedJudgedOneWord": "five",
+                       # 15 Oct 2026: of the six in one process, the round trips and the
+                       # publishes timed to their acknowledgment, one each in this world.
+                       "toolsOneProcessTripWord": "one", "toolsOneProcessAckWord": "one"}
 
     def test_half_the_pravega_runs_read_as_cut_stops_the_build(self, tmp_path):
         """The paper says most of its runs read as if the moved clock had cut what it kept."""
@@ -3248,27 +3258,57 @@ class TestTheToolsBlock:
         with pytest.raises(ValueError, match="Pulsar's client kept"):
             epn.tools_block_macros(p1, p2)
 
-    def test_the_table_lists_each_tool_by_its_interval(self, tmp_path):
-        table = epn.render_tools_table(*self._tables(tmp_path))
-        rows = [l for l in table.splitlines() if l.endswith("\\\\") and "&" in l][1:]
+    def test_the_table_lists_each_tool_by_its_interval(self, tmp_path, monkeypatch):
+        """15 Oct 2026: the table of tools run is one with the table of their blocks and of what
+        the reading at source found them doing (referee A 9.7, B U5), so this world's tools keep
+        their real blocks and registry spans, and two of them are given S1 rounds. The rows run
+        from two hosts to a round trip, the paper's order, alphabetically within each interval;
+        the slope, clocks and runs cells are those this world gave the table before the merge."""
+        p1, p2 = self._tables(tmp_path)
+        with open(p1, encoding="utf-8") as fh:
+            world = {r["tool"] for r in csv.DictReader(fh)}
+        monkeypatch.setattr(epn, "TOOLS_BLOCKS", tuple(
+            (freezes, rounds, tuple(t for t in tools if t in world))
+            for freezes, rounds, tools in epn.TOOLS_BLOCKS if set(tools) & world))
+        monkeypatch.setattr(epn, "TOOL_REGISTRY_PATHS", {
+            t: where for t, where in epn.TOOL_REGISTRY_PATHS.items() if t in world})
+        table = epn.render_tools_table(p1, p2, s1={"pkb": (4, 4), "sbk": (3, 4)})
+        rows = [l for l in table.splitlines() if l.endswith("\\\\") and "&" in l][2:]
         assert rows == [
-            "wrk2 & round trip & 1.01--1.04 & one & 3/3 \\\\",
-            "\\kafka{} producer & to ack. & 1.14--1.14 & one & 1/1 \\\\",
-            "Pravega benchmark & one process & 1.09--1.14 & one & 1/6 \\\\",
-            "SBK & one process & 1.01--1.01 & one & 1/2 \\\\",
-            "Strimzi Canary & one process & 1.00--1.00 & one & 1/1 \\\\",
-            "Xinfra Monitor & one process & 1.04--1.04 & one & 2/2 \\\\",
-            "PerfKit messaging & one host & --- & one & 2/2 \\\\",
-            "Artemis perf & two processes & 1.05--1.05 & two & 0/2 \\\\",
-            "Pub/Sub load test & two processes & --- & two & 0/2 \\\\",
-            "Pulsar perf. & two processes & 1.03--1.14 & two & 3/4 \\\\",
-            "Quiver & two processes & 1.08--1.08 & two & 2/2 \\\\",
-            "librdkafka perf. & two processes & 0.98--0.98 & two & 2/2 \\\\",
-            "RocketMQ benchmark & two processes & 1.78--4057.78 & two & 2/2 \\\\",
-            "Stream PerfTest & two processes & 1.14--1.14 & two & 4/4 \\\\",
-            "\\kafka{} Trogdor & two processes & 1.14--1.14 & two & 1/2 \\\\",
-            "Yahoo Streaming Bench. & two processes & $-$0.24--235.52 & two & 2/2 \\\\",
-            "kgo-repeater & two hosts & 1.02--1.02 & two & 2/2 \\\\"]
+            "kgo-repeater & two hosts & --- & --- & 1.02--1.02 & two & 2/2 & --- & 35 (38) & "
+            "11 Oct & first \\\\",
+            "Artemis perf & two processes & refuse & no & 1.05--1.05 & two & 0/2 & --- & "
+            "36 (39) & 11 Oct & second \\\\",
+            "\\kafka{} Trogdor & two processes & substitute & no & 1.14--1.14 & two & 1/2 & --- & "
+            "32 (35) & 11 Oct & first \\\\",
+            "librdkafka perf. & two processes & filter $>0$ & no & 0.98--0.98 & two & 2/2 & --- & "
+            "21--22 (25--26) & 25 Sep & first \\\\",
+            "Pub/Sub load test & two processes & substitute & no & --- & two & 0/2 & --- & "
+            "38 (41) & 13 Oct & second \\\\",
+            "Pulsar perf. & two processes & filter $\\geq 0$ & no & 1.03--1.14 & two & 3/4 & --- & "
+            "30 (33) & 10 Oct & first \\\\",
+            "Quiver & two processes & substitute & no & 1.08--1.08 & two & 2/2 & --- & 37 (40) & "
+            "12 Oct & second \\\\",
+            "RocketMQ benchmark & two processes & --- & --- & 1.78--4057.78 & two & 2/2 & --- & "
+            "36 (39) & 11 Oct & second \\\\",
+            "Stream PerfTest & two processes & filter $\\geq 0$ & no & 1.14--1.14 & two & 4/4 & "
+            "--- & 32 (35) & 11 Oct & first \\\\",
+            "Yahoo Streaming Bench. & two processes & filter $\\geq 0$ & no & $-$0.24--235.52 & "
+            "two & 2/2 & --- & 33 (36) & 11 Oct & second \\\\",
+            "PerfKit messaging & one host & truncate & no & --- & one & 2/2 & 4/4 & 34 (37) & "
+            "11 Oct & first \\\\",
+            "Pravega benchmark & one process & refuse & no & 1.09--1.14 & one & 1/6 & --- & "
+            "37 (40) & 12 Oct & second \\\\",
+            "SBK & one process & discard & yes & 1.01--1.01 & one & 1/2 & 3/4 & 35 (38) & "
+            "11 Oct & first \\\\",
+            "Strimzi Canary & one process & filter $\\geq 0$ & no & 1.00--1.00 & one & 1/1 & --- & "
+            "32 (35) & 11 Oct & first \\\\",
+            "Xinfra Monitor & one process & substitute & no & 1.04--1.04 & one & 2/2 & --- & "
+            "32 (35) & 11 Oct & first \\\\",
+            "\\kafka{} producer & to ack. & truncate & no & 1.14--1.14 & one & 1/1 & --- & "
+            "21--22 (25--26) & 25 Sep & first \\\\",
+            "wrk2 & round trip & refuse & no & 1.01--1.04 & one & 3/3 & --- & 21--22 (25--26) & "
+            "25 Sep & first \\\\"]
 
     def test_a_slope_predicted_outside_the_band_that_falls_inside_stops_the_build(self,
                                                                                 tmp_path):

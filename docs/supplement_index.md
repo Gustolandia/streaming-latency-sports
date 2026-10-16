@@ -28,7 +28,7 @@ table to check that every passage once moved out of the paper is still reachable
 | S2 | The sign check, and the runs it covers | S18, S18.1, S19, S26.2 |
 | S3 | The mechanism and its laws in full | S7, S8, S9, S12, S15, S16.3, S16.4, S16.6, S16.8, S16.9, S19, S26.1 |
 | S4 | The positivity filter and the retention law in full | S10, S11, S14, S16.7, S17, S22, S22.1, S24.1, S25 |
-| S5 | Tools read at source, tools run, and public reports | S25, S25.1, S30 |
+| S5 | Tools read at source, tools run, and public reports | S25, S25.1, S25.2, S25.3, S30 |
 | S6 | The registered law campaign | S16.10, S16.11, S34, S35, S36, S37 |
 
 The paper's pointers were remapped with it: 21 into the old numbering became 15 into the new,
@@ -58,6 +58,29 @@ their rows left the table above. Each remaining row still names the postmortem s
 section was drawn from: the shortened section carries less of them, and the postmortem holds
 them whole. The section map in the supplement's front matter went with the cut; the paper's
 pointers are the routes in.
+
+**Supplement S5 cut to one table and six stories, 2026-10-15.** The supplement ran to 32 pages
+against the editor's 25--30, and S5 filled nine of them with tool-by-tool prose; both referees of
+15 October asked for a per-tool table instead, with prose kept for the tools whose behaviour
+needs explaining (referee A, 9.7; referee B, U5 and U6). S5's two per-tool tables became one
+generated table, `stab:toolsrun` (`docs/generated/tools_run_table.tex`, from
+`render_tools_table()` in `scripts/emit_paper_numbers.py`): one row a tool, with what it times,
+what the reading at source found it doing with a value at or below zero, whether it counts
+that, its T1 slope, its clocks and the T2 runs that agree, its S1 rounds, and the freeze, plan
+version, day and pair of its block. The prose that table now carries moved to the postmortem,
+which gained two subsections after S25.1, so no number lost the document that reads it:
+
+| Postmortem section | What moved there from supplement S5 |
+|---|---|
+| S25.2 | The notes on every tool read at source, all twenty-six, verbatim (S5 keeps six, shortened: the OpenMessaging Benchmark and librdkafka's two spans, Kafka's end-to-end tool, the three verdicts that rest on an edge case or a shipped script, the three dated changes, `fio`, `btt` and Rezolus, and the four tools not counted) |
+| S25.3 | S5's whole account of the tools run as it stood that day, from "Tools run." to the paragraph naming the files: the chronology of the blocks, the T1, T2 and S1 paragraphs and every per-tool reading, verbatim but for the floats, which stay in S5, for the passages S5 still gives whole (its K1 paragraph, its T3 figures and S1's check of the clock after the steps, which are not repeated; T3's reasons for leaving three tools out are kept in full), and for pointers a postmortem build cannot resolve (the supplement's tables named in words, `Section~\mainGuard{}` for the paper's section on the filter, the slice pointer dropped) |
+
+S5 keeps the selection rule, the counts read at source with the registry table and its
+classifier, the sensitivity table, the forms of disposal, the tests and the judge's corrected
+rule in one paragraph, the results the paper cites, the stories of six tools (Pravega, Artemis's
+perf client, the Pub/Sub load test, Quiver, the Yahoo Streaming Benchmark, RocketMQ), and the
+T3, K1, S1 and public-report passages, shortened. It printed in 9.8 pages before the cut and in
+about 6.6 after; the postmortem's Part III summary names the two new subsections.
 
 ## The postmortem (the supplement until 2026-09-29)
 
@@ -356,14 +379,15 @@ with no gate, and the only one that costs $220 a page.
 
 ## Figure inventory
 
-`docs/results/figures/` holds thirty-four PDFs. Twenty-seven are included by at least one
-document: six by the main text, three by the journal supplement and twenty by the postmortem.
-Seven are included by none and are kept deliberately rather than by oversight: four are listed
-below as retained, and three are the candidates of the next section. An internal review round
+`docs/results/figures/` holds thirty-six PDFs. Twenty-nine are included by at least one
+document: five by the main text, five by the journal supplement and twenty by the postmortem,
+which shares `payload_flip` with the supplement. Seven are included by none and are kept
+deliberately rather than by oversight: four are listed below as retained, and three are the
+candidates of the next section. An internal review round
 (13) asked which was which, so the answer lives here instead of in anyone's memory. A test
 (`test_every_figure_is_used_or_declared`) fails if a figure appears in the directory without
 appearing in this table, and another holds every "main text, Fig. N" below to the number the
-paper prints. Supplement numbers are those of the 6 October 2026 build and postmortem numbers
+paper prints. Supplement numbers are those of the 15 October 2026 build and postmortem numbers
 those of the 1 October 2026 build, with the section that carries the figure; both documents
 number their figures S1, S2, and so on. The rebuild of 5 October 2026 left the main text three
 figures and the journal supplement four; every figure that left them is in the postmortem or
@@ -371,17 +395,29 @@ listed here as retained. The revision of 6 October 2026 added two to the main te
 residual wait and the deletion figure, which left the journal supplement for it, and the rewrite
 of 15 October 2026 one more, the kernel's timestamps, in Section VI.
 
+**The supplement's figures renumbered on 15 October 2026.** The revision of that day moved the
+main text's Fig. 6, the remedies figure, into the supplement's S2.1, ahead of its other figures,
+and added two the referees asked for, so every supplement figure the referees had cited by
+number moved. Old to new: main text Fig. 6 (`remedies`) is now Fig. S1 (S2.1); Fig. S1 (the
+traced stall spectrum, `stall_spectrum`) is now Fig. S3 (S3.7); Fig. S2 (`payload_flip`) is now
+Fig. S4 (S4.3); Fig. S3 (L1 and L4's runs coloured by slice, `law_slice`) is now Fig. S5 (S6.2),
+redrawn as each slice's halfway point against the slice (`law_slice_halfway`), with the runs
+figure kept in the postmortem's Part V. Fig. S2 (S3.1), the forest of the matched priority pairs
+on both brokers (`priority_forest`), is new. The main text's Figs. 1 to 5 kept their numbers.
+
 | Figure | Where it appears |
 |---|---|
 | `measurement_model` | main text, Fig. 1 since 4 Oct 2026: (a) the whole system, which machine runs what, the two legs, where each timestamp is read, and where each failure enters; (b) the thread timeline, with $A$ and $D$ drawn from $t_{\mathrm{pub}}$ (panel (b) split off round 52) |
-| `s_distribution` | main text, Fig. 2 since 5 Oct 2026: the distribution of $S = t_{\mathrm{recv}} - t_{\mathrm{ack}}$ on one clock at nanosecond resolution, its values below zero in red, beside $D$ on the same messages; panel (a) of `deletion_histogram` alone at column width (`scripts/make_deletion_histogram.py --s-distribution`) |
+| `s_distribution` | main text, Fig. 2 since 5 Oct 2026: the distribution of $S = t_{\mathrm{recv}} - t_{\mathrm{ack}}$ on one clock at nanosecond resolution, beside $D$ on the same messages; panel (a) of `deletion_histogram` alone at column width until 15 Oct 2026, when (a) became both brokers pooled in grey under each broker's outline, with a linear inset around zero, and (b) each run of the load and priority campaigns, its negative-span rate against its client machine's utilization (`scripts/make_deletion_histogram.py --s-distribution`) |
 | `residual_wait` | main text, Fig. 3 since 6 Oct 2026: each acknowledgment's wait for a core, on both brokers, against the shapes a whole slice and the rest of a slice predict; the column-width panel of `wait_shape` (`scripts/make_wait_shape_figure.py`, `build_paper_panel`) |
 | `kernel_timestamps` | main text, Fig. 5 since 15 Oct 2026, Section VI's: where the kernel timestamps a message and where the clients' waits fall. The threads' readings at the publish call and at receipt sit over the kernel's transmit and receive timestamps, with the end-to-end latency split into the time before, the kernel-timed latency and the time after (`scripts/make_paper_figures.py`, `plot_kernel_fix`) |
-| `remedies` | main text, Fig. 6 since 15 Oct 2026, Fig. 5 from 6 Oct 2026, the repair alone: every group of runs' error timed from the acknowledgment, on the exposure curve, and once the publish latency is added back. Fig. 3 from 5 Oct and Fig. 4 from 4 Oct with a panel (b), every matched pair at normal and real-time priority, which is now the first row of the main text's Table II |
-| `stall_spectrum` | supplement, Fig. S1 (S3.7), since 4 Oct 2026 (main text Fig. 3 until then; Section IV-C gives every number it draws) |
+| `remedies` | supplement, Fig. S1 (S2.1, `sfig:exposure`) since the revision of 15 Oct 2026, moved from the main text for the 12-page layout; main text, Fig. 6 on 15 Oct 2026, Fig. 5 from 6 Oct 2026, the repair alone: every group of runs' error timed from the acknowledgment, on the exposure curve, and once the publish latency is added back. Fig. 3 from 5 Oct and Fig. 4 from 4 Oct with a panel (b), every matched pair at normal and real-time priority, which is now the first row of the main text's Table II |
+| `stall_spectrum` | supplement, Fig. S3 (S3.7) since 15 Oct 2026, Fig. S1 from 4 Oct 2026 (main text Fig. 3 until then; Section IV-C gives every number it draws) |
 | `deletion_phases` | main text, Fig. 4 since 6 Oct 2026, Section V-C's, across both columns and drawn at the paper's 7.16 in again; supplement, Fig. S2 (S4.1), from 5 Oct, drawn at the supplement's 6.5 in width; main text Fig. 3 from 4 Oct, Fig. 4 before (added 28 Sep 2026: the four-phase drawing of one millisecond beside the retention of every captured setting, mechanism beside consequence; its panel (b) is the former single-panel `deletion` figure, whose file and builder were retired with it; Fig. 5 until v6 put the industry's section before the practical implications) |
-| `payload_flip` | supplement, Fig. S2 (S4.3) since 6 Oct 2026, Fig. S3 from 5 Oct; postmortem, Fig. S5 (S10) |
-| `law_slice` | supplement, Fig. S3 (S6.2) since 6 Oct 2026, Fig. S4 from 5 Oct; postmortem, Fig. S17 (S36): every run of L1 and L4 with every aberrant run marked (`scripts/make_law_figures.py`, marks by `scripts/law_runs.py`) |
+| `payload_flip` | supplement, Fig. S4 (S4.3) since 15 Oct 2026, Fig. S2 from 6 Oct 2026, Fig. S3 from 5 Oct; postmortem, Fig. S5 (S10) |
+| `law_slice_halfway` | supplement, Fig. S5 (S6.2, `sfig:lawslice`) since 15 Oct 2026: each slice's halfway point of the rate's fall, free reading and fitted shape, against the band from the slice to a tick past it (`scripts/make_law_figures.py`) |
+| `law_slice` | supplement, Fig. S3 (S6.2) from 6 Oct to 15 Oct 2026, Fig. S4 from 5 Oct; postmortem, Fig. S17 (S36): every run of L1 and L4 with every aberrant run marked (`scripts/make_law_figures.py`, marks by `scripts/law_runs.py`) |
+| `priority_forest` | supplement, Fig. S2 (S3.1, `sfig:priorityforest`), since 15 Oct 2026: the real-time factor of each of the eight matched pairs, on both brokers, with its run-level 95% interval and the smallest lower bound marked, drawn at the width the supplement prints it at (`scripts/make_result_figures.py --only priority_forest`, `build_priority_forest`) |
 | `two_ways` | **retained, unused** since 5 Oct 2026, when the rebuilt paper opened its results on `s_distribution` instead. Panels (a) and (b) of `deletion_histogram` side by side, so that one page showed both failures on one population: the main text's Fig. 2 from 4 Oct, Fig. 1 from 28 Sep 2026 (`scripts/make_deletion_histogram.py --two`) |
 | `exposure_curve_column` | retired 4 Oct 2026, with its builder: its curve is panel (a) of `remedies` (added 28 Sep 2026: the exposure curve redrawn at column width, because the main text's advice to authors turns on where a path sits on it; Fig. 4 until v6 moved the proxy's cost into Practical Implications) |
 | `pipeline_schematic` | postmortem, Fig. S16 (S24); the journal supplement's Fig. S1 (S1.5) until 5 Oct 2026. The v5 main text defines the timestamps in prose and gives its drawing to the inversion itself, Fig. 2 |

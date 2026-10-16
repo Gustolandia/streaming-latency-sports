@@ -1153,6 +1153,49 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 
 ## 16. Changelog
 
+### 15 Oct 2026 — two internal reviews of version 9 answered, and freeze 41 run (not yet deposited)
+**Freeze 41 timed the acknowledgment's own arrival by the kernel.** The clients now journal every
+read and write on their broker connections (`scripts/so_timestamps.py --so-journal`,
+`scripts/so_journal.py`), so the kernel-timed order of the two arrivals, S_k, is read message by
+message ([`docs/results/order_scope`](docs/results/order_scope/README.md)). On Kafka the
+acknowledgment reaches the client machine first, and 99.75% of its values of S below zero under
+load are late readings; Redis sends the delivery to a waiting consumer first in most runs, and
+95-100% of its values below zero had the delivery first, which the frozen rule counts as the
+broker's reply order: that is Redis's floor at real-time priority. The acknowledging thread's
+99th-percentile delay rose 17- and 30-fold under load and fell back at real-time priority. Not
+confirmed, and reported as such: the rate's fall across fifths of the margin (K-d), any effect of
+turning off run-to-parity (R-a, R-b), a still publish latency under an added delay (P-b), and a
+still kernel-timed latency for Redis under load on the second x86 pair (L-b, +26%). The positive
+control held (the kernel-timed latency carries an added delay at 0.93-0.95 ms per ms), the sockets
+agreed with the captures up to 2,000 messages a second, and at that rate 96-99.7% of messages
+waited in the broker for a consumer request. **The paper moved to the Computer Society layout** at
+12 pages: the premise is stated per broker in the abstract, the introduction and Section II;
+Section IV-A carries the kernel-timed order; Sections V-B and VII were compressed; the former Fig. 6
+moved to Supplement S2.1; and Supplement S3.11 gives freeze 41 whole. **The pipeline came first:**
+the repair's medians are the messages' own, at native resolution (the old ones were the lower
+edges of 50 us bins); every new number is emitted (`scripts/order_scope_numbers.py` for freeze 41;
+the audit's count under each classification choice; the trace check at four thresholds and at
+each broker's own margin; the matched workloads of the gap distortion; per-broker understatement,
+recovery and real-time floor; Table I generated whole). Two claims the data did not bear out were
+corrected: all of Kafka's groups lie above the exposure curve but only 16 of Redis's 38, and the pooled
+pass/fail shift in the repair's error is the brokers' mix (within each broker it contains zero).
+The unused-macro gate now counts macros read through the generated tables a document inputs.
+**Figures:** the five main-text figures are drawn at exactly the width they print at, with their
+legends clear of every plotted mark (a new gate, `figure_collisions.data_under_legends`) and
+subscripts and tick values at 6.5 pt or more; together they are 52.5 pt shorter. **Supplement S5**
+is one generated per-tool table, with prose kept for six tools (9.8 printed pages became 6.6); its
+26 per-tool notes and its run-by-run account moved verbatim to postmortem S25.2 and S25.3, and the
+supplement holds the editor's 30 pages. **Postmortem S16.9** is re-argued at native resolution.
+**Tests** no longer rewrite `docs/generated`: a conftest fixture points the emitter's default
+outputs at each test's temporary folder (`tests/unit/test_emitter_outputs_isolated.py`).
+**16 Oct, a last reading of the paper for clarity:** sentences that carried two claims now carry
+one; the real-time rates print in percent, as every other rate does, through twins the emitter
+rounds once from the rates themselves (`rate_pct`); Section V-B again names the three worst
+failures (referee B, M7) and Section VI again credits the fix's lineage at the four steps (B, M3),
+both cut earlier for the page budget and paid for now by words that said a thing twice; Table III's
+caption states the classifier's rule for its two edge cases (A, M5); and RFC 7679's series note is
+brace-protected, so the reference style no longer lowercases it.
+
 ### 7 Oct 2026 — the late messages left out, and both consumer faults disclosed (not yet deposited)
 **Two faults of the cloud testbed's consumers came to light after its runs.** A consumer stopped after 15 s without a message, so in 1,491 runs, during a long pause in a match, the rest of the match was published, acknowledged and never read: 91,177 of 829,907 messages, which no number counted. And the runs reused topic and stream names that nothing cleared, so each consumer first read every earlier campaign's messages while its own waited in the broker; such a message cannot put S below zero, and each one diluted the rate. **The late messages are left out of every analysis of the cloud runs**, by the rule in `scripts/stale_backlog.py`: a message is late when its delivery took more than a second longer than its run's fastest, and so is a message published before the consumer caught up that arrived in the same burst. It finds 30,225 messages in 2,099 runs, none below zero, and every one of those runs began with its backlog. `scripts/backlog_census.py` counts both faults run by run (`docs/results/backlog_by_run.csv`) and checks the registered Azure campaign, which deleted its streams before each run: 0.06% of its messages are late by the same rule, and 31 of its 9,055 runs began with a wait (`docs/results/backlog_azure_by_run.csv`). **Every result of the cloud runs was recomputed.** Table I now counts 708,505 messages in 5,863 runs, and its negative-span rate is 8.79% (8.43% before). The padding repeat E-A10b, which had sat below E-A10, now agrees with it at every padding. The tracer's apparent lowering of Kafka's normal-priority rate disappears, while it still silences the real-time configurations; the supplement and the postmortem say so. The placement, padding and tracer tables are generated from their campaign files, each table states the range of messages its cells hold, and Fig. 2 reads its count from the histogram it draws. Supplement S1.5 discloses both faults; the sign check's counts come from runs no longer in the archive, and stand as counted, a lower bound. The tests follow: 8,422 pass, none skip, and every script's branches are covered.
 

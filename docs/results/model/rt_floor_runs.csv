@@ -1,0 +1,401 @@
+campaign,phase,cell,backend,run,run_events,run_negatives,ranks,first_instant,first_ack_ms
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed1_rep1,148,0,,5,109.7
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed1_rep2,148,0,,5,117.6
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed1_rep3,148,0,,5,109.6
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed1_rep4,148,0,,5,234.7
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed1_rep5,148,0,,5,108.5
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed2_rep1,71,0,,5,110.2
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed2_rep2,71,0,,5,109.1
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed2_rep3,71,0,,5,111.3
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed2_rep4,71,0,,5,109.3
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed2_rep5,71,5,1 2 3 4 5,5,319.8
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed3_rep1,121,0,,5,112.1
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed3_rep2,121,0,,5,119.3
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed3_rep3,121,0,,5,110.7
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed3_rep4,121,0,,5,109.4
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed3_rep5,121,0,,5,318.3
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed4_rep1,112,0,,5,139.8
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed4_rep2,112,0,,5,110.9
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed4_rep3,112,0,,5,109.1
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed4_rep4,112,0,,5,108.4
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed4_rep5,112,0,,5,109.5
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed5_rep1,145,0,,5,210.5
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed5_rep2,145,5,1 2 3 4 5,5,110.2
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed5_rep3,145,0,,5,109.2
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed5_rep4,145,0,,5,109.1
+E-A5,ea5,l75_rt,kafka,concurrency_n5_20260725_074637_kafka_feed5_rep5,145,0,,5,108.6
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed1_rep1,139,3,84 97 108,5,7.0
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed1_rep2,139,2,82 101,5,6.0
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed1_rep3,139,2,82 92,5,6.4
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed1_rep4,148,6,6 34 83 103 122 140,5,4.3
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed1_rep5,148,3,83 87 102,5,5.0
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed2_rep1,64,1,34,5,8.6
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed2_rep2,63,0,,5,11.6
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed2_rep3,64,2,30 40,5,4.9
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed2_rep4,71,0,,5,4.3
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed2_rep5,71,1,19,5,7.1
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed3_rep1,114,0,,5,6.5
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed3_rep2,114,1,110,5,4.6
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed3_rep3,114,2,11 85,5,5.2
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed3_rep4,121,3,11 86 100,5,4.8
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed3_rep5,121,6,3 4 5 12 60 63,5,107.9
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed4_rep1,104,2,16 112,5,5.9
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed4_rep2,104,2,91 98,5,108.1
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed4_rep3,104,2,27 103,5,5.9
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed4_rep4,112,5,7 51 92 103 110,5,56.7
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed4_rep5,112,1,15,5,5.5
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed5_rep1,137,3,32 61 86,5,6.4
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed5_rep2,137,3,47 68 128,5,6.0
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed5_rep3,137,2,68 144,5,6.9
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed5_rep4,145,4,34 43 94 134,5,5.2
+E-A5,ea5,l75_rt,redis,concurrency_n5_20260725_074637_redis_feed5_rep5,145,2,18 67,5,4.3
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed1_rep1,148,0,,5,112.9
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed1_rep2,148,0,,5,205.3
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed1_rep3,148,0,,5,116.4
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed1_rep4,148,0,,5,192.5
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed1_rep5,148,0,,5,210.4
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed2_rep1,71,5,1 2 3 4 5,5,213.1
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed2_rep2,71,0,,5,109.0
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed2_rep3,71,5,1 2 3 4 5,5,109.7
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed2_rep4,71,0,,5,211.1
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed2_rep5,71,0,,5,118.2
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed3_rep1,121,0,,5,114.7
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed3_rep2,121,0,,5,109.2
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed3_rep3,121,5,1 2 3 4 5,5,395.2
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed3_rep4,121,0,,5,163.4
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed3_rep5,121,2,1 2,5,143.0
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed4_rep1,112,0,,5,109.4
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed4_rep2,112,0,,5,109.1
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed4_rep3,112,0,,5,122.4
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed4_rep4,112,0,,5,109.0
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed4_rep5,112,0,,5,107.8
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed5_rep1,145,0,,5,109.1
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed5_rep2,145,0,,5,109.4
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed5_rep3,145,0,,5,110.1
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed5_rep4,145,0,,5,109.1
+E-A5,ea5,l88_rt,kafka,concurrency_n5_20260725_082215_kafka_feed5_rep5,145,0,,5,109.3
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed1_rep1,139,4,82 92 107 116,5,6.5
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed1_rep2,139,3,84 92 137,5,6.6
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed1_rep3,139,7,18 23 79 82 92 102 122,5,5.6
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed1_rep4,148,5,32 54 84 108 132,5,6.5
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed1_rep5,148,6,34 81 82 91 118 137,5,4.9
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed2_rep1,63,2,35 68,5,5.2
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed2_rep2,63,1,36,5,6.0
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed2_rep3,64,0,,5,5.7
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed2_rep4,71,0,,5,5.7
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed2_rep5,71,0,,5,6.5
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed3_rep1,114,3,11 78 104,5,5.4
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed3_rep2,114,2,72 102,5,10.4
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed3_rep3,114,5,10 21 65 104 112,5,4.2
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed3_rep4,121,1,5,5,6.1
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed3_rep5,121,2,87 97,5,5.1
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed4_rep1,104,2,50 92,5,6.0
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed4_rep2,104,5,14 25 84 92 111,5,79.7
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed4_rep3,104,1,99,5,6.3
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed4_rep4,112,4,17 20 86 90,5,4.2
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed4_rep5,112,7,13 18 23 27 91 98 111,5,5.4
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed5_rep1,137,4,36 86 129 145,5,4.6
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed5_rep2,137,1,33,5,5.5
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed5_rep3,137,4,29 37 46 128,5,6.2
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed5_rep4,145,3,13 46 129,5,5.7
+E-A5,ea5,l88_rt,redis,concurrency_n5_20260725_082215_redis_feed5_rep5,145,1,53,5,5.3
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed1_rep1,148,0,,5,109.6
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed1_rep2,148,5,1 2 3 4 5,5,252.7
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed1_rep3,148,0,,5,255.7
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed1_rep4,148,0,,5,107.0
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed1_rep5,148,0,,5,108.4
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed2_rep1,71,0,,5,109.0
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed2_rep2,71,0,,5,272.0
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed2_rep3,71,0,,5,108.3
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed2_rep4,71,0,,5,169.2
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed2_rep5,71,0,,5,108.2
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed3_rep1,121,0,,5,110.6
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed3_rep2,121,0,,5,108.9
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed3_rep3,121,0,,5,108.8
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed3_rep4,121,0,,5,109.7
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed3_rep5,121,0,,5,133.4
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed4_rep1,112,0,,5,305.7
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed4_rep2,112,0,,5,109.4
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed4_rep3,112,0,,5,184.5
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed4_rep4,112,0,,5,149.4
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed4_rep5,112,0,,5,185.7
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed5_rep1,145,0,,5,306.6
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed5_rep2,145,0,,5,110.2
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed5_rep3,145,0,,5,109.4
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed5_rep4,145,0,,5,110.3
+E-A5b,ea5b,l60_rt,kafka,concurrency_n5_20260725_112311_kafka_feed5_rep5,145,0,,5,108.7
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed1_rep1,138,4,82 91 116 128,5,4.5
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed1_rep2,138,4,81 82 106 133,5,6.7
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed1_rep3,138,4,80 82 97 122,5,6.3
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed1_rep4,148,3,79 82 101,5,6.6
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed1_rep5,141,3,23 82 102,5,47.5
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed2_rep1,63,1,70,5,6.0
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed2_rep2,63,0,,5,6.2
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed2_rep3,63,0,,5,33.2
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed2_rep4,71,1,69,5,5.8
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed2_rep5,71,1,68,5,73.8
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed3_rep1,114,5,52 93 97 102 107,5,4.6
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed3_rep2,114,2,96 109,5,4.8
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed3_rep3,114,1,85,5,4.6
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed3_rep4,121,3,44 60 113,5,4.7
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed3_rep5,121,1,87,5,4.6
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed4_rep1,104,2,91 112,5,6.1
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed4_rep2,104,3,50 82 91,5,6.9
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed4_rep3,104,3,31 41 111,5,4.5
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed4_rep4,112,3,18 42 98,5,4.2
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed4_rep5,112,1,112,5,5.6
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed5_rep1,137,4,31 60 68 134,5,6.7
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed5_rep2,137,1,128,5,5.3
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed5_rep3,137,1,85,5,4.9
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed5_rep4,145,2,68 143,5,5.8
+E-A5b,ea5b,l60_rt,redis,concurrency_n5_20260725_112311_redis_feed5_rep5,145,0,,5,5.6
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed1_rep1,148,0,,5,392.3
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed1_rep2,148,0,,5,108.7
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed1_rep3,148,5,1 2 3 4 5,5,110.4
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed1_rep4,148,0,,5,321.0
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed1_rep5,148,0,,5,172.8
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed2_rep1,71,0,,5,221.6
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed2_rep2,71,0,,5,109.6
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed2_rep3,71,5,1 2 3 4 5,5,162.9
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed2_rep4,71,0,,5,345.8
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed2_rep5,71,0,,5,126.1
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed3_rep1,121,0,,5,108.8
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed3_rep2,121,5,1 2 3 4 5,5,111.5
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed3_rep3,121,0,,5,241.8
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed3_rep4,121,0,,5,109.1
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed3_rep5,121,0,,5,115.7
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed4_rep1,112,5,1 2 3 4 5,5,199.9
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed4_rep2,112,5,1 2 3 4 5,5,109.9
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed4_rep3,112,0,,5,112.4
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed4_rep4,112,3,1 2 3,5,108.5
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed4_rep5,112,5,1 2 3 4 5,5,109.0
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed5_rep1,145,5,1 2 3 4 5,5,200.4
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed5_rep2,145,5,1 2 3 4 5,5,110.5
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed5_rep3,145,0,,5,111.9
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed5_rep4,145,0,,5,108.5
+E-A5b,ea5b,l70_rt,kafka,concurrency_n5_20260725_115849_kafka_feed5_rep5,145,0,,5,139.0
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed1_rep1,138,3,25 108 121,5,5.8
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed1_rep2,138,4,79 82 98 123,5,4.2
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed1_rep3,139,2,82 101,5,5.1
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed1_rep4,141,1,43,5,6.4
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed1_rep5,141,4,34 82 136 141,5,5.9
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed2_rep1,64,0,,5,108.0
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed2_rep2,63,0,,5,5.5
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed2_rep3,63,0,,5,4.9
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed2_rep4,71,3,31 35 68,5,58.4
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed2_rep5,71,1,35,5,5.7
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed3_rep1,114,1,33,5,108.2
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed3_rep2,114,0,,5,4.9
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed3_rep3,114,2,33 104,5,54.8
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed3_rep4,121,8,12 32 56 73 79 87 101 104,5,4.8
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed3_rep5,121,0,,5,4.7
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed4_rep1,104,1,77,5,4.4
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed4_rep2,104,3,15 19 43,5,5.0
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed4_rep3,104,2,26 110,5,97.1
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed4_rep4,112,2,6 42,5,12.8
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed4_rep5,112,0,,5,107.5
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed5_rep1,137,0,,5,5.6
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed5_rep2,137,6,37 47 69 86 129 144,5,5.1
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed5_rep3,137,6,12 34 41 47 85 132,5,5.0
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed5_rep4,140,5,33 83 93 127 134,5,5.4
+E-A5b,ea5b,l70_rt,redis,concurrency_n5_20260725_115849_redis_feed5_rep5,140,2,36 136,5,6.1
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed1_rep1,148,0,,5,109.8
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed1_rep2,148,0,,5,109.8
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed1_rep3,148,0,,5,119.9
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed1_rep4,148,0,,5,108.0
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed1_rep5,148,0,,5,110.1
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed2_rep1,71,0,,5,110.7
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed2_rep2,71,0,,5,108.9
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed2_rep3,71,0,,5,108.3
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed2_rep4,71,0,,5,108.9
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed2_rep5,71,0,,5,123.5
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed3_rep1,121,0,,5,161.6
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed3_rep2,121,5,1 2 3 4 5,5,110.5
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed3_rep3,121,0,,5,118.9
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed3_rep4,121,0,,5,108.7
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed3_rep5,121,0,,5,110.4
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed4_rep1,112,0,,5,182.3
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed4_rep2,112,0,,5,109.4
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed4_rep3,112,0,,5,117.0
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed4_rep4,112,0,,5,108.8
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed4_rep5,112,0,,5,151.3
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed5_rep1,145,0,,5,112.0
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed5_rep2,145,0,,5,110.9
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed5_rep3,145,0,,5,107.5
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed5_rep4,145,5,1 2 3 4 5,5,110.4
+E-A5b,ea5b,l88_rt,kafka,concurrency_n5_20260725_131006_kafka_feed5_rep5,145,0,,5,108.2
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed1_rep1,138,2,23 82,5,5.2
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed1_rep2,139,2,25 83,5,6.0
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed1_rep3,138,4,14 23 82 119,5,6.0
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed1_rep4,141,4,80 82 97 121,5,5.4
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed1_rep5,141,3,24 82 140,5,6.9
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed2_rep1,63,2,43 49,5,8.3
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed2_rep2,63,1,39,5,5.5
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed2_rep3,63,0,,5,6.5
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed2_rep4,71,1,44,5,6.3
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed2_rep5,71,0,,5,5.2
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed3_rep1,114,6,9 71 87 103 111 112,5,5.4
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed3_rep2,114,0,,5,6.1
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed3_rep3,114,4,23 32 49 86,5,24.4
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed3_rep4,116,10,11 21 38 44 60 75 79 102 110 114,5,6.0
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed3_rep5,116,1,32,5,4.5
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed4_rep1,104,4,24 28 61 74,5,5.4
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed4_rep2,104,5,19 21 25 51 112,5,7.1
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed4_rep3,104,1,91,5,6.2
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed4_rep4,105,2,27 98,5,4.3
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed4_rep5,112,4,27 87 92 104,5,5.9
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed5_rep1,137,2,18 60,5,7.5
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed5_rep2,137,0,,5,4.8
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed5_rep3,137,2,37 69,5,4.7
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed5_rep4,140,0,,5,5.8
+E-A5b,ea5b,l88_rt,redis,concurrency_n5_20260725_131006_redis_feed5_rep5,140,2,13 128,5,5.9
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed1_rep1,148,0,,5,112.5
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed1_rep2,148,0,,5,108.0
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed1_rep3,148,0,,5,116.1
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed1_rep4,148,0,,5,108.4
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed1_rep5,148,0,,5,165.5
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed2_rep1,71,0,,5,113.6
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed2_rep2,71,1,1,5,109.1
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed2_rep3,71,0,,5,132.3
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed2_rep4,71,0,,5,172.7
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed2_rep5,71,0,,5,108.3
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed3_rep1,121,0,,5,112.0
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed3_rep2,121,0,,5,121.8
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed3_rep3,121,0,,5,135.5
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed3_rep4,121,5,1 2 3 4 5,5,106.9
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed3_rep5,121,0,,5,165.8
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed4_rep1,112,0,,5,175.0
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed4_rep2,112,0,,5,108.7
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed4_rep3,112,0,,5,151.9
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed4_rep4,112,0,,5,108.2
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed4_rep5,112,0,,5,167.0
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed5_rep1,145,0,,5,110.0
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed5_rep2,145,0,,5,110.9
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed5_rep3,145,0,,5,109.7
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed5_rep4,145,5,1 2 3 4 5,5,212.3
+E-A5b,ea5b,l95_rt,kafka,concurrency_n5_20260725_123428_kafka_feed5_rep5,145,0,,5,108.4
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed1_rep1,138,0,,5,5.8
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed1_rep2,139,7,32 48 82 108 118 130 132,5,6.2
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed1_rep3,138,3,18 86 107,5,5.7
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed1_rep4,141,5,24 80 84 135 141,5,6.1
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed1_rep5,141,3,82 98 103,5,6.3
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed2_rep1,64,2,34 39,5,6.1
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed2_rep2,63,1,42,5,5.1
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed2_rep3,63,0,,5,5.1
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed2_rep4,71,1,40,5,6.4
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed2_rep5,71,6,31 36 38 42 51 69,5,5.8
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed3_rep1,114,1,23,5,4.3
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed3_rep2,114,1,38,5,25.2
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed3_rep3,114,2,61 84,5,4.5
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed3_rep4,121,1,63,5,4.0
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed3_rep5,121,3,21 33 61,5,5.2
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed4_rep1,104,2,85 102,5,5.0
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed4_rep2,104,3,31 82 112,5,4.6
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed4_rep3,104,0,,5,5.5
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed4_rep4,112,5,10 19 32 37 112,5,7.0
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed4_rep5,112,0,,5,6.1
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed5_rep1,137,1,87,5,4.7
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed5_rep2,137,5,13 19 60 69 143,5,6.0
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed5_rep3,137,2,62 129,5,5.4
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed5_rep4,140,6,19 30 37 46 59 68,5,4.9
+E-A5b,ea5b,l95_rt,redis,concurrency_n5_20260725_123428_redis_feed5_rep5,140,4,30 36 109 128,5,5.1
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed1_rep1,148,5,1 2 3 4 5,5,109.4
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed1_rep2,148,0,,5,109.4
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed1_rep3,148,0,,5,109.8
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed1_rep4,148,3,1 2 3,5,108.4
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed1_rep5,148,0,,5,110.1
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed2_rep1,71,0,,5,110.0
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed2_rep2,71,0,,5,202.8
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed2_rep3,71,0,,5,322.9
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed2_rep4,71,0,,5,211.8
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed2_rep5,71,0,,5,224.9
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed3_rep1,121,0,,5,369.5
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed3_rep2,121,0,,5,142.0
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed3_rep3,121,0,,5,109.6
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed3_rep4,121,0,,5,130.3
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed3_rep5,121,0,,5,107.7
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed4_rep1,112,0,,5,109.5
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed4_rep2,112,5,1 2 3 4 5,5,110.2
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed4_rep3,112,0,,5,109.7
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed4_rep4,112,0,,5,126.4
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed4_rep5,112,0,,5,109.0
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed5_rep1,145,0,,5,365.7
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed5_rep2,145,0,,5,151.3
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed5_rep3,145,0,,5,109.8
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed5_rep4,145,0,,5,108.8
+E-A7,ea7,l75_rt,kafka,concurrency_n5_20260725_162333_kafka_feed5_rep5,145,0,,5,220.8
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed1_rep1,138,1,82,5,7.1
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed1_rep2,138,2,82 101,5,5.1
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed1_rep3,138,2,80 82,5,6.2
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed1_rep4,141,2,82 102,5,6.3
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed1_rep5,141,3,33 65 108,5,5.1
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed2_rep1,63,2,24 39,5,5.5
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed2_rep2,63,2,31 68,5,5.4
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed2_rep3,63,1,40,5,4.9
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed2_rep4,71,0,,5,5.6
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed2_rep5,71,1,31,5,108.2
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed3_rep1,114,1,17,5,4.4
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed3_rep2,114,3,80 98 113,5,4.3
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed3_rep3,114,1,97,5,4.8
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed3_rep4,121,0,,5,5.3
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed3_rep5,116,0,,5,6.1
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed4_rep1,104,6,16 27 86 91 102 110,5,4.4
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed4_rep2,104,1,99,5,107.9
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed4_rep3,104,3,26 84 90,5,6.5
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed4_rep4,112,3,14 56 103,5,5.8
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed4_rep5,112,4,16 58 90 99,5,5.1
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed5_rep1,137,4,11 18 67 143,5,7.1
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed5_rep2,137,1,61,5,4.8
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed5_rep3,137,3,103 128 145,5,4.4
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed5_rep4,140,2,19 144,5,6.1
+E-A7,ea7,l75_rt,redis,concurrency_n5_20260725_162333_redis_feed5_rep5,140,2,92 145,5,5.6
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed1_rep1,148,0,,5,109.6
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed1_rep2,148,0,,5,91.7
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed1_rep3,148,0,,5,198.5
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed1_rep4,148,0,,5,180.0
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed1_rep5,148,0,,5,449.7
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed2_rep1,71,0,,5,110.7
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed2_rep2,71,0,,5,108.8
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed2_rep3,71,0,,5,110.0
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed2_rep4,71,0,,5,178.7
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed2_rep5,71,0,,5,303.9
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed3_rep1,121,0,,5,343.2
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed3_rep2,121,5,1 2 3 4 5,5,137.0
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed3_rep3,121,0,,5,214.4
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed3_rep4,121,1,1,5,187.2
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed3_rep5,121,0,,5,109.1
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed4_rep1,112,5,1 2 3 4 5,5,111.0
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed4_rep2,112,0,,5,110.6
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed4_rep3,112,0,,5,110.7
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed4_rep4,112,0,,5,109.7
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed4_rep5,112,5,1 2 3 4 5,5,108.6
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed5_rep1,145,0,,5,143.6
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed5_rep2,145,0,,5,141.2
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed5_rep3,145,0,,5,110.2
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed5_rep4,145,0,,5,109.1
+E-A7,ea7,l88_rt,kafka,concurrency_n5_20260725_165913_kafka_feed5_rep5,145,0,,5,107.3
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed1_rep1,138,3,83 91 102,5,17.9
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed1_rep2,138,2,82 102,5,5.0
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed1_rep3,138,3,82 92 102,5,5.2
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed1_rep4,141,2,83 102,5,6.2
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed1_rep5,141,3,83 98 102,5,5.6
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed2_rep1,63,2,55 66,5,6.0
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed2_rep2,63,0,,5,6.3
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed2_rep3,63,3,39 49 70,5,5.2
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed2_rep4,66,0,,5,5.2
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed2_rep5,71,0,,5,6.1
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed3_rep1,114,5,78 85 102 104 110,5,58.2
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed3_rep2,114,7,14 22 24 30 42 58 104,5,5.2
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed3_rep3,114,2,64 87,5,4.7
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed3_rep4,116,0,,5,6.0
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed3_rep5,121,4,34 61 96 103,5,4.5
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed4_rep1,104,4,25 41 90 96,5,85.2
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed4_rep2,104,1,92,5,4.5
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed4_rep3,104,2,25 78,5,31.5
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed4_rep4,112,0,,5,6.1
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed4_rep5,112,4,26 50 104 111,5,5.9
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed5_rep1,137,2,62 68,5,4.5
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed5_rep2,137,3,42 46 67,5,5.3
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed5_rep3,137,5,30 87 92 118 128,5,29.6
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed5_rep4,140,3,13 19 30,5,6.4
+E-A7,ea7,l88_rt,redis,concurrency_n5_20260725_165913_redis_feed5_rep5,140,4,20 60 74 136,5,9.4

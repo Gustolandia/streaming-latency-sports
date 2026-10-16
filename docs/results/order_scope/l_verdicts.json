@@ -1,0 +1,208 @@
+{
+  "L-a": {
+    "checks": [
+      {
+        "holds": true,
+        "median_us": 1.4424999999999955,
+        "setup": "L2000-kafka-l0"
+      },
+      {
+        "holds": true,
+        "median_us": 1.2169999999999845,
+        "setup": "L2000-redis-l0"
+      },
+      {
+        "holds": true,
+        "median_us": 2.458500000000015,
+        "setup": "L50-kafka-l0"
+      },
+      {
+        "holds": true,
+        "median_us": 2.9640000000000555,
+        "setup": "L50-kafka-l88"
+      },
+      {
+        "holds": true,
+        "median_us": 2.22799999999998,
+        "setup": "L50-redis-l0"
+      },
+      {
+        "holds": true,
+        "median_us": 2.563999999999993,
+        "setup": "L50-redis-l88"
+      },
+      {
+        "holds": true,
+        "median_us": 1.5020000000000664,
+        "setup": "L500-kafka-l0"
+      },
+      {
+        "holds": true,
+        "median_us": 1.2515000000000214,
+        "setup": "L500-redis-l0"
+      }
+    ],
+    "verdict": "confirmed"
+  },
+  "L-b": {
+    "checks": [
+      {
+        "backend": "kafka",
+        "busy": 829.4065,
+        "holds": true,
+        "idle": 884.873,
+        "rate": 50
+      },
+      {
+        "backend": "redis",
+        "busy": 584.288,
+        "holds": false,
+        "idle": 464.7025,
+        "rate": 50
+      }
+    ],
+    "holds_at_rates": [],
+    "out_of_reach": [
+      {
+        "backend": "kafka",
+        "idle": 737.449,
+        "rate": 500
+      },
+      {
+        "backend": "redis",
+        "idle": 467.3895,
+        "rate": 500
+      },
+      {
+        "backend": "kafka",
+        "idle": 1204.07675,
+        "rate": 2000
+      },
+      {
+        "backend": "redis",
+        "idle": 951.58275,
+        "rate": 2000
+      }
+    ],
+    "verdict": "not confirmed"
+  },
+  "L-c": {
+    "checks": [
+      {
+        "Wso_flagged": null,
+        "Wso_unflagged": 884.873,
+        "flagged_share": 0.0,
+        "holds": true,
+        "multi_packet_read_share": 0.9696693236316553,
+        "negative_span_rate": 0.005633802816901409,
+        "rate": 50,
+        "setup": "L50-kafka-l0"
+      },
+      {
+        "Wso_flagged": null,
+        "Wso_unflagged": 829.4065,
+        "flagged_share": 0.0,
+        "holds": true,
+        "multi_packet_read_share": 0.973526581437832,
+        "negative_span_rate": 0.15674044265593562,
+        "rate": 50,
+        "setup": "L50-kafka-l88"
+      },
+      {
+        "Wso_flagged": null,
+        "Wso_unflagged": 464.7025,
+        "flagged_share": 0.0,
+        "holds": true,
+        "multi_packet_read_share": 0.0,
+        "negative_span_rate": 0.00040241448692152917,
+        "rate": 50,
+        "setup": "L50-redis-l0"
+      },
+      {
+        "Wso_flagged": null,
+        "Wso_unflagged": 584.288,
+        "flagged_share": 0.0,
+        "holds": true,
+        "multi_packet_read_share": 0.0,
+        "negative_span_rate": 0.0579476861167002,
+        "rate": 50,
+        "setup": "L50-redis-l88"
+      }
+    ],
+    "described": [
+      {
+        "Wso_flagged": 1212.6799999999998,
+        "Wso_unflagged": 766.7025,
+        "flagged_share": 0.9968257641306316,
+        "multi_packet_read_share": 0.751250119461373,
+        "negative_span_rate": 0.03718534317966879,
+        "rate": 2000,
+        "setup": "L2000-kafka-l0"
+      },
+      {
+        "Wso_flagged": 953.317,
+        "Wso_unflagged": 550.6075,
+        "flagged_share": 0.9623414493705225,
+        "multi_packet_read_share": 7.659016244390457e-05,
+        "negative_span_rate": 0.0074050397486441644,
+        "rate": 2000,
+        "setup": "L2000-redis-l0"
+      },
+      {
+        "Wso_flagged": null,
+        "Wso_unflagged": 884.873,
+        "flagged_share": 0.0,
+        "multi_packet_read_share": 0.9696693236316553,
+        "negative_span_rate": 0.005633802816901409,
+        "rate": 50,
+        "setup": "L50-kafka-l0"
+      },
+      {
+        "Wso_flagged": null,
+        "Wso_unflagged": 829.4065,
+        "flagged_share": 0.0,
+        "multi_packet_read_share": 0.973526581437832,
+        "negative_span_rate": 0.15674044265593562,
+        "rate": 50,
+        "setup": "L50-kafka-l88"
+      },
+      {
+        "Wso_flagged": null,
+        "Wso_unflagged": 464.7025,
+        "flagged_share": 0.0,
+        "multi_packet_read_share": 0.0,
+        "negative_span_rate": 0.00040241448692152917,
+        "rate": 50,
+        "setup": "L50-redis-l0"
+      },
+      {
+        "Wso_flagged": null,
+        "Wso_unflagged": 584.288,
+        "flagged_share": 0.0,
+        "multi_packet_read_share": 0.0,
+        "negative_span_rate": 0.0579476861167002,
+        "rate": 50,
+        "setup": "L50-redis-l88"
+      },
+      {
+        "Wso_flagged": 1342.1734999999999,
+        "Wso_unflagged": 737.4265,
+        "flagged_share": 0.002132539331267855,
+        "multi_packet_read_share": 0.8067976500970779,
+        "negative_span_rate": 0.0038425944553977386,
+        "rate": 500,
+        "setup": "L500-kafka-l0"
+      },
+      {
+        "Wso_flagged": 989.6724999999999,
+        "Wso_unflagged": 467.37874999999997,
+        "flagged_share": 0.0007242586408079507,
+        "multi_packet_read_share": 0.0,
+        "negative_span_rate": 0.18271436043938355,
+        "rate": 500,
+        "setup": "L500-redis-l0"
+      }
+    ],
+    "verdict": "confirmed"
+  }
+}

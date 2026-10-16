@@ -51,6 +51,22 @@ FIELDS = ("harness", "vendor", "language", "path", "clock", "file", "symbol", "e
 MESSAGE_SPANS = ("end-to-end", "publish")
 
 
+#: The vendors that are individual people rather than organizations, each with the reason
+#: (15 Oct 2026). The registry names who maintains each tool; the revised paper says how many
+#: of them are organizations, and that count is the rest. Where the count is emitted
+#: (emit_paper_numbers.registry_macros), a name here that no row carries stops the build, so a
+#: renamed vendor cannot leave a person counted as an organization.
+INDIVIDUAL_VENDORS = {
+    "Alan D. Brunelle": "btt's author, credited by name in blktrace's sources; no company "
+                        "publishes it",
+    "Alexander Krylovsky": "mqtt-benchmark lives in his personal account, github.com/krylovsk",
+    "G. Tene": "wrk2 lives in Gil Tene's personal account, github.com/giltene",
+    "Jens Axboe": "fio lives in his personal account, github.com/axboe, where he maintains it",
+    "Justin Ross": "Quiver lives in his personal account, github.com/ssorj",
+    "Keshava Munegowda": "SBK lives in his personal account, github.com/kmgowda",
+}
+
+
 #: Where `csv.DictReader` files the values of a row that has more fields than the header.
 #: It has to be named, because the default is `None` and a `None` key is invisible to every
 #: check written over `FIELDS`.
@@ -213,9 +229,15 @@ def summary(rows=None):
     # Named so a reader can check the union above against the classifier rather than trust it.
     assert set(DISPOSAL_KINDS) == {"positive_only_filter", "nonnegative_filter",
                                    "silent_suppression", "library_refusal"}, DISPOSAL_KINDS
+    vendors = {v["vendor"] for v in fold.values()}
+    people = vendors & set(INDIVIDUAL_VENDORS)
     return {
         "harnesses": len(fold),
-        "vendors": len({v["vendor"] for v in fold.values()}),
+        "vendors": len(vendors),
+        # 15 Oct 2026: the vendors that are organizations, every vendor INDIVIDUAL_VENDORS
+        # does not name as a person.
+        "organizations": len(vendors - people),
+        "individuals": sorted(people),
         "languages": len({v["language"] for v in fold.values()}),
         "evidence_lines": sum(v["lines"] for v in fold.values()),
         "cross_process": sorted(cross),

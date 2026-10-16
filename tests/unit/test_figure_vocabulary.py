@@ -252,7 +252,9 @@ class TestTheRealFiguresPassTheirOwnGate:
                        "build_exposure", "build_recovery",
                        # 4 Oct 2026: what the remedies buy, the main text's Fig. 4, whose
                        # panel (a) carries the curve the retired column figure drew.
-                       "build_remedies")
+                       "build_remedies",
+                       # 15 Oct 2026: the eight matched pairs' forest, for Supplement S3.1.
+                       "build_priority_forest")
 
     @pytest.mark.parametrize("builder", RESULT_BUILDERS)
     def test_a_result_figure_builds_without_a_retired_term(self, builder, tmp_path):

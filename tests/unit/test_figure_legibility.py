@@ -51,14 +51,16 @@ class TestWidthParsing:
         assert fl._width_of(r"\columnwidth", False) == pytest.approx(3.5)
 
     def test_the_text_block_is_wider_than_a_column(self):
-        assert fl._width_of(r"\textwidth", False) == pytest.approx(7.16)
+        """compsoc's \\textwidth is 517.935 pt, 516 PDF points (a minimal build, 15 Oct 2026)."""
+        assert fl._width_of(r"\textwidth", False) == pytest.approx(516.0 / 72)
 
     def test_linewidth_reads_as_a_column(self):
         assert fl._width_of(r"\linewidth", False) == pytest.approx(3.5)
 
     def test_a_one_column_document_has_no_narrow_column(self):
-        """The supplement is onecolumn, where \\columnwidth is the whole text block."""
-        assert fl._width_of(r"\columnwidth", True) == pytest.approx(6.5)
+        """The supplement is onecolumn, where \\columnwidth is the whole text block: 516 pt in a
+        minimal IEEEtran journal build, 7.14 in. It was taken as 6.5 in until 15 Oct 2026."""
+        assert fl._width_of(r"\columnwidth", True) == pytest.approx(7.14, abs=0.001)
 
     def test_an_unparseable_width_returns_nothing_rather_than_guessing(self):
         assert fl._width_of("3in", False) is None
@@ -100,7 +102,7 @@ class TestPrintWidths:
 \includegraphics[width=\textwidth]{a/b/wide.pdf}
 \end{figure*}
 """)
-        assert fl.print_widths((tex,))["wide"] == pytest.approx(7.16)
+        assert fl.print_widths((tex,))["wide"] == pytest.approx(fl.TEXT_WIDTH_IN)
 
     def test_linewidth_inside_a_starred_float_follows_the_box(self, tmp_path):
         tex = self._tex(tmp_path, r"""
@@ -108,7 +110,7 @@ class TestPrintWidths:
 \includegraphics[width=\linewidth]{a/b/follows.pdf}
 \end{figure*}
 """)
-        assert fl.print_widths((tex,))["follows"] == pytest.approx(7.16)
+        assert fl.print_widths((tex,))["follows"] == pytest.approx(fl.TEXT_WIDTH_IN)
 
     def test_a_one_column_document_uses_its_own_width(self, tmp_path):
         tex = self._tex(tmp_path, r"""
@@ -116,7 +118,7 @@ class TestPrintWidths:
 \includegraphics[width=\columnwidth]{a/b/supp.pdf}
 \end{figure}
 """, preamble="\\documentclass[10pt,journal,onecolumn]{IEEEtran}\n")
-        assert fl.print_widths((tex,))["supp"] == pytest.approx(6.5)
+        assert fl.print_widths((tex,))["supp"] == pytest.approx(fl.ONECOLUMN_WIDTH_IN)
 
     def test_an_include_outside_a_float_is_not_measured(self, tmp_path):
         tex = self._tex(tmp_path, r"\includegraphics[width=\columnwidth]{a/b/loose.pdf}")
@@ -292,3 +294,45 @@ class TestAnInclusionWithNoWidth:
         widths = fl.print_widths([str(tex)])
         assert "sized" in widths, "the fixture must contain one figure the gate can measure"
         assert "sized_by_nothing" not in widths
+
+
+#: The figures the submission prints: the paper's and the journal supplement's.
+SUBMISSION = fl.print_widths(("paper.tex", "supplement.tex"))
+
+
+class TestEveryGlyphTheSubmissionPrintsIsLegible:
+    """15 Oct 2026, an internal review of the printed figures: the gate above reads each label's
+    own size, so it passed the subscripts that tell t_rx,ack from t_ack in Figs. 1 and 5, and the
+    exponents that are the values of Fig. 4(b)'s log axes, at 5.6 pt. This reads the committed
+    files glyph by glyph, at the scale the page prints each one at."""
+
+    def test_the_submission_has_figures_to_read(self):
+        assert len(SUBMISSION) >= 10, sorted(SUBMISSION)
+
+    @pytest.mark.parametrize("stem", sorted(SUBMISSION))
+    def test_no_glyph_prints_below_the_floor(self, stem):
+        pymupdf = pytest.importorskip("pymupdf")
+        pdf = ROOT / "docs" / "results" / "figures" / ("%s.pdf" % stem)
+        with pymupdf.open(str(pdf)) as doc:
+            page = doc[0]
+            scale = SUBMISSION[stem] * 72.0 / page.rect.width
+            sizes = [(span["size"] * scale, span["text"])
+                     for block in page.get_text("dict")["blocks"]
+                     for line in block.get("lines", []) for span in line["spans"]
+                     if span["text"].strip()]
+        assert sizes, "%s carries no text layer to measure" % stem
+        smallest = min(sizes)
+        assert smallest[0] >= fl.MIN_SCRIPT_PT - 0.01, (
+            "%s prints %r at %.2f pt, under the %.1f pt floor" % (
+                stem, smallest[1], smallest[0], fl.MIN_SCRIPT_PT))
+
+    def test_a_main_text_figure_is_printed_at_its_own_size(self):
+        """Fig. 1 to 5 are drawn at exactly the width the paper prints them at and saved whole,
+        so that the page neither enlarges a file (it printed Fig. 4 4.1 pt taller) nor shrinks
+        its type."""
+        pymupdf = pytest.importorskip("pymupdf")
+        paper = fl.print_widths(("paper.tex",))
+        assert len(paper) == 5, sorted(paper)
+        for stem, width_in in sorted(paper.items()):
+            with pymupdf.open(str(ROOT / "docs" / "results" / "figures" / (stem + ".pdf"))) as d:
+                assert d[0].rect.width / 72.0 == pytest.approx(width_in, abs=0.005), stem

@@ -90,18 +90,52 @@ def test_the_figures_use_the_manuscripts_names():
     and the grid's interval is a step, never a cell."""
     import emit_paper_numbers as epn
     import stat_intervals as si
-    fig, (exposure, flip, cdf, strip) = plt.subplots(1, 4)
+    fig, axes = plt.subplots(1, 5)
+    exposure, flip, recovery = axes[0], axes[1], axes[2:]
     mrf.plot_exposure(exposure, epn._exposure_lags())
     mrf.plot_payload_flip(flip, mrf.payload_positions())
-    pops = si.recovery_populations()
-    mrf.plot_recovery(cdf, strip, pops, si.recovery_band_edge(pops))
-    said = [t.get_text() for a in (exposure, flip, cdf, strip) for t in a.texts]
+    # 15 Oct 2026: the recovery figure has three panels, the verdicts pooled and inside each
+    # broker, sharing one logarithmic axis and one label, under the middle panel, which says
+    # "log" as the paper's other logarithmic axes do.
+    mrf.plot_recovery(recovery, si.recovery_populations(), si.recovery_populations(split="both"))
+    said = [t.get_text() for a in axes for t in a.texts]
     assert "publish latency = end-to-end latency" in said
     assert exposure.get_xlabel() == "end-to-end latency measured (ms)"
     assert "half step width" in said
-    assert cdf.get_xlabel() == strip.get_xlabel() == (
-        "recovery error (% of median end-to-end latency)")
+    assert recovery[1].get_xlabel() == "recovery error (% of median end-to-end latency, log)"
     assert not [s for s in said if "displacement" in s or "cell" in s]
+    plt.close(fig)
+
+
+def test_plot_recovery_draws_the_verdicts_pooled_and_inside_each_broker():
+    """The postmortem's Fig. S11 since 15 Oct 2026: (a) both brokers, (b) Kafka, (c) Redis; in
+    each, the two verdicts' empirical distribution functions with a mark for every group, on
+    one logarithmic axis that holds every group of both brokers, and one legend."""
+    import stat_intervals as si
+    pops, cells = si.recovery_populations(), si.recovery_populations(split="both")
+    fig, axes = plt.subplots(1, 3, sharey=True)
+    try:
+        mrf.plot_recovery(axes, pops, cells)
+        assert [a.get_title(loc="left") for a in axes] == [
+            "(a) Both brokers", "(b) Kafka", "(c) Redis"]
+        for ax, source, broker in zip(axes, (pops, cells, cells), ("", "Kafka", "Redis")):
+            assert ax.get_xscale() == "log"
+            marks = [ln for ln in ax.lines if ln.get_marker() == "o"]
+            assert [len(ln.get_xdata()) for ln in marks] == [
+                len(source[broker + "Pass"]), len(source[broker + "Fail"])]
+            lo, hi = ax.get_xlim()
+            every = [v for p in pops.values() for v in p]
+            assert lo < min(every) and hi > max(every)
+            for ln, key in zip(marks, ("Pass", "Fail")):
+                assert sorted(ln.get_xdata()) == sorted(source[broker + key])
+                assert ln.get_ydata()[-1] == 1.0
+        assert axes[0].get_legend() is not None
+        assert axes[1].get_legend() is None and axes[2].get_legend() is None
+        assert [t.get_text() for t in axes[0].get_legend().get_texts()] == [
+            "check accepts", "check rejects"]
+        assert axes[0].get_ylabel() == "share of groups"
+    finally:
+        plt.close(fig)
 
 
 def test_plot_deletion_draws_every_cell_and_splits_at_the_quantum():
@@ -243,7 +277,12 @@ def test_the_slice_annotation_names_the_slice_and_the_rise():
     fig, ax = plt.subplots()
     mrf.plot_spectrum(ax, bins, slice_ms=3.0)
     said = " ".join(t.get_text() for t in ax.texts)
-    assert "3 ms" in said and "4.5" in said
+    assert "3.0 ms" in said and "4.5" in said
+    # 15 Oct 2026, an internal review: to a tenth, so that the derived 2.8 ms slice is not
+    # printed as the 3 ms the registered campaign set by hand.
+    fig, ax = plt.subplots()
+    mrf.plot_spectrum(ax, bins, slice_ms=2.8)
+    assert "base slice: 2.8 ms" in " ".join(t.get_text() for t in ax.texts)
 
 
 def test_the_spectrum_omits_the_slice_annotation_when_no_constant_is_available():
@@ -508,11 +547,12 @@ def test_main_builds_every_figure_by_default(tmp_path, capsys):
     this catches, and it only catches it if the number is exact. It was seven from round 17,
     when the priority ladder joined, and eight from round 54 with the exposure curve. The
     ninth draws the two recovery populations for S16.9, whose argument had become four
-    paragraphs about the shape of two distributions and no picture of either.
+    paragraphs about the shape of two distributions and no picture of either. 15 Oct 2026:
+    eleven, with the forest of the eight matched pairs on both brokers for S3.1.
     """
     assert mrf.main(["--out", str(tmp_path)]) == 0
-    assert len(list(tmp_path.glob("*.pdf"))) == 10
-    assert capsys.readouterr().out.count("wrote") == 10
+    assert len(list(tmp_path.glob("*.pdf"))) == 11
+    assert capsys.readouterr().out.count("wrote") == 11
 
 
 def test_the_spectrum_builder_takes_the_slice_from_the_derived_constants(tmp_path):
@@ -556,11 +596,12 @@ def test_figures_the_manuscript_includes_are_the_ones_this_script_writes():
 def test_repair_rows_skip_a_condition_with_no_delivery_and_sort_the_rest(tmp_path):
     p = tmp_path / "span.csv"
     p.write_text("condition,median_S_us,median_D_us,recovery_err_us\n"
-                 "b#pass,500,2000,-100\n"
-                 "z#pass,100,0,0\n"
-                 "a#fail,300,1000,50\n", encoding="utf-8")
+                 "kafka_n1_feed1#pass,500,2000,-100\n"
+                 "redis_n1_feed1#pass,100,0,0\n"
+                 "redis_n2_feed1#fail,300,1000,50\n", encoding="utf-8")
     rows = mrf.repair_rows(p)
-    assert rows == [(1.0, 70.0, 5.0), (2.0, 75.0, 5.0)]
+    # 15 Oct 2026: each row names its broker, which the figure marks.
+    assert rows == [(1.0, 70.0, 5.0, "redis"), (2.0, 75.0, 5.0, "kafka")]
 
 
 def test_repair_rows_refuse_a_file_with_no_conditions(tmp_path):
@@ -574,19 +615,37 @@ def test_the_committed_repair_rows_improve_every_condition():
     """The panel's claim, checked on the data: adding A back never makes a condition worse."""
     rows = mrf.repair_rows()
     assert len(rows) == 70
-    assert all(repaired < proxy for _, proxy, repaired in rows)
+    assert all(repaired < proxy for _, proxy, repaired, _broker in rows)
 
 
 def test_plot_repair_draws_the_curve_its_band_and_both_populations():
+    """15 Oct 2026: each broker's crosses and dots in its own colour, and the padding
+    campaign's points, joined in order of padding, over the curve in neutral ink."""
+    from matplotlib.colors import to_hex
     fig, ax = plt.subplots()
     try:
-        mrf.plot_repair(ax, [(0.8, 80.0, 3.0), (2.0, 70.0, 0.0)], (725.0, 1900.0, 500.0,
-                                                                     500.0, 1900.0))
-        assert len(ax.collections) == 3, "the band and the two scatters"
+        padding = [("E-A10", "kafka", [(3.0, 80.0), (170.0, 74.0)]),
+                   ("E-A10", "redis", [(1.2, 57.0), (5.6, 44.0)])]
+        mrf.plot_repair(ax, [(0.8, 80.0, 3.0, "redis"), (2.0, 70.0, 0.0, "kafka")],
+                        (725.0, 1900.0, 500.0, 500.0, 1900.0), padding)
+        # The band, two scatters for each broker, and one for each padding trajectory.
+        assert len(ax.collections) == 1 + 4 + 2
+        colours = {to_hex(c.get_edgecolor()[0]) for c in ax.collections[5:]}
+        assert colours == {"#1f77b4", "#d62728"}
+        assert to_hex(ax.lines[0].get_color()) == mrf.CURVE
         assert ax.get_xscale() == "log"
         labels = [t.get_text() for t in ax.get_legend().get_texts()]
         assert labels == ["$A/D$ at a fixed $A$", "timed from the acknowledgment",
-                          "with $A$ added back"]
+                          "with $A$ added back", "padding, $A/D$", "Kafka", "Redis"]
+    finally:
+        plt.close(fig)
+
+
+def test_plot_repair_without_the_padding_draws_the_groups_alone():
+    fig, ax = plt.subplots()
+    try:
+        mrf.plot_repair(ax, [(2.0, 70.0, 0.0, "kafka")], (725.0, 1900.0, 500.0, 500.0, 1900.0))
+        assert len(ax.collections) == 1 + 4, "the band and both brokers' two scatters"
     finally:
         plt.close(fig)
 
@@ -824,3 +883,196 @@ def test_a_pair_with_a_zero_arm_gets_no_factor():
     printed = [t.get_text() for t in ax.texts if t.get_text().endswith("×")]
     assert len(printed) == 1, "only the pair with two non-zero arms carries a factor"
     plt.close(fig)
+
+
+# --- the referees' figures of 15 Oct 2026 ------------------------------------------------------
+
+def test_the_forest_builder_writes_a_pdf(tmp_path):
+    assert mrf.main(["--out", str(tmp_path), "--only", "priority_forest"]) == 0
+    out = tmp_path / "priority_forest.pdf"
+    assert out.is_file() and out.stat().st_size > 1000
+
+
+def test_incommensurate_points_are_the_cells_paced_at_an_incommensurate_rate(tmp_path):
+    """Only a rate campaign's cells name a rate, and only the incommensurate ones are kept."""
+    p = tmp_path / "ret.csv"
+    p.write_text("campaign,cell,retention_pct,omb_p50_ms\n"
+                 "rate_phase,r457_rep1,49.7,1.0\n"
+                 "rate_phase,r500_rep1,99.9,1.0\n"
+                 "bimodality,l0_rep1,2.6,1.0\n"
+                 "resolution,s200_rep1,100.0,1.0\n", encoding="utf-8")
+    assert mrf.incommensurate_points(p) == [(49.7, 1.0, 457)]
+
+
+def test_plot_deletion_marks_the_given_cells_and_counts_them():
+    pts = [(50.0, 1.0, ""), (2.6, 1.0, ""), (34.4, 235.0, "64 KB")]
+    fig, ax = plt.subplots()
+    try:
+        mrf.plot_deletion(ax, pts, marked=[(50.0, 1.0, 457), (49.0, 1.0, 383)])
+        labels = [t.get_text() for t in ax.get_legend().get_texts()]
+        # 15 Oct 2026: short, as the other two entries are, so that the legend's markers stay
+        # off the 1 ms column; the caption names the rates.
+        assert labels[-1] == "incommensurate rate (2)"
+    finally:
+        plt.close(fig)
+    fig, ax = plt.subplots()
+    try:
+        mrf.plot_deletion(ax, pts)
+        assert len(ax.get_legend().get_texts()) == 2, "no third entry with nothing marked"
+    finally:
+        plt.close(fig)
+
+
+def test_priority_forest_rows_hold_every_pair_in_load_order(tmp_path):
+    import math
+    rows = mrf.priority_forest_rows()
+    for pairs in rows.values():
+        assert len(pairs) == 8
+        assert [p["rho"] for p in pairs] == sorted(p["rho"] for p in pairs)
+        assert all(p["lo"] <= p["factor"] <= p["hi"] for p in pairs)
+    assert sum(1 for p in rows["kafka"] if math.isinf(p["hi"])) == 5
+    assert not any(math.isinf(p["hi"]) for p in rows["redis"])
+
+
+def test_plot_priority_forest_draws_each_pair_its_floor_and_its_unbounded_ends():
+    import math
+    rows = {"kafka": [{"campaign": "E-A5", "level": "l75", "rho": 0.75, "factor": 39.0,
+                       "lo": 15.0, "hi": math.inf},
+                      {"campaign": "E-A5b", "level": "l70", "rho": 0.70, "factor": 7.2,
+                       "lo": 4.5, "hi": 14.8}],
+            "redis": [{"campaign": "E-A5", "level": "l75", "rho": 0.75, "factor": 6.3,
+                       "lo": 5.0, "hi": 8.2},
+                      {"campaign": "E-A5b", "level": "l70", "rho": 0.70, "factor": 6.0,
+                       "lo": 4.3, "hi": 9.2}]}
+    fig, axes = plt.subplots(1, 2, sharey=True)
+    try:
+        mrf.plot_priority_forest(axes, rows)
+        kafka, redis = axes
+        # One arrow, on Kafka's unbounded pair, running to the panel's edge.
+        assert len(kafka.texts) == 2 and len(redis.texts) == 1
+        assert kafka.texts[0].get_text() == ""
+        said = [t.get_text() for t in redis.texts]
+        assert said == ["every pair ≥ 4.3×"]
+        assert kafka.get_xlim() == mrf.FOREST_XLIM and kafka.get_xscale() == "log"
+        assert kafka.get_title(loc="left") == "(a) Kafka"
+        assert [t.get_text() for t in kafka.get_yticklabels()] == ["75%  E-A5", "70%  E-A5b"]
+    finally:
+        plt.close(fig)
+
+
+def test_save_holds_a_figure_no_document_includes_to_its_intended_width(tmp_path):
+    """A new figure is measured at the width it will print at, before the text takes it up."""
+    import figure_legibility
+    fig, ax = plt.subplots(figsize=(6.5, 2.0))
+    ax.set_title("small", fontsize=6)
+    with pytest.raises(figure_legibility.FigureTooSmall):
+        mrf._save(fig, tmp_path, "not_included_anywhere", intended_in=6.5)
+    plt.close(fig)
+    fig, ax = plt.subplots(figsize=(6.5, 2.0))
+    ax.set_title("small", fontsize=6)
+    assert mrf._save(fig, tmp_path, "not_included_anywhere").is_file(), \
+        "without an intended width there is nothing to measure it against"
+
+
+def test_padding_points_are_one_trajectory_per_campaign_and_broker(tmp_path):
+    p = tmp_path / "padding.csv"
+    p.write_text("campaign,phase,cell,pad_bytes,backend,n_events,median_a_ms,median_d_ms,"
+                 "median_s_ms\n"
+                 "E-A10,ea10,pad262144,262144,kafka,4,120.0,160.0,50.0\n"
+                 "E-A10,ea10,pad0,0,kafka,4,2.0,4.0,1.0\n", encoding="utf-8")
+    assert mrf.padding_points(str(p)) == [("E-A10", "kafka", [(4.0, 50.0), (160.0, 75.0)])]
+
+
+# --- the printed figures, 15 Oct 2026 (three internal reviews) ----------------------------------
+
+def _pdf_size_in(path):
+    from pypdf import PdfReader
+    box = PdfReader(str(path)).pages[0].mediabox
+    return float(box.width) / 72.0, float(box.height) / 72.0
+
+
+def test_the_deletion_panel_writes_its_decades_out_and_aligns_its_grid_ticks():
+    """As 10^n the log axes' exponents printed at 5.75 pt; written out they print at 8 pt, the
+    axis labels say the scale is logarithmic, and the minor tick "2" sits on the decades' line."""
+    fig, ax = plt.subplots()
+    try:
+        mrf.plot_deletion(ax, mrf.retention_points(), marked=mrf.incommensurate_points())
+        fmt_x, fmt_y = ax.xaxis.get_major_formatter(), ax.yaxis.get_major_formatter()
+        assert [fmt_x(v, 0) for v in (1, 10, 100, 1e3, 1e4, 1e5)] == [
+            "1", "10", "100", "1k", "10k", "100k"]
+        assert [fmt_y(v, 0) for v in (1, 10, 100)] == ["1", "10", "100"]
+        assert ax.get_xlabel().endswith("(ms, log)") and ax.get_ylabel().endswith("(%, log)")
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+        tops = {t.get_text(): t.get_window_extent(renderer).y1
+                for t in ax.get_xticklabels() + ax.get_xticklabels(minor=True)
+                if t.get_text() in ("1", "2", "10")}
+        assert set(tops) == {"1", "2", "10"}
+        assert tops["2"] == pytest.approx(tops["10"], abs=0.5), tops
+    finally:
+        plt.close(fig)
+
+
+def test_replicates_set_apart_say_so_on_the_page():
+    """The two 256 KB replicates print 1.4% apart and are drawn apart; their label says so, with
+    their count, while the 64 KB pair, drawn where it printed, keeps its bare name."""
+    fig, ax = plt.subplots()
+    try:
+        mrf.plot_deletion(ax, mrf.retention_points())
+        said = [t.get_text() for t in ax.texts]
+        assert "256 KB\n(×2, set apart)" in said
+        assert "64 KB" in said
+    finally:
+        plt.close(fig)
+
+
+def test_the_deletion_figure_is_exactly_the_text_width(tmp_path):
+    """Saved whole: cropped to its ink it was 6.975 in, and the page enlarged it 2.75%."""
+    import figure_legibility
+    width, height = _pdf_size_in(mrf.build_deletion_phases(tmp_path))
+    assert width == pytest.approx(figure_legibility.TEXT_WIDTH_IN, abs=0.005)
+    assert height == pytest.approx(mrf.DELETION_PHASES_IN[1], abs=0.005)
+
+
+def test_save_whole_writes_the_canvas_whatever_rcparams_say(tmp_path):
+    fig, ax = plt.subplots(figsize=(3.0, 1.0))
+    ax.axis("off")
+    ax.text(0.5, 0.5, "inside", ha="center", va="center", fontsize=8)
+    with matplotlib.rc_context({"savefig.bbox": "tight"}):
+        path = mrf._save(fig, tmp_path, "whole_canvas", whole=True)
+    assert _pdf_size_in(path) == pytest.approx((3.0, 1.0), abs=0.001)
+
+
+def test_the_priority_forest_is_drawn_at_the_width_it_prints_at(tmp_path, monkeypatch):
+    """Drawn at the whole one-column block and included at 0.9 of it, its 8 pt type printed at
+    7.2 pt; it is drawn at the width the supplement gives it, and its factors written out."""
+    import figure_legibility
+    seen = {}
+    real = mrf._save
+
+    def spy(fig, out_dir, stem, **kw):
+        seen["width"] = fig.get_size_inches()[0]
+        seen["labels"] = [fig.axes[0].xaxis.get_major_formatter()(v, 0) for v in (1, 10, 1e3)]
+        return real(fig, out_dir, stem, **kw)
+    monkeypatch.setattr(mrf, "_save", spy)
+    mrf.build_priority_forest(tmp_path)
+    want = figure_legibility.print_widths().get("priority_forest", mrf.SUPPLEMENT_WIDTH_IN)
+    assert seen["width"] == pytest.approx(want)
+    assert seen["labels"] == ["1", "10", "1k"]
+
+
+def test_the_payload_arms_are_told_apart_by_shade_and_shape_not_broker_colour():
+    fig, (grid, flip) = plt.subplots(2, 1)
+    try:
+        arms = mrf.payload_arms()
+        mrf.plot_payload_grid(grid, arms)
+        mrf.plot_payload_flip(flip, mrf.payload_positions(arms))
+        colours = {matplotlib.colors.to_hex(c) for _l, _k, c in mrf.PAYLOAD_ARMS}
+        assert not colours & {matplotlib.colors.to_hex(c) for _k, _n, c in mrf.BROKER_COLOURS}
+        assert len(set(mrf.PAYLOAD_MARKERS.values())) == len(mrf.PAYLOAD_ARMS)
+        assert "lattice" in grid.get_title()
+        assert flip.get_ylabel() == "replicate spread\n(percentage points)"
+        top = max(s for _l, _f, s, _c, _o in mrf.payload_positions(arms))
+        assert flip.get_ylim()[1] == pytest.approx(1.30 * top)
+    finally:
+        plt.close(fig)

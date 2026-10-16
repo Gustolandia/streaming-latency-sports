@@ -255,7 +255,8 @@ class TestCheck:
     def test_report_returns_every_check(self):
         fig, ax = _blank()
         assert set(fc.report(fig)) == {"struck", "overlapping", "clipped", "crossed",
-                                       "erased", "translucent", "probed"}
+                                       "erased", "translucent", "covered", "probed"}
+        assert set(fc.report(fig, whole_canvas=True)) == set(fc.report(fig)) | {"cut"}
 
 
 class TestALongLabelCannotDiluteAStrike:
@@ -671,7 +672,9 @@ class TestEveryCheckCountsWhatItExamined:
     def test_report_carries_a_count_for_every_check(self):
         got = fc.report(self._busy())
         assert set(got["probed"]) == {"struck", "overlapping", "clipped", "crossed",
-                                      "erased", "translucent"}
+                                      "erased", "translucent", "covered"}
+        whole = fc.report(self._busy(), whole_canvas=True)
+        assert set(whole["probed"]) == set(got["probed"]) | {"cut"}
 
     def test_the_counts_are_non_zero_on_a_figure_with_something_to_probe(self):
         probed = fc.report(self._busy())["probed"]
@@ -983,3 +986,251 @@ class TestTheTickSlotsAndBoxesThatAreAbsent:
             "the fixture must actually measure zero, or this proves nothing")
         assert not any(d["text"] == zero_width for d in fc.report(fig)["struck"])
         plt.close(fig)
+
+
+class TestPlottedDataUnderALegend:
+    """15 Oct 2026, two internal reviews of the printed figures: Fig. 2(a)'s opaque legend hid
+    the peaks of both brokers' distributions and the top of D's, and Fig. 4(b)'s frameless
+    legend set its markers on the 1 ms column, one over the lowest retention. Every check above
+    passed both, because they ask whether ink lands on a label and an opaque legend exempts its
+    own entries. This one asks whether a legend's box sits on the data."""
+
+    def _bars(self, legend_kw):
+        fig, ax = _blank()
+        ax.bar([0.6, 0.8], [0.9, 0.95], width=0.1, label="bars")
+        ax.legend(loc="upper right", **legend_kw)
+        return fig
+
+    def test_an_opaque_legend_over_bars_is_found(self):
+        found = fc.data_under_legends(self._bars(dict(framealpha=1.0)))
+        assert [(d["kind"], d["label"]) for d in found] == [("bars", "bars")]
+        assert found[0]["n"] >= 1 and found[0]["legend"] == "bars"
+
+    def test_a_frameless_legend_over_markers_is_found(self):
+        fig, ax = _blank()
+        ax.scatter([0.9, 0.92], [0.05, 0.08], s=20, label="points")
+        ax.legend(loc="lower right", frameon=False)
+        found = fc.data_under_legends(fig)
+        assert [d["kind"] for d in found] == ["markers"]
+
+    def test_a_legend_clear_of_the_data_is_not_reported(self):
+        fig, ax = _blank()
+        ax.set_ylim(0, 3)
+        ax.bar([0.6, 0.8], [0.9, 0.95], width=0.1, label="bars")
+        ax.plot([0.1, 0.9], [0.5, 0.6], "o-", label="series")
+        ax.legend(loc="upper right", framealpha=1.0)
+        assert fc.data_under_legends(fig) == []
+        assert fc.probe_counts()["covered"] == 3, "bars, a line and its markers were probed"
+
+    def test_an_outline_on_a_log_axis_is_found_where_it_is_drawn(self):
+        """A step outline's path must go through the log transform whole: through its affine
+        part alone the outline came out linear and missed the box it ran under."""
+        fig, ax = plt.subplots(figsize=(4, 3))
+        ax.set_yscale("log")
+        ax.stairs([10, 6e4, 0, 50], [0, 1, 2, 3, 4], label="outline")
+        ax.set_ylim(1, 1e5)
+        ax.legend(loc="upper center", framealpha=1.0)
+        found = fc.data_under_legends(fig)
+        assert [d["kind"] for d in found] == ["outline"]
+
+    def test_a_data_line_is_found_and_a_rule_across_the_panel_is_not(self):
+        fig, ax = _blank()
+        ax.axhline(0.9, color="grey")
+        ax.plot([0.0, 0.5], [0.1, 0.2], label="clear")
+        leg = ax.legend(loc="upper right", framealpha=1.0)
+        assert fc.data_under_legends(fig) == [], "an axhline spans the panel by design"
+        ax.plot([0.0, 1.0], [0.95, 0.95], label="under")
+        leg.remove()
+        ax.legend(loc="upper right", framealpha=1.0)
+        found = fc.data_under_legends(fig)
+        assert [(d["kind"], d["label"]) for d in found] == [("line", "under")]
+
+    def test_a_line_broken_by_a_gap_is_tested_segment_by_segment(self):
+        fig, ax = _blank()
+        ax.plot([0.0, 0.3, np.nan, 0.97, 1.0], [0.95, 0.95, np.nan, 0.95, 0.95], label="gap")
+        ax.legend(loc="upper center", framealpha=1.0)
+        assert fc.data_under_legends(fig) == []
+
+    def test_a_marker_grazing_the_box_is_not_under_it(self):
+        fig, ax = _blank()
+        ax.plot([], [], "o", label="key")
+        leg = ax.legend(loc="center", framealpha=1.0)
+        fig.canvas.draw()
+        box = leg.get_window_extent(fig.canvas.get_renderer())
+        x, y = ax.transData.inverted().transform((box.x1 + 4.0, (box.y0 + box.y1) / 2.0))
+        ax.plot([x], [y], "o", ms=6)
+        assert fc.data_under_legends(fig) == []
+
+    def test_a_legend_outside_the_axes_meets_no_clipped_mark(self):
+        """A legend over the axes, as Fig. S1's is, cannot hide a series the axes clip."""
+        fig, ax = _blank()
+        ax.plot([0.0, 1.0], [0.5, 30.0], label="leaves the axes")
+        ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), framealpha=1.0)
+        assert fc.data_under_legends(fig) == []
+        assert fc.probe_counts()["covered"] == 0
+
+    def test_an_unclipped_mark_is_tested_wherever_it_is_drawn(self):
+        fig, ax = _blank()
+        line, = ax.plot([0.0, 1.0], [1.06, 1.06], clip_on=False, label="unclipped")
+        ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), framealpha=1.0)
+        assert [d["label"] for d in fc.data_under_legends(fig)] == ["unclipped"]
+        assert line.get_clip_on() is False
+
+    def test_a_figure_legend_is_tested_against_every_axes(self):
+        fig, ax = _blank()
+        ax.scatter([0.5], [0.5], s=40)
+        fig.legend(handles=[plt.Line2D([], [], marker="o", ls="none")], labels=["key"],
+                   loc="center")
+        assert [d["kind"] for d in fc.data_under_legends(fig)] == ["markers"]
+
+    def test_an_insets_data_is_tested_against_its_parents_legend(self):
+        fig, ax = _blank()
+        sub = ax.inset_axes([0.55, 0.55, 0.4, 0.4])
+        sub.plot([0, 1], [0, 1], "s", ms=5)
+        ax.plot([], [], label="key")
+        ax.legend(loc="upper right", framealpha=1.0)
+        assert [d["kind"] for d in fc.data_under_legends(fig)] == ["markers"]
+
+    def test_invisible_legends_series_and_empty_artists_are_stepped_over(self):
+        """Nothing here is drawn under the legend: a hidden line and scatter, empty ones, a
+        band, an error bar's whiskers, a bar of no height and a hidden outline."""
+        fig, ax = _blank()
+        hidden, = ax.plot([0.0, 1.0], [0.95, 0.95], "o-")
+        hidden.set_visible(False)
+        ax.plot([], [], "o-")
+        coll = ax.scatter([0.95], [0.95], s=30)
+        coll.set_visible(False)
+        ax.scatter([], [])
+        ax.fill_between([0.0, 1.0], [0.9, 0.9], [1.0, 1.0], alpha=0.2)
+        ax.errorbar([0.97], [0.97], yerr=[0.01])
+        ax.bar([0.95], [0.0], width=0.02)
+        step = ax.stairs([0.98], [0.9, 1.0])
+        step.set_visible(False)
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            ax.legend(loc="upper right")      # nothing is labelled: an empty legend
+        assert ax.get_legend() is not None and not ax.get_legend().get_texts()
+        assert fc.data_under_legends(fig) == []
+        assert fc.probe_counts()["covered"] > 0, "the error bar's point is a line it probed"
+        ax.get_legend().set_visible(False)
+        assert fc.data_under_legends(fig) == []
+        assert fc.probe_counts()["covered"] == 0
+
+    def test_an_axes_without_a_legend_is_not_probed(self):
+        fig, ax = _blank()
+        ax.plot([0, 1], [0, 1], "o-")
+        assert fc.data_under_legends(fig) == []
+        assert fc.probe_counts()["covered"] == 0
+
+    def test_a_path_without_codes_is_one_polyline(self):
+        from matplotlib.path import Path
+        lines = fc._polylines(Path([[0.0, 0.0], [1.0, 1.0]]))
+        assert len(lines) == 1 and lines[0].shape == (2, 2)
+        assert fc._segments_through([[0.0, 0.0]], (0, 0, 1, 1)) == 0
+
+    def test_it_reaches_report_and_check_with_the_remedy(self):
+        fig = self._bars(dict(framealpha=1.0))
+        assert fc.report(fig)["covered"]
+        with pytest.raises(fc.FigureCollision, match=r"plotted data under a legend: \d+ bars"):
+            fc.check(fig, "covered_figure")
+
+    def test_an_unlabelled_series_is_named_as_one(self):
+        fig, ax = _blank()
+        ax.plot([0.0, 1.0], [0.95, 0.95])
+        ax.legend(handles=[plt.Line2D([], [])], labels=["key"], loc="upper right",
+                  framealpha=1.0)
+        with pytest.raises(fc.FigureCollision, match="an unlabelled series"):
+            fc.check(fig, "unlabelled")
+
+
+class TestTheGateFindsTheDefectsItWasWrittenFor:
+    """The mutation check (15 Oct 2026): rebuilt with the legends they shipped with, Fig. 2(a)
+    and Fig. 4(b) fail the gate; as drawn now they pass it."""
+
+    class _Stop(Exception):
+        pass
+
+    def _capture(self, monkeypatch, build, stem):
+        found = {}
+
+        def grab(fig, name="", **kw):
+            found[name] = fig
+            raise self._Stop()
+        monkeypatch.setattr(fc, "check", grab)
+        with pytest.raises(self._Stop):
+            build()
+        return found[stem]
+
+    def test_fig_2a_with_its_old_legend_hides_bins_and_passes_as_drawn(self, monkeypatch,
+                                                                         tmp_path):
+        import make_deletion_histogram as mdh
+        fig = self._capture(monkeypatch, lambda: mdh.build_s_distribution(str(tmp_path)),
+                            "s_distribution")
+        try:
+            assert fc.data_under_legends(fig) == []
+            top = fig.axes[0]
+            for line in top.get_lines():
+                if line.get_label() == "$D$":
+                    line.set_label("$D$, never below zero")
+            top.get_legend().remove()
+            top.legend(fontsize=8, loc="upper right", frameon=True, framealpha=1.0,
+                       edgecolor="none", handlelength=1.6, borderaxespad=0.3, labelspacing=0.3)
+            kinds = {d["kind"] for d in fc.data_under_legends(fig)}
+            assert {"bars", "outline", "line"} <= kinds, kinds
+        finally:
+            plt.close(fig)
+
+    def test_fig_4b_with_its_old_legend_covers_markers_and_passes_as_drawn(self, monkeypatch,
+                                                                           tmp_path):
+        import make_result_figures as mrf
+        fig = self._capture(monkeypatch, lambda: mrf.build_deletion_phases(tmp_path),
+                            "deletion_phases")
+        try:
+            assert fc.data_under_legends(fig) == []
+            right = fig.axes[1]
+            diamonds = [c for c in right.collections
+                        if c.get_label().startswith("incommensurate")]
+            diamonds[0].set_label("8 settings at incommensurate rates, 383 and 457 msg/s")
+            right.get_legend().remove()
+            right.legend(fontsize=8, frameon=False, loc="lower right", handletextpad=0.4)
+            found = fc.data_under_legends(fig)
+            assert [d["kind"] for d in found] == ["markers"] and found[0]["n"] >= 5
+        finally:
+            plt.close(fig)
+
+
+class TestLabelsCutByTheCanvas:
+    """A figure saved whole, so that its file is exactly the width the page prints it at, is
+    cut at the canvas edge; a label standing past it would lose its last letters."""
+
+    def test_a_label_past_the_edge_is_found(self):
+        fig, ax = _blank()
+        ax.text(0.98, 0.5, "runs off the canvas", transform=fig.transFigure, fontsize=9)
+        found = fc.texts_cut_by_canvas(fig)
+        assert [d["text"] for d in found] == ["runs off the canvas"]
+        assert found[0]["over_px"] > 0
+
+    def test_labels_inside_the_canvas_are_not(self):
+        fig, ax = _blank()
+        ax.set_title("inside")
+        ax.text(0.5, 0.5, "​", ha="center")
+        assert fc.texts_cut_by_canvas(fig) == []
+        assert fc.probe_counts()["cut"] > 0
+
+    def test_a_label_whose_box_cannot_be_measured_is_stepped_over(self, monkeypatch):
+        fig, ax = _blank()
+        ax.text(0.98, 0.5, "runs off the canvas", transform=fig.transFigure, fontsize=9)
+
+        def unmeasurable(text, renderer):
+            raise ValueError("no extent")
+        monkeypatch.setattr(fc, "_glyph_box", unmeasurable)
+        assert fc.texts_cut_by_canvas(fig) == []
+
+    def test_only_a_whole_canvas_is_checked_for_it(self):
+        fig, ax = _blank()
+        ax.text(0.98, 0.5, "runs off the canvas", transform=fig.transFigure, fontsize=9)
+        assert "cut" not in fc.report(fig)
+        assert fc.report(fig, whole_canvas=True)["cut"]
+        with pytest.raises(fc.FigureCollision, match="cut by the canvas edge"):
+            fc.check(fig, "cut_figure", whole_canvas=True)

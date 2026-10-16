@@ -26,12 +26,24 @@ import re
 #: to be "reasonably sized (readable)". Body text here is 9.5 pt.
 MIN_PRINT_PT = 8.0
 
-#: IEEEtran, 10pt journal, US letter. One column and the full text block.
-COLUMN_WIDTH_IN = 3.5
-TEXT_WIDTH_IN = 7.16
+#: The floor for the smallest glyphs a printed figure carries, a mathtext sub- or superscript,
+#: which prints at figure_style.SCRIPT_SHRINK of its label. The gate above reads each label's
+#: own size and so passed subscripts and log-tick exponents at 5.6 pt; the submission's printed
+#: figures are held to this floor glyph by glyph instead (tests/unit/test_figure_legibility.py,
+#: 15 Oct 2026).
+MIN_SCRIPT_PT = 6.5
 
-#: Widths a one-column supplement uses; its \columnwidth is the whole text block.
-ONECOLUMN_WIDTH_IN = 6.5
+#: IEEEtran, 10pt journal, compsoc, US letter: one column and the full text block, as a minimal
+#: build prints them (15 Oct 2026): \columnwidth 252.945 pt and \textwidth 517.935 pt, which are
+#: 252 and 516 PDF points, so 3.5 in and 7.1667 in.
+COLUMN_WIDTH_IN = 3.5
+TEXT_WIDTH_IN = 516.0 / 72
+
+#: The one-column supplement's \columnwidth, its whole text block: 516.0 pt in a minimal
+#: IEEEtran journal build, 514.07 PDF points, 7.14 in. This said 6.5 until 15 Oct 2026, so every
+#: supplement figure was measured as printing 9% smaller than it does (an internal review of
+#: the printed figures), and figures drawn for the supplement were drawn 0.64 in too narrow.
+ONECOLUMN_WIDTH_IN = 516.0 / 72.27
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

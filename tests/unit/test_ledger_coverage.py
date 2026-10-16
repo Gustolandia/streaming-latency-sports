@@ -67,19 +67,11 @@ ALLOWED = {
     ("postmortem.tex", "recOwnWaitRatioLo", r"($0.43$, $1.11$, $100.00$ at ten"):
         "a branch retention at ten minutes in the drift test, equal to the lowest median ratio "
         "of the registered acknowledgment-wait prediction",
-    # 13 Oct 2026: the Pub/Sub load test's least running time below zero under S1, -6.8 s.
-    ("supplement.tex", "sOnePubsubFirstLo", r"Upstream Linux 6.8 used"):
-        "the Linux release whose scheduler constants S3.7 quotes, equal to the least running time "
-        "below zero, in seconds, with which the Pub/Sub load test's clients reported their first "
-        "burst under S1's steps; a version and a duration sharing digits",
     # 12 Oct 2026: the tools block's least tail rise, 0.9 ms once freezes 35 and 36 were folded.
     ("supplement.tex", "toolsTailRiseLo", r"times its value at 0.9 of the slice"):
         "a fraction of the scheduler slice at which the rate is read in S6.3, equal to the least "
         "rise of a tool's 99th percentile under load in milliseconds; a fraction and a latency "
         "sharing a digit",
-    ("supplement.tex", "placeRedisRepl", r"width=0.62\columnwidth"):
-        "a figure's printed width as a fraction of the column, equal to the Redis placement "
-        "factor in the replication",
     ("supplement.tex", "tracedModelRatio", r"published read cost near $1.2\,\mu$s"):
         "the hpet clocksource's published read cost in microseconds, equal to the rest-of-slice "
         "model's bucket ratio",
@@ -146,31 +138,113 @@ ALLOWED = {
     ("postmortem.tex", "GeomReplFactor", r"followers grew $2.02$ times in batches"):
         "M0's growth of its burst followers' delivery in batches (S37), equal to the "
         "replication's placement factor; a growth and a ratio of rates sharing three digits",
-    ("postmortem.tex", "exposureCrossover", r"fits poorly ($R^2 = 0.65$"):
-        "the R-squared of a power-law fit to the load ladder (S16), equal to the exposure "
-        "crossover in milliseconds; a goodness of fit and a latency sharing two digits",
+    ("postmortem.tex", "exposureCrossover", r"pairs, and $0.68$ to $0.73$ for waits"):
+        "the density ratio of waits begun by a wake-up between the slice and a tick past it, on "
+        "the x86 pairs (S16.10), equal to the exposure crossover in milliseconds since 15 Oct "
+        "2026; a ratio and a latency sharing digits",
     ("postmortem.tex", "observerZ", r"($<0.1$~ms apart)"):
         "the gap between E1's two broker medians in milliseconds (S5), equal to the tracer's "
         "z, which leaving out the late messages brought to nearly nothing",
     ("postmortem.tex", "observerZ", r"within $0.1$~ms of each other"):
         "the same E1 gap, quoted again where the powered campaign is set beside it",
-    ("postmortem.tex", "recoveryKsD", r"serialization ($0.26$, $0.52$~ms)"):
-        "the added serialization at 32 KB in milliseconds (S10), equal to the "
-        "Kolmogorov-Smirnov distance between the recovery populations",
-    ("postmortem.tex", "recoveryThirdsEdgeLo", r"step width ($16.7$ points)"):
-        "half the step width of the thirds grid in points (S10), equal to the lower end of the "
-        "edges that would split the accepted conditions into thirds; two sixths sharing digits",
-    ("postmortem.tex", "spanHandlingSharePct", r"medians gets $2.6\times$"):
-        "a ratio of pooled medians among three readings of one quantity (S18), equal to the "
-        "share of Redis's delivery its parse would add, in percent",
+    # 15 Oct 2026, S16.9 rewritten: the pooled Kolmogorov-Smirnov distance (0.30, S12's rate
+    # at the top of the load ladder) and the lower end of the thirds' edges (16.7, half S10's
+    # step width) are no longer emitted, and their two entries went with them.
+    ("postmortem.tex", "spanHandlingSharePct", r"Monte-Carlo floor of $2.5\times10^{-4}$"):
+        "the grid test's Monte-Carlo floor (S11), a mantissa, equal to the share of Redis's "
+        "delivery its parse would add, in percent, since 15 Oct 2026",
+    # 15 Oct 2026: the repair at native resolution and the median publish latency moved several
+    # emitted values onto numbers the postmortem types for other quantities.
+    ("postmortem.tex", "recoveryShift", r"coefficient of variation below $3.7\%$"):
+        "Henning et al.'s coefficient of variation, another paper's measurement, equal to the "
+        "Hodges-Lehmann shift between the recovery populations in points",
+    # Later the same day, S16.9 rewritten: the pooled permutation p (0.08, S31's branch-law
+    # probability) and the non-zero shift are no longer emitted and their entries went; the
+    # recovery read inside each broker prints these values the postmortem types elsewhere.
+    ("postmortem.tex", "recoveryKafkaKsP", r"free at $0.22$~ms per trip"):
+        "the time per round trip at which two hundred sequential trips are still free (S26.2), "
+        "equal to the permutation p of the Kolmogorov-Smirnov statistic between Kafka's two "
+        "verdicts (S16.9); a latency and a probability sharing two digits",
+    ("postmortem.tex", "recoveryRedisKsD", r"the added serialization ($0.26$, $0.52$~ms)"):
+        "the serialization a 32 KB payload adds, in milliseconds (S28.1), equal to the "
+        "Kolmogorov-Smirnov distance between Redis's two verdicts (S16.9); a latency and a "
+        "distance sharing two digits",
+    ("postmortem.tex", "recoveryKafkaMax", r"\cite[Clause~5.1]{etsi102250}"):
+        "a clause of ETSI TS 102 250 (S32), another document's numbering, equal to Kafka's worst "
+        "recovery error in percent (S16.9); a clause and a percentage sharing two digits",
+    ("postmortem.tex", "recoveryKafkaPassMax", r"\cite[Clause~5.1]{etsi102250}"):
+        "the same clause, against the worst error of Kafka's accepted groups, which is Kafka's "
+        "worst",
+    ("postmortem.tex", "recoveryRedisShift", r"spans a factor of about $1.4$ between campaigns"):
+        "the drift of the normal-priority 88% configuration across campaigns, a ratio (S9), "
+        "equal to the Hodges-Lehmann shift between Redis's two verdicts in points (S16.9); a "
+        "ratio and a shift sharing two digits",
+    ("postmortem.tex", "recoveryRedisShift", r"$1.4$, $2.1$ and $2.8$~ms"):
+        "the base slice the kernel's rule gives at 2 CPUs, in milliseconds (S35), equal to the "
+        "same shift between Redis's verdicts; a slice and a shift sharing two digits",
+    ("postmortem.tex", "spanHandlingSharePct", r"smallest attainable $p$ at $2.5\times10^{-4}$"):
+        "the same Monte-Carlo floor of the grid test, a mantissa, against the consumer-handling "
+        "share in per cent",
+    ("postmortem.tex", "spanHandlingSharePct", r"predicted it $2.5$ to $5.5$ times wider"):
+        "the plan formula's predicted widening of the law's fall at the 4 ms tick, a ratio, "
+        "against the consumer-handling share in per cent",
     # 11 Oct 2026: K1's emitted shares (k1_macros) print one value the supplement already types
     # for the tracer's wait threshold.
-    ("supplement.tex", "kOneEarlyIdleLo", r"a wait for a core outlasts 0.5~ms"):
-        "the wait for a core whose probability the tracer reads (S3), 0.5 ms, equal to the lowest "
-        "share of K1's idle runs in which a message was readable before Kafka's tool had its "
-        "acknowledgment, in percent; a wait and a share sharing two digits",
+    # 15 Oct 2026: S3.5 rewritten for the referees of version 9 (A M6(a), B S5) names the same
+    # threshold twice, as the trace's pooled comparison and as Kafka's own.
+    ("supplement.tex", "kOneEarlyIdleLo",
+     r"its share of waits longer than 0.5~ms against the rate of the same runs"):
+        "the wait for a core whose probability the tracer reads (S3.5), 0.5 ms, Kafka's margin "
+        "rounded and fixed on 25 July 2026, equal to the lowest share of K1's idle runs in which "
+        "a message was readable before Kafka's tool had its acknowledgment, in percent; a wait "
+        "and a share sharing two digits",
+    ("supplement.tex", "kOneEarlyIdleLo", r"the ratios are \tracedRatios{} at 0.5~ms"):
+        "the same threshold, where S3.5 gives Kafka's own ratios at it",
+    ("supplement.tex", "spanRedisCondRateLoPct",
+     r"Gray points: \kafka{}'s 1.5~ms slice on the Arm pair"):
+        "L4's shortest slice in milliseconds, set by hand, equal to the lower quartile of Redis's "
+        "per-condition rate in percent (S1.3, 15 Oct 2026); a slice and a rate sharing two digits",
+    ("supplement.tex", "spanRedisCondRateLoPct", r"the falls of both its slices, 1.5 and 3~ms"):
+        "the same slice, in S6.2's reading of the Arm pair",
+    ("supplement.tex", "tracedThresholdLowMs", r"$\pm 0.25$~ms bar"):
+        "the half-width of P9's registered bar on the slope, in milliseconds, equal to the lowest "
+        "threshold of the trace's threshold table (S3.5, 15 Oct 2026); a bar and a threshold "
+        "sharing two digits",
     ("supplement.tex", "kOneEarlyIdleLo", r"$\Pr[\text{wait}>0.5\,\text{ms}]$"):
         "the same wait, in the caption of the tracer's table",
+    # 15 Oct 2026: Fig. S3, redrawn as the halfway points against the slice, names the Arm pair's
+    # shortest Kafka slice, 1.5 ms, a setting of L4 and not a measurement, which four emitted
+    # values print as.
+    ("supplement.tex", "recvPredNinetyMs", r"Gray points: \kafka{}'s 1.5~ms slice on the Arm pair"):
+        "L4's shortest slice in milliseconds, set by hand on the Arm pair (Fig. S3's caption), "
+        "equal to R1-a's registered bar for the wait's ninetieth percentile; a slice and a plan's "
+        "bar sharing two digits",
+    ("supplement.tex", "recvWaitFactor", r"Gray points: \kafka{}'s 1.5~ms slice on the Arm pair"):
+        "the same slice, equal to the factor within which R1-d asked the three estimates to "
+        "agree; a slice and a ratio sharing two digits",
+    ("supplement.tex", "fullFixEffectRatio",
+     r"Gray points: \kafka{}'s 1.5~ms slice on the Arm pair"):
+        "the same slice, equal to the factor by which F-d required the load to raise the 99th "
+        "percentile of D; a slice and a plan's ratio sharing two digits",
+    ("supplement.tex", "backlogFastestMedianMs",
+     r"Gray points: \kafka{}'s 1.5~ms slice on the Arm pair"):
+        "the same slice, equal to the median of a cloud run's fastest delivery in S1.5; a slice "
+        "and a delivery sharing two digits",
+    # 15 Oct 2026: S5's per-tool prose went to the postmortem's new S25.2 and S25.3, which brought
+    # the tools block's macros into that document, and the supplement began to read the median
+    # per-condition rate. Each pair below is a coincidence of digits, recorded where it stands.
+    ("supplement.tex", "spanCondRateMedianPct", r"about $1.8\times10^{19}$~ms"):
+        "the mantissa of Quiver's wrapped value, 2 to the 64th less a small difference, in "
+        "milliseconds (S5), equal to the median per-condition rate in percent; a constant of "
+        "unsigned arithmetic and a rate sharing two digits",
+    ("postmortem.tex", "sOnePubsubFirstHi", r"measured its load $7.7$ to"):
+        "a law campaign's load overshoot in points above its target (S36's exclusions), equal to "
+        "the longest running time below zero, in seconds, that the Pub/Sub load test's clients "
+        "reported under S1's steps (S25.3); a load and a time sharing two digits",
+    ("postmortem.tex", "toolsYsbGapSlopeHi", r"coefficient of variation below $3.7\%$"):
+        "Henning et al.'s coefficient of variation, another paper's measurement, equal to the most "
+        "the Yahoo Streaming Benchmark's write gap grew per millisecond of delay added (S25.3); a "
+        "percentage and a slope sharing two digits",
 }
 
 
@@ -201,10 +275,18 @@ def _masked(text):
     # elsewhere is still a number somebody typed.
     out = re.sub(r"CC~?BY[-A-Z~]*~?\d+\.\d+", blank, out)
     out = re.sub(r"(?:RFC|IEEE~?Std|v)~?\d+\.\d+", blank, out)
+    # 15 Oct 2026: a kernel release is a name in the same way. "Linux~6.8" met the 10 ms
+    # exposure error the day the referees asked for it to two figures, 6.8%, in the main text,
+    # which is rightly pinned to need no exemptions; the supplement's one Linux exemption went
+    # with it.
+    out = re.sub(r"Linux[~ ]\d+\.\d+", blank, out)
     # A length is typesetting, not a measurement. v5 (28 Sep) set Table II's \tabcolsep to
     # 2.4pt, and 2.4 is also the consumer-handling share Section VI quotes: the collision the
     # licence identifier had, fixed in the same place for the same reason.
     out = re.sub(r"\d+(?:\.\d+)?(?:pt|em|ex|mm|cm|bp|pc|sp)\b", blank, out)
+    # 15 Oct 2026: a figure's printed width is typesetting too. The supplement's forest plot is
+    # set at 0.9\columnwidth, and 0.9 is also a tools-block rise the ledger emits.
+    out = re.sub(r"\\includegraphics\[[^\]]*\]", blank, out)
     return out
 
 
@@ -285,6 +367,11 @@ class TestTheSweepItself:
 
     def test_masking_blanks_a_comment(self):
         assert "2.07" not in _masked("% a comment mentioning 2.07\n")
+
+    def test_masking_blanks_a_kernel_release(self):
+        """15 Oct 2026: "Linux~6.8" is a name, as "CC BY 4.0" is, and not the 6.8% beside it."""
+        got = _masked("Its kernel is Linux~6.8, and Upstream Linux 6.8 used it; 6.8\\%")
+        assert got.count("6.8") == 1
 
     def test_masking_blanks_an_input(self):
         assert "generated" not in _masked(r"\input{docs/generated/grid_table}")

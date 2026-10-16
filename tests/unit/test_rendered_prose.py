@@ -112,7 +112,28 @@ ABBREVIATIONS = frozenset((
 #: 73 since 14 Oct 2026: freeze 40's count of the runs a pause held, soFixPausedRuns, is read only
 #: as its spelled twin, soFixPausedRunsWord, as R1's recvPausedRuns is; the digits stay emitted
 #: because the twin is made from them.
-UNUSED_MACRO_CEILING = 73
+#: 133 since 15 Oct 2026, the pipeline half of the response to the two referees' reports of that
+#: day, which the author's rule puts before the text. Sixty macros are new and read by nothing
+#: yet; the paper and supplement take them up when their text is rewritten in the same revision:
+#: the repair and the understatement by broker (recoveryErrKafka ..., understateKafkaFactor ...),
+#: the real-time factor's floor over the pairs (rtKafkaLowerBound, rtRedisLowerBound, with their
+#: pair and Kafka's count of unbounded intervals), the run-level twins of S3.1-S3.3's message-level
+#: intervals (rtLowFactorRunCI ..., geomFiveOrigRunCI ...), the trace check at four thresholds and
+#: each broker's margin (tracedThreshold..., tracedKafkaMargin..., tracedRedisMargin...), the
+#: per-run and per-condition rates by broker (spanKafkaRunRateMedianPct, spanCondRate...), and
+#: three of Table I's smallest values (spanAckMinUs, spanOutputSendMinUs, spanTtiMinUs). The
+#: ceiling comes back down as the text reads them.
+#: 169 since the same day's second pipeline pass: thirty-six more, the numbers the revised draft
+#: quotes that nothing emitted (the one-process tools by interval, the maintainers that are
+#: organizations, the audit without its edge cases and at its strictest, the law's free slopes,
+#: the acknowledgments past 1 ms, the socket module's cost and the fix's widest intervals, the
+#: real-time floor and the co-located control's runs), of which the draft reads twenty-five, and
+#: Redis's floor by load and its rank range in the run, which the text has yet to take up. The
+#: count is the one the version-9 sources give; the revised sources read most of them.
+#: 81 since the revised sources went in the same night: the count now reads the generated
+#: tables the documents input (Table I's macros had counted as unread), the text took up the new
+#: macros, and postmortem S16.9's rewrite removed twenty-two the old reading alone used.
+UNUSED_MACRO_CEILING = 81
 
 
 def rendered(name):
@@ -196,8 +217,28 @@ class TestTheGeneratedLedgerIsRead:
         docs = ((REPO / "paper.tex").read_text(encoding="utf-8")
                 + (REPO / "supplement.tex").read_text(encoding="utf-8")
                 + (REPO / "postmortem.tex").read_text(encoding="utf-8"))
+        # 15 Oct 2026: a macro a document reads through a generated table it inputs is read.
+        # Table I became one that day, and its sixteen macros were counted as unread.
+        docs += "".join(TestTheGeneratedLedgerIsRead.inputs(docs))
         return sorted(n for n in names
                       if not re.search(re.escape("\\" + n) + r"(?![A-Za-z])", docs))
+
+    @staticmethod
+    def inputs(docs):
+        """The text of every generated table the documents input, the ledger itself left out."""
+        out = []
+        for stem in sorted(set(re.findall(r"\\input\{docs/generated/(\w+)\}", docs))):
+            path = REPO / "docs" / "generated" / (stem + ".tex")
+            if stem != "paper_numbers" and path.is_file():
+                out.append(path.read_text(encoding="utf-8"))
+        return out
+
+    def test_a_macro_read_only_through_an_input_table_counts_as_read(self):
+        docs = "\\input{docs/generated/spans_table}\n\\input{docs/generated/paper_numbers}"
+        read = "".join(self.inputs(docs))
+        assert "\\spanKafkaNegAck" in read, "Table I's macros are read through its file"
+        assert "\\newcommand" not in read, "the ledger is not its own reader"
+        assert self.inputs("\\input{docs/generated/no_such_table}") == []
 
     def test_the_unread_inventory_does_not_grow(self):
         unused = self.unused()

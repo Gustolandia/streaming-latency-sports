@@ -258,6 +258,12 @@ def read_ladder_run(run_dir, driver, broker, receiver, warmup_s):
     out["messages"] = len(msgs)
     wso = [m["Wso"] for m in msgs if m["Wso"] is not None]
     out["Wso_median"], out["Wso_p99"] = _median(wso), _p99(wso)
+    # 15 Oct 2026, after block L's verdicts: D and the means, described beside L-b, which none of
+    # the judges reads. The paper sets the rise in W_so under load against the rise in D.
+    d = [m["D"] for m in msgs if m["D"] is not None]
+    out["D_median"], out["D_p99"] = _median(d), _p99(d)
+    out["D_mean"] = statistics.fmean(d) if d else None
+    out["Wso_mean"] = statistics.fmean(wso) if wso else None
     both = [(m["Wso"], _us(got[m["eid"]], sent[m["eid"]])) for m in msgs
             if m["Wso"] is not None and m["eid"] in sent and m["eid"] in got]
     out["W_median"] = _median([w for _, w in both])

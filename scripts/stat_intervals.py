@@ -46,8 +46,8 @@ empirical distribution functions change order, listed at the end):
                 the two-sample Kolmogorov-Smirnov statistic and its permutation p. A shift
                 of zero is consistent with two distributions of different shape, so a claim
                 that two POPULATIONS agree needs a statistic about distributions rather
-                than about their offset. Tie-correct, because the samples it is used on are
-                mostly ties.
+                than about their offset. Tie-correct, because the samples it was first used
+                on, read on a 50 us grid, were mostly ties.
 
 CLI:
     python scripts/stat_intervals.py            # print every interval the paper quotes
@@ -191,32 +191,51 @@ def ecdf_crossings(a, b):
     return out
 
 
-def recovery_populations(path=os.path.join(RESULTS, "span_symmetry.csv")):
+def recovery_populations(path=os.path.join(RESULTS, "span_symmetry.csv"),
+                         err="recovery_err_us", truth="median_D_us", split="verdict"):
     """The displacement recovery's error, as % of each condition's median delivery, split by
     whether the consistency check accepted the condition. Returns {"Pass": [...], "Fail": [...]}.
 
     One loader for the numbers the ledger emits and for the figure that draws them. Round 76
     learned what two copies of one definition cost (the at-grid rule, written twice); round 77
     added a figure of these populations and put the definition here first.
+
+    15 Oct 2026: `recovery_err_us` is the median-only recovery at native resolution now, and
+    `err` and `truth` name another estimator's columns where a caller needs one (the symmetry
+    centre on the 50 us grid, `recovery_err_centre_us` against `median_D_bin_us`). With
+    `split="broker"` the populations are the two brokers', {"Kafka": [...], "Redis": [...]},
+    because the referees found the pooled error hid one broker recovered far better than the
+    other. With `split="both"` they are each broker's two verdicts, {"KafkaPass": [...],
+    "KafkaFail": [...], "RedisPass": [...], "RedisFail": [...]}: pooled, the verdicts set
+    mostly Redis's groups against mostly Kafka's, so the postmortem's S16.9 compares them
+    inside a broker, and the ledger and the figure read those four populations here.
     """
     with open(path, encoding="utf-8", newline="") as fh:
         rows = list(csv.DictReader(fh))
+    brokers = (("kafka_", "Kafka"), ("redis_", "Redis"))
+    verdicts = (("#pass", "Pass"), ("#fail", "Fail"))
+    if split == "broker":
+        parts = [(b, "", name) for b, name in brokers]
+    elif split == "verdict":
+        parts = [("", v, name) for v, name in verdicts]
+    elif split == "both":
+        parts = [(b, v, bname + vname) for b, bname in brokers for v, vname in verdicts]
+    else:
+        raise ValueError("split must be 'verdict', 'broker' or 'both', not %r" % split)
     out = {}
-    for suffix, name in (("#pass", "Pass"), ("#fail", "Fail")):
-        out[name] = sorted(abs(float(r["recovery_err_us"])) / float(r["median_D_us"]) * 100.0
-                           for r in rows
-                           if r["condition"].endswith(suffix) and float(r["median_D_us"]))
+    for head, tail, name in parts:
+        out[name] = sorted(abs(float(r[err])) / float(r[truth]) * 100.0
+                           for r in rows if r["condition"].startswith(head)
+                           and r["condition"].endswith(tail) and float(r[truth]))
     return out
 
 
-#: The quantile of the accepted population that defines the band edge the recovery
-#: populations are counted against. Round 77 introduced counting in bands, because a cluster
-#: is wherever an eye puts the line, and set the edge as a constant, 20.0. Round 78's referee
-#: noticed that 20% is exactly the accepted population's upper quartile -- the Q3 already
-#: printed in S16.9's table -- and that nothing said so: a principled edge looked like a free
-#: choice, and two numbers that happened to agree were free to part. The edge is now that
-#: quartile, by the same nearest-rank rule the table uses.
-RECOVERY_BAND_QUANTILE = 0.75
+#: 15 Oct 2026: the band edge (`recovery_band_edge`, the accepted population's upper quartile,
+#: round 78) and the edges that split that population into thirds (`equal_split_edges`, round
+#: 78) went with the bands and the thirds the postmortem's S16.9 counted. Both described a pile
+#: of exact recoveries that was the 50 us grid's: at native resolution no group recovers
+#: exactly, and the rewritten section compares the two verdicts' tails, broker by broker, in
+#: its table's upper-quartile and worst columns.
 
 
 def nearest_rank(values, p):
@@ -226,28 +245,6 @@ def nearest_rank(values, p):
     v = sorted(values)
     return v[min(len(v) - 1, max(0, int(round(p * (len(v) - 1)))))]
 
-
-def recovery_band_edge(pops, quantile=RECOVERY_BAND_QUANTILE):
-    """The band edge, in % of median delivery: the accepted population's upper quartile."""
-    return nearest_rank(pops["Pass"], quantile)
-
-
-def equal_split_edges(values):
-    """(lo, hi) such that every edge e with lo < e <= hi puts exactly half of the non-zero
-    `values` below e and half at or above it. None where no edge can.
-
-    Round 78 (W2). S16.9 said the accepted conditions divide "a third in each" band, and the
-    referee showed that holds only for some edges. This returns the whole range for which the
-    non-zero conditions split evenly, so the sentence can state the range, and that the edge
-    used sits at its upper end, instead of implying the edge was the only one that works.
-    """
-    nz = sorted(v for v in values if v > 0.0)
-    if not nz or len(nz) % 2:
-        return None
-    k = len(nz) // 2
-    if not nz[k - 1] < nz[k]:
-        return None
-    return nz[k - 1], nz[k]
 
 HL_BOOT = 10000
 HL_SEED = 12345
@@ -277,9 +274,10 @@ def hodges_lehmann(a, b):
 def hl_bootstrap_ci(a, b, conf=0.95, n_boot=HL_BOOT, seed=HL_SEED):
     """Percentile bootstrap interval for the Hodges-Lehmann shift. Returns (lo, hi).
 
-    Distribution-free in the estimator and in the interval, which is the point: the two
-    populations this is used on are a spike at zero against a spread, and any interval that
-    assumed a shape would be describing the assumption.
+    Distribution-free in the estimator and in the interval, which is the point: the
+    populations this is used on are small and skewed (on the 50 us grid, a spike at zero
+    against a spread), and any interval that assumed a shape would be describing the
+    assumption.
 
     Seeded and fixed at `HL_BOOT` resamples so the ledger is byte-reproducible. The count is
     not arbitrary: at 500, 2,000 and 4,000 resamples the lower bound printed to one decimal
@@ -386,10 +384,10 @@ def _value_counts(values, index):
 def ks_two_sample(a, b):
     """Two-sample Kolmogorov-Smirnov statistic D, tie-correct. Returns D.
 
-    Evaluated at the distinct pooled values rather than element by element, because these
-    samples are mostly ties: twenty of the seventy conditions sit at exactly zero, and a
-    walk that steps once per element reads a gap between two halves of one tie and reports
-    a D that no pair of distributions has.
+    Evaluated at the distinct pooled values rather than element by element, because the
+    samples it was written for were mostly ties: on the 50 us grid twenty of the seventy
+    groups sat at exactly zero, and a walk that steps once per element reads a gap between
+    two halves of one tie and reports a D that no pair of distributions has.
 
     D answers a question a shift cannot. A Hodges-Lehmann shift of zero is consistent with
     two distributions of quite different shape, so a sentence claiming that two POPULATIONS
@@ -407,7 +405,8 @@ def ks_permutation_p(a, b, n_perm=KS_PERM, seed=KS_SEED):
     """Permutation p-value for `ks_two_sample`, with the observed split counted in.
 
     Permutation rather than the asymptotic Kolmogorov distribution, which assumes continuous
-    data: these samples are ties on a grid and the asymptotic form is not licensed. The
+    data and large samples: the grid's samples were ties, and the samples S16.9 tests broker
+    by broker are as small as eight groups, so the asymptotic form is not licensed. The
     observed arrangement is included in both numerator and denominator -- (hits + 1) /
     (n_perm + 1) -- so the p-value can never be reported as zero, which is the honest floor
     for a Monte Carlo test and the one a reader can act on.

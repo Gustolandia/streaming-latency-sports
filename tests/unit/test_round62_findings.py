@@ -250,7 +250,10 @@ class TestAReferenceNoteSaysWhatOnlyItCanSay:
     """[11]'s note restated the sentence that cites it before adding its own disclosure."""
 
     def test_the_practitioner_note_does_not_restate_the_body(self):
-        bib = (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
+        # 15 Oct 2026: the entry moved to postmortem_references.bib, since only the postmortem
+        # cites it now.
+        bib = ((REPO / "manuscript_references.bib").read_text(encoding="utf-8") + "\n"
+               + (REPO / "postmortem_references.bib").read_text(encoding="utf-8"))
         entry = bib[bib.index("@misc{indexdev2026brokers"):]
         entry = entry[:entry.index("\n}")]
         assert "sub-10ms latency at p99" not in entry, (

@@ -1010,9 +1010,9 @@ brokers, §VIII-A) it runs a TOST against a stated margin. Everywhere else:
 - **Say what was detected, not what exists.** "Cannot be told apart", "no shift is detectable",
   "nothing in these data separates them".
 - **Emit the margin the interval would support**, max(|lo|, |hi|) of the 90% interval, and print
-  it near the sentence. A reader can then tell "close" from "underpowered". The recovery
-  populations' margins are 8.3 and 7.1 points, about half the quantity being compared. That is
-  underpowered, and S16.9 says so.
+  it near the sentence. A reader can then tell "close" from "underpowered". Read broker by broker
+  since 15 Oct 2026, the recovery populations' margins are 0.39 and 5.9 points, about the whole of
+  Kafka's median error and two-fifths of Redis's. That is underpowered, and S16.9 says so.
 - **Titles are claims too.** A figure's title and its List-of-Figures entry are the same claim
   made twice, and they change together.
 - **Test the words, not only the numbers under them.** Rounds 76 and 77 verified every value

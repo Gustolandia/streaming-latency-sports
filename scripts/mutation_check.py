@@ -66,20 +66,25 @@ MUTATIONS = [
     ("swap the two placement factors",
      r"$\GeomOrigFactor$-fold [bootstrap",
      r"$\GeomReplFactor$-fold [bootstrap"),
+    # 15 Oct 2026: the range is Section IV-B's now, where the Computer Society layout breaks the
+    # line between its two ends; the mutation prints the low end twice.
     ("understate the priority range",
-     r"rate $\rtFactorLow$--$\rtFactorHigh\times$ at unchanged background load",
-     r"rate $\rtFactorLow\times$ at unchanged background load"),
+     r"$\rtFactorHigh$-fold on \kafka{} and",
+     r"$\rtFactorLow$-fold on \kafka{} and"),
+    # 15 Oct 2026: the caveat reads "settles ... on \redis{}, not at zero" in Section VI.
     ("drop the caveat that the rate stays above zero",
-     "not at zero, so the check stays", "at zero, so the check stays"),
+     r"\redis{}, not at zero.", r"\redis{}, at zero."),
     ("break a cross-reference",
      r"(Fig.~\ref{fig:twoways})", r"(Fig.~\ref{fig:nosuch})"),
     # The tracer's ratios bracket the observed rate rather than under-predicting it, which is
     # what makes the interpreter-lock rival bounded rather than waved away. 6 Oct 2026: the
     # sentence quotes the ratios against both brokers' runs, which the trace counts, so the
     # anchor follows it.
+    # 15 Oct 2026, referees A (M6(a)) and B (S5) of version 9: the main text quotes the trace's
+    # agreement at every threshold, through the threshold table's macros.
     ("type the traced ratios instead of emitting them",
-     r"at ratios of \tracedPooledRatios{} in",
-     "at ratios of 0.95, 1.22 and 3.39 in"),
+     r"$\tracedThresholdRatioLo$--$\tracedThresholdRatioHi$ times the pooled",
+     "$0.63$--$1.61$ times the pooled"),
 ]
 
 

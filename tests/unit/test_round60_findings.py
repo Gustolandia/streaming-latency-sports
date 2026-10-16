@@ -86,19 +86,31 @@ class TestR2AMedianTravelsWithItsSpread:
         factor, and every quote in running text is held to it. The table's cell, a summary
         that sends the reader to the figure and sits a column from this sentence, is not."""
         prose = re.sub(r"\\begin\{(figure|table)\*?\}.*?\\end\{\1\*?\}", " ", paper)
-        hits = [m.start() for m in re.finditer(r"\\understateFactor(?![A-Za-z])", prose)]
-        assert hits, "the understatement factor has gone from the running text"
-        for i in hits:
-            start = prose.rfind(". ", 0, i) + 2
-            end = prose.find(". ", i)
-            sentence = prose[start:end if end > 0 else len(prose)]
-            for macro, why in ((r"\spanRatioConditions", "the denominator"),
-                               (r"\understateIQRLo", "the lower interquartile bound"),
-                               (r"\understateIQRHi", "the upper interquartile bound")):
-                assert macro in sentence, (
-                    "the understatement is quoted without %s. The second author's annotation "
-                    "#42 requires experiment, denominator and uncertainty, and the median sits "
-                    "at the bottom of its own interquartile range: %r" % (why, sentence[:200]))
+        # 15 Oct 2026, referee B (S2) of version 9: the factor is given by broker, each with
+        # its own denominator, the broker's groups, and its own interquartile range; the
+        # pooled factor stays in the ledger, where the test below still reads it.
+        # The floats are stripped across lines: without re.S a float spanning lines stayed in
+        # "running text", and Table IV's cell, which the docstring exempts, was held to it.
+        prose = re.sub(r"\\begin\{(figure|table)\*?\}.*?\\end\{\1\*?\}", " ", paper, flags=re.S)
+        found = 0
+        for broker in ("Kafka", "Redis"):
+            hits = [m.start() for m in re.finditer(r"\\understate%sFactor(?![A-Za-z])"
+                                                   % broker, prose)]
+            found += len(hits)
+            for i in hits:
+                start = prose.rfind(". ", 0, i) + 2
+                end = prose.find(". ", i)
+                sentence = prose[start:end if end > 0 else len(prose)]
+                for macro, why in ((r"\exposure%sGroups" % broker, "the denominator"),
+                                   (r"\understate%sIQRLo" % broker,
+                                    "the lower interquartile bound"),
+                                   (r"\understate%sIQRHi" % broker,
+                                    "the upper interquartile bound")):
+                    assert macro in sentence, (
+                        "the understatement is quoted without %s. The second author's "
+                        "annotation #42 requires experiment, denominator and uncertainty: %r"
+                        % (why, sentence[:200]))
+        assert found, "the understatement factor has gone from the running text"
 
     def test_the_median_really_does_sit_low_in_its_range(self):
         """The reason the sentence needs the spread, checked against the ledger.

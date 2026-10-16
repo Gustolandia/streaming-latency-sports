@@ -219,6 +219,10 @@ class TestReadingRuns:
         assert row["Dif_median"] == pytest.approx(3.0)
         assert (row["reads"], row["reads_multi"]) == (2, 0)
         assert (row["S_count"], row["S_neg"]) == (2, 0)
+        # D and the means, described beside L-b (15 Oct 2026, after its verdicts).
+        assert row["D_median"] == pytest.approx(1000.0) and row["D_mean"] == pytest.approx(1000.0)
+        assert row["D_p99"] == pytest.approx(1000.0)
+        assert row["Wso_mean"] == pytest.approx(800.0)
 
     def test_the_broker_port_comes_from_the_journal_not_from_a_guess(self, tmp_path, monkeypatch):
         """The kit's Kafka listened on 19092, and the reader that assumed 9092 matched none of

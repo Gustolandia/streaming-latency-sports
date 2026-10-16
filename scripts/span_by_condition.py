@@ -37,8 +37,14 @@ alpha, plus a histogram of the per-event ratio A/D, is therefore the magnitude-a
 the contamination the check does NOT see. Collected per run (the alpha ladder) and pooled
 (the ratio histogram, tenth-decade log bins).
 
+Native medians (15 Oct 2026). Both referees found every group median Section VI rests on read
+off these bins as the lower edge of a 50 us bin. Each quantity now also carries `median_us`, the
+median of the same window's values at the timestamps' own resolution, so the medians a reader
+adds are the medians of the messages, not of the grid.
+
 Outputs (committed, so a clean clone can reproduce every downstream number):
-    docs/results/span_by_condition.json    per-condition binned histograms of S, D, A
+    docs/results/span_by_condition.json    per-condition binned histograms of S, D, A, and
+                                           each one's median at native resolution
     docs/results/span_run_level.csv        per-run counts for cluster bootstraps
 
 CLI:
@@ -131,6 +137,25 @@ def add(acc_q, value_us):
     else:
         b = int((value_us - BIN_LO_US) // BIN_WIDTH_US)
         acc_q["bins"][b] = acc_q["bins"].get(b, 0) + 1
+        # 15 Oct 2026: the values themselves too, for the median at native resolution. The
+        # referees found every group median of Section VI read off these bins as the lower
+        # edge of a 50 us bin, inside a paper about a statistic floored to a coarse step.
+        # Only the window's values, so the median describes the population the bins count.
+        acc_q.setdefault("values", []).append(value_us)
+
+
+def native_median(acc_q):
+    """The median of the window's values at the timestamps' own resolution, in microseconds,
+    or None where the window holds none (15 Oct 2026).
+
+    Rounded to the nanosecond the timestamps carry. The bins stay what they were; this is the
+    number a reader adding the medians of two columns must be able to add.
+    """
+    values = acc_q.get("values")
+    if not values:
+        return None
+    import statistics
+    return round(statistics.median(values), 3)
 
 
 def consume_run(conds, run_rows, run_id, prod_rows, cons_rows):
@@ -296,8 +321,12 @@ def write_outputs(conds, run_rows, runs, events):
         "bin_lo_us": BIN_LO_US, "bin_hi_us": BIN_HI_US, "bin_width_us": BIN_WIDTH_US,
         "conditions": {
             cond: dict(
+                # 15 Oct 2026: `median_us` beside the bins, the median of the same window's
+                # values at native resolution (native_median), which analyze_span_symmetry.py
+                # reads in place of the bin's lower edge.
                 {q: {"n": acc[q]["n"], "under": acc[q]["under"], "over": acc[q]["over"],
-                     "bins": {str(k): v for k, v in sorted(acc[q]["bins"].items())}}
+                     "bins": {str(k): v for k, v in sorted(acc[q]["bins"].items())},
+                     "median_us": native_median(acc[q])}
                  for q in QUANTITIES},
                 # Carried alongside the histograms, not derived from them: this is the whole
                 # point of the fix. Truncation at the histogram edges is what made the

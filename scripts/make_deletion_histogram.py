@@ -54,7 +54,32 @@ from matplotlib.ticker import FuncFormatter
 
 HIST_CSV = os.path.join("docs", "results", "span_histogram.csv")
 STATS_JSON = os.path.join("docs", "results", "span_histogram_stats.json")
+#: The per-group histograms of S, which sum to HIST_CSV's pooled one bin for bin; Fig. 2 splits
+#: S by broker from them (15 Oct 2026).
+BY_CONDITION_JSON = os.path.join("docs", "results", "span_by_condition.json")
 OUT_DIR = os.path.join("docs", "results", "figures")
+
+#: 15 Oct 2026, Fig. 2: each broker in the colour the paper's Fig. 3 gives it, and the two
+#: priorities in a second pair that no broker colour is confused with (the palette passes the
+#: all-pairs colour-vision checks as a set of four).
+BROKERS = (("kafka", "Kafka", "#1f77b4"), ("redis", "Redis", "#d62728"))
+PRIORITIES = (("normal", "normal priority", "#7b3294", "o"),
+              ("real-time", "real-time priority", "#1b9e77", "s"))
+POOLED = "#cfcfcf"
+INK = "#222222"
+#: The linear inset's half-width around zero, in microseconds (referee A, Fig. 2).
+INSET_US = 500
+#: Panel (a)'s count axis runs to here, two and a half decades over the tallest bin, so that the
+#: two-row legend stands above every bin (15 Oct 2026).
+PANEL_A_TOP = 3e7
+#: Panel (b)'s rate axis, from just below zero, so that a rate of zero is not cut by the frame, to
+#: just over the highest run's rate (0.55, Kafka at 95% load).
+PANEL_B_YLIM = (-0.03, 0.60)
+#: A label whose maths carries subscripts, set so that they print at 6.5 pt (figure_style).
+MATH_PT = figure_style.MATH_PT
+#: Fig. 2's canvas, saved whole: exactly the column's 3.5 in, so that the page prints it at its
+#: own size, neither enlarged nor shrunk (15 Oct 2026; see build_s_distribution).
+S_DISTRIBUTION_IN = (3.5, 3.40)
 
 KAFKA, REDIS = "#1f77b4", "#ff7f0e"
 GREY = "#555555"
@@ -269,6 +294,166 @@ def plot_strategies(ax, stats):
         loc="lower left", frameon=False, ncol=1)
 
 
+def read_broker_hist(path=None):
+    """S per broker on the pooled histogram's own 50 us bins, from the per-group histograms.
+
+    Returns ({broker: [(lo_us, hi_us, count)]}, {broker: {"under": n, "over": n}}). The groups
+    of span_by_condition.json partition the messages HIST_CSV pools, so the two brokers' bins
+    sum to the pooled bins exactly; a test holds them to it.
+    """
+    path = BY_CONDITION_JSON if path is None else path
+    with open(path, encoding="utf-8") as fh:
+        data = json.load(fh)
+    lo0, width = data["bin_lo_us"], data["bin_width_us"]
+    bins, extra = {}, {}
+    for cond, q in data["conditions"].items():
+        broker = cond.split("_")[0]
+        acc = bins.setdefault(broker, {})
+        for k, v in q["S"]["bins"].items():
+            acc[int(k)] = acc.get(int(k), 0) + v
+        e = extra.setdefault(broker, {"under": 0, "over": 0})
+        e["under"] += q["S"]["under"]
+        e["over"] += q["S"]["over"]
+    series = {b: [(lo0 + k * width, lo0 + (k + 1) * width, c) for k, c in sorted(acc.items())]
+              for b, acc in bins.items()}
+    return series, extra
+
+
+def _steps(rows, lo_us, hi_us):
+    """Edges and counts of the bins inside [lo_us, hi_us), empty bins filled with zero, for a
+    step outline that drops to zero where a broker has no messages rather than bridging."""
+    have = {lo: c for lo, _hi, c in rows}
+    width = rows[0][1] - rows[0][0]
+    edges = list(range(int(lo_us), int(hi_us) + width, width))
+    counts = [have.get(e, 0) for e in edges[:-1]]
+    return edges, counts
+
+
+def plot_brokers(ax, series, extra, brokers, inset=True):
+    """(a) S on one clock, both brokers pooled in grey, each broker's outline over it.
+
+    15 Oct 2026, both referees (Fig. 2): the pooled bars mixed two distributions, Redis's tallest
+    bin at 50--100 us and Kafka's mode near half a millisecond, so a reader could not see that
+    Redis's margin is about a fifth of Kafka's (0.10 against 0.52 ms at idle, in
+    docs/results/model/broker_margins.csv). Each broker is drawn as an outline on the same 50 us
+    bins. The axis says what a bar counts, and a linear inset shows the bins within half a
+    millisecond of zero, where the log axis makes a tail of hundreds look like the body.
+    """
+    pooled = [(lo, c) for lo, _hi, c in series["ack"] if VIEW_LO_US <= lo < VIEW_HI_US]
+    ax.bar([lo for lo, _ in pooled], [c for _, c in pooled], width=50, align="edge",
+           color=POOLED, linewidth=0, label="both brokers", zorder=1)
+    for key, name, colour in BROKERS:
+        edges, counts = _steps(brokers[key], VIEW_LO_US, VIEW_HI_US)
+        ax.stairs(counts, edges, color=colour, linewidth=0.9, label=name, zorder=3)
+    send = [(lo, c) for lo, _hi, c in series["send"] if VIEW_LO_US <= lo < VIEW_HI_US]
+    # "$D$" alone: the caption says it never falls below zero, and the long label made the
+    # legend tall enough to cover every peak (15 Oct 2026, below).
+    ax.step([lo for lo, _ in send], [c for _, c in send], where="post", color=INK,
+            linewidth=0.8, linestyle=(0, (2.5, 1.5)), label="$D$", zorder=2)
+    ax.axvline(0, color="#777777", linewidth=0.8, linestyle=(0, (3, 2)), zorder=2)
+    ax.set_xlim(VIEW_LO_US, VIEW_HI_US)
+    ax.set_yscale("log")
+    ax.set_ylim(1, PANEL_A_TOP)
+    # 8 pt, as the paper's other figures and its captions are; the label carrying subscripts at
+    # MATH_PT, so that its subscripts print at 6.5 pt rather than 5.6 (15 Oct 2026, an internal
+    # review of the printed figures).
+    ax.set_xlabel("$S = t_{\\mathrm{recv}} - t_{\\mathrm{ack}}$ (µs)", fontsize=MATH_PT)
+    ax.set_ylabel("messages per 50 µs bin\n(log scale)", fontsize=8)
+    ax.tick_params(labelsize=8)
+    # The counts written out, "10k" as the inset's "50k" is: as 10^n the exponent printed at
+    # 5.6 pt once the ticks were set at 8 pt.
+    ax.yaxis.set_major_formatter(FuncFormatter(figure_style.plain_log_label))
+    negative, total = below_zero(series, extra)
+    # 15 Oct 2026: one line, for the page budget; the caption gives the counts outside the
+    # window (outside_window, through the ledger).
+    ax.set_title("(a) {:,} below zero, {:.2f}% of {:,}".format(
+        negative, 100.0 * negative / total, total), fontsize=8, loc="left")
+    # 15 Oct 2026, two internal reviews: one column of four long entries hid everything above
+    # about 10^4 between -0.3 and +4.9 ms, both brokers' peaks and D's among them, and cut each
+    # outline flat at its edge. Two columns of short entries stand above every bin, which
+    # figure_collisions.data_under_legends now holds the figure to.
+    handles, labels = ax.get_legend_handles_labels()
+    by = dict(zip(labels, handles))
+    order = ["Kafka", "Redis", "$D$", "both brokers"]
+    ax.legend([by[k] for k in order], order, ncol=2, fontsize=8, loc="upper right",
+              frameon=True, framealpha=1.0, edgecolor="none", handlelength=1.0,
+              handletextpad=0.4, columnspacing=1.0, borderaxespad=0.3, labelspacing=0.3)
+    if inset:
+        _linear_inset(ax, series, brokers)
+
+
+def _linear_inset(ax, series, brokers):
+    """The bins within INSET_US of zero on a linear count axis, in the upper left of (a)."""
+    # Placed over the quiet bins far below zero, and high enough that its tick labels clear the
+    # outlines' bump near -0.5 ms; its count axis on the right, away from the main axis's own.
+    # 15 Oct 2026: narrower and further left since the panel was shortened to 3.6 in, where the
+    # count label on its right ran under the legend's frame.
+    sub = ax.inset_axes([0.08, 0.585, 0.26, 0.355])
+    sub.yaxis.tick_right()
+    pooled = [(lo, c) for lo, _hi, c in series["ack"] if -INSET_US <= lo < INSET_US]
+    sub.bar([lo for lo, _ in pooled], [c for _, c in pooled], width=50, align="edge",
+            color=POOLED, linewidth=0)
+    for key, _name, colour in BROKERS:
+        edges, counts = _steps(brokers[key], -INSET_US, INSET_US)
+        sub.stairs(counts, edges, color=colour, linewidth=0.9)
+    sub.axvline(0, color="#777777", linewidth=0.8, linestyle=(0, (3, 2)))
+    sub.set_xlim(-INSET_US, INSET_US)
+    sub.set_ylim(0, 1.12 * max(c for _, c in pooled))
+    sub.set_xticks([-INSET_US, 0, INSET_US])
+    sub.yaxis.set_major_formatter(FuncFormatter(_thousands))
+    # One labelled count, away from the corner: a "0" there sat on the x axis's "-500".
+    sub.set_yticks([50000])
+    sub.tick_params(labelsize=8, length=2, pad=1)
+    # Inside, over the quiet bins left of zero, where no outline reaches.
+    sub.text(0.05, 0.93, "linear", transform=sub.transAxes, fontsize=8, color=INK,
+             ha="left", va="top")
+    return sub
+
+
+def plot_rate_by_load(axes, runs):
+    """(b) Each run's negative-span rate against the client machine's utilization.
+
+    15 Oct 2026, referee B (Fig. 2): the pooled share mixes brokers and loads, and one look at
+    the per-run rate against utilization, by broker and priority, shows the rate rising with
+    load at normal priority and staying low at real-time priority. The runs are E-A3's load
+    ladder and the eight matched pairs of E-A5, E-A5b and E-A7, 25 runs a configuration on each
+    broker (manipulation_runs.rate_by_load). Runs of one configuration share its utilization,
+    so each is set a little to the side, by a fixed offset that depends on its order alone.
+    """
+    for ax, (key, name, _colour) in zip(axes, BROKERS):
+        mine = [r for r in runs if r["backend"] == key]
+        for prio, label, colour, marker in PRIORITIES:
+            pts = sorted((r for r in mine if r["priority"] == prio),
+                         key=lambda r: (r["campaign"], r["cell"], r["run"]))
+            xs, ys, seen = [], [], {}
+            for r in pts:
+                cell = (r["campaign"], r["cell"])
+                i = seen.get(cell, 0)
+                seen[cell] = i + 1
+                xs.append(100.0 * r["rho"] + ((i % 7) - 3) * 0.55)
+                ys.append(r["rate"])
+            ax.scatter(xs, ys, s=7, marker=marker, color=colour, alpha=0.55, linewidths=0,
+                       label=label, zorder=3)
+        ax.set_xlim(-6, 106)
+        ax.set_ylim(*PANEL_B_YLIM)
+        ax.set_xticks([0, 50, 100])
+        ax.set_title(name, fontsize=8, loc="left")
+        ax.set_xlabel("client utilization (%)", fontsize=8)
+        ax.tick_params(labelsize=8)
+        ax.grid(alpha=0.25, lw=0.5)
+    axes[0].set_ylabel("per-run rate of\n$S$ below zero", fontsize=8)
+    axes[1].tick_params(labelleft=False)
+    handles = [plt.Line2D([], [], marker=m, linestyle="none", color=c, markersize=4)
+               for _p, _l, c, m in PRIORITIES]
+    # 15 Oct 2026, three internal reviews: in the Redis panel the legend hid its highest run
+    # (0.42 at 88%). In the Kafka panel's upper left no run reaches it: every run below 55%
+    # utilization stays under 0.1.
+    axes[0].legend(handles, [label for _p, label, _c, _m in PRIORITIES], fontsize=8,
+                   loc="upper left", frameon=True, framealpha=1.0, edgecolor="none",
+                   handletextpad=0.2, borderaxespad=0.2, labelspacing=0.25,
+                   borderpad=0.3, handlelength=1.0)
+
+
 def build_two_ways(out_dir=OUT_DIR):
     """Panels (a) and (b) alone, side by side: the paper's first figure since v5.
 
@@ -307,42 +492,50 @@ def build_two_ways(out_dir=OUT_DIR):
     return made
 
 
-def build_s_distribution(out_dir=OUT_DIR):
+def build_s_distribution(out_dir=OUT_DIR, runs=None):
     """Panel (a) alone, at column width: the distribution of S, the paper's Fig. 2 since 5 Oct 2026.
 
     The paper opens its results on the distribution of S = t_recv - t_ack, which would be zero in
     the ideal case, so its figure shows that distribution and the end-to-end latency of the same
     messages, and nothing else. The millisecond panel stays in the three-panel version.
     """
+    # 15 Oct 2026, both referees: (a) each broker's outline over the pooled bars, the axis
+    # naming what a bar counts, and a linear inset around zero; (b) each run's rate against the
+    # client machine's utilization, by broker and priority. A panel, not a figure: the paper's
+    # count of figures does not change. Drawn at the column width it prints at, and held to all
+    # three figure gates before it is written, as make_result_figures._save holds its figures.
+    import figure_collisions
+    import figure_vocabulary
+    import manipulation_runs
     figure_style.apply()
     series, extra = read_hist()
-    fig, ax = plt.subplots(figsize=(3.5, 2.3))
-    plot_measured(ax, series, extra)
-    ax.set_ylim(1, 3e6)
-    # plot_measured titles the panel on the left; at column width that title runs off the
-    # figure, so only the window caveat stays, on the right, counting both sides of it.
-    ax.set_title("", loc="left")
-    below, above = outside_window(series, extra)
-    # 6 Oct 2026: 8 pt, IEEE's floor, where it was 7; the figure now passes the legibility gate
-    # the paper's other figures pass, below, before it is written.
-    ax.set_title("%s below, %s above the window" % ("{:,}".format(below), "{:,}".format(above)),
-                 fontsize=8, loc="right")
-    ax.set_xlabel("$S = t_{\\mathrm{recv}} - t_{\\mathrm{ack}}$ (µs)")
-    for text in ax.texts:
-        if text.get_text().startswith("publish-timed span"):
-            text.set_text("$D$, same messages:\nnever below zero")
-        # 6 Oct 2026: both notes at 8 pt here, the paper's floor; the postmortem's three-panel
-        # figure keeps plot_measured's 7 pt at its own width.
-        text.set_fontsize(8)
+    brokers, _broker_extra = read_broker_hist()
+    # Saved whole, not cropped (15 Oct 2026): the file is the canvas, exactly the column's
+    # 3.5 in, so the page prints it at its own size and its type at the size it is set in. A
+    # tight crop made the file as wide as its ink, 3.61 in once (the page shrank the 8 pt type to
+    # 7.8 pt) and 3.47 in later (the page enlarged the figure and it printed 5 pt taller), and
+    # the gates, which measure the canvas, saw neither. The margins hold every label inside the
+    # canvas, and figure_collisions checks that none is cut by its edge.
+    fig = plt.figure(figsize=S_DISTRIBUTION_IN)
+    gs = fig.add_gridspec(2, 2, height_ratios=[1.45, 1.0], hspace=0.58, wspace=0.08,
+                          left=0.185, right=0.985, top=0.948, bottom=0.11)
+    top = fig.add_subplot(gs[0, :])
+    plot_brokers(top, series, extra, brokers)
+    left = fig.add_subplot(gs[1, 0])
+    right = fig.add_subplot(gs[1, 1], sharey=left)
+    plot_rate_by_load((left, right),
+                      manipulation_runs.rate_by_load() if runs is None else runs)
+    left.set_title("(b) Kafka", fontsize=8, loc="left")
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     # The stem is written out whole, as for two_ways, so the compliance gate can find it.
     stem = "s_distribution"
+    figure_collisions.check(fig, stem, whole_canvas=True)
     figure_legibility.check(fig, stem)
+    figure_vocabulary.check(fig, stem)
     made = []
     for ext in ("pdf", "png"):
         path = os.path.join(out_dir, "%s.%s" % (stem, ext))
-        fig.savefig(path, bbox_inches="tight", pad_inches=0.02,
-                    dpi=200 if ext == "png" else None)
+        figure_style.save_whole(fig, path, dpi=200 if ext == "png" else None)
         made.append(path)
     plt.close(fig)
     return made

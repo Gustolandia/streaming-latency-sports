@@ -159,7 +159,8 @@ class TestR1ARateIsQuotedWithTheLoadItWasMeasuredAt:
         in the row with its rates and achieved utilizations; the rows the two macros name are
         held there, read from the generated file the table inputs."""
         i = paper.index("label{tab:checks}")
-        table = paper[i:paper.index("end{table}", i)]
+        # 15 Oct 2026: Table IV spans both columns, a table* float.
+        table = paper[i:paper.index("end{table", i)]
         assert "Sign-check every run under the load it is quoted at" in " ".join(table.split())
         for macro in ("diseaseOverWhole", "diseaseOverHalf", "spanNegAckPct",
                       "rtHighBasePct", "rtLowBasePct", "rtHighBase", "rtLowBase"):
@@ -505,7 +506,9 @@ class TestRecommendedItems:
         named in the journal supplement's S1.1, where the setup is in full."""
         i = paper.index("The producer replays StatsBomb's open football event")
         passage = " ".join(paper[i:i + 480].split())
-        assert ("nothing below depends on its content beyond message size and rate"
+        # 15 Oct 2026: "only its message sizes and rates matter here", the same scope in the
+        # Computer Society layout's fewer words.
+        assert ("only its message sizes and rates matter here"
                 in passage), "the scope claim the workload sentence carries"
         journal = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").split())
         j = journal.index("The producer replays StatsBomb's open football event")

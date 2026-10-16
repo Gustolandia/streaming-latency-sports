@@ -80,11 +80,12 @@ def plot_counts(ax, df):
     ax.set_ylabel("Events per run")
     ax.set_title("(a) One series grows, the other does not")
     ax.grid(True, which="both", alpha=0.3)
-    # Upper left, and opaque. At the default framealpha of 0.8 the emitted series and
-    # its first marker showed through the box as ghosts; made opaque in place, the box
-    # hid that first point instead. The top-left quadrant is empty -- the emitted
-    # series only climbs past the legend's height near the right edge.
-    ax.legend(loc="upper left", framealpha=1.0)
+    # Opaque. At the default framealpha of 0.8 the emitted series and its first marker
+    # showed through the box as ghosts; made opaque in place, the box hid that first point
+    # instead. In the upper left it still hid half the 180 s marker and the line into it,
+    # which figure_collisions.data_under_legends found on 15 Oct 2026. Between the two
+    # series at the right nothing is plotted.
+    ax.legend(loc="center right", framealpha=1.0)
 
     grew = df["trace_events"].iloc[-1] / df["trace_events"].iloc[0]
     # A literal sign rather than $\times$, which mathtext pads as a binary operator. The

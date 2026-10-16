@@ -39,11 +39,21 @@ KAFKA, REDIS = "#1f77b4", "#ff7f0e"
 GREY = "#555555"
 # Fig. 1 since 4 Oct 2026: the red of the paper's two failures, and the green of D, the
 # end-to-end latency, kept apart from A's producer blue so the two brackets read as two.
+# 15 Oct 2026, an internal review of the printed figures: the green was #2e7d32, which a
+# deuteranope cannot tell from the waits' red (colour difference 4.9 against 62 for normal
+# vision), so in Fig. 5 the I/O thread's wait read as one more latency. This blue-green keeps a
+# difference of 20 or more under both red-green deficiencies and 4.5:1 contrast as text.
 FAILURE_RED = "#b22222"
-END_TO_END = "#2e7d32"
+END_TO_END = "#00876c"
 # 15 Oct 2026: the kernel's two timestamps and the latency between them, W, in a colour no
 # client thread or span already wears.
 KERNEL = "#6a3d9a"
+# The consumer's orange is for lines and markers. As text it had 2.5:1 contrast on white, and
+# Fig. 5's "recv" was the faintest type in the paper; its words and symbols are set in this
+# darker orange, 4.9:1 (15 Oct 2026, the same review).
+CONSUMER_INK = "#b35806"
+# Labels whose maths carries subscripts, so that the subscripts print at 6.5 pt (figure_style).
+MATH_PT = figure_style.MATH_PT
 
 # Injected one-way delay (ms) -> median TTI (ms), from docs/results/cloud/net_d*/.
 # The 0 ms condition is condemned by the integrity gate in both backends and is excluded
@@ -301,7 +311,8 @@ def plot_system(ax):
     other two, what the broker does, what one leg and two legs are -- "where all fundamental
     quantities are very clear". Panel (b) below says when each timestamp is read; this panel
     says where. A covers leg 1 out and back, D covers leg 1 and then leg 2, and the two red
-    labels mark the late reading of t_ack and a tool that drops every value at or below zero.
+    labels mark the late reading of t_ack and, outside the consumer's box, a tool that reports D
+    in steps of tau and drops every value at or below zero.
     """
     ax.set_xlim(0, 10.4)
     # Stacked labels are spaced for CI's matplotlib 3.9, which sets an 8 pt label with maths in
@@ -309,12 +320,15 @@ def plot_system(ax):
     # it reported two lines of the producer's box printed over each other (4 Oct 2026). The
     # lines in a box are now 0.33 apart (12.8 pt), a title and its first line 0.30 (11.6 pt),
     # the network column's two labels 0.27 (10.5 pt). The boxes are 0.98 tall to hold that,
-    # and the panel starts at -0.10 to hold the boxes.
-    ax.set_ylim(-0.10, 2.80)
+    # and the panel starts at -0.06 to hold the boxes. 15 Oct 2026: from (-0.10, 2.80) to the
+    # machines' frames, a hair outside each so that neither stroke is cut, for the page budget.
+    ax.set_ylim(*SYSTEM_YLIM)
     ax.axis("off")
 
-    # The two machines, and the network between them.
-    for x0, x1, label in ((0.05, 4.05, "Client machine (the driver)"),
+    # The two machines, and the network between them. "Client machine", not "Client machine
+    # (the driver)": the text never defines the driver, and uses the word for network and
+    # benchmark drivers (15 Oct 2026, an internal review).
+    for x0, x1, label in ((0.05, 4.05, "Client machine"),
                           (6.55, 10.35, "Broker machine")):
         ax.add_patch(plt.Rectangle((x0, -0.04), x1 - x0, 2.74, fill=False, edgecolor=GREY,
                                    linewidth=1.0))
@@ -324,25 +338,32 @@ def plot_system(ax):
             va="center")
 
     # The two client processes, which read one clock: the fact that keeps clock
-    # synchronization out of every result in the paper. The consumer reports D in steps of the
-    # timestamp resolution tau and drops what is not above zero; the boxes are 3.35 wide so that
-    # line clears its red label.
-    procs = ((1.38, 2.36, "Producer process", KAFKA,
+    # synchronization out of every result in the paper. The producer's box is 3.35 wide so that
+    # its I/O thread's line clears the red label of the late reading.
+    procs = ((1.38, 2.36, "Producer process", KAFKA, KAFKA,
               (r"app thread: $t_{\mathrm{sched}}$, $t_{\mathrm{pub}}$",
-               r"I/O thread: $t_{\mathrm{ack}}$"), "read late"),
-             (0.02, 1.00, "Consumer process", REDIS,
-              (r"app thread: $t_{\mathrm{recv}}$, $t_{\mathrm{out}}$",
-               r"reports $D$ in steps of $\tau$"), r"drops $\leq 0$"))
-    for y0, y1, title, colour, lines, failure in procs:
+               r"I/O thread: $t_{\mathrm{ack}}$")),
+             (0.35, 1.00, "Consumer process", REDIS, CONSUMER_INK,
+              (r"app thread: $t_{\mathrm{recv}}$, $t_{\mathrm{out}}$",)))
+    for y0, y1, title, colour, ink, lines in procs:
         ax.add_patch(plt.Rectangle((0.20, y0), 3.35, y1 - y0, fill=False, edgecolor=colour,
                                    linewidth=1.1))
-        ax.text(0.32, y1 - 0.15, title, fontsize=8, fontweight="bold", color=colour,
+        ax.text(0.32, y1 - 0.15, title, fontsize=8, fontweight="bold", color=ink,
                 ha="left", va="center")
+        # Each line names its thread's timestamps, set at MATH_PT so that the subscripts print
+        # at 6.5 pt; the 12.8 pt pitch still leaves 2.7 pt between the boxes (15 Oct 2026).
         for k, line in enumerate(lines):
-            ax.text(0.32, y1 - 0.45 - 0.33 * k, line, fontsize=8, ha="left", va="center")
-        # The late read of t_ack, and the tool that drops every value at or below zero.
-        ax.text(3.45, y1 - 0.78, failure, fontsize=8, fontweight="bold", color=FAILURE_RED,
-                ha="right", va="center")
+            ax.text(0.32, y1 - 0.45 - 0.33 * k, line, fontsize=MATH_PT, ha="left",
+                    va="center")
+    # The late read of t_ack, by the producer's own I/O thread.
+    ax.text(3.45, 2.36 - 0.78, "read late", fontsize=8, fontweight="bold", color=FAILURE_RED,
+            ha="right", va="center")
+    # 15 Oct 2026, a referee: inside the consumer's box, "drops <= 0" and "reports D in steps of
+    # tau" read as properties of our own consumer, which keeps every value at microsecond
+    # resolution. They are what a tool of Section V does, so they sit outside the box, under the
+    # tool's own name, as the caption says. The box lost its second line and its lower third.
+    ax.text(0.32, 0.15, r"a tool that reports $D$ in steps of $\tau$ and drops $\leq 0$",
+            fontsize=8, color=FAILURE_RED, ha="left", va="center")
     ax.text(1.875, 1.19, "both processes read one clock", fontsize=8, color=GREY,
             ha="center", va="center")
 
@@ -355,6 +376,11 @@ def plot_system(ax):
                     (1.52, "2  acknowledges it to the producer"),
                     (0.50, "3  delivers it to the consumer")):
         ax.text(6.87, y, line, fontsize=8, ha="left", va="center")
+    # The order drawn is Kafka's. Redis writes the delivery to a waiting consumer first, and
+    # in 16 of its 24 runs of freeze 41 the delivery came first (Sections II and IV-A; 15 Oct
+    # 2026, an internal review), so the note sits in the gap between its two jobs.
+    ax.text(6.87, 1.01, "(Redis: often 3 before 2)", fontsize=8, color=GREY, ha="left",
+            va="center")
 
     # The legs. Leg 1 carries the message out and the acknowledgment back; leg 2 carries the
     # message on to the consumer.
@@ -403,14 +429,20 @@ def plot_mechanism(mech_ax):
     mech_ax.set_xlim(0, 10.4)
     # Down to -0.75 since 4 Oct 2026, for the D, A and E brackets under the consumer lane, whose
     # labels stack 0.50 apart: 11.7 pt, against the 10.1 pt box CI's matplotlib 3.9 gives each.
-    mech_ax.set_ylim(-0.75, 5.25)
+    # Up to 4.98 since 15 Oct 2026, from 5.25: the process box's label moved to the panel's
+    # title row (below), which freed the row above the box (an internal review of the printed
+    # figures, "Shortening Fig. 1").
+    mech_ax.set_ylim(*MECH_YLIM)
     mech_ax.axis("off")
 
-    y_app, y_io, y_brk, y_con = 4.30, 3.30, 2.25, 1.15
+    # The producer's two lanes 0.88 and 0.90 apart, not 1.00 and 1.05 (15 Oct 2026, for the page
+    # budget): the labels between them keep 4 pt to the lanes, and the two-line lane names 3.8 pt
+    # to each other, so that they still read as two names.
+    y_app, y_io, y_brk, y_con = Y_APP, Y_IO, 2.25, 1.15
     for y, label, colour in ((y_app, "producer app" + NL + "thread", KAFKA),
                              (y_io, "client I/O" + NL + "thread", KAFKA),
                              (y_brk, "broker", GREY),
-                             (y_con, "consumer app" + NL + "thread", REDIS)):
+                             (y_con, "consumer app" + NL + "thread", CONSUMER_INK)):
         mech_ax.annotate("", xy=(9.9, y), xytext=(2.45, y),
                          arrowprops=dict(arrowstyle="->", color=GREY, linewidth=1.2))
         mech_ax.text(0.05, y, label, fontsize=8, color=colour, ha="left", va="center",
@@ -419,21 +451,29 @@ def plot_mechanism(mech_ax):
     # The process boundary, and with it the clock. "On one clock by construction" is what
     # excludes skew in III-C, and a reader had to take it from prose; here it is drawn. Both
     # producer threads are in one process, so the two stamps cannot disagree about the epoch.
-    # The lower edge sits at 2.55, clear of the delta-ack label under the I/O lane. At 2.75 it
-    # ran through that label's subscript under matplotlib 3.9.4 in all three fonts the gate was
-    # run with (5-6% of the label's core); CI's matplotlib 3.10 happened not to flag it.
-    mech_ax.add_patch(plt.Rectangle((2.38, 2.55), 7.62, 2.30, fill=False, zorder=0,
+    # The lower edge sits 0.75 under the I/O lane, clear of the delta-ack label under it, as it
+    # did before 15 Oct 2026 (2.55 under 3.30). At 0.55 under it it ran through that label's subscript
+    # under matplotlib 3.9.4 in all three fonts the gate was run with (5-6% of the label's core);
+    # CI's matplotlib 3.10 happened not to flag it. The top edge sits 0.63 over the producer's
+    # lane, over the MATH_PT symbols above it.
+    box_lo, box_hi = y_io - 0.75, y_app + 0.63
+    mech_ax.add_patch(plt.Rectangle((2.38, box_lo), 7.62, box_hi - box_lo, fill=False, zorder=0,
                                     edgecolor=KAFKA, linewidth=0.7, linestyle=(0, (4, 2))))
-    mech_ax.text(9.95, 5.05, "one producer process, one clock", fontsize=8, color=KAFKA,
-                 ha="right", va="center")
+    # Its label on the panel's title row, right of the panel's own title, above the box's
+    # right-hand corner: one row less than inside the panel. It says that the consumer reads the
+    # same clock, since "one producer process, one clock" could be taken to give the producer a
+    # clock of its own, in a paper whose finding needs one clock (15 Oct 2026, an internal
+    # review).
+    mech_ax.set_title("producer process; the consumer reads the same clock", loc="right",
+                      fontsize=8, color=KAFKA, pad=TITLE_PAD)
 
     # the producer's own two stamps, taken on the app thread before the acknowledgment exists
     for x, sym in ((2.95, r"$t_{\mathrm{sched}}$"), (3.65, r"$t_{\mathrm{pub}}$")):
         mech_ax.plot([x], [y_app], marker="o", markersize=5, color=KAFKA,
                      markerfacecolor="white", markeredgewidth=1.2)
-        # 0.24 above the lane, midway between the marker and the box's top edge at 4.85. At
-        # 0.28 that edge crossed the top of both symbols under Arial's taller maths boxes.
-        mech_ax.text(x, y_app + 0.24, sym, fontsize=8, ha="center", color=KAFKA)
+        # 0.24 above the lane, midway between the marker and the box's top edge. At 0.28 that
+        # edge crossed the top of both symbols under Arial's taller maths boxes.
+        mech_ax.text(x, y_app + 0.24, sym, fontsize=MATH_PT, ha="center", color=KAFKA)
     mech_ax.annotate("", xy=(3.65, y_app), xytext=(2.95, y_app),
                      arrowprops=dict(arrowstyle="<->", color=GREY, linewidth=0.9))
     # Backed in white: the guide that carries t_sched down to the E bracket runs behind it.
@@ -458,30 +498,54 @@ def plot_mechanism(mech_ax):
                          arrowprops=dict(arrowstyle="->", color=GREY, linewidth=0.9,
                                          linestyle=(0, (3, 2))))
 
-    # physical events (true), and the later moments the software actually reads the clock
+    # physical events (true), and the later moments the software actually reads the clock.
+    # 15 Oct 2026: each arrival carries the kernel's receive timestamp, which no thread's wait
+    # delays: t_rx,ack for the acknowledgment and t_rx for the record (Section VI, Fig. 5).
     mech_ax.plot([4.95], [y_io], marker="|", markersize=13, color=KAFKA)
-    mech_ax.text(4.95, y_io + 0.30, "ack arrives", fontsize=8, ha="center")
-    mech_ax.plot([7.10], [y_io], marker="o", markersize=6, color=KAFKA)
-    mech_ax.text(7.10, y_io + 0.30, r"clock read $\rightarrow t_{\mathrm{ack}}$", fontsize=8,
+    mech_ax.text(4.95, y_io + 0.30, r"ack arrives, $t_{\mathrm{rx,ack}}$", fontsize=MATH_PT,
                  ha="center")
+    mech_ax.plot([7.10], [y_io], marker="o", markersize=6, color=KAFKA)
+    mech_ax.text(7.10, y_io + 0.30, r"clock read $\rightarrow t_{\mathrm{ack}}$",
+                 fontsize=MATH_PT, ha="center")
     mech_ax.annotate("", xy=(7.10, y_io), xytext=(4.95, y_io),
                      arrowprops=dict(arrowstyle="<->", color="#b22222", linewidth=1.2))
-    mech_ax.text(6.02, y_io - 0.20, r"$\delta_{\mathrm{ack}}$: waiting for a core", fontsize=8,
-                 color="#b22222", ha="center", va="top")
+    # The thread's delay, which holds any wait for a core, as Section IV-A says: on Kafka its
+    # median is 163-180 us of the client's own processing, the wait only in its tail (freeze
+    # 41). "waiting for a core" said the delay was all wait (15 Oct 2026, an internal review).
+    mech_ax.text(6.02, y_io - 0.20, r"$\delta_{\mathrm{ack}}$: the thread's delay",
+                 fontsize=MATH_PT, color="#b22222", ha="center", va="top")
 
     mech_ax.plot([5.85], [y_con], marker="|", markersize=13, color=REDIS)
-    mech_ax.text(5.75, y_con - 0.22, "record arrives", fontsize=8, ha="right", va="top")
+    # "message", the paper's word: it calls no message a record (15 Oct 2026).
+    mech_ax.text(5.75, y_con - 0.22, r"message arrives, $t_{\mathrm{rx}}$", fontsize=MATH_PT,
+                 ha="right", va="top")
+
+    # The margin m, from the acknowledgment's arrival to the record's (15 Oct 2026, both
+    # referees): the waiting-probability law conditions on it, and the figure is where the
+    # vocabulary is defined.
+    # Drawn between the broker's lane and the record's dashed branch, which at y = 1.95 lies left
+    # of the acknowledgment's guide, so the bracket crosses nothing; the label sits in a white
+    # break of its own bracket, the only place between the lane and the branch with room for it.
+    y_m = 1.95
+    for x, y0 in ((4.95, y_io - 0.28), (5.85, y_con + 0.28)):
+        mech_ax.plot([x, x], [y0, y_m], color=GREY, linewidth=0.7, linestyle=(0, (1, 2)),
+                     zorder=0)
+    mech_ax.annotate("", xy=(5.85, y_m), xytext=(4.95, y_m),
+                     arrowprops=dict(arrowstyle="<->", color="black", linewidth=0.9,
+                                     shrinkA=0, shrinkB=0))
+    mech_ax.text(5.40, y_m, "$m$", fontsize=8, ha="center", va="center", zorder=3,
+                 bbox=dict(facecolor="white", edgecolor="none", pad=0.6))
     mech_ax.plot([6.45], [y_con], marker="o", markersize=6, color=REDIS)
     # 0.15 below the lane, not 0.22: under Arial's taller maths box the label sat on the note
     # beneath it (17% of the label). It still clears the orange marker above.
     # Right of its own marker since 4 Oct 2026: the guide that carries t_recv down to the D
     # bracket runs through x = 6.45, which is where this label used to be centred.
-    mech_ax.text(6.60, y_con - 0.15, r"clock read $\rightarrow t_{\mathrm{recv}}$", fontsize=8,
-                 ha="left", va="top")
+    mech_ax.text(6.60, y_con - 0.15, r"clock read $\rightarrow t_{\mathrm{recv}}$",
+                 fontsize=MATH_PT, ha="left", va="top")
     mech_ax.annotate("", xy=(6.45, y_con), xytext=(5.85, y_con),
                      arrowprops=dict(arrowstyle="<->", color="#b22222", linewidth=1.2))
-    mech_ax.text(6.15, y_con + 0.24, r"$\delta_{\mathrm{recv}}$", fontsize=8, color="#b22222",
-                 ha="center")
+    mech_ax.text(6.15, y_con + 0.24, r"$\delta_{\mathrm{recv}}$", fontsize=MATH_PT,
+                 color="#b22222", ha="center")
 
     # The inversion itself, drawn as the backwards span it is.
     #
@@ -489,27 +553,32 @@ def plot_mechanism(mech_ax):
     # reader had to be told which two stamps it spans. The guides drop from the two clock
     # reads, which is what makes "later stamp, earlier value" a thing you can see rather
     # than a thing you parse.
-    mech_ax.plot([7.10, 7.10], [1.72, y_io], color=KAFKA, linewidth=0.8,
+    mech_ax.plot([7.10, 7.10], [Y_S_ARROW, y_io], color=KAFKA, linewidth=0.8,
                  linestyle=(0, (2, 2)), zorder=0)
-    mech_ax.plot([6.45, 6.45], [y_con, 1.72], color=REDIS, linewidth=0.8,
+    mech_ax.plot([6.45, 6.45], [y_con, Y_S_ARROW], color=REDIS, linewidth=0.8,
                  linestyle=(0, (2, 2)), zorder=0)
-    mech_ax.annotate("", xy=(6.45, 1.72), xytext=(7.10, 1.72),
+    mech_ax.annotate("", xy=(6.45, Y_S_ARROW), xytext=(7.10, Y_S_ARROW),
                      arrowprops=dict(arrowstyle="->", color="#b22222", linewidth=1.3))
     # Labelled in the paper's own model (Section II): S is the acknowledgment-referenced
     # span and D the delivery time, so the inversion reads S < 0 although D > 0 -- not a
     # T_meas/T_true pair the text never defines (co-author comment 16, 2026-09-08). "The
     # delivery time", not "the delivery": the manuscript never uses the bare word for D (1 Oct).
-    mech_ax.text(7.30, 1.72, r"$S=t_{\mathrm{recv}}-t_{\mathrm{ack}}<0$" "\n"
-                 r"although the end-to-end latency $D>0$",
-                 fontsize=8, color="#b22222", ha="left", va="center")
+    # Two lines in two sizes since 15 Oct 2026: the definition, whose subscripts are what the
+    # reader compares, at MATH_PT, and the sentence under it at 8 pt; set as one label at
+    # MATH_PT the second line ran past the panel's right edge.
+    mech_ax.text(7.30, Y_S_ARROW + 0.235, r"$S=t_{\mathrm{recv}}-t_{\mathrm{ack}}<0$",
+                 fontsize=MATH_PT, color="#b22222", ha="left", va="center")
+    mech_ax.text(7.30, Y_S_ARROW - 0.205, r"although the end-to-end latency $D>0$", fontsize=8,
+                 color="#b22222", ha="left", va="center")
 
     # The consumer's last stamp, once it has handled the message. Backed in white: the guide
     # that carries t_out down to the E bracket runs behind its label.
     x_out = 9.45
-    # Above the label's backing, which otherwise covers the marker's lower half.
+    # Above the label's backing, which otherwise covers the marker's lower half. 0.18 below the
+    # lane, not 0.15: at 0.15 the backing touched the marker (15 Oct 2026, an internal review).
     mech_ax.plot([x_out], [y_con], marker="o", markersize=6, color=REDIS, zorder=4)
-    mech_ax.text(x_out, y_con - 0.15, r"handled $\rightarrow t_{\mathrm{out}}$", fontsize=8,
-                 ha="center", va="top", zorder=3,
+    mech_ax.text(x_out, y_con - 0.18, r"handled $\rightarrow t_{\mathrm{out}}$",
+                 fontsize=MATH_PT, ha="center", va="top", zorder=3,
                  bbox=dict(facecolor="white", edgecolor="none", pad=0.6))
 
     # A and D, the two latencies the inversion compares, drawn from the same t_pub (4 Oct
@@ -518,8 +587,9 @@ def plot_mechanism(mech_ax):
     # delay, then D, then the processing-time latency that continues D's row: every quantity
     # of Section II-B is drawn (4 Oct 2026, the author: "the diagram for the whole system where
     # all fundamental quantities are very clear"). The labels sit left of the brackets, clear
-    # of the guide that carries t_sched down.
-    y_d, y_a, y_e = 0.52, 0.02, -0.48
+    # of the guide that carries t_sched down. 0.04 lower since 15 Oct 2026, under the consumer's
+    # MATH_PT labels.
+    y_d, y_a, y_e = 0.48, -0.02, -0.52
     for x, y0, y1 in ((2.95, y_app - 0.12, y_e), (3.65, y_app - 0.12, y_a - 0.04),
                       (6.45, y_con, y_d), (x_out, y_con, y_e)):
         mech_ax.plot([x, x], [y0, y1], color=GREY, linewidth=0.7, linestyle=(0, (1, 2)),
@@ -554,66 +624,167 @@ def plot_mechanism(mech_ax):
     # the note was the one element carrying no part of the mechanism itself.
 
 
+#: Fig. 1(a)'s vertical extent, in its own units (15 Oct 2026; see plot_system).
+SYSTEM_YLIM = (-0.06, 2.72)
+#: Fig. 1(b)'s producer lanes and vertical extent, in its own units (15 Oct 2026; see
+#: plot_mechanism): the extent ends just over the process box's top edge, 0.63 over Y_APP.
+Y_APP, Y_IO = 4.03, 3.15
+MECH_YLIM = (-0.72, Y_APP + 0.68)
+#: The height of the inversion's arrow in Fig. 1(b), between the broker's lane and the
+#: consumer's, with its two-line label centred on it.
+Y_S_ARROW = 1.74
+#: The gap between a panel and its title, in points: 3, from matplotlib's 6, in Fig. 1, whose
+#: titles sit over axis-free panels with nothing to clear (15 Oct 2026).
+TITLE_PAD = 3.0
+#: Fig. 1's layout, in points (15 Oct 2026; see _model). Each panel keeps the scale it had,
+#: 38.8 pt a unit in (a) and 23.5 in (b), so that every gap between its labels is as it was; the
+#: title rows hold an 8 pt title over a 3 pt pad; the canvas is their sum, at the text width.
+MODEL_PT_PER_UNIT = (38.8, 23.5)
+MODEL_TOP_PT, MODEL_GAP_PT, MODEL_BOTTOM_PT = 12.7, 12.2, 1.0
+MODEL_PANELS_PT = ((SYSTEM_YLIM[1] - SYSTEM_YLIM[0]) * MODEL_PT_PER_UNIT[0],
+                   (MECH_YLIM[1] - MECH_YLIM[0]) * MODEL_PT_PER_UNIT[1])
+MODEL_FIG_IN = (figure_legibility.TEXT_WIDTH_IN,
+                (MODEL_TOP_PT + MODEL_GAP_PT + MODEL_BOTTOM_PT + sum(MODEL_PANELS_PT)) / 72.0)
+
+#: Fig. 5's canvas, in inches, and the panel is laid out in inches too, so that a gap in the code
+#: is a gap on the page. The column's 3.5 in exactly, saved whole, so that the page prints it at
+#: its own size (15 Oct 2026; see _kernel).
+KERNEL_FIG_IN = (3.5, 1.90)
+
+
 def plot_kernel_fix(ax):
     """Section VI's figure: where the kernel timestamps a message, and where the waits fall.
 
     15 Oct 2026, the author: the general solution must be clearly explained for the industry.
-    Fig. 1(b) has no room for the kernel's departure timestamp -- the publish arrow and the
-    guides from t_sched and t_pub pass where its label would go -- so the fix has a drawing of
-    its own. Two lanes: the client's threads, which read the clock at the publish call and at
-    receipt and may first wait for a core, over the kernel, which timestamps the packet as it
-    leaves and as it arrives without waiting for either. D is drawn over the whole and its three
-    parts under it, so the eye finds the wait outside W.
+    Redrawn the same day on Fig. 1(b)'s four lanes, at a referee's request: one lane for "client
+    threads" made the producer's threads and the consumer's look like one, only the consumer's
+    wait was drawn although H_out holds the producer's too (on Kafka, the background thread that
+    writes the message to the network), and the acknowledgment was missing, so the drawing did
+    not reach the paper's finding about S. Now the producer's I/O thread waits for a core before
+    the kernel timestamps the message as it leaves, t_tx; the acknowledgment and the record each
+    arrive with the kernel's receive timestamp, t_rx,ack and t_rx, before a thread waits and
+    reads the clock; and the consumer's fetch request reaches the broker before the message
+    does. Under the lanes, D over its three parts, so the eye finds both waits outside W.
     """
-    ax.set_xlim(0, 10.4)
-    ax.set_ylim(-1.55, 2.05)
+    width, height = KERNEL_FIG_IN
+    ax.set_xlim(0, width)
+    ax.set_ylim(0, height)
     ax.axis("off")
-    y_thr, y_ker = 1.55, 0.55
-    for y, label, colour in ((y_thr, "client" + NL + "threads", GREY), (y_ker, "kernel", KERNEL)):
-        ax.annotate("", xy=(10.2, y), xytext=(1.55, y),
+
+    # 15 Oct 2026: the symbols set at MATH_PT, so that their subscripts print at 6.5 pt, and
+    # every lane 0.02 in higher on a canvas 0.04 in taller, so that the labels at the top and the
+    # bottom keep the 2.5 pt CI's matplotlib 3.9 needs for its taller maths boxes. The canvas is
+    # still shorter than the file it replaces, which the page enlarged.
+    y_app, y_io, y_brk, y_con = 1.66, 1.35, 0.98, 0.61
+    x_lane, x_end = 0.74, 3.42
+    for y, label, colour in ((y_app, "producer app" + NL + "thread", KAFKA),
+                             (y_io, "client I/O" + NL + "thread", KAFKA),
+                             (y_brk, "broker", GREY),
+                             (y_con, "consumer app" + NL + "thread", CONSUMER_INK)):
+        ax.annotate("", xy=(x_end, y), xytext=(x_lane, y),
                     arrowprops=dict(arrowstyle="->", color=GREY, linewidth=1.0))
-        ax.text(0.05, y, label, fontsize=8, color=colour, ha="left", va="center",
+        ax.text(0.03, y, label, fontsize=8, color=colour, ha="left", va="center",
                 linespacing=0.95)
 
-    x_pub, x_tx, x_rx, x_recv = 2.05, 3.55, 7.15, 8.95
-    # the threads' two readings of the clock
-    for x, sym, colour in ((x_pub, r"$t_{\mathrm{pub}}$", KAFKA),
-                           (x_recv, r"$t_{\mathrm{recv}}$", REDIS)):
-        ax.plot([x], [y_thr], marker="o", markersize=5, color=colour)
-        ax.text(x, y_thr + 0.20, sym, fontsize=8, color=colour, ha="center", va="bottom")
-    # The kernel's two timestamps, and the message's path between them. Each label runs inward
-    # from its tick, inside W: centred on t_rx, its box met the wait's label above it by 1.1 pt.
-    for x, sym, side, nudge in ((x_tx, r"leaves, $t_{\mathrm{tx}}$", "left", -0.08),
-                                (x_rx, r"arrives, $t_{\mathrm{rx}}$", "right", 0.08)):
-        ax.plot([x], [y_ker], marker="|", markersize=11, color=KERNEL)
-        ax.text(x + nudge, y_ker + 0.20, sym, fontsize=8, color=KERNEL, ha=side, va="bottom")
-    ax.annotate("", xy=(x_rx - 0.08, y_ker + 0.02), xytext=(x_tx + 0.08, y_ker + 0.02),
-                arrowprops=dict(arrowstyle="->", color=GREY, linewidth=0.9,
-                                linestyle=(0, (3, 2))))
-    ax.text((x_tx + x_rx) / 2, y_ker - 0.16, "network and broker", fontsize=8, color=GREY,
-            ha="center", va="top")
-    # the consumer's wait for a core, after the kernel's receive timestamp
-    ax.annotate("", xy=(x_recv, y_thr), xytext=(x_rx, y_thr),
-                arrowprops=dict(arrowstyle="<->", color=FAILURE_RED, linewidth=1.1))
-    ax.text((x_rx + x_recv) / 2, y_thr - 0.14, "waits for" + NL + "a core", fontsize=8,
-            color=FAILURE_RED, ha="center", va="top", linespacing=0.95)
+    x_pub, x_hand, x_tx, x_append = 0.86, 0.92, 1.44, 1.66
+    x_rxack, x_ack, x_rx, x_recv = 2.10, 2.48, 2.68, 3.14
+    x_req, x_req_in = 0.98, 1.20
+    dashed = dict(color=GREY, linewidth=0.9, linestyle=(0, (3, 2)))
 
-    # Guides down to the brackets: D's from the threads' readings, W's from the kernel's. D's
-    # label sits midway between W's two guides, clear of both.
-    y_d, y_h = -0.55, -1.15
-    for x, y0, y1 in ((x_pub, y_thr - 0.10, y_d - 0.05), (x_recv, y_thr - 0.10, y_d - 0.05),
-                      (x_tx, y_ker - 0.10, y_h), (x_rx, y_ker - 0.10, y_h)):
-        ax.plot([x, x], [y0, y1], color=GREY, linewidth=0.7, linestyle=(0, (1, 2)), zorder=0)
+    # The producer's publish call, and the hand-off to the I/O thread that writes the message.
+    ax.plot([x_pub], [y_app], marker="o", markersize=5, color=KAFKA)
+    ax.text(x_pub, y_app + 0.06, r"$t_{\mathrm{pub}}$", fontsize=MATH_PT, color=KAFKA,
+            ha="center", va="bottom")
+    ax.annotate("", xy=(x_hand, y_io + 0.03), xytext=(x_pub + 0.01, y_app - 0.04),
+                arrowprops=dict(arrowstyle="->", **dashed))
+    # The kernel's three timestamps, the message leaving and the acknowledgment and the record
+    # arriving, none of which waits for a thread.
+    for x, y in ((x_tx, y_io), (x_rxack, y_io), (x_rx, y_con)):
+        ax.plot([x], [y], marker="|", markersize=10, color=KERNEL, markeredgewidth=1.4)
+    for x, sym in ((x_tx, r"$t_{\mathrm{tx}}$"), (x_rxack, r"$t_{\mathrm{rx,ack}}$")):
+        ax.text(x, y_io + 0.07, sym, fontsize=MATH_PT, color=KERNEL, ha="center", va="bottom")
+    ax.text(x_rx + 0.04, y_con - 0.06, r"$t_{\mathrm{rx}}$", fontsize=MATH_PT, color=KERNEL,
+            ha="left", va="top")
+    # The message's path: out to the broker's append, and back as the acknowledgment and as the
+    # record, which the broker sends in answer to the consumer's fetch request.
+    ax.annotate("", xy=(x_append - 0.04, y_brk + 0.03), xytext=(x_tx + 0.02, y_io - 0.05),
+                arrowprops=dict(arrowstyle="->", **dashed))
+    ax.plot([x_append], [y_brk], marker="D", markersize=4.5, color=GREY)
+    ax.annotate("", xy=(x_rxack - 0.02, y_io - 0.05), xytext=(x_append + 0.04, y_brk + 0.03),
+                arrowprops=dict(arrowstyle="->", **dashed))
+    ax.annotate("", xy=(x_rx - 0.02, y_con + 0.05), xytext=(x_append + 0.04, y_brk - 0.03),
+                arrowprops=dict(arrowstyle="->", **dashed))
+    ax.annotate("", xy=(x_req_in, y_brk), xytext=(x_req, y_con),
+                arrowprops=dict(arrowstyle="->", color=REDIS, linewidth=0.9,
+                                linestyle=(0, (3, 2)), shrinkA=0, shrinkB=0))
+    ax.text((x_req + x_req_in) / 2 + 0.05, (y_con + y_brk) / 2, "fetch", fontsize=8,
+            color=CONSUMER_INK, ha="left", va="center")
+
+    # The threads' delays, which hold any wait for a core, and the clock reads they delay. Each
+    # is named, the I/O thread's delay before it writes the message too: unnamed, and in the red
+    # of the latencies' brackets' shape, it read as one more latency (15 Oct 2026, an internal
+    # review of the printed figures).
+    for x0, x1, y in ((x_hand, x_tx, y_io), (x_rxack, x_ack, y_io), (x_rx, x_recv, y_con)):
+        ax.annotate("", xy=(x1, y), xytext=(x0, y),
+                    arrowprops=dict(arrowstyle="<->", color=FAILURE_RED, linewidth=1.1,
+                                    shrinkA=0, shrinkB=0))
+    ax.text((x_hand + x_tx) / 2, y_io - 0.07, r"$\delta_{\mathrm{tx}}$", fontsize=MATH_PT,
+            color=FAILURE_RED, ha="center", va="top")
+    ax.text((x_rxack + x_ack) / 2, y_io - 0.07, r"$\delta_{\mathrm{ack}}$", fontsize=MATH_PT,
+            color=FAILURE_RED, ha="center", va="top")
+    ax.text((x_rx + x_recv) / 2, y_con + 0.07, r"$\delta_{\mathrm{recv}}$", fontsize=MATH_PT,
+            color=FAILURE_RED, ha="center", va="bottom")
+    for x, y, colour in ((x_ack, y_io, KAFKA), (x_recv, y_con, REDIS)):
+        ax.plot([x], [y], marker="o", markersize=5, color=colour, zorder=4)
+    ax.text(x_ack, y_io + 0.07, r"$t_{\mathrm{ack}}$", fontsize=MATH_PT, color=KAFKA,
+            ha="center", va="bottom")
+    ax.text(x_recv + 0.04, y_con - 0.06, r"$t_{\mathrm{recv}}$", fontsize=MATH_PT,
+            color=CONSUMER_INK, ha="left", va="top")
+    # What the purple ticks and the red arrows are, said once, level with t_pub's label so that
+    # the key costs no height. "a thread's delay", which holds any wait for a core, as Section
+    # IV-A says; "waits for a core" said the delay was all wait (15 Oct 2026, an internal review).
+    y_key = y_app + 0.12
+    ax.plot([1.40], [y_key], marker="|", markersize=10, color=KERNEL, markeredgewidth=1.4)
+    ax.text(1.45, y_key, "kernel timestamp", fontsize=8, color=KERNEL, ha="left", va="center")
+    ax.annotate("", xy=(2.62, y_key), xytext=(2.42, y_key),
+                arrowprops=dict(arrowstyle="<->", color=FAILURE_RED, linewidth=1.1,
+                                shrinkA=0, shrinkB=0))
+    ax.text(2.66, y_key, "a thread's delay", fontsize=8, color=FAILURE_RED, ha="left",
+            va="center")
+
+    # The kernel-timed order, from the acknowledgment's arrival to the record's: no thread's
+    # wait is in it, and S = S_k + delta_recv - delta_ack. 0.11 under the broker's lane, not
+    # 0.09, for the label's MATH_PT box (15 Oct 2026).
+    y_s = y_brk - 0.11
+    for x, y0 in ((x_rxack, y_io - 0.07), (x_rx, y_con + 0.07)):
+        ax.plot([x, x], [y0, y_s], color=KERNEL, linewidth=0.7, linestyle=(0, (1, 2)), zorder=0)
+    ax.annotate("", xy=(x_rx, y_s), xytext=(x_rxack, y_s),
+                arrowprops=dict(arrowstyle="<->", color=KERNEL, linewidth=0.9, shrinkA=0,
+                                shrinkB=0))
+    ax.text((x_rxack + x_rx) / 2, y_s, "$S_k$", fontsize=MATH_PT, color=KERNEL, ha="center",
+            va="center", zorder=3, bbox=dict(facecolor="white", edgecolor="none", pad=0.6))
+
+    # Guides down to the brackets: D from the threads' readings, its parts from the kernel's
+    # timestamps too. D's label sits between W's two guides, clear of both. The labels under
+    # the brackets hang 0.04 below them, not 0.035: at 0.035 W's arrowheads touched its label
+    # (15 Oct 2026, an internal review of the printed figures).
+    y_d, y_h = y_con - 0.225, y_con - 0.395
+    for x, y0 in ((x_pub, y_app - 0.07), (x_tx, y_io - 0.07), (x_rx, y_con - 0.07),
+                  (x_recv, y_con - 0.07)):
+        ax.plot([x, x], [y0, y_h], color=GREY, linewidth=0.7, linestyle=(0, (1, 2)), zorder=0)
     ax.annotate("", xy=(x_recv, y_d), xytext=(x_pub, y_d),
-                arrowprops=dict(arrowstyle="<->", color=END_TO_END, linewidth=1.1))
-    ax.text((x_tx + x_rx) / 2, y_d + 0.12, r"$D$: end-to-end latency", fontsize=8,
+                arrowprops=dict(arrowstyle="<->", color=END_TO_END, linewidth=1.1, shrinkA=0,
+                                shrinkB=0))
+    ax.text((x_tx + x_rx) / 2, y_d + 0.035, r"$D$: end-to-end latency", fontsize=8,
             color=END_TO_END, ha="center", va="bottom")
-    for x0, x1, label, colour in ((x_pub, x_tx, r"$H_{\mathrm{out}}$", GREY),
-                                  (x_tx, x_rx, r"$W$: kernel-timed latency", KERNEL),
-                                  (x_rx, x_recv, r"$H_{\mathrm{in}}$", GREY)):
+    for x0, x1, label, colour, size in (
+            (x_pub, x_tx, r"$H_{\mathrm{out}}$", GREY, MATH_PT),
+            (x_tx, x_rx, r"$W$: kernel-timed latency", KERNEL, 8),
+            (x_rx, x_recv, r"$H_{\mathrm{in}}$", GREY, MATH_PT)):
         ax.annotate("", xy=(x1, y_h), xytext=(x0, y_h),
-                    arrowprops=dict(arrowstyle="<->", color=colour, linewidth=1.1))
-        ax.text((x0 + x1) / 2, y_h - 0.12, label, fontsize=8, color=colour, ha="center",
+                    arrowprops=dict(arrowstyle="<->", color=colour, linewidth=1.1, shrinkA=0,
+                                    shrinkB=0))
+        ax.text((x0 + x1) / 2, y_h - 0.04, label, fontsize=size, color=colour, ha="center",
                 va="top")
 
 
@@ -948,19 +1119,33 @@ def plot_network(ax):
 
 
 # --------------------------------------------------------------------------- driver
-def _save(fig, out_dir, stem, check_layout=True):
+def _save(fig, out_dir, stem, check_layout=True, pad_inches=None, whole=False):
+    """Gate a figure and write it as PNG and PDF.
+
+    `whole` writes the canvas uncropped, for a figure drawn at exactly the width the page prints
+    it at, so that the file is that width and the page neither enlarges nor shrinks it; the
+    collision gate then also checks that no label is cut by the canvas edge (15 Oct 2026).
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     if check_layout:
         # Skipped only for a deliberately rescaled build: --font-scale draws the figures at a
         # size they were not laid out for, and the gates describe the shipped layout. Running
         # them on a rescaled render would report collisions nobody is going to ship.
-        figure_collisions.check(fig, stem)
+        figure_collisions.check(fig, stem, whole_canvas=whole)
         figure_legibility.check(fig, stem)
         figure_vocabulary.check(fig, stem)
+    # The crop's margin. The default is a tenth of an inch on each side, and a figure drawn
+    # edge to edge at the width it prints at then comes out 0.2 in wider than that width and is
+    # shrunk on inclusion (15 Oct 2026: Fig. 1's file was 7.29 in for a 7.16 in page, so its
+    # 8 pt type printed at 7.9 pt, which the legibility gate, reading the canvas, cannot see).
+    crop = {} if pad_inches is None else {"pad_inches": pad_inches}
     written = []
     for ext in ("png", "pdf"):
         path = out_dir / f"{stem}.{ext}"
-        fig.savefig(path, dpi=200, bbox_inches="tight")
+        if whole:
+            figure_style.save_whole(fig, path, dpi=200)
+        else:
+            fig.savefig(path, dpi=200, bbox_inches="tight", **crop)
         written.append(path)
     plt.close(fig)
     return written
@@ -1026,24 +1211,34 @@ def main(argv=None):
         # panels with a warning and lays them out no better.
         # 3.89 in tall since E's row was added and the stacked labels were spaced for CI's
         # matplotlib 3.9 (4 Oct 2026); the ratios keep both panels' scales as they were.
-        fig = plt.figure(figsize=(7.16, 3.89))
-        gs = fig.add_gridspec(2, 1, height_ratios=[1.62, 2.028], hspace=0.10, left=0.005,
-                              right=0.995, top=0.955, bottom=0.005)
+        # 15 Oct 2026: at the text width exactly and saved whole, so that the page prints it at
+        # its own size (cropped, the file was 7.13 in and the page enlarged it 0.5%). Shorter by
+        # the row the process box's label had, now on panel (b)'s title row, and by half of
+        # each title's pad; panel (a)'s scale and panel (b)'s are as they were.
+        fig = plt.figure(figsize=MODEL_FIG_IN)
+        height_pt = 72.0 * MODEL_FIG_IN[1]
+        gs = fig.add_gridspec(2, 1, height_ratios=list(MODEL_PANELS_PT),
+                              hspace=MODEL_GAP_PT / (sum(MODEL_PANELS_PT) / 2.0), left=0.005,
+                              right=0.995, top=1.0 - MODEL_TOP_PT / height_pt,
+                              bottom=MODEL_BOTTOM_PT / height_pt)
         ax_sys, ax_time = fig.add_subplot(gs[0]), fig.add_subplot(gs[1])
         plot_system(ax_sys)
         plot_mechanism(ax_time)
-        ax_sys.set_title("(a) Where everything runs", fontsize=8, loc="left")
-        ax_time.set_title("(b) When each timestamp is read", fontsize=8, loc="left")
-        return _save(fig, out, "measurement_model", check_layout=layout_is_shipped)
+        ax_sys.set_title("(a) Where everything runs", fontsize=8, loc="left", pad=TITLE_PAD)
+        ax_time.set_title("(b) When each timestamp is read", fontsize=8, loc="left",
+                          pad=TITLE_PAD)
+        return _save(fig, out, "measurement_model", check_layout=layout_is_shipped,
+                     whole=True)
 
     def _kernel():
-        # Drawn a little under the column's 3.5 in, so that the cropped file, padding and all,
-        # is enlarged on inclusion and never shrunk: its 8 pt type prints at 8 pt or more, as
-        # the other column figures' does. The axis-free panel is laid out by hand, as Fig. 1's.
-        fig, ax = plt.subplots(figsize=(3.37, 1.60))
+        # The column's 3.5 in exactly, saved whole, so that the page prints it at its own size
+        # (15 Oct 2026; cropped close it was 3.48 in, and the page enlarged it). The axis-free
+        # panel is laid out by hand, in inches, and fills the canvas.
+        fig, ax = plt.subplots(figsize=KERNEL_FIG_IN)
         plot_kernel_fix(ax)
-        fig.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01)
-        return _save(fig, out, "kernel_timestamps", check_layout=layout_is_shipped)
+        fig.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
+        return _save(fig, out, "kernel_timestamps", check_layout=layout_is_shipped,
+                     whole=True)
 
     def _delta():
         # Drawn at the width the supplement includes it at. Drawn wider, every label is

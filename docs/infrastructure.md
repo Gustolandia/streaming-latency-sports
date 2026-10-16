@@ -2323,3 +2323,19 @@ right even when one is idle, as item 12 shows. But `\ackLagMedianUs` was not a v
 the median acknowledgment lag, the single number the whole exposure curve of Section VI-B
 rests on, and it was computed, carried and shown to nobody. The inventory now has a ceiling
 that may fall freely and may not rise without a reason being written down.
+
+**14. Measure a figure as the page prints it, not as the script draws it.** On 15 October 2026
+three internal reviews read the five main-text figures off the built PDF and found what every
+gate had passed. Fig. 2(a)'s opaque legend cut both brokers' peaks flat, and Fig. 4(b)'s
+frameless legend set its markers on the 1 ms column, one over the lowest retention: the
+collision gate asks whether ink lands on a label, and exempts an opaque legend's own entries.
+`figure_collisions.data_under_legends` now tests every bin, outline, data line and marker
+against every legend's box, and fails on both figures as they were. The legibility gate read
+each label's size, so subscripts and log-tick exponents printed at 5.6 pt; the submission's
+committed files are now read glyph by glyph against a 6.5 pt floor
+(`tests/unit/test_figure_legibility.py`), and a label whose maths carries subscripts is set at
+`figure_style.MATH_PT`. And a file cropped to its ink is as wide as its ink: Fig. 4's was 6.975
+in, so the page enlarged it 2.75% and printed it 4.1 pt taller, in both columns. The main-text
+figures are now drawn at exactly the width they print at and saved whole, with a check that no
+label is cut by the canvas edge. The supplement's one-column width was 6.5 in in the gate and
+is 7.14 in on the page (`figure_legibility.ONECOLUMN_WIDTH_IN`, from a minimal build).

@@ -31,7 +31,8 @@ Which cells, by result:
              (`priority_pairs.usable`), a normal-priority cell l<load>_base and a real-time cell
              l<load>_rt of E-A5, E-A5b or E-A7.
   placement  the k = 6 cells, concentrated and spread, of E-A6 and its replication E-A6b, which
-             `stat_intervals.geometry_cells` reads.
+             `stat_intervals.geometry_cells` reads; since 15 Oct 2026 the k = 5 and k = 7
+             cells too, which the supplement's placement table prints a z for.
   path       the four padding levels of E-A10 and of its repeat E-A10b. `payload_span` takes the
              fall as the level with the highest pooled rate over the level with the lowest.
   trace      the kernel-traced pairs, E-A9 at 88% load and E-A9b at 75% and 88%, and E-A9's
@@ -40,6 +41,17 @@ Which cells, by result:
              concurrency subdirectory that names them.
   ladder     the two ends of E-A3's load ladder, idle (bg0) and the knee (bg7), between which
              `stat_intervals.load_growth` takes the growth of the rate.
+  load       every cell of E-A3's ladder, at normal priority (15 Oct 2026), for the per-run
+             rates the paper's Fig. 2 draws against utilization (`rate_by_load`). No interval
+             is taken from them.
+  colocation E-A8, the co-located control (15 Oct 2026): idle and at 88% load, the brokers on
+             a broker machine (remote) and on the client machine itself (co-located). The
+             paper and Supplement S1 count its runs per broker; no interval is taken from them.
+
+A third table, `floor`, needs the archive too: for every run of the priority pairs' real-time
+cells, on both brokers, where in the run each value of S below zero sits (its rank by publish
+time) and how long the run waited for its first acknowledgment (15 Oct 2026). It is checked
+against the run file and written to docs/results/model/rt_floor_runs.csv.
 
 The bootstrap. Each arm's runs are resampled with replacement, independently of the other
 arm's, and each resample pools its runs: negatives over events. Pooling both brokers resamples
@@ -87,7 +99,7 @@ RUNS = os.path.join(ARCHIVE, "runs")
 
 #: Both brokers every one of these campaigns ran. "both" pools them.
 BACKENDS = ("kafka", "redis")
-RESULTS = ("priority", "placement", "path", "trace", "ladder")
+RESULTS = ("priority", "placement", "path", "trace", "ladder", "load", "colocation")
 #: A run's counts are `run_events` and `run_negatives`, not n_events: every `n_events` column
 #: under docs/results/model is a cell's denominator, and a gate holds each of them to 2,985.
 FIELDS = ["result", "campaign", "phase", "cell", "arm", "backend", "run", "run_events",
@@ -102,6 +114,21 @@ PRIORITY_ARMS = (("base", "normal", "inv_base", "n_base"), ("rt", "real-time", "
 PLACEMENT = (("E-A6", "ea6"), ("E-A6b", "ea6b"))
 #: The two cells `stat_intervals.geometry_cells` compares, and what each placement is.
 PLACEMENT_ARMS = (("k6_conc", "concentrated"), ("k6_spread", "spread"))
+#: 15 Oct 2026: the supplement's placement table prints a z at k = 5 and k = 7 as well, a
+#: test that treats messages as independent (both referees, S8). The runs of those cells are
+#: counted too, so each row can carry an interval that resamples whole runs; the k = 6 pair
+#: keeps its own name above, which the paper's figures and macros read.
+PLACEMENT_LEVELS = ("k5", "k6", "k7")
+#: 15 Oct 2026: E-A3's whole load ladder, every cell at normal priority, so that the per-run
+#: rate can be drawn against the client machine's utilization on both brokers (referee B, Fig.
+#: 2). The ladder's two ends, idle and the knee, are the `ladder` result above.
+LOAD = ("E-A3", "ea3", ("bg0", "bg2", "bg4", "bg5", "bg6", "bg7", "bg8", "bg10", "bg12"))
+#: 15 Oct 2026: E-A8, the co-located control, as (campaign, results folder, committed file,
+#: loads). Each load has a remote cell and a co-located one; the committed file gives each arm's
+#: Kafka events and rate, which the Kafka halves must reproduce.
+COLOCATION = ("E-A8", "ea8", "colocation.csv", ("0", "88"))
+COLOCATION_ARMS = (("remote", "remote", "n_remote", "inv_remote"),
+                   ("colocated", "co-located", "n_colocated", "inv_colocated"))
 #: (campaign, results folder, committed sweep file under docs/results/model).
 PATH = (("E-A10", "ea10", ("ttrue_sweep.csv",)),
         ("E-A10b", "ea10b", ("ea10b", "ttrue_sweep.csv")))
@@ -174,9 +201,12 @@ def cells(model_dir=MODEL):
                             {"n_events": n, "n_negative": round(float(r[rate]) * n),
                              "n_runs": None}, None))
     for campaign, phase in PLACEMENT:
-        for cell, arm in PLACEMENT_ARMS:
-            out.append(("placement", campaign, phase, cell, arm,
-                        _counted(model_dir, (phase, "knee_resolution.csv"), phase, cell), None))
+        for level in PLACEMENT_LEVELS:
+            for cell, arm in PLACEMENT_ARMS:
+                cell = cell.replace("k6", level)
+                out.append(("placement", campaign, phase, cell, arm,
+                            _counted(model_dir, (phase, "knee_resolution.csv"), phase, cell),
+                            None))
     for campaign, phase, parts in PATH:
         for r in _read_csv(os.path.join(model_dir, *parts)):
             n = int(r["n_events"])
@@ -189,6 +219,18 @@ def cells(model_dir=MODEL):
     for campaign, phase, cell, arm in LADDER:
         out.append(("ladder", campaign, phase, cell, arm,
                     _counted(model_dir, ("knee_resolution.csv",), phase, cell), None))
+    campaign, phase, ladder = LOAD
+    for cell in ladder:
+        out.append(("load", campaign, phase, cell, "normal",
+                    _counted(model_dir, ("knee_resolution.csv",), phase, cell), None))
+    campaign, phase, filename, loads = COLOCATION
+    committed = {r["load"]: r for r in _read_csv(os.path.join(model_dir, filename))}
+    for load in loads:
+        for placement, arm, events, rate in COLOCATION_ARMS:
+            n = int(committed[load][events])
+            out.append(("colocation", campaign, phase, "%s_l%s" % (placement, load), arm,
+                        {"n_events": n, "n_negative": round(float(committed[load][rate]) * n),
+                         "n_runs": None}, None))
     return out
 
 
@@ -291,6 +333,277 @@ def write(rows, out=RUNS_CSV):
         w.writeheader()
         w.writerows(rows)
     return out
+
+
+#: The cell whose median S estimates each broker's margin, and the file it is written to.
+MARGIN_CELL = ("E-A3", "ea3", "bg0")
+MARGINS_CSV = os.path.join(MODEL, "broker_margins.csv")
+MARGIN_FIELDS = ["campaign", "phase", "cell", "backend", "rho", "n_events", "median_s_ms"]
+
+
+def margins(depth_dir=DEPTH, runs_dir=RUNS, cell=MARGIN_CELL):
+    """Each broker's margin, estimated as its median S in E-A3's idle cell (15 Oct 2026).
+
+    The kernel-trace check compares the share of waits longer than the margin with the rate,
+    and it used one threshold for both brokers, 0.5 ms, "our estimate of the margin". That
+    number was first written on 25 Jul 2026 as the broker transport, "around 0.5 ms", a
+    rounding of Kafka's median S at low load: analyze_collapse reads Kafka unless told
+    otherwise, and E-A3's idle cell gives 0.52 ms. With no background load a thread rarely
+    waits, so the median of S there is the margin S would equal with no wait at all. Both
+    referees asked for each broker's own (A M6(a); B m6). The same rule on Redis's runs.
+    """
+    from analyze_collapse import condition_stats
+    campaign, phase, name = cell
+    out = []
+    for backend in BACKENDS:
+        s = condition_stats(os.path.join(depth_dir, phase, name), runs_dir, backend=backend)
+        if s is None:
+            raise ValueError("%s/%s holds no usable %s runs" % (phase, name, backend))
+        out.append({"campaign": campaign, "phase": phase, "cell": name, "backend": backend,
+                    "rho": "%.4f" % s["rho"], "n_events": s["n_events"],
+                    "median_s_ms": "%.4f" % s["mu"]})
+    return out
+
+
+#: The padding campaign's medians of A, D and S per padding level and broker.
+PADDING_CSV = os.path.join(MODEL, "padding_spans.csv")
+PADDING_FIELDS = ["campaign", "phase", "cell", "pad_bytes", "backend", "n_events",
+                  "median_a_ms", "median_d_ms", "median_s_ms"]
+
+
+def run_spans(run_dir):
+    """[(A, D, S)] in milliseconds for every message of one run, by run_series's join.
+
+    The same producer and consumer files, the same timestamps and the same late messages left
+    out as `analyze_collapse.run_series`, which gives S alone; here the publish timestamp is
+    kept too, so A = t_ack - t_pub and D = t_recv - t_pub sit beside S = t_recv - t_ack.
+    """
+    import stale_backlog
+    prod = os.path.join(run_dir, "producer.csv")
+    cons = os.path.join(run_dir, "consumer_events.csv")
+    if not (os.path.exists(prod) and os.path.exists(cons)):
+        return []
+    late = stale_backlog.late_ids_in(run_dir)
+    sent = {}
+    for r in _read_csv(prod):
+        if r.get("t_broker_ack_ns") not in (None, "", "None"):
+            sent[r["event_id"]] = (int(r["t_prod_send_ns"]), int(r["t_broker_ack_ns"]))
+    out = []
+    for r in _read_csv(cons):
+        s = sent.get(r["event_id"])
+        if s is None or r.get("t_consume_ns") in (None, "", "None") or r["event_id"] in late:
+            continue
+        recv = int(r["t_consume_ns"])
+        out.append(((s[1] - s[0]) / 1e6, (recv - s[0]) / 1e6, (recv - s[1]) / 1e6))
+    return out
+
+
+def padding_spans(depth_dir=DEPTH, runs_dir=RUNS, model_dir=MODEL):
+    """The medians of A, D and S at each padding level of E-A10 and E-A10b, on both brokers.
+
+    15 Oct 2026, referee A (m25): the paper's Fig. 6 draws A/D for one path at a fixed publish
+    latency and none of its points tests that 1/D. The referee proposed the padding campaign as
+    that evidence, load held and the publish latency nearly held while the end-to-end latency
+    grows. The medians say otherwise on Kafka: there the publish latency grows with the payload
+    almost as fast as the end-to-end latency, 2.5 to 128 ms against 3.1 to 173 ms, so A/D stays
+    near three quarters; on Redis it grows 3.6-fold against 4.7. One row per campaign, padding
+    level and broker, over the runs `run_counts` counts for the cell.
+    """
+    import statistics
+    from analyze_collapse import condition_timestamp
+    out = []
+    for campaign, phase, parts in PATH:
+        for r in _read_csv(os.path.join(model_dir, *parts)):
+            cell = "pad%s" % r["pad_bytes"]
+            stamp = condition_timestamp(os.path.join(depth_dir, phase, cell))
+            for backend in BACKENDS:
+                spans = [s for run in sorted(glob.glob(os.path.join(
+                    runs_dir, "concurrency_%s_%s_*" % (stamp, backend)))) for s in run_spans(run)]
+                if not spans:
+                    raise ValueError("%s %s holds no %s messages" % (campaign, cell, backend))
+                out.append({"campaign": campaign, "phase": phase, "cell": cell,
+                            "pad_bytes": r["pad_bytes"], "backend": backend,
+                            "n_events": len(spans),
+                            "median_a_ms": "%.4f" % statistics.median(a for a, _, _ in spans),
+                            "median_d_ms": "%.4f" % statistics.median(d for _, d, _ in spans),
+                            "median_s_ms": "%.4f" % statistics.median(s for _, _, s in spans)})
+    return out
+
+
+def check_padding(rows, model_dir=MODEL, runs_csv=RUNS_CSV):
+    """Every way the padding medians disagree with the committed records, as sentences.
+
+    Kafka's median S must be the transport the sweep files committed, and each cell's message
+    count must be the one the run file gives it on its broker.
+    """
+    out = []
+    counts = {}
+    for r in read_runs(runs_csv):
+        if r["result"] == "path":
+            key = (r["campaign"], r["cell"], r["backend"])
+            counts[key] = counts.get(key, 0) + r["run_events"]
+    transport = {}
+    for campaign, _phase, parts in PATH:
+        for r in _read_csv(os.path.join(model_dir, *parts)):
+            transport[(campaign, "pad%s" % r["pad_bytes"])] = float(r["transport_ms"])
+    for r in rows:
+        where = "%s %s %s" % (r["campaign"], r["cell"], r["backend"])
+        if counts.get((r["campaign"], r["cell"], r["backend"])) != r["n_events"]:
+            out.append("%s: %d messages; the run file has %s" % (
+                where, r["n_events"], counts.get((r["campaign"], r["cell"], r["backend"]))))
+        if r["backend"] == "kafka" and abs(float(r["median_s_ms"]) - transport[
+                (r["campaign"], r["cell"])]) > 5e-5:
+            out.append("%s: median S %s ms; the sweep committed %.6f" % (
+                where, r["median_s_ms"], transport[(r["campaign"], r["cell"])]))
+    return out
+
+
+def write_padding(rows, out=PADDING_CSV):
+    with open(out, "w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=PADDING_FIELDS, lineterminator="\n")
+        w.writeheader()
+        w.writerows(rows)
+    return out
+
+
+def read_padding(path=PADDING_CSV):
+    """The committed padding medians, numbers as floats."""
+    rows = []
+    for r in _read_csv(path):
+        r = dict(r)
+        for k in ("median_a_ms", "median_d_ms", "median_s_ms"):
+            r[k] = float(r[k])
+        rows.append(r)
+    return rows
+
+
+def write_margins(rows, out=MARGINS_CSV):
+    with open(out, "w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=MARGIN_FIELDS, lineterminator="\n")
+        w.writeheader()
+        w.writerows(rows)
+    return out
+
+
+def read_margins(path=MARGINS_CSV):
+    """{backend: margin in ms} from the committed file."""
+    return {r["backend"]: float(r["median_s_ms"]) for r in _read_csv(path)}
+
+
+# ---------------------------------------------------------------- the real-time floor
+#: Where in its run each value of S below zero sits, for every run of the priority pairs'
+#: real-time cells on both brokers (15 Oct 2026).
+RT_FLOOR_CSV = os.path.join(MODEL, "rt_floor_runs.csv")
+RT_FLOOR_FIELDS = ["campaign", "phase", "cell", "backend", "run", "run_events", "run_negatives",
+                   "ranks", "first_instant", "first_ack_ms"]
+
+
+def run_ranks(run_dir):
+    """(matched events, ranks, first instant, first acknowledgment in ms) for one run.
+
+    A message's rank is its place among the run's acknowledged messages by publish time, the
+    first published being 1, and `ranks` are those of the messages with S < 0, by run_series's
+    join with the late messages left out. `first instant` counts the messages the replay
+    published at its first simulated instant, the smallest t_sim_seconds; the first
+    acknowledgment is timed from the run's first publish. A run that left no table, or no
+    acknowledged message, gives (0, [], 0, None).
+    """
+    import stale_backlog
+    prod = os.path.join(run_dir, "producer.csv")
+    cons = os.path.join(run_dir, "consumer_events.csv")
+    if not (os.path.exists(prod) and os.path.exists(cons)):
+        return 0, [], 0, None
+    sent = {}
+    for i, r in enumerate(_read_csv(prod)):
+        if r.get("t_broker_ack_ns") not in (None, "", "None"):
+            sent[r["event_id"]] = (int(r["t_prod_send_ns"]), i, int(r["t_broker_ack_ns"]),
+                                   float(r["t_sim_seconds"]))
+    if not sent:
+        return 0, [], 0, None
+    rank = {e: k + 1 for k, e in enumerate(sorted(sent, key=lambda e: sent[e][:2]))}
+    start = min(v[3] for v in sent.values())
+    first_instant = sum(1 for v in sent.values() if v[3] == start)
+    first_ack = (min(v[2] for v in sent.values()) - min(v[0] for v in sent.values())) / 1e6
+    late = stale_backlog.late_ids_in(run_dir)
+    n, ranks = 0, []
+    for r in _read_csv(cons):
+        v = sent.get(r["event_id"])
+        if v is None or r.get("t_consume_ns") in (None, "", "None") or r["event_id"] in late:
+            continue
+        n += 1
+        if int(r["t_consume_ns"]) - v[2] < 0:
+            ranks.append(rank[r["event_id"]])
+    return n, sorted(ranks), first_instant, first_ack
+
+
+def rt_floor(depth_dir=DEPTH, runs_dir=RUNS, model_dir=MODEL):
+    """One row per run of the priority pairs' real-time cells, on both brokers (15 Oct 2026).
+
+    Both referees asked what sets the real-time floor, the rate that stays above zero with the
+    thread at real-time priority. On Kafka every such value is one of a run's first few
+    messages, the ones the replay publishes at its first instant, which wait about a tenth of a
+    second or more for the first acknowledgment; on Redis they are spread through the run. The
+    runs are the ones `run_counts` counts for each cell.
+    """
+    from analyze_collapse import condition_timestamp
+    out = []
+    for result, campaign, phase, cell, arm, _committed, stamp in cells(model_dir):
+        if result != "priority" or arm != "real-time":
+            continue
+        stamp = stamp or condition_timestamp(os.path.join(depth_dir, phase, cell))
+        for backend in BACKENDS:
+            for run in sorted(glob.glob(os.path.join(runs_dir,
+                                                     "concurrency_%s_%s_*" % (stamp, backend)))):
+                n, ranks, first_instant, first_ack = run_ranks(run)
+                if n:
+                    out.append({"campaign": campaign, "phase": phase, "cell": cell,
+                                "backend": backend, "run": os.path.basename(run),
+                                "run_events": n, "run_negatives": len(ranks),
+                                "ranks": " ".join(str(k) for k in ranks),
+                                "first_instant": first_instant,
+                                "first_ack_ms": "%.1f" % first_ack})
+    return out
+
+
+def check_rt_floor(rows, runs_csv=RUNS_CSV):
+    """Every way the floor rows disagree with the run file, as sentences: each run must carry the
+    events and negatives the run file gives it, and every real-time priority run must be here."""
+    committed = {r["run"]: r for r in read_runs(runs_csv)
+                 if r["result"] == "priority" and r["arm"] == "real-time"}
+    out, have = [], set()
+    for r in rows:
+        have.add(r["run"])
+        c = committed.get(r["run"])
+        mine = (r["run_events"], r["run_negatives"])
+        if c is None:
+            out.append("%s: no real-time priority run of that name in the run file" % r["run"])
+        elif (c["run_events"], c["run_negatives"]) != mine:
+            out.append("%s: %d events, %d with S < 0; the run file has %d and %d"
+                       % ((r["run"],) + mine + (c["run_events"], c["run_negatives"])))
+    out += ["%s: in the run file, not among the floor's runs" % run
+            for run in sorted(set(committed) - have)]
+    return out
+
+
+def write_rt_floor(rows, out=RT_FLOOR_CSV):
+    with open(out, "w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=RT_FLOOR_FIELDS, lineterminator="\n")
+        w.writeheader()
+        w.writerows(rows)
+    return out
+
+
+def read_rt_floor(path=RT_FLOOR_CSV):
+    """The committed floor rows, with the ranks as a list of ints and the times as floats."""
+    rows = []
+    for r in _read_csv(path):
+        r = dict(r)
+        r["ranks"] = [int(k) for k in r["ranks"].split()]
+        for key in ("run_events", "run_negatives", "first_instant"):
+            r[key] = int(r[key])
+        r["first_ack_ms"] = float(r["first_ack_ms"])
+        rows.append(r)
+    return rows
 
 
 # ---------------------------------------------------------------- the committed file
@@ -443,16 +756,22 @@ def priority_summary(pairs):
                              if p["factor_ci"] is not None and math.isinf(p["factor_ci"][1]))}
 
 
-def placement_intervals(path=RUNS_CSV, backend="kafka", draws=BOOT_DRAWS, conf=CONF):
+def placement_intervals(path=RUNS_CSV, backend="kafka", draws=BOOT_DRAWS, conf=CONF,
+                        level="k6"):
     """{campaign: compare()'s dict}: the spread placement's rate over the concentrated one's,
     the direction `stat_intervals.ratio_z(ks, ns, kc, nc)` takes, with "spread" and
-    "concentrated" naming the two arms."""
+    "concentrated" naming the two arms.
+
+    `level` is the number of busy cores, "k5", "k6" or "k7" (15 Oct 2026); k = 6 keeps the
+    resampling stream it always had, so its interval does not move."""
     out = {}
-    for campaign, arms in _arms(read_runs(path), "placement", lambda r: r["campaign"],
-                                backend).items():
+    rows = [r for r in read_runs(path) if r["result"] != "placement"
+            or r["cell"].partition("_")[0] == level]
+    stream = "" if level == "k6" else "|" + level
+    for campaign, arms in _arms(rows, "placement", lambda r: r["campaign"], backend).items():
         d = compare(arms.get("spread", []), arms.get("concentrated", []),
-                    "placement|%s|%s" % (campaign, backend), draws, conf)
-        d.update(backend=backend, spread=d["top"], concentrated=d["bottom"])
+                    "placement|%s|%s%s" % (campaign, backend, stream), draws, conf)
+        d.update(backend=backend, spread=d["top"], concentrated=d["bottom"], level=level)
         out[campaign] = d
     return out
 
@@ -495,6 +814,35 @@ def ladder_intervals(path=RUNS_CSV, backend="kafka", draws=BOOT_DRAWS, conf=CONF
                     "ladder|%s|%s" % (campaign, backend), draws, conf)
         d.update(backend=backend, knee=d["top"], idle=d["bottom"])
         out[campaign] = d
+    return out
+
+
+def rate_by_load(path=RUNS_CSV, model_dir=MODEL):
+    """Every run of E-A3's load ladder and of the priority pairs, as the paper's Fig. 2 draws
+    them: [{"backend", "priority", "campaign", "cell", "rho", "rate", "run"}], one per run.
+
+    15 Oct 2026, referee B (Fig. 2): one look at the per-run rate against the client machine's
+    utilization, by broker, at normal and at real-time priority, shows the rate rising with load
+    at normal priority and staying low at real-time priority. `rho` is the cell's achieved
+    utilization, from the file its committed analysis wrote: knee_resolution.csv for E-A3's
+    cells, the campaign's priority file for each arm of a pair. A run's rate is its values of S
+    below zero over its matched messages.
+    """
+    rho = {}
+    for r in _read_csv(os.path.join(model_dir, "knee_resolution.csv")):
+        if r["phase"] == LOAD[1]:
+            rho[(LOAD[0], r["condition"])] = float(r["rho"])
+    for campaign, filename in priority_pairs.CAMPAIGNS:
+        for r in _read_csv(os.path.join(model_dir, filename)):
+            rho[(campaign, r["level"] + "_base")] = float(r["rho_base"])
+            rho[(campaign, r["level"] + "_rt")] = float(r["rho_rt"])
+    out = []
+    for r in read_runs(path):
+        if r["result"] not in ("load", "priority") or not r["run_events"]:
+            continue
+        out.append({"backend": r["backend"], "priority": r["arm"], "campaign": r["campaign"],
+                    "cell": r["cell"], "rho": rho[(r["campaign"], r["cell"])],
+                    "rate": r["run_negatives"] / r["run_events"], "run": r["run"]})
     return out
 
 
@@ -559,11 +907,13 @@ def report(path=RUNS_CSV, draws=BOOT_DRAWS, conf=CONF):
                      "factor interval unbounded above in %d" % (
                          s["pairs"], _num(s["factor_low"]), _num(s["factor_high"]),
                          s["all_disjoint"], s["unbounded"]))
-        lines.append("Placement at k = 6, spread over concentrated:")
-        for campaign, d in sorted(placement_intervals(path, backend, draws, conf).items()):
-            lines.append("  %-6s concentrated %s  spread %s" % (
-                campaign, _rate(d["concentrated"]), _rate(d["spread"])))
-            lines.append("      factor %s" % _factor(d))
+        for level in PLACEMENT_LEVELS:
+            lines.append("Placement at k = %s, spread over concentrated:" % level[1:])
+            for campaign, d in sorted(placement_intervals(path, backend, draws, conf,
+                                                          level).items()):
+                lines.append("  %-6s concentrated %s  spread %s" % (
+                    campaign, _rate(d["concentrated"]), _rate(d["spread"])))
+                lines.append("      factor %s" % _factor(d))
         lines.append("Path length, the fall across the padding sweep (highest rate over lowest):")
         ends = path_intervals(path, backend, draws, conf, ends=True)
         for campaign, d in sorted(path_intervals(path, backend, draws, conf).items()):
@@ -623,9 +973,11 @@ def intervals(path=RUNS_CSV, draws=BOOT_DRAWS, conf=CONF):
         for p in priority_intervals(path, backend, draws, conf):
             rows.append(_interval_row("priority", p["campaign"], p["level"], backend, "normal",
                                       "real-time", p))
-        for campaign, d in sorted(placement_intervals(path, backend, draws, conf).items()):
-            rows.append(_interval_row("placement", campaign, "k6", backend, "spread",
-                                      "concentrated", d))
+        for level in PLACEMENT_LEVELS:
+            for campaign, d in sorted(placement_intervals(path, backend, draws, conf,
+                                                          level).items()):
+                rows.append(_interval_row("placement", campaign, level, backend, "spread",
+                                          "concentrated", d))
         for ends, result in ((False, "path"), (True, "path_ends")):
             for campaign, d in sorted(path_intervals(path, backend, draws, conf, ends).items()):
                 rows.append(_interval_row(result, campaign, "", backend, d["high"], d["low"], d))
@@ -668,10 +1020,78 @@ def main(argv=None):
     iv.add_argument("--csv", default=RUNS_CSV)
     iv.add_argument("--out", default=INTERVALS_CSV)
     iv.add_argument("--draws", type=int, default=BOOT_DRAWS)
+    mg = sub.add_parser("margins", help="each broker's margin from the archive, written")
+    mg.add_argument("--depth", default=DEPTH)
+    mg.add_argument("--runs", default=RUNS)
+    mg.add_argument("--out", default=MARGINS_CSV)
+    sp = sub.add_parser("spans", help="the padding campaign's medians of A, D and S, checked")
+    sp.add_argument("--depth", default=DEPTH)
+    sp.add_argument("--runs", default=RUNS)
+    sp.add_argument("--out", default=PADDING_CSV)
+    sp.add_argument("--model", default=MODEL)
+    sp.add_argument("--csv", default=RUNS_CSV)
+    fl = sub.add_parser("floor", help="where each real-time value below zero sits, checked")
+    fl.add_argument("--depth", default=DEPTH)
+    fl.add_argument("--runs", default=RUNS)
+    fl.add_argument("--out", default=RT_FLOOR_CSV)
+    fl.add_argument("--model", default=MODEL)
+    fl.add_argument("--csv", default=RUNS_CSV)
     args = ap.parse_args(argv)
+
+    if args.command == "floor":
+        try:
+            rows = rt_floor(args.depth, args.runs, args.model)
+        except (OSError, KeyError, ValueError) as exc:
+            print("cannot read the real-time cells: %s" % exc)
+            return 1
+        problems = check_rt_floor(rows, args.csv)
+        if problems:
+            print("the floor does not reproduce the run file; nothing written:")
+            for p in problems:
+                print("  " + p)
+            return 1
+        write_rt_floor(rows, args.out)
+        for backend in BACKENDS:
+            mine = [r for r in rows if r["backend"] == backend and r["run_negatives"]]
+            print("%-5s %d runs hold %d values below zero" % (
+                backend, len(mine), sum(r["run_negatives"] for r in mine)))
+        print("wrote %s" % args.out)
+        return 0
+
+    if args.command == "spans":
+        try:
+            rows = padding_spans(args.depth, args.runs, args.model)
+        except (OSError, KeyError, ValueError) as exc:
+            print("cannot read the padding campaign: %s" % exc)
+            return 1
+        problems = check_padding(rows, args.model, args.csv)
+        if problems:
+            print("the medians do not reproduce the committed records; nothing written:")
+            for p in problems:
+                print("  " + p)
+            return 1
+        write_padding(rows, args.out)
+        for r in rows:
+            print("%-6s %-9s %-5s A %s ms  D %s ms  S %s ms over %d messages" % (
+                r["campaign"], r["cell"], r["backend"], r["median_a_ms"], r["median_d_ms"],
+                r["median_s_ms"], r["n_events"]))
+        print("wrote %s" % args.out)
+        return 0
 
     if args.command == "report":
         print(report(args.csv, args.draws))
+        return 0
+    if args.command == "margins":
+        try:
+            rows = margins(args.depth, args.runs)
+        except (OSError, ValueError) as exc:
+            print("cannot estimate the margins: %s" % exc)
+            return 1
+        write_margins(rows, args.out)
+        for r in rows:
+            print("%-5s median S %s ms over %d messages at rho %s" % (
+                r["backend"], r["median_s_ms"], r["n_events"], r["rho"]))
+        print("wrote %s" % args.out)
         return 0
     if args.command == "intervals":
         rows = intervals(args.csv, args.draws)

@@ -61,18 +61,23 @@ class TestSectionSixOpensWithTheFix:
 
     def test_the_lead_paragraph_says_the_fix_comes_first_and_why(self, paper):
         text = section(paper, "sec:practice")
-        lead = flat(text[text.index("\\label{sec:checks}"):text.index("\\begin{table}")])
-        assert "One fix ends the late reading in any tool that times messages" in lead
+        # 15 Oct 2026: Table IV spans both columns now, a table* float.
+        lead = flat(text[text.index("\\label{sec:checks}"):text.index("\\begin{table")])
+        # 15 Oct 2026, both referees of version 9 (A M2, B M3): the fix is scoped to a Linux
+        # tool that can read its sockets' timestamps; the other steps find or shrink the wait.
+        assert ("One fix ends the late reading in a Linux tool that can read its sockets' "
+                "timestamps") in lead
         assert "take both of a message's timestamps from the kernel, not from the tool's threads" \
             in lead
-        assert "It comes first" in lead
+        assert "The other steps find or shrink it" in lead
 
     def test_the_checks_table_leads_with_the_fix(self, paper):
         i = paper.index("\\label{tab:checks}")
         body = paper[paper.index("\\midrule", i):paper.index("\\bottomrule", i)]
         first = flat(body[len("\\midrule"):].split("\\\\")[0])
+        # 15 Oct 2026: the row goes on, after a semicolon, to the clocks of two machines.
         assert first.startswith("Time each message between the kernel's timestamps as it leaves "
-                                "and as it arrives, read on the tool's own sockets."), first
+                                "and as it arrives, read on the tool's own sockets;"), first
         # The row names the socket form, so it quotes the socket runs (S3.10), not the captures'.
         assert "\\soFixMedianMovePct" in first and "\\soFixTailRatioLo" in first, first
         assert "(Supplement~S3.10)" in first and "\\fullFix" not in first, first
@@ -98,7 +103,8 @@ class TestTheStepsAreTheModulesSteps:
         text = flat(paragraph(paper, "Read those timestamps on the tool's own sockets."))
         assert "in four steps" in text
         intro = flat(section(paper, "sec:intro"))
-        assert "read those timestamps on its own sockets in four steps" in intro
+        # 15 Oct 2026: "a Linux tool can read on its own sockets in four steps".
+        assert "can read on its own sockets in four steps" in intro
 
     def test_step_one_asks_for_what_the_module_asks_for(self, paper):
         first = steps(paper)[0]
@@ -121,8 +127,9 @@ class TestTheStepsAreTheModulesSteps:
 
     def test_step_two_says_why_the_queue_is_drained_at_every_write_and_read(self, paper):
         second = steps(paper)[1]
-        assert "Collect at every write and read" in second
-        assert "a client waiting on it spins" in second
+        # 15 Oct 2026: the step says which queue it reads and who spins.
+        assert "Read the error queue at every write and read" in second
+        assert "a client that polls the socket spins" in second
         doc = flat(so.__doc__)
         assert "The error queue is drained on every send and read" in doc
         assert "a client waiting on it would spin" in doc
@@ -138,7 +145,8 @@ class TestTheStepsAreTheModulesSteps:
         cited = re.search(r"\\brk\{(scripts/[^}]+)\}", text).group(1)
         assert cited == "scripts/so_timestamps.py" and (REPO / cited).is_file()
         # How a module beneath unchanged libraries knows which messages a write or read carried.
-        assert "finds each message in the bytes they write and read" in text
+        # 15 Oct 2026: the fourth step says it, "Find each message in the bytes".
+        assert "Find each message in the bytes" in text
         assert "Each event id is found in the bytes" in flat(so.__doc__)
         assert "(Supplement~S3.10)" in text
 
@@ -147,21 +155,33 @@ class TestWhatAToolMustHandle:
 
     def test_each_requirement_is_named(self, paper):
         text = flat(paragraph(paper, "What a tool must handle."))
-        for phrase in ("gives them the timestamp of its end",
-                       "adds part of its wait back to them",
-                       "\\emph{device queue}",
-                       "a card that timestamps in hardware",
+        # 15 Oct 2026, both referees of version 9: the drained read and the pull consumer's
+        # wait, the kernel thread's wait and the card's clock, the timestamp taken before the
+        # packet scheduler (A m12: the kernel documentation's name for it), two machines' clocks,
+        # Java and kernel bypass.
+        for phrase in ("times the earlier ones late",
+                       "which is the consumer's wait",
+                       "A pull consumer",
+                       "taken before the packet scheduler (\\texttt{TX\\_SCHED})",
+                       "a card's hardware timestamp",
                        "on a clock of its own that the tool must tie to the system's",
                        "on two machines, $W$ spans two clocks",
                        "so a Java tool needs a native call",
-                       "A tool that cannot yet take the kernel's timestamps needs what follows"):
+                       "A kernel-bypass stack has no kernel timestamps at all",
+                       "A tool that cannot yet take them needs what follows"):
             assert phrase in text, phrase
 
     def test_the_figures_it_quotes_are_the_ledgers(self, paper):
         text = flat(paragraph(paper, "What a tool must handle."))
-        for macro in ("\\soFixSameReceivePct", "\\soFixQueueLeadLoUs", "\\soFixQueueLeadHiUs",
-                      "\\fullFixKernelDelayLoUs", "\\fullFixKernelDelayHiUs"):
+        # 15 Oct 2026: the card's lead moved to the socket paragraph, and the share of reads
+        # whose receive timestamps matched the captures' to Supplement S3.10.
+        for macro in ("\\soFixQueueLeadLoUs", "\\soFixQueueLeadHiUs",
+                      "\\osPullTopLoPct", "\\osPullTopHiPct"):
             assert macro in text, macro
+        sockets = flat(paragraph(paper, "Read those timestamps on the tool's own sockets."))
+        for macro in ("\\fullFixKernelDelayLoUs", "\\fullFixKernelDelayHiUs"):
+            assert macro in sockets, macro
+        assert "\\soFixSameReceivePct" in (REPO / "supplement.tex").read_text(encoding="utf-8")
 
 
 @pytest.fixture(scope="module")
@@ -212,22 +232,38 @@ class TestTheOtherMentionsAgree:
 
     def test_the_abstract_says_any_tool_can_read_them(self, paper):
         abstract = flat(paper[paper.index("\\begin{abstract}"):paper.index("\\end{abstract}")])
-        assert "Kernel timestamps, readable by any tool, exclude the wait, even under load." \
-            in abstract
+        # 15 Oct 2026, both referees of version 9 (A M2, B M3): the abstract names Linux and
+        # the tool's own sockets, and no longer says "even under load" (block L, L-b).
+        assert ("Kernel timestamps, read on a tool's own Linux sockets, exclude the "
+                "clock-reading threads' wait.") in abstract
+        assert "even under load" not in abstract
 
     def test_the_conclusion_says_what_to_report(self, paper):
         conclusion = flat(section(paper, "sec:conclusion"))
-        assert "On Linux, any tool can read those timestamps on its own sockets and report that " \
-               "latency beside the end-to-end latency its application sees." in conclusion
+        # 15 Oct 2026: the conclusion scopes the stillness to fifty messages a second.
+        # 16 Oct 2026: what to report comes first and the scope after it, so the clause no longer
+        # splits "report that latency" from "beside the end-to-end latency"; the scope names the
+        # kernel-timed latency, since an "it" after "the end-to-end latency" read as that one.
+        assert ("On Linux a tool can time each message between the kernel's timestamps, read on "
+                "its own sockets, and report that latency beside the end-to-end latency. At fifty "
+                "messages a second the kernel-timed latency held no client thread's wait.") \
+            in conclusion
 
     def test_the_limits_stay_in_section_viii(self, paper):
         """The author's rule (B26): each limit of the study is stated, whole, in Section VIII. The
         fix's are its rate, pair, kernel and single machine, where its timestamps were taken, and
         its unmeasured cost."""
         limits = flat(section(paper, "sec:limitations"))
-        assert ("at one publish rate on one machine pair and kernel, with the producer and the "
-                "consumer on one machine") in limits
-        assert "we did not measure what taking the timestamps costs a tool" in limits
-        assert "The clients used neither encryption nor compression" in limits
+        # 15 Oct 2026, both referees of version 9: the scope names partition, load and rate, and
+        # the module's cost is measured now (A M2.4, B m35), in Section VI, so Section VIII no
+        # longer calls it unmeasured.
+        assert ("Those tests used one pair of machines and one kernel, with one partition, "
+                "background load on the client machine alone, and the producer and the consumer "
+                "on one machine") in limits
+        assert "judged at fifty messages a second only" in limits
+        assert "we did not measure what taking the timestamps costs a tool" not in limits
+        sockets = flat(paragraph(paper, "Read those timestamps on the tool's own sockets."))
+        assert "\\moduleCostKafkaLo" in sockets and "\\moduleTailHi" in sockets
+        assert "the clients used neither encryption nor compression" in limits
         assert "though we did not test it" not in flat(paragraph(paper, "What a tool must handle.")), \
             "a limit of the study belongs in Section VIII, not with the requirements"

@@ -5,6 +5,7 @@ guard exactly that: every run a panel should hold is drawn, a run out of every j
 a cross or a plus in its own colour and never as a counted point, every warning gets its ring,
 and a value keeps one colour across a figure.
 """
+import json
 from pathlib import Path
 import sys
 
@@ -104,6 +105,23 @@ class TestAPanel:
         assert labels == ["3 ms slice"], "the Arm run is at 3 ms only"
         plt.close(fig)
 
+    def test_a_panel_can_be_given_headroom_over_its_runs(self):
+        """15 Oct 2026: figure_collisions.data_under_legends found two of L8's Arm64 runs
+        under that panel's legend; its spec raises the panel's top over them."""
+        spec = {"block": "A1", "pair": "arm", "backend": "kafka", "by": "slice",
+                "title": "(b) test", "ylim_top": 0.25}
+        fig, ax = plt.subplots()
+        try:
+            mlf.panel(ax, _world(), spec)
+            assert ax.get_ylim()[1] == pytest.approx(0.25)
+        finally:
+            plt.close(fig)
+        assert [p.get("ylim_top") for p in mlf.FIGURES["law_load"]["panels"]].count(0.25) == 1
+
+    def test_redis_is_red_in_the_halfway_figure(self):
+        """The paper's and the supplement's red, not the orange this figure had."""
+        assert mlf.BROKERS["redis"][1] == "#d62728" and mlf.BROKERS["kafka"][1] == "#1f77b4"
+
 
 class TestAFigure:
 
@@ -159,6 +177,124 @@ class TestTheMarkLegend:
         assert (lowest - top) / fig.dpi > 0.1, "an axis label sits on the legend"
 
 
+REPO = Path(__file__).parent.parent.parent
+JUDGED = REPO / "docs" / "results" / "law" / "judged-27-sep" / "all"
+
+
+def _judged(name):
+    return json.loads((JUDGED / (name + ".json")).read_text(encoding="utf-8"))["by_part"]
+
+
+@pytest.fixture(scope="module")
+def halfway():
+    """Fig. S3 drawn once from the committed registry and judged records (about seven
+    seconds: the judge's own function reads every slice's curve again)."""
+    import law_runs
+    fig, found = mlf.halfway_figure(law_runs.load(), judged_dir=str(JUDGED),
+                                    quality_csv=str(JUDGED.parent / "quality_by_campaign.csv"))
+    yield fig, found
+    plt.close(fig)
+
+
+def _panel(fig, title):
+    (ax,) = [a for a in fig.get_axes() if a.get_title() == title]
+    return ax
+
+
+class TestTheHalfwayFigure:
+    """Fig. S3 of the journal supplement since 15 Oct 2026: for each pair and broker, where each
+    slice's fall is halfway down, free and fitted, against the band [s, s + h]. The referees
+    could not see what the slice does among the runs' overlapping colours."""
+
+    def test_every_judged_point_is_drawn_where_the_judge_put_it(self, halfway):
+        fig, _ = halfway
+        for spec in mlf.HALFWAY_PANELS:
+            ax = _panel(fig, spec["title"])
+            drawn = [(float(x), float(y)) for line in ax.get_lines()
+                     if line.get_linestyle() == "None"
+                     for x, y in zip(line.get_xdata(), line.get_ydata())]
+            for backend, part in _judged(spec["judged"]).items():
+                for summary, said in part["by_summary"].items():
+                    for s, ms in said["halfway_ms"].items():
+                        assert any(x == float(s) and abs(y - ms) < 1e-9 for x, y in drawn), \
+                            (spec["title"], backend, summary, s)
+
+    def test_each_line_has_the_judged_slope(self, halfway):
+        """The judge's slope is a straight line through the halfway points; the line drawn
+        through them is that line, so its slope is the judged one to the last digit."""
+        fig, _ = halfway
+        for spec in mlf.HALFWAY_PANELS:
+            ax = _panel(fig, spec["title"])
+            lines = [l for l in ax.get_lines() if l.get_linestyle() != "None"
+                     and len(l.get_xdata()) == 2 and l.get_xdata()[0] != l.get_xdata()[1]
+                     and matplotlib.colors.to_hex(l.get_color()) != "#666666"]
+            slopes = sorted((l.get_ydata()[1] - l.get_ydata()[0])
+                            / (l.get_xdata()[1] - l.get_xdata()[0]) for l in lines)
+            judged = sorted(said["value"] for part in _judged(spec["judged"]).values()
+                            for said in part["by_summary"].values())
+            assert slopes == pytest.approx(judged, abs=1e-9), (spec["title"], slopes, judged)
+
+    def test_the_arm_pairs_kafka_slice_out_of_reach_is_grey_and_in_the_slope(self, halfway):
+        """Kafka's 1.5 ms slice on the Arm pair is out of reach of P9's band test, and the
+        judged slope runs through it all the same: drawn without it, the line would not have
+        the judged slope."""
+        fig, found = halfway
+        kafka = found["(b) L4, Arm64"]["kafka"]
+        for summary in ("free", "fitted"):
+            assert 1.5 in kafka[summary]["halfway"] and 1.5 not in kafka[summary]["in_reach"]
+        grey = [l for l in _panel(fig, "(b) L4, Arm64").get_lines()
+                if l.get_linestyle() == "None" and len(l.get_xdata())
+                and matplotlib.colors.to_hex(l.get_markeredgecolor()) == mlf.OUT_OF_REACH]
+        assert sorted(float(x) for l in grey for x in l.get_xdata()) == [1.5, 1.5]
+        assert not [l for l in _panel(fig, "(a) L1, first x86").get_lines()
+                    if l.get_linestyle() == "None" and len(l.get_xdata())
+                    and matplotlib.colors.to_hex(l.get_markeredgecolor()) == mlf.OUT_OF_REACH]
+
+    def test_the_band_runs_from_the_slice_to_a_tick_past_it_over_the_1_to_1_line(self,
+                                                                                 halfway):
+        fig, _ = halfway
+        for spec in mlf.HALFWAY_PANELS:
+            ax = _panel(fig, spec["title"])
+            (band,) = ax.collections
+            vertices = band.get_paths()[0].vertices
+            lo, hi = mlf.HALFWAY_SLICES_MS
+            for x, y in vertices:
+                assert y == pytest.approx(x) or y == pytest.approx(x + mlf.TICK_MS), (x, y)
+            (one,) = [l for l in ax.get_lines()
+                      if matplotlib.colors.to_hex(l.get_color()) == "#666666"]
+            assert list(one.get_xdata()) == list(one.get_ydata()) == [lo, hi]
+
+    def test_each_panels_legend_gives_the_judged_slopes(self, halfway):
+        fig, _ = halfway
+        for spec in mlf.HALFWAY_PANELS:
+            legend = _panel(fig, spec["title"]).get_legend()
+            said = [t.get_text() for t in legend.get_texts()]
+            assert legend.get_title().get_text() == "slope against $s$"
+            for backend, part in _judged(spec["judged"]).items():
+                for summary in ("free", "fitted"):
+                    want = "%s, %s %.3f" % (mlf.BROKERS[backend][0], summary,
+                                            part["by_summary"][summary]["value"])
+                    assert want in said, want
+
+    def test_a_judged_record_that_disagrees_is_refused(self, temp_dir):
+        """The figure draws what the judge judged or nothing: a halfway point or a slope that
+        the registry does not give back is an error, not a quiet second opinion."""
+        import law_runs
+        runs = law_runs.load()
+        campaigns = mlf.judged_campaigns(str(JUDGED.parent / "quality_by_campaign.csv"))
+        spec = mlf.HALFWAY_PANELS[0]
+        for change, match in (("halfway", "is not the judged one"), ("value", "not the judged")):
+            record = json.loads((JUDGED / "p1_a1.json").read_text(encoding="utf-8"))
+            said = record["by_part"]["redis"]["by_summary"]["free"]
+            if change == "halfway":
+                said["halfway_ms"]["3.0"] += 0.01
+            else:
+                said["value"] += 0.01
+            (temp_dir / "p1_a1.json").write_text(json.dumps(record), encoding="utf-8")
+            with pytest.raises(ValueError, match=match):
+                mlf.halfway_readings(runs, spec, judged_dir=str(temp_dir), campaigns=campaigns)
+
+
 class TestMain:
 
     def test_it_writes_each_figure_or_only_the_one_asked_for(self, temp_dir, capsys,
@@ -166,9 +302,23 @@ class TestMain:
         monkeypatch.setattr(mlf.law_runs, "load", _world)
         monkeypatch.setattr(mlf, "FIGURES", {"law_test": TestAFigure.SPEC,
                                              "law_other": TestAFigure.SPEC})
+        drawn = []
+
+        def extra(runs):
+            drawn.append(len(runs))
+            return mlf.figure(runs, "law_extra", TestAFigure.SPEC)
+        monkeypatch.setattr(mlf, "EXTRA", {"law_extra": extra})
         out = temp_dir / "figs"
         assert mlf.main(["--out", str(out), "--only", "law_test"]) == 0
         assert (out / "law_test.pdf").exists() and not (out / "law_other.pdf").exists()
+        assert not drawn, "an extra figure is built only when asked for or with every figure"
         assert mlf.main(["--out", str(out)]) == 0
-        assert (out / "law_other.png").exists()
+        assert (out / "law_other.png").exists() and (out / "law_extra.pdf").exists()
+        assert drawn == [len(_world())]
         assert "OK wrote" in capsys.readouterr().out
+
+    def test_the_halfway_figure_is_built_from_the_committed_records(self, temp_dir, capsys):
+        out = temp_dir / "figs"
+        assert mlf.main(["--out", str(out), "--only", mlf.HALFWAY_STEM]) == 0
+        assert (out / ("%s.pdf" % mlf.HALFWAY_STEM)).exists()
+        assert not (out / "law_slice.pdf").exists()

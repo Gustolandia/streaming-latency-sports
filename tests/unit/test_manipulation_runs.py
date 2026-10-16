@@ -72,6 +72,26 @@ def _world():
     # The traced cells are named by timestamp; the committed tree keeps no folder that would.
     for campaign, folder, cell, arm, stamp, _parts in mr.TRACE_CELLS:
         w.append(("trace", campaign, folder, cell, arm, stamp, KAFKA_RUNS, REDIS_RUNS, False))
+    # 15 Oct 2026: the placement cells at k = 5 and 7, and E-A3's whole ladder. The ladder's two
+    # ends are the `ladder` cells above, the same runs under a second result, so their folders
+    # are written once.
+    for i, (campaign, folder, cell, arm) in enumerate(
+            (c, f, "%s_%s" % (k, side), arm) for c, f in (("E-A6", "ea6"), ("E-A6b", "ea6b"))
+            for k in ("k5", "k7") for side, arm in (("conc", "concentrated"),
+                                                   ("spread", "spread"))):
+        w.append(("placement", campaign, folder, cell, arm, "n5_20260725_0900%02d" % i,
+                  KAFKA_RUNS, REDIS_RUNS, True))
+    ends = {"bg0": "n5_20260724_114658", "bg7": "n5_20260724_131548"}
+    for i, cell in enumerate(mr.LOAD[2]):
+        w.append(("load", "E-A3", "ea3", cell, "normal",
+                  ends.get(cell, "n5_20260724_1000%02d" % i), KAFKA_RUNS, REDIS_RUNS,
+                  cell not in ends))
+    # 15 Oct 2026: E-A8, the co-located control, idle and at 88% load, remote and co-located.
+    for cell, arm, stamp in (("remote_l0", "remote", "n5_20260725_171757"),
+                             ("colocated_l0", "co-located", "n5_20260725_175413"),
+                             ("remote_l88", "remote", "n5_20260725_173544"),
+                             ("colocated_l88", "co-located", "n5_20260725_181159")):
+        w.append(("colocation", "E-A8", "ea8", cell, arm, stamp, KAFKA_RUNS, REDIS_RUNS, True))
     return w
 
 
@@ -171,15 +191,16 @@ def write_model(model, world=WORLD, bump=None, runs_off=0):
         _write(model / name, head, [])
     knee = ["phase", "condition", "rho", "inversion_rate", "n_inversions", "n_events", "n_runs"]
     for campaign, folder in (("E-A6", "ea6"), ("E-A6b", "ea6b")):
-        rows = [[folder, "k5_conc", 0.6284, 0.02, 60, 2985, 25]]
-        for cell in ("k6_conc", "k6_spread"):
+        rows = []
+        for cell in ("k5_conc", "k5_spread", "k6_conc", "k6_spread", "k7_conc", "k7_spread"):
             neg, n, runs = k(campaign, cell)
             rows.append([folder, cell, 0.7531, neg / n, neg, n, runs])
         _write(model / folder / "knee_resolution.csv", knee, rows)
     rows = [["ea_sat", "bg0", 0.0025, 0.00335, 6, 1791, 15]]
-    for cell in ("bg0", "bg7"):
+    for cell in mr.LOAD[2]:
         neg, n, runs = k("E-A3", cell)
-        rows.append(["ea3", cell, 0.5, neg / n, neg, n, runs])
+        # Each cell's utilization from its load, so the ladder has a slope to draw.
+        rows.append(["ea3", cell, min(1.0, 0.125 * int(cell[2:])), neg / n, neg, n, runs])
     _write(model / "knee_resolution.csv", knee, rows)
     for campaign, parts in (("E-A10", ("ttrue_sweep.csv",)),
                             ("E-A10b", ("ea10b", "ttrue_sweep.csv"))):
@@ -206,6 +227,16 @@ def write_model(model, world=WORLD, bump=None, runs_off=0):
         rows.append([cell, 0.88, neg / n, neg, n, runs])
     _write(model / "ea9_notrace" / "untraced_control.csv",
            ["condition", "rho", "inversion_rate", "n_inversions", "n_events", "n_runs"], rows)
+    rows = []
+    for load in ("0", "88"):
+        neg_r, n_r, _ = k("E-A8", "remote_l%s" % load)
+        neg_c, n_c, _ = k("E-A8", "colocated_l%s" % load)
+        rows.append([load, False, "", 0.5, 0.5, 0.5, 0.5, 1.0, neg_r / n_r, neg_c / n_c, 1.0,
+                     False, n_r, n_c])
+    _write(model / "colocation.csv",
+           ["load", "confounded", "why", "rho_remote", "rho_colocated", "t_remote_ms",
+            "t_colocated_ms", "transport_fall", "inv_remote", "inv_colocated", "inv_rise",
+            "disjoint", "n_remote", "n_colocated"], rows)
 
 
 @pytest.fixture
@@ -245,7 +276,19 @@ class TestExtract:
         with open(world["out"], newline="", encoding="utf-8") as fh:
             rows = list(csv.DictReader(fh))
         assert list(rows[0]) == mr.FIELDS
-        assert len(rows) == 80, "two runs of each broker in each of twenty cells"
+        # 15 Oct 2026: forty-one cells, with placement at k = 5 and 7, E-A3's whole ladder and
+        # E-A8's co-located control; the ladder's two ends are counted once for each result
+        # that reads them.
+        assert len(rows) == 164, "two runs of each broker in each of forty-one cells"
+        colocated = [r for r in rows if r["result"] == "colocation"]
+        assert {(r["cell"], r["arm"]) for r in colocated} == {
+            ("remote_l0", "remote"), ("colocated_l0", "co-located"),
+            ("remote_l88", "remote"), ("colocated_l88", "co-located")}
+        load = [r for r in rows if r["result"] == "load"]
+        assert {r["cell"] for r in load} == set(mr.LOAD[2]) and len(load) == 36
+        assert {r["arm"] for r in load} == {"normal"}
+        assert {r["cell"] for r in rows if r["result"] == "placement"} == {
+            "%s_%s" % (k, s) for k in mr.PLACEMENT_LEVELS for s in ("conc", "spread")}
         # E-A9b has an l75_base too, among the traced cells: a cell is named with its campaign.
         base = [(r["backend"], r["run"], r["run_events"], r["run_negatives"]) for r in rows
                 if (r["campaign"], r["cell"]) == ("E-A5", "l75_base")]
@@ -254,7 +297,7 @@ class TestExtract:
             ("kafka", "concurrency_n5_20260725_072848_kafka_feed2_rep1", "4", "2"),
             ("redis", "concurrency_n5_20260725_072848_redis_feed1_rep1", "2", "1"),
             ("redis", "concurrency_n5_20260725_072848_redis_feed2_rep1", "1", "0")]
-        arms = {(r["campaign"], r["cell"]): r["arm"] for r in rows}
+        arms = {(r["campaign"], r["cell"]): r["arm"] for r in rows if r["result"] != "load"}
         assert arms[("E-A5", "l75_rt")] == "real-time"
         assert arms[("E-A6", "k6_conc")] == "concentrated"
         assert arms[("E-A10b", "pad262144")] == "262144"
@@ -289,14 +332,15 @@ class TestExtract:
     def test_a_confounded_pair_is_never_walked(self, world):
         found = {(c, cell) for _, c, _, cell, _, _, _ in mr.cells(str(world["model"]))}
         assert ("E-A5", "l88_base") not in found and ("E-A5", "l75_rt") in found
-        assert len(found) == 20
+        # Forty-one cells less the two ladder ends that the load result shares.
+        assert len(found) == 39
 
     def test_the_pooled_knee_file_is_read_for_the_campaign_asked(self, world):
         """bg0 is a cell of E-A3 and of ea_sat in one file; the phase column decides."""
         got = mr._counted(str(world["model"]), ("knee_resolution.csv",), "ea3", "bg0")
         assert got == {"n_events": 4, "n_negative": 1, "n_runs": 2}
-        with pytest.raises(KeyError, match="no row for ea3/bg5"):
-            mr._counted(str(world["model"]), ("knee_resolution.csv",), "ea3", "bg5")
+        with pytest.raises(KeyError, match="no row for ea3/bg9"):
+            mr._counted(str(world["model"]), ("knee_resolution.csv",), "ea3", "bg9")
 
     def test_a_kafka_half_that_does_not_sum_to_its_total_stops_the_write(self, world, capsys):
         write_model(world["model"], bump=("E-A9", "l88_base"))
@@ -703,12 +747,15 @@ class TestTheCommittedFile:
             ROOT / "docs" / "results" / "backlog_by_run.csv", encoding="utf-8"))}
         cells = {}
         for r in committed:
-            c = cells.setdefault((r["campaign"], r["cell"], r["backend"]), [0, 0, 0])
+            # 15 Oct 2026: keyed by result too, since E-A3's two ladder ends are also cells of
+            # its whole ladder, the `load` result, and each result counts their runs once.
+            c = cells.setdefault((r["result"], r["campaign"], r["cell"], r["backend"]),
+                                 [0, 0, 0])
             c[0] += 1
             c[1] += r["run_events"]
             c[2] += late[r["run"]]
-        assert len(cells) == 76, ("16 priority, 4 placement, 8 path-length, 8 traced and 2 "
-                                  "ladder cells, on two brokers")
+        assert len(cells) == 118, ("16 priority, 12 placement, 8 path-length, 8 traced, 2 "
+                                   "ladder, 9 load and 4 co-location cells, on two brokers")
         assert {(runs, kept + gone) for runs, kept, gone in cells.values()} == {(25, 2985)}
         assert min(kept for _, kept, _ in cells.values()) < 2985, "the late messages are out"
 
@@ -765,3 +812,311 @@ class TestTheCommittedFile:
             share = (1 - r / 25.0) ** 25
             assert p["unbounded_draws"] / p["draws"] == pytest.approx(share, abs=0.01)
             assert math.isinf(p["factor_ci"][1]) == (r <= 3), (p["campaign"], p["level"], r)
+
+
+# --- 15 Oct 2026: the ladder by run, the margins and the padding medians ----------------------
+
+class TestRateByLoad:
+    """Fig. 2(b) reads each run's rate beside its cell's utilization."""
+
+    def test_every_load_and_priority_run_is_given_its_cells_utilization(self, world):
+        assert _extract(world) == 0
+        runs = mr.rate_by_load(str(world["out"]), str(world["model"]))
+        load = [r for r in runs if r["campaign"] == "E-A3"]
+        assert len(load) == 36 and {r["priority"] for r in load} == {"normal"}
+        assert {r["rho"] for r in load if r["cell"] == "bg4"} == {0.5}
+        prio = [r for r in runs if r["campaign"] == "E-A5"]
+        assert {(r["cell"], r["priority"], r["rho"]) for r in prio} == {
+            ("l75_base", "normal", 0.75312), ("l75_rt", "real-time", 0.7525)}
+        one = next(r for r in prio if r["run"].endswith("072848_kafka_feed2_rep1"))
+        assert one["rate"] == pytest.approx(2 / 4)
+        # The other results are not drawn.
+        assert not [r for r in runs if r["campaign"] in ("E-A6", "E-A10", "E-A9")]
+
+    def test_a_run_with_no_messages_is_left_out(self, world, tmp_path):
+        assert _extract(world) == 0
+        rows = mr.read_runs(str(world["out"]))
+        rows[0]["run_events"], rows[0]["run_negatives"] = 0, 0
+        path = mr.write(rows, str(tmp_path / "zero.csv"))
+        runs = mr.rate_by_load(path, str(world["model"]))
+        assert rows[0]["run"] not in {r["run"] for r in runs}
+
+
+class TestMargins:
+
+    def test_each_brokers_median_s_in_the_idle_cell_is_written(self, world, monkeypatch,
+                                                                tmp_path, capsys):
+        import analyze_collapse
+        seen = []
+
+        def stats(cond_dir, runs_dir, backend="kafka"):
+            seen.append((Path(cond_dir).parts[-2:], backend))
+            return {"rho": 0.0025, "n_events": 2985 if backend == "kafka" else 2898,
+                    "mu": 0.5239 if backend == "kafka" else 0.1034}
+        monkeypatch.setattr(analyze_collapse, "condition_stats", stats)
+        out = tmp_path / "margins.csv"
+        assert mr.main(["margins", "--depth", str(world["depth"]), "--runs", str(world["runs"]),
+                        "--out", str(out)]) == 0
+        assert seen == [(("ea3", "bg0"), "kafka"), (("ea3", "bg0"), "redis")]
+        assert mr.read_margins(str(out)) == {"kafka": 0.5239, "redis": 0.1034}
+        assert "redis median S 0.1034 ms over 2898 messages" in capsys.readouterr().out
+
+    def test_a_cell_with_no_usable_runs_writes_nothing(self, world, monkeypatch, tmp_path,
+                                                       capsys):
+        import analyze_collapse
+        monkeypatch.setattr(analyze_collapse, "condition_stats", lambda *a, **k: None)
+        out = tmp_path / "margins.csv"
+        assert mr.main(["margins", "--depth", str(world["depth"]), "--runs", str(world["runs"]),
+                        "--out", str(out)]) == 1
+        assert "holds no usable kafka runs" in capsys.readouterr().out
+        assert not out.exists()
+
+    def test_the_committed_margins_are_e_a3s_idle_medians(self):
+        got = mr.read_margins()
+        assert got == {"kafka": 0.5239, "redis": 0.1034}
+
+
+def _padding_model(world, transport=None):
+    """The world's sweep files, with Kafka's transport set to `transport` when given."""
+    for parts in (("ttrue_sweep.csv",), ("ea10b", "ttrue_sweep.csv")):
+        rows = []
+        for pad in (0, 262144):
+            rows.append([pad, 0.88, 0.7 if transport is None else transport, 0.25, 0.0, 1.0, 4])
+        _write(world["model"].joinpath(*parts), ["pad_bytes", "rho", "transport_ms",
+                                                 "inversion", "ci_lo", "ci_hi", "n_events"], rows)
+
+
+class TestPaddingSpans:
+    """Fig. 6's padding points: A, D and S at each level, by run_series's join."""
+
+    def test_a_run_gives_a_d_and_s_for_each_matched_message(self, world):
+        run = world["runs"] / _run_id("n5_20260725_194347", "kafka", 1)
+        got = mr.run_spans(str(run))
+        a = (108_549_430 - 253_156) / 1e6
+        assert [g[0] for g in got] == pytest.approx([a, a])
+        assert [g[2] for g in got] == pytest.approx([-0.2, 0.3])
+        assert [g[1] for g in got] == pytest.approx([a - 0.2, a + 0.3])
+
+    def test_a_run_without_its_events_table_gives_nothing(self, world):
+        run = world["runs"] / _run_id("n5_20260725_095336", "kafka", 3)
+        assert mr.run_spans(str(run)) == []
+
+    def test_unacknowledged_and_unmatched_messages_give_no_span(self, world):
+        """A publish with no acknowledgment, and a delivery of nothing this run produced."""
+        assert mr.run_spans(str(world["runs"] / _run_id("n5_20260725_095336", "kafka", 4))) == []
+        run = world["runs"] / _run_id("n5_20260725_072848", "kafka", 1)
+        rows = list(csv.reader(open(run / "producer.csv", encoding="utf-8")))
+        rows[1][-1] = ""
+        _write(run / "producer.csv", rows[0], rows[1:])
+        assert len(mr.run_spans(str(run))) == 2, "three published, one never acknowledged"
+
+    def test_every_level_of_both_campaigns_on_both_brokers(self, world):
+        rows = mr.padding_spans(str(world["depth"]), str(world["runs"]), str(world["model"]))
+        assert [(r["campaign"], r["cell"], r["backend"]) for r in rows] == [
+            (c, p, b) for c in ("E-A10", "E-A10b") for p in ("pad0", "pad262144")
+            for b in ("kafka", "redis")]
+        kafka = rows[0]
+        assert kafka["n_events"] == 4 and kafka["median_s_ms"] == "0.1500"
+        assert float(kafka["median_d_ms"]) - float(kafka["median_a_ms"]) == pytest.approx(
+            0.15, abs=1e-4)
+
+    def test_a_level_with_no_messages_is_refused(self, world):
+        for p in world["runs"].glob("concurrency_n5_20260725_194347_redis_*"):
+            for f in p.iterdir():
+                f.unlink()
+            p.rmdir()
+        with pytest.raises(ValueError, match="E-A10 pad0 holds no redis messages"):
+            mr.padding_spans(str(world["depth"]), str(world["runs"]), str(world["model"]))
+
+    def test_the_medians_must_reproduce_the_committed_transport_and_counts(self, world):
+        assert _extract(world) == 0
+        rows = mr.padding_spans(str(world["depth"]), str(world["runs"]), str(world["model"]))
+        problems = mr.check_padding(rows, str(world["model"]), str(world["out"]))
+        assert "E-A10 pad0 kafka: median S 0.1500 ms; the sweep committed 0.700000" in problems
+        assert not any("redis: median S" in p for p in problems), "Redis has no sweep file"
+        _padding_model(world, transport=0.15)
+        assert mr.check_padding(rows, str(world["model"]), str(world["out"])) == []
+        rows[1] = dict(rows[1], n_events=99)
+        assert mr.check_padding(rows, str(world["model"]), str(world["out"])) == [
+            "E-A10 pad0 redis: 99 messages; the run file has 3"]
+
+    def test_the_command_writes_only_what_reproduces(self, world, tmp_path, capsys):
+        assert _extract(world) == 0
+        out = tmp_path / "padding.csv"
+        argv = ["spans", "--depth", str(world["depth"]), "--runs", str(world["runs"]),
+                "--out", str(out), "--model", str(world["model"]), "--csv", str(world["out"])]
+        assert mr.main(argv) == 1
+        assert "nothing written" in capsys.readouterr().out and not out.exists()
+        _padding_model(world, transport=0.15)
+        assert mr.main(argv) == 0
+        assert "wrote" in capsys.readouterr().out
+        got = mr.read_padding(str(out))
+        assert len(got) == 8 and got[0]["median_s_ms"] == pytest.approx(0.15)
+
+    def test_the_command_says_when_the_archive_cannot_be_read(self, world, tmp_path, capsys):
+        assert mr.main(["spans", "--depth", str(world["depth"]), "--runs", str(world["runs"]),
+                        "--out", str(tmp_path / "p.csv"),
+                        "--model", str(tmp_path / "no-model")]) == 1
+        assert "cannot read the padding campaign" in capsys.readouterr().out
+
+    def test_the_committed_medians_reproduce_the_committed_records(self):
+        rows = mr.read_padding()
+        raw = [dict(r, n_events=int(r["n_events"]),
+                    median_s_ms="%.4f" % r["median_s_ms"]) for r in rows]
+        assert mr.check_padding(raw) == []
+        assert len(rows) == 16
+
+
+class TestPlacementByLevel:
+
+    def test_each_level_compares_its_own_cells(self, world):
+        assert _extract(world) == 0
+        k6 = mr.placement_intervals(str(world["out"]), draws=200)
+        k5 = mr.placement_intervals(str(world["out"]), draws=200, level="k5")
+        assert set(k6) == set(k5) == {"E-A6", "E-A6b"}
+        assert k6["E-A6"]["level"] == "k6" and k5["E-A6"]["level"] == "k5"
+        # Every placement cell of the world holds the same runs, so the factors agree, and
+        # each level draws from its own stream.
+        assert k5["E-A6"]["factor"] == pytest.approx(k6["E-A6"]["factor"])
+        # Each level's arms hold that level's runs and no other level's: pooled, they would
+        # hold three cells' runs with the same factor, which the line above cannot see.
+        one_cell = [r for r in mr.read_runs(str(world["out"]))
+                    if (r["result"], r["campaign"], r["cell"], r["backend"])
+                    == ("placement", "E-A6", "k6_spread", "kafka")]
+        assert one_cell
+        for got in (k5, k6):
+            assert got["E-A6"]["spread"]["runs"] == len(one_cell)
+
+    def test_the_committed_k6_intervals_did_not_move(self):
+        """Adding the k = 5 and 7 cells left k = 6's stream, and so its interval, as it was."""
+        rows = {(r["campaign"], r["level"], r["backend"]): r for r in mr.read_intervals()
+                if r["result"] == "placement"}
+        assert rows[("E-A6", "k6", "kafka")]["factor_lo"] == "1.35771"
+        assert rows[("E-A6b", "k6", "redis")]["factor_hi"] == "0.764114"
+        assert {k[1] for k in rows} == {"k5", "k6", "k7"}
+
+
+class TestTheRealTimeFloor:
+    """15 Oct 2026: where each real-time value below zero sits in its run, both brokers."""
+
+    def test_a_run_gives_the_rank_of_each_negative_and_its_first_acknowledgment(self, world):
+        run = world["runs"] / _run_id("n5_20260725_074637", "kafka", 1)
+        n, ranks, first_instant, first_ack = mr.run_ranks(str(run))
+        assert (n, ranks, first_instant) == (2, [2], 2)
+        assert first_ack == pytest.approx((108_549_430 - 253_156) / 1e6)
+
+    def test_ranks_follow_publish_time_not_the_order_of_the_file(self, world):
+        run = world["runs"] / _run_id("n5_20260725_074637", "redis", 1)
+        rows = list(csv.reader(open(run / "producer.csv", encoding="utf-8")))
+        rows[1], rows[2] = rows[2], rows[1]
+        _write(run / "producer.csv", rows[0], rows[1:])
+        assert mr.run_ranks(str(run))[1] == [2], "the second message published is the negative"
+
+    def test_the_first_instant_counts_the_messages_of_the_smallest_simulated_time(self, world):
+        run = world["runs"] / _run_id("n5_20260725_074637", "kafka", 2)
+        rows = list(csv.reader(open(run / "producer.csv", encoding="utf-8")))
+        rows[3][5] = "1.5"
+        _write(run / "producer.csv", rows[0], rows[1:])
+        assert mr.run_ranks(str(run))[2] == 2
+
+    def test_a_run_without_its_tables_or_acknowledgments_gives_nothing(self, world):
+        assert mr.run_ranks(str(world["runs"] / _run_id("n5_20260725_095336", "kafka", 3))) == (
+            0, [], 0, None)
+        run = world["runs"] / _run_id("n5_20260725_074637", "kafka", 1)
+        rows = list(csv.reader(open(run / "producer.csv", encoding="utf-8")))
+        for r in rows[1:]:
+            r[-1] = ""
+        _write(run / "producer.csv", rows[0], rows[1:])
+        assert mr.run_ranks(str(run)) == (0, [], 0, None)
+
+    def test_unmatched_deliveries_are_not_counted(self, world):
+        run = world["runs"] / _run_id("n5_20260725_095336", "kafka", 4)
+        assert mr.run_ranks(str(run))[:2] == (0, [])
+
+    def test_every_real_time_run_of_both_brokers_is_a_row(self, world):
+        rows = mr.rt_floor(str(world["depth"]), str(world["runs"]), str(world["model"]))
+        assert [(r["cell"], r["backend"], r["run_negatives"], r["ranks"]) for r in rows] == [
+            ("l75_rt", "kafka", 1, "2"), ("l75_rt", "kafka", 0, ""),
+            ("l75_rt", "redis", 1, "2"), ("l75_rt", "redis", 1, "1")]
+        assert {r["first_ack_ms"] for r in rows} == {"108.3"}
+
+    def test_a_run_with_no_matched_message_is_not_a_row(self, world):
+        write_run(world["runs"], _run_id("n5_20260725_074637", "kafka", 3), [-5.0],
+                  events_table=False)
+        rows = mr.rt_floor(str(world["depth"]), str(world["runs"]), str(world["model"]))
+        assert "concurrency_n5_20260725_074637_kafka_feed3_rep1" not in {r["run"] for r in rows}
+        assert len(rows) == 4
+
+    def test_the_rows_must_reproduce_the_run_file(self, world):
+        assert _extract(world) == 0
+        rows = mr.rt_floor(str(world["depth"]), str(world["runs"]), str(world["model"]))
+        assert mr.check_rt_floor(rows, str(world["out"])) == []
+        moved = [dict(rows[0], run_negatives=2)] + rows[1:3] + [dict(rows[3], run="elsewhere")]
+        assert mr.check_rt_floor(moved, str(world["out"])) == [
+            "concurrency_n5_20260725_074637_kafka_feed1_rep1: 2 events, 2 with S < 0; the run "
+            "file has 2 and 1",
+            "elsewhere: no real-time priority run of that name in the run file",
+            "concurrency_n5_20260725_074637_redis_feed2_rep1: in the run file, not among the "
+            "floor's runs"]
+
+    def test_the_file_round_trips(self, world, tmp_path):
+        rows = mr.rt_floor(str(world["depth"]), str(world["runs"]), str(world["model"]))
+        back = mr.read_rt_floor(mr.write_rt_floor(rows, str(tmp_path / "floor.csv")))
+        assert [r["ranks"] for r in back] == [[2], [], [2], [1]]
+        assert back[0]["first_ack_ms"] == pytest.approx(108.3) and back[1]["run_events"] == 3
+
+    def test_the_command_writes_only_what_reproduces(self, world, tmp_path, capsys):
+        out = tmp_path / "floor.csv"
+        argv = ["floor", "--depth", str(world["depth"]), "--runs", str(world["runs"]),
+                "--out", str(out), "--model", str(world["model"]), "--csv", str(world["out"])]
+        _write(world["out"], mr.FIELDS, [])
+        assert mr.main(argv) == 1
+        assert "nothing written" in capsys.readouterr().out and not out.exists()
+        assert _extract(world) == 0
+        capsys.readouterr()
+        assert mr.main(argv) == 0
+        printed = capsys.readouterr().out
+        assert "kafka 1 runs hold 1 values below zero" in printed
+        assert "redis 2 runs hold 2 values below zero" in printed and out.exists()
+
+    def test_the_command_says_when_the_archive_cannot_be_read(self, world, tmp_path, capsys):
+        argv = ["floor", "--depth", str(world["depth"]), "--runs", str(world["runs"]),
+                "--model", str(tmp_path / "nowhere"), "--out", str(tmp_path / "f.csv")]
+        assert mr.main(argv) == 1
+        assert "cannot read the real-time cells" in capsys.readouterr().out
+
+    def test_the_committed_floor(self):
+        """Every Kafka real-time value below zero is among its run's first five messages, the
+        replay's first instant, in all eight pairs; Redis's lie anywhere in the run."""
+        rows = mr.read_rt_floor()
+        assert len(rows) == 400 and mr.check_rt_floor(rows) == []
+        kafka = [k for r in rows if r["backend"] == "kafka" for k in r["ranks"]]
+        redis = [k for r in rows if r["backend"] == "redis" for k in r["ranks"]]
+        assert (len(kafka), max(kafka), len(redis)) == (125, 5, 480)
+        assert {r["first_instant"] for r in rows} == {5}
+        assert (min(redis), max(redis)) == (3, 145)
+
+
+class TestTheColocatedControl:
+    """15 Oct 2026: E-A8's runs in the run file, checked against colocation.csv."""
+
+    def test_each_arm_takes_its_committed_totals(self, world):
+        found = {(c, cell, arm): committed
+                 for result, c, _p, cell, arm, committed, _s in mr.cells(str(world["model"]))
+                 if result == "colocation"}
+        assert found[("E-A8", "colocated_l88", "co-located")] == {
+            "n_events": 4, "n_negative": 1, "n_runs": None}
+        assert len(found) == 4
+
+    def test_a_cell_that_does_not_reproduce_its_totals_is_named(self, world):
+        write_model(world["model"], bump=("E-A8", "colocated_l0"))
+        problems = mr.check(_rows(world), str(world["model"]), str(world["span"]))
+        assert problems == ["E-A8 ea8/colocated_l0 (co-located): Kafka 2 runs, 4 events, 1 with "
+                            "S < 0; the committed analysis has ? runs, 4 events, 2 with S < 0"]
+
+    def test_the_committed_control_is_fifty_runs_a_broker(self):
+        rows = [r for r in mr.read_runs() if r["result"] == "colocation"]
+        for backend in mr.BACKENDS:
+            mine = [r for r in rows if r["backend"] == backend]
+            assert sum(1 for r in mine if r["arm"] == "co-located") == 50
+            assert sum(1 for r in mine if r["arm"] == "remote") == 50

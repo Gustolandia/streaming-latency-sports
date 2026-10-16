@@ -106,6 +106,37 @@ class TestAdd:
         assert sum(acc["bins"].values()) == 1
 
 
+class TestNativeMedian:
+    """15 Oct 2026: each group's median at the timestamps' resolution, beside the bins."""
+
+    def test_the_median_of_the_windows_values_not_of_the_bins(self):
+        acc = sbc.new_cond()["D"]
+        for v in (101.25, 2000.5, 149.75, sbc.BIN_HI_US + 5.0):
+            sbc.add(acc, v)
+        # Three values in the window, all in the 100-150 us bin but one; the one out of the
+        # window is not counted, as the bins do not count it.
+        assert sbc.native_median(acc) == 149.75
+        sbc.add(acc, 120.0)
+        assert sbc.native_median(acc) == round((120.0 + 149.75) / 2.0, 3)
+
+    def test_a_window_with_no_values_has_no_median(self):
+        acc = sbc.new_cond()["S"]
+        assert sbc.native_median(acc) is None
+        sbc.add(acc, sbc.BIN_LO_US - 1)
+        assert sbc.native_median(acc) is None
+
+    def test_the_artefact_carries_each_quantitys_median(self, tmp_path, monkeypatch):
+        conds, rr = {}, []
+        ev = {**clean_event("a"), **clean_event("b")}
+        sbc.consume_run(conds, rr, RUN, prod_rows(ev), cons_rows(ev))
+        monkeypatch.setattr(sbc, "OUT_JSON", str(tmp_path / "o.json"))
+        monkeypatch.setattr(sbc, "OUT_CSV", str(tmp_path / "o.csv"))
+        sbc.write_outputs(conds, rr, 1, 2)
+        got = json.load(open(tmp_path / "o.json"))["conditions"]["kafka_n2_feed1#pass"]
+        assert (got["S"]["median_us"], got["D"]["median_us"], got["A"]["median_us"]) == (
+            600.0, 1200.0, 600.0)
+
+
 class TestConsumeRun:
     def test_a_clean_run_lands_in_the_pass_bucket(self):
         conds, rr = {}, []

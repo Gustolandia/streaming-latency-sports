@@ -1,6 +1,6 @@
 # Every review, and what was done about it
 
-One internal review held to IEEE TPDS's standards, two held to IEEE TC's, and the plan and
+One internal review held to IEEE TPDS's standards, three rounds held to IEEE TC's (the third with two reports), and the plan and
 letter that answered them. The reports themselves are not public; what is here is what was
 asked and what changed because of it.
 
@@ -13,6 +13,7 @@ asked and what changed because of it.
 - [Response to internal review — TPDS standard, round 1](#response-to-internal-review-tpds-standard-round-1) — was `docs/response_to_referee_tpds.md`, last changed 2026-09-15
 - [Response to internal review — IEEE Transactions on Computers standard, round 1](#response-to-internal-review-ieee-transactions-on-computers-standard-round-1) — was `docs/response_to_referee_tc.md`, last changed 2026-09-15
 - [Response to internal review — IEEE Transactions on Computers standard, round 2](#response-to-internal-review-ieee-transactions-on-computers-standard-round-2) — was `docs/response_to_referee_tc_r2.md`, last changed 2026-09-15
+- [Response to internal review — IEEE Transactions on Computers standard, manuscript version 9 (15 October 2026)](#response-to-internal-review-ieee-transactions-on-computers-standard-manuscript-version-9-15-october-2026) — added 2026-10-15
 - [Settled non-requests](#settled-non-requests) — decisions a round examined and left alone, added 2026-09-27
 
 ## Referee response plan
@@ -2459,6 +2460,893 @@ failed the first time it was estimated or recomputed with its denominator named.
 that in supplement S35 because it is the paper's own argument turned on its author: a
 statistic that carries no uncertainty, and a number that reaches the page without passing
 through a script, are not yet measurements. Every correction from this round is gated.
+
+## Response to internal review — IEEE Transactions on Computers standard, manuscript version 9 (15 October 2026)
+
+> **Internal review.** The two reports answered below came from a review held inside the project,
+> before any journal submission, to test the manuscript against IEEE TC's standards. The reports
+> themselves are not public, so what follows says in our own words what they asked. The paper has
+> not been submitted to IEEE Transactions on Computers; no text here originates from, or is
+> addressed to, any journal or its reviewers.
+
+Manuscript: *Super-Precise Latency: How CPU Threading Affects High-Precision Latency, and an
+Industry-Wide Audit*, version 9, built from commit 743378bb: 12 pages, 45 references, 6 figures
+and 4 tables, with a 28-page supplement.
+
+Verdict returned: **needs major revisions**, in both reports, called A and B below. Each referee
+expects to recommend acceptance after one more round. A asked for two new blocks of runs, one
+recomputation and some rewording. B asked for one new block, with a positive control and a rate
+ladder as options.
+
+Both referees asked first for the same measurement, and it changed a result. Version 9 left one
+rival open: a broker that sends the delivery before the acknowledgment would put S below zero with
+no wait at all. Our own socket module already took the kernel's receive timestamp of every read on
+the producer's connection. It just never wrote the acknowledgment's down. Freeze 41 wrote it down.
+On Kafka the acknowledgment reached the client machine first in almost every message, and its
+values of S below zero are late readings, as the paper said. On Redis the delivery often came
+first, and by the rule fixed before the runs most of its values below zero are the broker's own
+reply order. Referee A had predicted this from the two brokers' source code. The abstract now
+says "the cause is scheduling" of the broker that acknowledges first, not of both.
+
+The second shared demand was scope. The fix that leads Section 6 was stated for any tool and any
+load, and all of its evidence came from fifty messages a second. Freeze 41 gave it a positive
+control, which the kernel-timed latency passed, and a rate ladder, which found two limits. At
+2,000 messages a second almost every message waited at the broker for the consumer's next
+request, a wait inside the kernel-timed latency. On a second pair of machines, at fifty messages a
+second, Redis's kernel-timed latency rose 25.7% under load, for a cause we have not traced. The
+fix is now claimed where it was shown, and the abstract no longer says "even under load".
+
+The third finding was ours to regret. The repair's numbers in Section 6 came from an estimator the
+text never described, a symmetry centre of S in place of its median, and every group median was
+the lower edge of a 50 µs bin. A paper about a statistic floored to a coarse step had one in its
+own analysis. The medians are now the messages' own, and the recovery is the one the text
+describes. By broker its error is 0.4% on Kafka and 14.6% on Redis, where version 9's single 3.4%
+would have misled a Redis user, as Referee B pointed out.
+
+Five of freeze 41's predictions were not confirmed: K-d, R-a, R-b, P-b and L-b. Section 8 reports
+four of them, and Supplement S3.11 all five.
+
+Build after revision: 12 pages in the Computer Society layout, against TC's 10 to 12; 45
+references, against a cap of 45; a 198-word abstract, against 100 to 200; 8 index terms; 5 figures
+and 4 tables; a 30-page supplement, against the editor's 25 to 30; no LaTeX errors, no undefined
+references and no overfull boxes.
+
+Section numbers below are the revised paper's. The Computer Society layout numbers sections 1 to
+9, so version 9's IV-B is Section 4.2. Supplement tables and figures are named by the numbers
+version 9 gave them, which the reports cite; the revision renumbers them.
+
+### What changed
+
+#### The new experiment: freeze 41
+
+Freeze 41 (plan version 44) ran 156 runs on the two x86 Azure pairs, in five blocks: K (60 runs)
+and R (24) on the first pair, and P (24), L (32) and I (16) on the second. Its predictions were
+written and fingerprinted before any run, the pilot included (commit 176ddbe7). The clients kept a
+journal of every read and write on their broker connections, with the kernel's receive timestamp
+of each read. Each acknowledgment and each consumer request was matched to its message by the
+broker's own wire format: Kafka's correlation identifiers, and Redis's replies in request order.
+That gives the acknowledgment's kernel-timed arrival t_rx,ack; the kernel-timed order
+S_k = t_rx − t_rx,ack, which no client thread's delay enters; and the acknowledging thread's delay
+δ_ack = t_ack − t_rx,ack. For every message S = S_k + δ_recv − δ_ack.
+
+The pilot ran before any judged run and checked the instruments only. It changed three things.
+The load check now subtracts the clients' own share of the machine, which had been counted as
+background load. The ladder's top rung became 2,000 messages a second, because at 5,000 Redis's
+producer sent only 3,536 and 3,579 a second; and its upper rungs ran idle, because an 88% load
+could not be held beside the clients there (83.5 to 85.7% at 500, 80.0 to 81.9% at 2,000), so L-b
+was judged at fifty messages a second only. The reader now takes each broker's port from the
+journal. A dry run of the judge on the pilot's runs then found two departures from the design, and
+both were corrected before any judged run was read (commit b1be30b3): K-d now judges only each
+broker's setup at 88% load and normal priority, and R-a, K-e, L-c and block I take the median over
+a setup's runs. No margin and no prediction changed. One judged run failed the integrity rule
+(Kafka, idle, real-time priority: its consumer received no message) and ran again, as the plan
+provides.
+
+| Prediction | Required | The runs gave | Verdict |
+|---|---|---|---|
+| K-v | the journal's acknowledgment arrival within 20 µs of the capture's | 0.0 µs in every setup; every acknowledgment found | confirmed |
+| K-a | Kafka: at least 90% of values of S below zero have S_k ≥ 0 | 99.75% at 88% load (4,024 values), 91.7% at real-time priority (60) | confirmed |
+| K-b | Redis, real-time, sixteen workers: at least half of values below zero have S_k < 0 | 100% idle (5,160 values), 99.8% at 88% (4,098) | confirmed |
+| K-c | 99th percentile of δ_ack at least 1.5 times higher under load, at most half at real-time priority | Kafka 229, 3,887 and 274 µs; Redis 106, 3,167 and 94 µs (idle, 88% normal, 88% real-time) | confirmed |
+| K-d | at 88%, normal priority: the share of S below zero falls across quintiles of S_k and lies within 2 times of Pr[δ_ack − δ_recv > S_k] | within 1.14 times (Kafka) and 1.85 times (Redis) in every quintile; does not fall | not confirmed |
+| K-e | one publish worker against sixteen, Redis, real-time | idle: 0.04% against 1.44% (the lock sets it); 88%: 0.06% against 0.04% (it does not) | decision recorded |
+| R-a | rate of S below zero with run-to-parity off at most two-thirds of the rate with it | Kafka 13.5% against 13.2%; Redis 5.6% against 6.1% | not confirmed |
+| R-b | 99th percentile of δ_ack with run-to-parity off at most two-thirds | Kafka 3,885 against 3,906 µs; Redis 3,165 against 3,166 µs | not confirmed |
+| P-a | W_so rises 0.9 to 1.1 ms per ms of delay added | Kafka 0.93, Redis 0.95 | confirmed |
+| P-b | the median of A moves at most 10% between any two delays | Kafka 18%, Redis 22% | not confirmed |
+| P-c | D rises 0.9 to 1.1 ms per ms added | Kafka 0.94, Redis 0.95 | confirmed |
+| L-a | sockets within 20 µs of captures at every rung, every setup | 1.2 to 3.0 µs | confirmed |
+| L-b | at 50 messages a second, W_so within 10% under 88% load | Kafka −6.3%, Redis +25.7% | not confirmed |
+| L-c | at 50 messages a second, at most 1% of messages carry the pull flag | 0% in every setup | confirmed |
+| I | `idle=poll` halves Redis's share of S in [−250, −150) µs | 4.2% to 5.7% | the mode is not an idle processor's wake |
+
+Read after the verdicts, and marked so in Supplement S3.11 and the record
+(`docs/results/order_scope/README.md`):
+- On Kafka the setup medians of S_k were 72 to 92 µs. The acknowledging thread's median delay was
+  163 to 180 µs in every setup, the client's own processing, and its tail was the wait: 3.9 ms at
+  88% load, back to 0.27 ms at real-time priority.
+- On Redis the delivery came first for most messages in 16 of the 24 runs with sixteen workers,
+  by 16 to 51 µs at the setup medians. With the delivery first, a value below zero needs no wait,
+  only that the acknowledging thread's delay not fall short of the consumer's by more than the
+  delivery's lead.
+- K-d failed because the margins are short beside the waits, so the prediction is nearly flat
+  across the quintiles.
+- With run-to-parity off, neither the rate nor the delay's tail moved, so that rule alone does not
+  hold a woken thread off the core.
+- P-b failed on A's own spread: within one setup its runs spread by up to 40%, wider than the 10%
+  band. The kernel-timed latency carried the added delay one for one whatever A did.
+- Under load on the second pair, Redis's kernel-timed latency rose from 465 to 584 µs, in the
+  captures as in the sockets, about a fifth of the load's effect on the mean of D. No message
+  carried the pull flag and no Redis read drained more than one packet, so neither case the paper
+  names is the cause.
+- At 2,000 messages a second, 99.7% (Kafka) and 96.2% (Redis) of messages carried the pull flag,
+  and their kernel-timed latency was longer: 1,213 against 767 µs on Kafka, 953 against 551 µs on
+  Redis. At 500 the flag stayed at 0.2% and 0.07%, and two of eight runs had 88.5% and 99.6% of S
+  below zero for the whole run.
+
+#### The paper
+
+- **Layout.** The Computer Society class, with the abstract and index terms inside
+  `\IEEEtitleabstractindextext`: 12 pages. Table 3 stands at the top of the page after its first
+  callout, and Table 4 in Section 6.
+- **Abstract.** The cause is now stated per broker, from the kernel's timestamps. "It rises with
+  processor load." The slice clause matches contribution 2 ("falls as the timed path lengthens, on
+  the timescale of the scheduler's slice") and has a sentence of its own. The fix reads "Kernel
+  timestamps, read on a tool's own Linux sockets, exclude the clock-reading threads' wait", without
+  "readable by any tool" or "even under load". 198 words, no digits, no tool names.
+- **Sections 1 to 3.** The premise is scoped to a broker that acknowledges first, and S is ideally
+  a small positive margin. Section 2 gives each broker's reply order, the topology, the client
+  libraries and their versions, the sparse traffic, utilization measured on the client machine,
+  and the definitions of E, t_sched, t_out, the publish delay and the processing-time latency.
+  Section 3 adds the per-run medians by broker, Fig. 2(b) and Table 1's smallest values.
+- **Section 4.** Section 4.1 measures the margin as S_k. Section 4.2 leads its evidence with each
+  acknowledgment's own wait, quotes the priority factor's smallest run-level lower bound, scopes
+  the 61-fold rise to Kafka, names Equation 3 as the textbook decomposition of a wait, and keeps
+  the earlier kernel trace as agreement. Section 4.3 states the CPU-count result as the frozen
+  programs returned it, adds the free slopes at hand-set slices, and says Ubuntu backported the
+  slice constant.
+- **Section 5.** Table 3 is grouped by what each tool times, with marks for disposals made by a
+  shipped script and for announced ones. Section 5.1 states how the tools were chosen, gives the
+  count under stricter readings, and says the maintainers had not yet been told. Section 5.2 keeps
+  the four tests and three worst failures, without the tool-by-tool stories.
+- **Section 6.** The fix is claimed for a Linux tool at the rates tested, credited to network
+  measurement's own definitions and to Lancet, Fathom and Zuo et al., given run-level intervals, a
+  positive control, its cost and the rate ladder, and followed by what a tool must handle. The sign
+  check states its broker premise. The repair is recomputed. Kafka's real-time residue is traced to
+  the first messages of each run, and Redis's to its reply order.
+- **Sections 7 to 9.** Related work credits Zuo et al., McKenney and the lineage of the fix, and
+  cites RFC 3432 for what it says. The limitations state the per-broker rival, Redis's floor, the
+  interpreter lock's measured share, timer slack, the Azure clocks, the predictions not confirmed,
+  the publish rates measured and the fix's tested conditions. Section 9 scopes its premise to a
+  broker that acknowledges first and says "On Linux a tool can".
+- **Acknowledgment and references.** The AI-use disclosure now names the sections and the level of
+  use. Seven references left and seven came in, holding 45, and twenty entries gained their month.
+- **A last reading for clarity.** Sentences that carried two claims now carry one, and the
+  real-time rates are printed in percent, as every other rate in the paper is. The words that pay
+  for this, and for the two items below that a cut for the page budget had removed, came out of
+  phrases that said a thing twice: Section 5.2's worst failures (B-M7) and Section 6's lineage
+  sentence at the four steps (B-M3, fix 2) are back, and Table 3's caption states the
+  classifier's rule for the two edge cases (A-M5, fix 4). Tables 2 and S6 now print each lower
+  bound rounded down and each interval rounded outward, so they agree with the text's "at least
+  4.4-fold" and "4.2-fold", where they had printed 4.5 and 4.3; and Fig. 1 is on page 2 again.
+
+#### What moved to the supplement, and why
+
+The supplement's figures renumbered when the repair figure moved in. The reports cite the old
+numbers:
+
+| Version 9 | Now |
+|---|---|
+| Fig. 6 (exposure and repair) | Fig. S1, in S2.1 |
+| (new) | Fig. S2, the priority forest, in S3.1 |
+| Fig. S1 (traced stall spectrum) | Fig. S3, in S3.7 |
+| Fig. S2 (payload flip) | Fig. S4, in S4.3 |
+| Fig. S3 (the slice runs) | Fig. S5, in S6.2, redrawn as halfway point against slice |
+
+
+- **Version 9's Fig. 6** (exposure and repair) is now a figure in Supplement S2.1. Referee A found
+  that the paper ran to 13 pages in the Computer Society layout before any addition, and the move
+  is part of what holds it at 12. Its dots now use the corrected recovery, with the brokers marked,
+  and it gained the padding campaign's points.
+- **The tool-by-tool stories of Section V-B** (Artemis's redeliveries, RocketMQ's wait in the
+  broker, the Yahoo benchmark's four replies, emqtt-bench's empty console, and each tool's handling
+  of the stepped clock) are in Supplement S5, which already held them in full. Both referees
+  proposed this to pay for the additions. Section 5.2 keeps the three worst failures.
+- **fio, btt and Rezolus** left Table 3, which now lists only tools that time messages or requests.
+  S5 describes all three. Rezolus's reference left the paper with them.
+- **Detail behind single clauses** of Sections 6 and 8: the drivers that give no software transmit
+  timestamp and the `ethtool` check (S3.10); softirq processing and threaded polling (S3.9);
+  OPT_ID_TCP and coalesced writes (S3.10); timer slack (S3.6); the run-to-parity rule's code and
+  commits (S3.7); the Hyper-V and Arm clocks (S3.6).
+- **Freeze 41's design, pilot, judge corrections and verdicts** are a new Supplement S3.11, with a
+  table generated through the block's own judge.
+- **Versions, machine shapes and broker settings** are in Tables S2 and S3, with one clause in
+  Section 2.
+
+### Report A
+
+#### Major issues
+
+**A-M1. Close the rival left open, and explain Redis's real-time floor.** A showed that the rival
+could now be tested with our own module, that Redis's real-time rate barely moved with load or the
+tracer, and, from the brokers' source, that Redis writes the delivery first while Kafka answers the
+producer first.
+- Fix 1, and (a). Done. The module journals every read on the producer's connection, and
+  `scripts/so_journal.py` matches each acknowledgment by Kafka's correlation identifier or Redis's
+  request order (S3.11).
+- Fix 2. Done as block K: both brokers, idle and 88% load, normal and real-time priority, six
+  rounds, 60 runs. On Kafka 99.75% of the values below zero under load, and 91.7% at real-time
+  priority, had the acknowledgment first. On Redis 95.1 to 100% had the delivery first, in every
+  setup with sixteen workers (Section 4.1; S3.11).
+- Fix 3, and (c). Done with a single publish worker on Redis (K-e). With one worker instead of
+  sixteen, the real-time rate with no load fell from 1.44% to 0.04%, so there the lock the workers
+  share sets most of it; at 88% load it read 0.06% against 0.04%, so there it does not (Section 8).
+- Fix 4, and (b). Done. Section 8 names the floor: across the matched pairs it read 1.9% at the
+  lower loads and 2.3% at the higher, while the normal-priority rate rose from 12% to 17%.
+  These are medians of the four pairs at 60 to 75% and the four at 88 to 95%. Section 8 and S3.1
+  now say the floor is Redis's reply order.
+- Fix 5, and (d). Done. Section 2 says Kafka sends the acknowledgment before it answers the
+  consumer's waiting request, Redis writes the delivery to a waiting consumer first, and a broker
+  may confirm a message only after delivering it; S3.6 quotes RabbitMQ's case from its developers'
+  list. The sign check in Section 6 now says it assumes a broker that acknowledges no later than it
+  delivers, and that on one that delivers first it should read the publish-timed spans alone;
+  Table 4 says the same.
+- What it replaces: the rival paragraph of Section 8 now states the result instead of the open
+  question.
+
+**A-M2. The fix: state where it holds, and test it where benchmarks run.**
+- The three mechanisms. Each is now in "What a tool must handle". A pull consumer's wait for its
+  next request falls inside W, and a tool can flag the messages delivered in answer to a request
+  whose transmit timestamp follows the message's own. At fifty messages a second none carried the
+  flag; at 2,000, 96.2 to 99.7% did, and their kernel-timed latency was 403 to 446 µs longer.
+  Receive processing in a kernel thread (threaded polling, or `ksoftirqd` under overload) makes the
+  receive timestamp wait for a core too, which a card's hardware timestamp avoids (also S3.9). The
+  transmit timestamp is now named as the kernel documentation names it, taken before the packet
+  scheduler (TX_SCHED), which puts any queueing there inside W.
+- The driver fact. S3.10 gives it: in Linux 6.8 `hv_netvsc` hands each packet to the
+  accelerated-networking device and returns before its own `skb_tx_timestamp()`, mlx5 has none
+  before Linux 6.16, MANA none in 6.8, and `hv_netvsc` still reports software timestamps to
+  `ethtool`. Section 6 says this in one clause and tells a tool to check which timestamps arrive
+  rather than trust the driver.
+- Fix 1. Done as above. For Java, Section 6 now says a tool needs a native call, through the Java
+  Native Interface or the foreign-function interface, or on Linux 6.15 and later an eBPF program
+  for its transmit timestamps.
+- Fix 2. Done with one change. The abstract reads "Kernel timestamps, read on a tool's own Linux
+  sockets, exclude the clock-reading threads' wait." We did not write "even with every core busy",
+  because block L found Redis's kernel-timed latency rising 25.7% under load on the second pair.
+  The conclusion says "On Linux a tool can"; Section 6's lead says "in a Linux tool that can read
+  its sockets' timestamps, at the rates we tested"; Fig. 5's caption says "at the rates we tested",
+  and "in the case drawn" for the waits that fall in H_out or H_in.
+- Fix 3. Done as block L, at 50, 500 and 2,000 messages a second on the second pair, reporting W
+  from sockets and captures, the flagged share and the rate of S below zero. 5,000 was out of
+  reach. L-a and L-c were confirmed and L-b was not (Section 6, Section 8, S3.11).
+- Fix 4. Done. "We did not measure what taking the timestamps costs" is gone. Against freeze 39's
+  runs, which shared the design without the module, the clients' own time, D − W, moved by −51 to
+  +76 µs on Kafka and +15 to +45 µs on Redis, and D's 99th percentile by −197 to +183 µs, the drift
+  between two days included (Section 6; S3.10).
+- Fix 5. Done. The kernel's timestamping documentation is cited at the four steps, and step 1 asks
+  for OPT_ID with OPT_ID_TCP. S3.10 explains the starting point the documentation warns of, and
+  why our module, which turns timestamping on before the first write, needs no correction.
+- Fix 6. Done. Section 6 presents the fix as network measurement's own rule: delay is defined
+  between wire times, not host times (RFC 2330), and the one-way delay standard bounds each host's
+  share by terms that H_out and H_in measure (RFC 7679). It credits Lancet, Fathom and Zuo et al.
+  for reading the kernel's timestamps, and claims only the move beneath unmodified broker clients,
+  on the one-way path from producer to consumer. Section 7 repeats the lineage in one sentence. DX
+  and netstacklat, offered as options, are not cited, for the reference cap.
+- What it replaces: the KVM MSR documentation gave its place to the kernel's timestamping
+  documentation, and Section 8 points to S3.6 for the clock argument. The shorter Section 5.2 paid
+  for the lines.
+
+**A-M3. State the publish rate as a scope.** Done. Section 8 says the distribution and the laws
+were measured with paced producers at about one message a second each, and fifty in the registered
+campaign, where the threads that read the clock sleep between messages and must be woken, and that
+the laws were not tested above fifty. Block L gives the first point beyond: at 500 messages a
+second with no background load, two of eight runs had most values of S below zero for the whole
+run. Section 2 adds "as a sparse event feed does".
+
+**A-M4. The repair's numbers, and the floored medians.** Both findings were right.
+- Fix 1. Done. Every group median now comes from the messages themselves, at the clock's
+  resolution (`scripts/span_by_condition.py`, `scripts/analyze_span_symmetry.py`). The median
+  publish latency is now 684 µs, not 650.
+- Fix 2. Done. The recovery is the median of S plus the median of A. Section 6 says first that per
+  message the recovery is exact by Equation 1, and that error arises only where a benchmark keeps
+  summaries. It then gives the error by broker, over each broker's own groups: a median of 0.4%
+  over Kafka's 32 and 14.6% over Redis's 38, with upper quartiles of 1.3% and 20%. Pooled by the
+  sign check's verdict the error is 3.0% on the 42 groups the check passes and 12.7% on the 28 it
+  rejects, where version 9 printed 3.4% and 12.2%, but that split is the brokers' mix (S16.9),
+  and inside each broker the verdict makes no detectable difference (S2.1).
+- Fix 3. The symmetry-centre estimator is out of the paper and the supplement. The committed table
+  keeps it under column names of its own.
+- Fix 4. Done: Table 4's third row gives the recovery and the understatement by broker, and the
+  figure now in S2.1, S2.1 and the groups table give the groups by broker and by verdict. The exposure numbers moved with the median: 68% at 1 ms and 6.8% at
+  10 ms. The understatement is now given by broker, 3.8 times on Kafka and 6.6 times on Redis.
+
+**A-M5. The audit's taxonomy.**
+- (a) and fix 1. Done. Contribution 3 now reads as A proposed, with one-way latency defined "from
+  one host to another" and RFC 7679 cited at its first use.
+- (b) and fix 3. Done. Each 19 is named where it is counted: the 19 of 24 message tools that cut
+  such values (Sections 1 and 5.1); the 19 of the 32 tools run that take both timestamps in one
+  process, eight of them timing a round trip and four only the acknowledgment (Sections 1 and
+  5.2); and the 19 tools whose figures stayed within a quarter of the moved clock's offset (5.2).
+  Section 5.2 now separates the last two: PerfKit Benchmarker reads one clock across two processes
+  on one machine, and the Pravega benchmark, one process, could not be placed by the test. S5 lists
+  the members of its own 19, those of all 27 tools that dispose of the value uncounted.
+- (c) and fix 4. Done. Section 5.1 names the two edge cases and gives the count without them, 17,
+  and under the strictest reading, twelve, eleven of them uncounted. Table 3's caption states the
+  rule, that a value counts as cut when a figure the tool reports leaves it out or replaces it,
+  even in BookKeeper's benchmark, which cannot produce one below zero, and in Kafka's end-to-end
+  tool, which never computes S, and points there; S5 tabulates the count under each exclusion.
+- (d) and fix 5. Done. Section 5.1 says the tools were chosen in rounds, not by a fixed rule; S5
+  names each round's tools and dates; Section 8 says the set is not a sample.
+- (e) and fix 6. Section 5.1 and S5 say the maintainers had not yet been told. Whether and when to
+  tell them is left to the author (below).
+- Fix 2. Done. Table 3's groups are: publish to receipt, with timestamps that can come from two
+  clocks (13 tools); publish to receipt, both timestamps in one process (7); publish to the
+  acknowledgment, in one process (4); and request to reply, a round trip in one process (8). The
+  caption says only the first group can time a one-way latency across hosts.
+- What it replaces: the "Read, run" column is gone. The one cell that differs says "(run, not
+  read)", and the caption says Kafka's two bundled tools count as one tool read but two run.
+
+**A-M6. Say exactly what each mechanism check shows.**
+- (a) and fix 1. Done. Section 4.2 now leads with each acknowledgment's own wait: in the registered
+  recording 79.4 to 92.0% of the readings below zero had mostly been waiting for a core, and in
+  block K the acknowledging thread's delay, timed from the acknowledgment's arrival, had a 99th
+  percentile 17 and 30 times higher under load. The earlier trace follows as agreement: its share
+  of waits longer than any threshold from 0.25 to 2 ms stood at 0.63 to 1.61 times the pooled
+  normal-priority rate, inside the factor of three fixed before it was read. Section 8 says the
+  trace pools both brokers' threads, and S3.5 keeps the ratios against Kafka's rate alone, as first
+  computed.
+- (b) and fix 2. Done. Section 4.3 now says that on Kafka the rate fell inside the band at 8 CPUs,
+  the one count whose slice reaches its shortest end-to-end latency, and that on Redis a curve
+  required only never to rise placed the fall there at all three counts. Section 8 says the
+  predictions of where the rate falls were not confirmed.
+- (c) and fix 3. Done. Section 8 says Kafka's Java client "shows values below zero too, at a third
+  to a quarter of Python's rate", so the effect needs no lock. S3.6 says the trace's error "bounds"
+  the second wait, and that the Java result does not show the lock adds nothing. Block K adds the
+  direct test (A-M1, fix 3).
+- Fix 4. Done. The abstract now says the rate "falls as the timed path lengthens, on the timescale
+  of the scheduler's slice". The phrase "laws we derive and test by manipulation" is unchanged.
+
+**A-M7. Twelve pages in the Computer Society layout.** Done: the `compsoc` option, the abstract
+inside `\IEEEtitleabstractindextext`, and 12 pages, paid for by moving Fig. 6 to S2.1 and shortening
+Section 5.2. Table 3 is a top float on the page after its first callout. The planning note that
+said the plain class is what TC's selector issues is corrected.
+
+#### Minor issues
+
+- **m1.** Done. Section 1 says the two readings should come in that order on a broker that
+  acknowledges first, separated only by the time the message still needs to reach the consumer, and
+  Section 3 that S is ideally a small positive margin. The abstract no longer states a premise,
+  since Redis's order would break it.
+- **m2.** Done: "On Kafka, from an idle host to the heaviest load".
+- **m3.** Done: padding "lengthens the time to the consumer's reading, by transfer and parsing, at
+  nearly unchanged utilization".
+- **m4.** Done. Section 4.3 points to S3.7 and says Ubuntu backported the change to the 6.8 kernels
+  we ran.
+- **m5.** Done. Table 2 prints "7–80 [≥4.5]" on Kafka and "6.0–7.8 [≥4.3]" on Redis, the smallest
+  run-level lower bounds, and Sections 1 and 6 and Table 4 quote those as "at least". Checking the
+  70% pair found the source of every Kafka pair's real-time residue: each such value is among a
+  run's first five messages, published together at its first instant and waiting 107 to 395 ms for
+  the first acknowledgment (Section 6).
+- **m6.** Done: "24 time messages or requests".
+- **m7.** Done, in A's wording.
+- **m8.** Moot: both sentences left Section 5.2 with the tool-by-tool stories.
+- **m9.** Done. From the unfloored A = 684 µs the error is 68% at 1 ms and 6.8% at 10 ms.
+- **m10.** Done. S2.1 defines a matched workload (the same sender count, feed count and
+  sign-check verdict on both brokers) and lists the 24 pairs in a generated table, with each
+  pair's gaps and distortion; S inflates the gap in 79% of them.
+- **m11.** Done: "the receiving thread's median wait".
+- **m12.** Done (A-M2).
+- **m13.** Done: "Read the error queue at every write and read".
+- **m14.** Done, in Section 1 and Section 9.
+- **m15.** Done. Section 8 says the rule that leaves out the delayed messages was chosen after the
+  Oracle testbed was gone (S1.5).
+- **m16.** Done: "The kernel trace pools both brokers' threads and is not free".
+- **m17.** Done: such designs "keep the waiting state out of the latency they time".
+- **m18.** Done. S6.1 and `freezes/README.md` now say how a reader can check that each freeze came
+  before its runs, and what each check rests on: fingerprints that depend on the files alone, the
+  commit each run records, and the times GitHub keeps of each push and its checks, for about ninety
+  days. `freezes/README.md` names every rewrite of the history, twice on 15 September 2026, before
+  freeze 01, and twice on 5 October 2026; S6.1 says the last gave every earlier commit, every
+  freeze's among them, a new identifier, and that no archive dated by a third party holds a freeze
+  yet. Section 2 now says the predictions were committed to the project's public repository before
+  the runs.
+- **m19.** Done. Reference [2] is now the Redis Streams documentation, which reports its own test
+  on a millisecond clock. A offered it beside Confluent's post, and B proposed it.
+- **m20.** Done. Rows run alphabetically within each disposal class, and the class order stays.
+- **m21.** Done: "none reached zero, so the run tested nothing".
+- **m22.** Done, in Section 6 ("delay is defined between the times a packet is on the wire, not the
+  host times a program reads") and in Section 7.
+- **m23.** Done. Fig. 1(b) draws m between t_rx,ack and t_rx.
+- **m24.** Done. Fig. 3's caption: past 1 ms waited 8.6 to 18.2% of acknowledgments on Kafka and
+  4.8 to 10.9% on Redis.
+- **m25.** Done, with a finding. The padding campaign's points are drawn, but padding does not hold
+  A nearly fixed: A grows with the payload almost as fast as D, so the points sit above the 1/D
+  curve, and the caption says so.
+- **m26.** Done. Table 1's "From" column gives each span's origin timestamp.
+- **m27.** Done: S1.1 points to S3.6.
+- **m28.** Done. The slice change is cited as a Linux source commit, first released in v6.15;
+  PerfTest's entry names both files; twenty entries gained their month. The HP note carries no
+  date, so its entry takes 1970 from the HP Journal citation, the fallback A named.
+- **m29.** No change was asked. The disclosure was nonetheless completed (B-m34).
+- **m30.** Done. Section 2 says one machine runs both brokers, and Kafka is a single node with one
+  partition and one replica, so `acks=all` is the leader's own append. Table S3 has a new block of
+  broker settings, and S1.1 says which machine ran which broker on each testbed.
+- **m31.** Done. Section 2 names kafka-python and redis-py and gives the Azure versions, 2.3.2 and
+  7.4.1, with kafka-clients 3.9.0. Table S2 gives the machine shapes, and says the Oracle machines
+  installed both libraries without a version pin, at versions no record keeps. Kafka is 4.1.1 and
+  Redis 7.
+- **m32.** Zuo et al. are cited in Section 7, and in Section 6 for the kernel-timed split. Zilberman
+  et al. are cited in Supplement S3.9, not in the paper (see "Where the two reports disagree").
+- **m33.** Done, in Section 8 and in S3.6, which defines timer slack: in Linux 6.8 a real-time task
+  gets none in select, poll, epoll_wait and nanosleep, a normal one at least 50 µs, and slack
+  delays only a wakeup a timer makes, not one by arriving data.
+- **m34.** Done. S3.7 quotes `pick_eevdf`'s comment under RUN_TO_PARITY and gives the commits that
+  brought the rule (Linux 6.6) and limited it (Linux 6.17). Block R then turned it off.
+
+#### Figures and tables
+
+- **Fig. 1.** Kept whole; m drawn.
+- **Fig. 2.** One outline per broker on the pooled bins, and a linear inset over ±500 µs. The
+  legend now sits in two columns above both peaks, so no bin hides under it, and a new gate fails
+  any figure that draws data under a legend. The bump near −200 µs: on the second x86 pair block
+  I's `idle=poll` runs did not halve Redis's share between −250 and −150 µs (4.2% against 5.7%),
+  so there it is not an idle processor's wake; in Fig. 2's Oracle runs the same mode holds a far
+  larger share, which that test does not explain. The caption calls the mode unexplained, and
+  S3.11 gives the runs.
+- **Table 1.** No change was asked; it gained each span's smallest value (B).
+- **Table 2.** The priority row prints the smallest run-level lower bounds; the text scopes the
+  61-fold rise to Kafka. The load row keeps its interval, [33–215], as printed.
+- **Fig. 3.** The share past 1 ms is given, and the twelve parts are thin lines, with their median
+  in bold.
+- **Table 3.** As A-M5, with a count per group in each heading, for example "13 tools; 5 drop,
+  1 refuses, 4 replace, 3 keep".
+- **Table 4.** Row 1 now says the latency holds no client thread's wait at fifty messages a second,
+  that at 2,000 a pull consumer's wait enters it, and that on a second pair Redis's rose under
+  load. Row 3 carries the recomputed repair.
+- **Fig. 5.** The caption is scoped to fifty messages a second (A-M2, fix 2), and an arrow draws
+  the consumer's fetch request reaching the broker before the message does.
+- **Fig. 6.** Moved to S2.1, where it is now Fig. S1, with the padding points and the recomputed
+  dots. Its caption and S2.1 say that all of Kafka's groups lie above the exposure curve, while
+  only 16 of Redis's 38 do; the version 9 text had said every group did.
+- **Fig. S3.** Redrawn as each broker's halfway point against the slice, with the band [s, s + h],
+  whose lower edge is the 1:1 line, and the judged slopes. One free curve per slice was not drawn:
+  read as the judges read them, the curves are several campaigns' per slice, too many to read at the
+  supplement's width, and one pooled curve would mark halfway points other than the judged ones.
+- **Table S6.** Regenerated with both brokers and a run-level interval for every pair.
+
+#### Statistics
+
+1. No request.
+2. Where message-level intervals remain they are marked as such: S3.1 says Wilson's and Katz's
+   intervals treat messages as independent, beside Table S6 and a new forest plot that give every
+   pair's run-level interval; S3.2 gives a bootstrap over runs beside its z, and its k = 7 contrast
+   now rests on run-level intervals; Table S7's caption says its z treats messages as independent.
+3. Fig. 2(b) draws each run's rate against its client machine's utilization, by broker and
+   priority, and Section 3 gives the per-run medians by broker, 2.1% and 5.9%.
+4. Done (A-M4).
+5. Done. With six runs a setup, the run-level intervals on the largest moves reach 12% at the
+   median and 44% at the 99th percentile in the captures, and 14% at the median on the sockets.
+   Section 6, S3.9, S3.10 and Section 8 say the bands hold for the point estimates, not for their
+   intervals.
+6. Done (A-M6).
+7. See m10.
+8. Done (m5).
+9. Noted.
+
+#### The supplement
+
+1. **S2.** Done. S2 now says that each build recomputes the 459 of 884 rejections from the
+   verdicts the check committed, condition by condition, in
+   `docs/results/integrity_by_condition.csv`, though the runs themselves are no longer in the
+   archive. So the Artifact Availability sentence stands.
+2. **S2.1 and Table S5.** The caption's description of the repair is now the computation, and the
+   medians are the messages' own, so no 50 µs floor is left to state.
+3. **S3.1 and Table S6.** Done (above).
+4. **S3.5 and Table S10.** The threshold's range is in Section 4.2. The 0.5 ms was set on 25 July
+   2026 from Kafka's median S at low load, before the traced campaign ran. The comparison of each
+   broker at its own margin is generated in `docs/generated/trace_threshold_table.tex`.
+5. **S3.6.** Done: the reply order from block K, "bounds", Redis's floor named, and timer slack.
+6. **S3.9 and S3.10.** Done: the module's cost, the intervals, TX_SCHED's point, softirq
+   processing, and three more points for a tool's author.
+7. **S5.** Done: the selection rule, the maintainers, and a per-tool table giving what each tool
+   times, whether it was read, what it does with a value at or below zero, whether it counts it,
+   and the freeze, plan version, date and pair of its block. The tool-by-tool prose stays.
+8. **S6.** Done: Fig. S3, and the kernel code behind the rest of a slice (S3.7).
+
+#### Typos and style
+
+- Abstract: the double "when ... and as ..." is now two sentences.
+- Contribution 3's "Of the rest" is gone; Section 5.1 names the five message tools that cut nothing.
+- Section 5.2: "the clock of the process that subtracts was set back".
+- Section 6: "Read the error queue at every write and read"; "the captures' latency".
+- Section 8: "One rival is not excluded" became the per-broker result.
+- Section 7's "What we add is these checks" is gone; its paragraph now ends on the retention
+  arithmetic.
+- S1.1 points to S3.6.
+- Page 12 is now full, and the second biography no longer floats.
+
+#### References
+
+- **The kernel's timestamping documentation for the KVM MSR documentation.** Done.
+- **RFC 7679 for RFC 3432.** RFC 7679 is cited, where "one-way latency" first appears and in
+  Section 6. RFC 3432 stays at B's request, now cited for what it says; RFC 7679 took Mytkowicz et
+  al.'s place instead (see below).
+- **Zuo et al. for Cloudprofiler.** Zuo et al. are cited and Cloudprofiler is gone. Cloudprofiler's
+  place went to Fathom, B's proposal, and Zuo et al. took the place Rezolus left.
+- **Zilberman et al. for P4STA.** P4STA is gone and McKenney took its place (B-m32). Zilberman et
+  al. are cited in S3.9.
+- **A primary source for [2].** The Redis Streams documentation.
+- **The shortened "Clocks" sentence.** Done. Network-card timestamping now sits in the lineage
+  sentence beside Lancet and Fathom.
+- **DX, netstacklat, Fathom (optional).** Fathom is cited; DX and netstacklat are not, for the cap.
+- **RFC 4656 and Georges et al. stay.** Both kept.
+- **The GUM for Mytkowicz (optional).** Not taken; that place went to RFC 7679.
+- **The set stays at 45.** Done. Out: Index.dev, the LWN article on custom slices, Rezolus,
+  Cloudprofiler, P4STA, Mytkowicz et al., and the KVM MSR documentation. In: the Redis Streams
+  documentation, RFC 7679, the kernel's timestamping documentation, Fathom, the commit that brought
+  custom slices, Zuo et al., and McKenney.
+
+#### Compliance
+
+- **Template and page.** The Computer Society class, whose page is TC's (9.5-point type on
+  11.5-point leading). Done.
+- **Length.** 12 pages in that layout. Done.
+- **References.** 45. Done.
+- **Biographies.** Unchanged, under 145 words each; photos are due only with the final files.
+- **Abstract.** 198 words, no mathematics, no references.
+- **Keywords.** Eight; "kernel timestamping" replaced "multithreading" (B-m12).
+- **Figures.** Five, vector, near their callouts.
+- **Supplemental material.** A separate file, with no appendix in the paper.
+- **References' completeness.** See m28.
+- **Review model.** Single-anonymous; the byline stays.
+- **AI-use disclosure.** Kept, and completed (B-m34).
+
+#### Where Report A departs from earlier advice
+
+1. **The definition of one-way latency.** We follow A: the term stays, with RFC 7679's meaning,
+   from one host to another.
+2. **The kernel-level second instrument.** The per-acknowledgment evidence now leads, and the trace
+   stays as agreement.
+3. **The abstract's slice clause.** Aligned with contribution 2.
+4. **Zuo et al. rather than Huygens.** Zuo et al. are cited; Huygens is not.
+
+### Report B
+
+#### Major issues
+
+**B-M1. Close the rival with the instrument already built.**
+- Widen the capture, or log every producer-socket read. Done the second way: the module's journal
+  of every read (S3.11).
+- Match each acknowledgment by the broker's own identifier. Done by Kafka's correlation identifiers
+  and Redis's replies in request order, the route A proposed, in place of base offsets and entry
+  identifiers.
+- (i) The share of S_k below zero per broker. On Kafka S_k fell below zero for under 1% of messages
+  in all but two runs, and its setup medians were 72 to 92 µs; on Redis the delivery came first for
+  most messages in 16 of the 24 runs with sixteen workers (Section 4.1; S3.11).
+- (ii) The late reading, message by message. The acknowledging thread's delay is reported by setup,
+  not split by the sign of S: on Kafka its median was 163 to 180 µs in every setup, and its 99th
+  percentile 229, 3,887 and 274 µs (idle, 88% normal, 88% real-time). With K-a, under which 99.75%
+  of Kafka's values below zero under load had the acknowledgment first, this shows that those
+  values are late readings.
+- (iii) Equation 3 inside conditions. Registered as K-d: in each quintile of S_k the share of
+  values below zero lay within 1.14 times (Kafka) and 1.85 times (Redis) of what each setup's own
+  delays predict, but it did not fall from one quintile to the next, so K-d was not confirmed. The
+  margins are short beside the waits, so the prediction is nearly flat. Section 8 says so.
+- Rewrite Section 8 and S3.6, add a sentence to Section 4 and a new S3.11. Done.
+
+**B-M2. The premise contradicts the margin, and holds for some brokers only.**
+- **1.** Done. Section 1 says "should come in that order on a broker that acknowledges first,
+  separated only by the time the message still needs to reach the consumer"; Section 3, "a small
+  positive margin"; Section 9, "which should come in that order where the broker acknowledges
+  first". The abstract no longer states a premise, because "should come in order" would be false
+  for Redis, whose delivery often came first.
+- **2.** Done. Section 2 gives each broker's order and says a broker may confirm a message only after
+  delivering it; S3.6 gives RabbitMQ's case. The sign check now states its premise, and Table 4
+  says what to check on a broker that delivers first. Pub/Sub and MQTT are not cited, since
+  RabbitMQ carries the point.
+- "Should almost always come in order", with the share: the premise is scoped per broker instead,
+  and Section 4.1 gives the shares.
+
+**B-M3. The fix: its scope, its validation and its lineage.**
+- The four mechanisms. Reads that drain several packets stay in Section 6, and block L measured
+  them: Kafka's reads drained more than one packet in 97% of reads at fifty messages a second and
+  75% at 2,000, Redis's almost never. The pull consumer's cadence and deferred receive processing
+  are added (A-M2). Two machines: Section 6 and Table 4's first row say the clocks must then be
+  synchronized well below the latency.
+- Applicability. Section 6 says "a Linux tool", gives the Java routes (A-M2, fix 1), says in step 4
+  that a tool finds each message by an identifier the benchmark puts in each payload, on a
+  connection without compression or encryption, and says a kernel-bypass stack has no kernel
+  timestamps at all.
+- The validation. Section 6 now says the agreement with the captures shows that the module matches
+  timestamps to messages, and that the network card's own timestamps, 6 to 20 µs earlier at the
+  median, bound how far the kernel's lie from the wire. Block P is the positive control: a delay
+  added on the broker's path to the consumer raised the kernel-timed latency 0.93 to 0.95 ms for
+  each millisecond added, and D 0.94 to 0.95. Its third prediction, that A's median would stay
+  within 10%, failed on A's run-to-run spread. The cost is measured (A-M2, fix 4).
+- The lineage. Lancet is credited for the same use of the interface beneath a request-reply
+  protocol, Fathom for the split at fleet scale, RFC 2330 and RFC 7679 for the definition, and the
+  kernel's documentation for the interface.
+- Fix 1, the scope statements. The abstract has "read on a tool's own Linux sockets", and "even
+  under load" is gone after L-b; "processor load" comes earlier, as B proposed. Section 6's lead
+  joins A's wording and B's: "in a Linux tool that can read its sockets' timestamps, at the rates
+  we tested". Fig. 5 says "at fifty messages a second", and Table 4's first row says "at fifty messages
+  a second" and gives the two-machine condition. "What a tool must handle" has the two added
+  mechanisms, and step 4 says how to find a message. The Java sentence follows B's. Section 9 now
+  says "On Linux a tool can" and "At fifty messages a second the kernel-timed latency held no
+  client thread's wait". Section 8's scope sentence names one pair of machines and one kernel, one partition,
+  background load on the client machine alone, and the producer and the consumer on one machine;
+  it says the stillness was judged at fifty messages a second only, and that on the second pair
+  Redis's latency rose 26%. The capture and card sentence is in.
+- Fix 2, the lineage sentences. Done, one in Section 6 at the four steps and one in Section 7,
+  claiming the reading "beneath unmodified broker clients, on the one-way path from producer to
+  consumer".
+- Fix 3, the measurements. Done: block P, and block L at 50, 500 and 2,000 messages a second. 5,000
+  was out of reach, because Redis's producer reached only 3,536 and 3,579 a second.
+
+**B-M4. The repair's error.** Done, as A-M4: fix 1 in Section 6's opening of the repair; fix 2 by
+recomputing as described; fix 3 by broker, 0.4% on Kafka and 14.6% on Redis; fix 4 in the figure
+now in S2.1, the groups table, its caption and S2.1. B's own recomputation, on the floored medians,
+gave 2.4% and 18.8%; from the messages' own medians the numbers are those printed.
+
+**B-M5. Which clients, which traffic and which load.**
+- **1.** Done. Section 2 names kafka-python and redis-py, with the Azure versions and
+  kafka-clients 3.9.0, and Table S2 gives the rest. The repository's `requirements.txt` pins the
+  development environment, not the cloud machines: the Oracle machines installed both libraries
+  unpinned, at versions no record keeps, and the Azure drivers ran kafka-python 2.3.2 and redis-py
+  7.4.1. Section 3 gives the Java client's rate as a third to a quarter of the Python client's,
+  and Section 8 says the same.
+- **2.** Done. Section 2: "as a sparse event feed does". Section 8: the publish rates measured, and
+  the laws not tested above fifty messages a second (A-M3).
+- **3.** Done: "It rises with processor load", in the abstract and in contribution 2.
+- **4.** Done. Section 2 says every publish latency carries whatever delays the reading of its
+  acknowledgment.
+
+**B-M6. The audit's frame and a count that survives its own choices.**
+- **1.** Done. Section 5.1 gives the strict counts (A-M5(c)), and Section 1 says that under the
+  strictest reading twelve still cut. S5 now tabulates the count under each exclusion; in every
+  reading all but one of the tools that cut count none of what they cut.
+- **2.** Done (A-M5(d)).
+- **3.** A statement only; left to the author (below).
+- **4.** Done: "the rest cannot see a separate receiving process's wait".
+- **5.** Done: "20 maintainers, 14 of them organizations".
+
+**B-M7. Pay by compressing Section V-B.** Done. Section 5.2 states the four tests with their
+outcomes in aggregate and names the worst failures: the Pravega benchmark exits as if the run had
+succeeded, the Pub/Sub load test's controller throws, and Quiver's unsigned subtraction wraps. The
+chronology is one clause, and Section 6 was not cut.
+
+#### Minor issues
+
+- **m1.** Done (A-M6, fix 4).
+- **m2.** Done (A-M5(b)).
+- **m3.** Done. "7–80" now appears only in Table 2 and Section 4.2. Sections 1 and 6 and Table 4
+  quote the smallest lower bound instead.
+- **m4.** Done. Fig. 3's caption says the runs set the slice by hand to 3 ms and the tick to 1 ms,
+  and that dividing by the share at 1 ms, a tick, puts every combination on one scale with nothing
+  fitted.
+- **m5.** Done: Section 2, Table S3, and Redis's consumer group named.
+- **m6.** The threshold sensitivity is in Section 4.2 (A-M6). The raw histograms of the second
+  traced campaign are copied from the archive into `docs/results/depth/ea9b/`, beside the first
+  campaign's, to be committed with this revision.
+- **m7.** Done. Section 4.3 gives the free reading at every hand-set slice, with slopes on s of 0.76
+  (Kafka) and 1.01 (Redis), beside the frozen verdict. S3.7 names run-to-parity. Block R ran the
+  condition with it off, and the rate and the delay did not move. Section 8 has the Linux 6.17
+  note.
+- **m8.** Done: "IP measurement randomizes probe times [RFC 2330, PASTA], since a periodic schedule
+  can synchronize with periodic behavior [RFC 3432], here the clock's step."
+- **m9.** Done (A-m19).
+- **m10.** Done.
+- **m11.** Done: a commit, and "Ubuntu backported".
+- **m12.** Done: "kernel timestamping".
+- **m13.** Done: "only while the delay before each reading is short beside the latency it
+  measures".
+- **m14.** Done: 2.1% and 5.9%.
+- **m15.** Done.
+- **m16.** Done. The commit that brought custom slices is cited, first released in v6.12, and
+  Section 6 says our 6.8 kernels lack the feature.
+- **m17.** Done: "in blocks whose predictions were fixed from the tools' sources and made public
+  before their runs".
+- **m18.** Done: "the client machine", and "The broker's machine carries none".
+- **m19.** Done: "the check is triggered only by the 8.8% on which it exceeds the whole".
+- **m20.** Done: "not measured directly, but dephased schedules keep Equation 5's retention".
+- **m21.** Done (A-m18).
+- **m22.** Done. Section 8 says the traced real-time configurations cannot test the trace check, and
+  Section 4.2 quotes the normal-priority rate.
+- **m23.** Done: "a broker benchmark whose end-to-end percentiles 43 public reports print".
+- **m24.** Done: the timestamps Kafka gives a record entering the input topic and its result
+  entering the output topic.
+- **m25.** Done, after Equation 1.
+- **m26.** Done: "In the registered change of message size (Supplement S4.3)".
+- **m27.** Done, both versions: a consumer that acknowledges back times two legs on one clock, and
+  recovering the two clocks' offset from logs is itself synchronization.
+- **m28.** Done. Section 8 says the Azure machines read the processor's timestamp counter, which
+  the kernel uses as its clock only where the counters agree across CPUs; S3.6 has a paragraph on
+  Hyper-V's clock and the Arm guests.
+- **m29.** Done, in steps 1 and 2 and in S3.10.
+- **m30.** Done: "Both moves lie inside the bands fixed before the runs, 10% and 25%."
+- **m31.** Done in S3.6 and S3.8. Zuo et al. are also cited in the paper (A-m32).
+- **m32.** Done: "on one host as a thread preempted after it read the clock", citing McKenney.
+- **m33.** Done: "the textbook decomposition of a wait, here read from the order of two clock
+  readings". The placement contrast still refutes the single-parameter law.
+- **m34.** The disclosure now names code development and verification, literature search, and "the
+  drafting and editing of text in every section, under the authors' direction and review". Its
+  final wording is left to the author (below).
+- **m35.** Done (A-M2, fix 4).
+- **m36.** Done. Section 3 adds the Yahoo Streaming Benchmark user who saw values below zero on one
+  machine and got the same answer.
+
+#### Figures and tables
+
+- **Fig. 1.** (a) The tool's two failures now sit below the consumer's box, as "a tool that reports
+  D in steps of τ and drops ≤ 0". (b) m is drawn. (c) t_rx,ack is marked.
+- **Fig. 2.** (a) The y axis reads "messages per 50 µs bin (log scale)". (b) A second panel draws
+  each run's rate against its client machine's utilization, by broker and priority.
+- **Table 1.** A column gives each span's smallest value: −99,786 µs for S, 220 for D, 230 for
+  t_out − t_pub, 112 for A and 467 for E.
+- **Table 2.** The pairs' smallest lower bounds are printed, and S3.1 has a forest plot of the eight
+  pairs on both brokers.
+- **Fig. 3.** (a) The twelve parts are thin lines with their median in bold (A asked for lines, B
+  for a median). (b) An inset shows the tail past 3 ms on a log scale. (c) The caption says why the
+  curves are divided at 1 ms.
+- **Table 3.** (a) Marks show disposals done by a script or notebook the project ships, and those
+  announced with a line per value or a crash. (b) The column became a mark in the one cell that
+  differs.
+- **Fig. 4.** Panel (b) marks the eight settings at incommensurate rates, 383 and 457 messages a
+  second, the two of the seven rates whose summaries were captured; Section 5.3 now defines the
+  word, and the legend no longer covers the 1 ms column.
+- **Table 4.** Rows 1, 3 and 7 changed as asked (B-M3, B-M4, m20).
+- **Fig. 5.** Redrawn on Fig. 1(b)'s four lanes: the producer's and the consumer's threads apart,
+  both waits, t_tx on the producer side, t_rx and t_rx,ack, and S_k.
+- **Fig. 6.** Brokers marked and dots recomputed, now in S2.1.
+- **Fig. S3.** Drawn in B's form (A's figure remarks).
+
+#### Statistics
+
+- **S1.** Noted.
+- **S2.** Done: the per-run medians by broker (Section 3), the picture (Fig. 2(b)), and the
+  understatement by broker (3.8 times on Kafka, 6.6 times on Redis).
+- **S3.** Done (A-m5).
+- **S4.** Done (B-M4).
+- **S5.** The sensitivity is in Section 4.2, and Section 4.2 says the agreement lies inside the
+  factor of three fixed before the trace was read.
+- **S6.** Done (A's statistics point 5).
+- **S7.** Noted.
+- **S8.** Marked where they remain (A's statistics point 2).
+- **S9.** The pictures asked for are drawn: Fig. 2(b), Fig. 3's lines, the forest plot and Fig. S3.
+
+#### The supplement
+
+- **U1.** Noted.
+- **U2.** Done (B-M4).
+- **U3.** Done: S3.6's last paragraph now reports block K.
+- **U4.** See A's supplement point 4.
+- **U5.** Done. A per-tool table names each tool's block by freeze and plan version, with the day it
+  began and its pair, and S5's account of the blocks points to it. The tool-by-tool stories of
+  version 9's Section V-B are in S5.
+- **U6.** Done. The captions of the tools-run table (S18 in version 9), the tracer table (S10) and
+  the law verdicts (S22) are cut to what a reader needs, and their rules moved into the text.
+- **U7.** Done.
+- **U8.** Done (B-M6).
+- **U9.** Done: OPT_ID_TCP and coalesced writes in S3.10, softirq processing in S3.9.
+- **U10.** The supplement gains S3.11, three tables and two figures; the shortened captions pay for
+  part of that.
+
+#### Typos
+
+- **t1.** Done: contribution 2 now says "at unchanged background load", as t1 asks, and defines
+  the term there, at its first use.
+- **t2.** Done.
+- **t3.** Superseded: the smallest value moved into Table 1's new column.
+- **t4.** Done.
+- **t5.** Done.
+- **t6.** Done, in A-m7's wording.
+- **t7.** Done.
+- **t8.** Done.
+- **t9.** Done: issue #216 carries an access date.
+- **t10.** Done.
+- **t11.** Done: the paper counts 20 maintainers, 14 of them organizations, and the registry
+  table's column is headed "maintainer".
+
+#### References
+
+- **RFC 7679 for Mytkowicz et al.** Done.
+- **The kernel's timestamping documentation for the KVM MSR documentation.** Done.
+- **Fathom for Cloudprofiler.** Done.
+- **McKenney for P4STA.** Done.
+- **The Redis Streams documentation for Index.dev.** Done.
+- **Lancet and RFC 2330 credited where used.** Done.
+- **RFC 3432 kept, cited for what it says.** Done.
+- **Supplement references.** Zuo et al. (S3.6, S3.8), the kernel's page on `ksoftirqd` (S3.9) and
+  its Hyper-V clocks page (S3.6) are cited. The Netdev talk is not, since Fathom itself is.
+
+#### Compliance
+
+- **Length, references and what counts.** 12 pages, 45 references.
+- **Biographies.** Unchanged; photos at the final files.
+- **Abstract.** 198 words, within the limit B set for any rewording.
+- **Index terms.** "Kernel timestamping" replaced "multithreading" (m12).
+- **Supplemental material, figures, review model, data and code, highlights, scope.** Unchanged and
+  compliant.
+- **Reference style.** The commit is labelled as one, and the repository entries carry access
+  dates.
+- **AI use.** See m34.
+- **Space.** Page 12 is now full; the revision found its room in Section 5.2 and Fig. 6.
+
+#### The 200-word abstract
+
+Adopted from B's version: "processor load", "a tool's own sockets", the fastest messages without
+"too", and "We give checks and measure what most buy". Not adopted: "should come in order", which
+block K showed false for Redis, and "even under load", which L-b did not support. The cause is now
+stated per broker. The abstract has 198 words.
+
+#### Where Report B departs from earlier advice
+
+1. **The abstract's wording.** Within the author's rules: no digits, no tool names, at most 200
+   words.
+2. **A new measurement.** Run, as freeze 41, with the optional ladder and positive control.
+3. **Fig. 3's inset.** Drawn. The stall histogram's axis is untouched.
+4. **The form of Equation 3.** The clause is added, and the single-parameter law stays refuted.
+5. **McKenney.** Cited for the one-host reading; no withdrawn framing returns.
+
+### Where the two reports disagree
+
+- **RFC 3432.** A asked that RFC 7679 replace it, since the point it was cited for, randomizing
+  probe times, is carried by RFC 2330 and PASTA. B asked that it stay, as prior art an earlier
+  round asked for, cited for its warning that a periodic schedule can synchronize with periodic
+  behavior. It stays, cited for that warning, and RFC 7679 took the place of Mytkowicz et al., as
+  B proposed.
+- **Zilberman et al.** A proposed them for P4STA's place; B proposed McKenney. McKenney took the
+  place. Zilberman et al. are cited in Supplement S3.9, because the paper is at TC's cap of 45, and
+  A itself allowed that slot to go to Fathom, spending it on the fix's lineage rather than on the
+  mechanism. In the paper, Zuo et al. carry the precedent of the wait at a measuring client.
+- **Zuo et al.** A wanted them in the paper; B, finding no free place, in the supplement. They are
+  in both: Rezolus left the paper with the tools that time no message, and Zuo et al. took its
+  place.
+- **Index.dev's replacement.** A preferred Confluent's 2020 post and offered the Redis
+  documentation; B proposed the documentation. We chose it, since it states its result in its own
+  text, measured on a millisecond clock.
+- **Fig. 3.** A asked for thin lines and B for a band with a median line. The parts are thin lines
+  with their median in bold.
+- **Fig. S3.** A asked for the rate against the margin over the slice, or one free curve per slice;
+  B for each halfway point against the slice. B's form was drawn, for the reason given above.
+- **Table 3's order.** A asked for alphabetical rows within each class; B framed its Table 3
+  requests so as not to re-sort the rows the author ordered on 15 October. Rows are alphabetical
+  within each disposal class, and the classes keep the author's order.
+- **The abstract's fix sentence.** A proposed "read on a tool's own Linux sockets ... even with
+  every core busy"; B, "readable on a tool's own sockets ... even under load", with "processor
+  load" earlier. The abstract takes A's "Linux sockets" and B's "processor load", and drops the
+  load clause after L-b.
+
+### Left to the author
+
+- **Whether and when to tell the tools' maintainers.** Section 5.1 and S5 say they had not yet been
+  told. Both referees asked, repeating a request of 6 October. Telling them, and how, and then
+  saying so in the paper, is the author's decision.
+- **The AI-use disclosure's wording in the Acknowledgment.** It now names the kinds of use and
+  "every section", and says the work was done under the authors' direction and review. Whether that
+  states the level of use as IEEE's policy asks is for the author to confirm.
+- **How `freezes/README.md` describes the history rewrites.** It now names all four (two on
+  15 September 2026, before freeze 01, and two on 5 October 2026) and what each check of a freeze's
+  order rests on. Whether to publish a map from old commit identifiers to new ones is the author's
+  decision.
+- **A record of the freezes dated by a third party.** GitHub keeps its push records for about
+  ninety days, and no archive dated by a third party holds a freeze yet. Whether and when to deposit
+  one, an archive snapshot or the next archived version, is the author's.
+- **The postmortem's S16.9, re-argued.** At the messages' own resolution no group's recovery is
+  exact; the exact recoveries were the 50 µs grid's, and all were Kafka's. Pooled, the shift
+  between the sign check's verdicts now excludes zero (3.7 points, 0.2 to 11.3), but that is the
+  brokers' mix: 20 of the 28 rejected groups are Redis's, and inside each broker the shift
+  contains zero (Kafka 0.16, −0.17 to 0.44; Redis 1.4, −6.5 to 6.5). S16.9, Section 6 and S2.1
+  now say so, and the 13 gates are re-pinned to it. The postmortem is the author's own, so the
+  rewrite is the author's to read.
+- **The abstract.** Its beats, pinned since the rebuild of 5 October, include "The cause is
+  scheduling". The revision states the cause per broker, as block K requires, names Linux, and
+  gives the fix without a rate, while the paper scopes it to fifty messages a second. The wording,
+  within 200 words and without digits, is the author's to approve.
+- **The count of maintainers.** "20 maintainers, 14 of them organizations" counts six people as
+  individuals and counts Pravega and Strimzi, which are projects, as organizations. The author may
+  wish to check that split.
 
 ## Settled non-requests
 

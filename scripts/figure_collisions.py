@@ -31,6 +31,14 @@ which is whether the reader's eye has to separate a glyph from a stroke.
 **Markers cut by a spine.** A scatter point drawn at the very edge of the axes is clipped by
 the frame, and half a marker reads as a plotting error rather than as data. Marker extent is
 in points and the axes are in pixels, so this is a question the data cannot answer.
+
+**Data under a legend** (15 Oct 2026). Every plotted bin, outline, data line and marker is
+tested against every legend's box, framed or not: an opaque legend hides what is under it and a
+frameless one sets its entries among the data. Fig. 2(a)'s legend had cut every peak flat and
+Fig. 4(b)'s had put its markers on the 1 ms column, and every check above passed both.
+
+**Labels cut by the canvas** (15 Oct 2026), for a figure saved whole rather than cropped, so
+that its file is exactly the width the page prints it at: `check(fig, stem, whole_canvas=True)`.
 """
 
 import io
@@ -585,6 +593,223 @@ def translucent_legends(fig):
     return out
 
 
+# --- plotted data under a legend's box ----------------------------------------------------
+#
+# 15 Oct 2026, two internal image reviews: Fig. 2(a)'s opaque legend hid the peaks of both
+# brokers' distributions and the top of D's, cutting every outline flat at its lower edge so
+# that the top read as a plateau, and Fig. 4(b)'s frameless legend set its three markers on the
+# 1 ms data column, one of them over the lowest retention, where each read as a datum. Every
+# check above passed both. They ask whether ink lands on a *label*, and an opaque legend's own
+# entries are exempt from the reference-line check because its frame breaks the line there,
+# which is what the frame is for. Nothing asked whether the frame, or a frameless legend's
+# entries, sat on the data. This does: every plotted bin, outline, data line and marker is
+# tested against every legend's box.
+
+#: How far a mark may reach into a legend's box, in pixels at the figure's dpi, before it is
+#: under it: a stroke grazing the frame's edge is antialiasing, not hidden data.
+LEGEND_EDGE_PX = 1.0
+
+#: How much of a marker's radius must lie inside a legend's box, on both axes, for the marker
+#: to count as under it: the fraction `markers_clipped_by_axes` uses for the frame.
+LEGEND_MARKER_FRAC = 0.35
+
+
+def _all_axes(fig):
+    """Every visible axes, with each one's insets, which `fig.axes` does not list."""
+    out = []
+    for ax in fig.axes:
+        if ax.get_visible():
+            out.append(ax)
+            out.extend(c for c in getattr(ax, "child_axes", []) if c.get_visible())
+    return out
+
+
+def _legend_boxes(fig, renderer):
+    """(legend, display box, first entry's text) for every visible legend, axes' and figure's."""
+    found = [ax.get_legend() for ax in _all_axes(fig)] + list(fig.legends)
+    out = []
+    for legend in found:
+        if legend is None or not legend.get_visible():
+            continue
+        texts = [t.get_text() for t in legend.get_texts()]
+        out.append((legend, legend.get_window_extent(renderer), texts[0] if texts else ""))
+    return out
+
+
+def _region(box, artist, inset=LEGEND_EDGE_PX):
+    """The part of a legend's box an artist could be drawn in: the box less its edge, cut to
+    the artist's clip box, since a line clipped by the axes is not drawn beyond them. None if
+    nothing is left."""
+    x0, y0, x1, y1 = box.x0 + inset, box.y0 + inset, box.x1 - inset, box.y1 - inset
+    if artist.get_clip_on() and artist.get_clip_box() is not None:
+        clip = artist.get_clip_box()
+        x0, y0 = max(x0, clip.x0), max(y0, clip.y0)
+        x1, y1 = min(x1, clip.x1), min(y1, clip.y1)
+    if x1 <= x0 or y1 <= y0:
+        return None
+    return x0, y0, x1, y1
+
+
+def _segments_through(points, region):
+    """How many of a polyline's segments pass through the region (Liang-Barsky, vectorized).
+
+    Non-finite vertices break the polyline, as matplotlib draws it: no segment touches one.
+    """
+    pts = np.asarray(points, dtype=float)
+    if len(pts) < 2:
+        return 0
+    a, b = pts[:-1], pts[1:]
+    ok = np.isfinite(a).all(axis=1) & np.isfinite(b).all(axis=1)
+    a, b = a[ok], b[ok]
+    x0, y0, x1, y1 = region
+    dx, dy = b[:, 0] - a[:, 0], b[:, 1] - a[:, 1]
+    lo, hi = np.zeros(len(a)), np.ones(len(a))
+    inside = np.ones(len(a), dtype=bool)
+    for p, q in ((-dx, a[:, 0] - x0), (dx, x1 - a[:, 0]),
+                 (-dy, a[:, 1] - y0), (dy, y1 - a[:, 1])):
+        flat = p == 0
+        inside &= ~(flat & (q < 0))
+        with np.errstate(divide="ignore", invalid="ignore"):
+            r = np.where(flat, 0.0, q / np.where(flat, 1.0, p))
+        lo = np.where(~flat & (p < 0), np.maximum(lo, r), lo)
+        hi = np.where(~flat & (p > 0), np.minimum(hi, r), hi)
+    return int((inside & (lo < hi)).sum())
+
+
+def _polylines(path):
+    """A path's vertices, split into the polylines its MOVETO codes start (matplotlib refuses
+    a path whose codes do not open with one)."""
+    verts = np.asarray(path.vertices, dtype=float)
+    if path.codes is None:
+        return [verts]
+    starts = [i for i, code in enumerate(path.codes) if code == path.MOVETO]
+    return [verts[a:b] for a, b in zip(starts, starts[1:] + [len(verts)])]
+
+
+def _plotted_marks(ax, fig, renderer):
+    """Every plotted mark on an axes, as (kind, label, artist, geometry in display pixels).
+
+    Bins are the bars of a bar container and the outlines of `stairs`. Data lines are the lines
+    drawn in data coordinates on both axes, steps included; a rule drawn with `axhline` or
+    `axvline` spans the panel by design and is a reference, not data. Markers are a line's and a
+    scatter's, each with its radius.
+    """
+    from matplotlib.container import BarContainer
+    from matplotlib.patches import StepPatch
+    marks = []
+    for container in ax.containers:
+        if not isinstance(container, BarContainer):
+            continue
+        boxes = [p.get_window_extent(renderer) for p in container.patches
+                 if p.get_visible() and p.get_height()]
+        if boxes:
+            marks.append(("bars", container.get_label(), container.patches[0],
+                          [(b.x0, b.y0, b.x1, b.y1) for b in boxes]))
+    for patch in ax.patches:
+        if isinstance(patch, StepPatch) and patch.get_visible():
+            # transform_path, not Path.to_polygons(transform): the latter applies only the
+            # affine part, so on a log axis every outline came out linear and missed the box.
+            marks.append(("outline", patch.get_label(), patch,
+                          _polylines(patch.get_transform().transform_path(patch.get_path()))))
+    for line in ax.lines:
+        if not line.get_visible() or len(line.get_xydata()) == 0:
+            continue
+        if line.get_linestyle() not in ("None", "none", "", " ") \
+                and line.get_transform() is ax.transData:
+            verts = line.get_transform().transform(line.get_path().vertices)
+            marks.append(("line", line.get_label(), line, [verts]))
+        if line.get_marker() not in ("", "None", "none", None, " "):
+            centres = line.get_transform().transform(np.asarray(line.get_xydata(), float))
+            marks.append(("markers", line.get_label(), line,
+                          (centres, float(line.get_markersize()) / 2.0 * fig.dpi / 72.0)))
+    for coll in ax.collections:
+        if not coll.get_visible() or not hasattr(coll, "get_sizes"):
+            continue
+        offsets, sizes = coll.get_offsets(), coll.get_sizes()
+        if offsets is None or len(offsets) == 0 or sizes is None or len(sizes) == 0:
+            continue
+        centres = coll.get_offset_transform().transform(np.asarray(offsets, dtype=float))
+        marks.append(("markers", coll.get_label(), coll,
+                      (centres, float(np.sqrt(np.max(sizes))) / 2.0 * fig.dpi / 72.0)))
+    return marks
+
+
+def _count_under(kind, geometry, region):
+    """How many of one artist's marks lie under a region."""
+    x0, y0, x1, y1 = region
+    if kind == "markers":
+        centres, r = geometry
+        c = np.asarray(centres, dtype=float).reshape(-1, 2)
+        c = c[np.isfinite(c).all(axis=1)]
+        dx = np.minimum(c[:, 0] + r, x1) - np.maximum(c[:, 0] - r, x0)
+        dy = np.minimum(c[:, 1] + r, y1) - np.maximum(c[:, 1] - r, y0)
+        reach = LEGEND_MARKER_FRAC * max(r, 0.5)
+        return int(((dx > reach) & (dy > reach)).sum())
+    if kind == "bars":
+        b = np.asarray(geometry, dtype=float)
+        dx = np.minimum(b[:, 2], x1) - np.maximum(b[:, 0], x0)
+        dy = np.minimum(b[:, 3], y1) - np.maximum(b[:, 1], y0)
+        return int(((dx > 0) & (dy > 0)).sum())
+    return sum(_segments_through(poly, region) for poly in geometry)
+
+
+def data_under_legends(fig):
+    """Plotted bins, outlines, data lines and markers that a legend's box sits on, worst first.
+
+    An opaque legend hides what is under it, and a frameless one sets its entries among the
+    data, where a legend marker reads as one more datum. Either way the legend belongs where
+    nothing is plotted, so the box is the same test for both: the frame's box, drawn or not.
+    """
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    out = []
+    probed = 0
+    legends = _legend_boxes(fig, renderer)
+    if legends:
+        marks = [m for ax in _all_axes(fig) for m in _plotted_marks(ax, fig, renderer)]
+        for legend, box, first in legends:
+            for kind, label, artist, geometry in marks:
+                region = _region(box, artist)
+                if region is None:
+                    continue
+                probed += 1
+                n = _count_under(kind, geometry, region)
+                if n:
+                    out.append({"legend": first, "kind": kind, "n": n,
+                                "label": "" if str(label).startswith("_") else str(label)})
+    _record_probe("covered", probed)
+    out.sort(key=lambda d: -d["n"])
+    return out
+
+
+def texts_cut_by_canvas(fig, tolerance_px=0.5):
+    """Labels that run off the canvas.
+
+    A figure saved with a tight crop keeps whatever overhangs its canvas, so for it nothing
+    is lost. A figure saved whole, so that the file is exactly the width the page prints it at
+    and is neither enlarged nor shrunk (15 Oct 2026), is cut at the canvas edge, and a label
+    that stands past it loses its last letters with every other gate green.
+    """
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    out = []
+    texts = _visible_texts(fig)
+    for t in texts:
+        try:
+            bb = _glyph_box(t, renderer)
+        except Exception:
+            continue
+        if bb.width <= 0 or bb.height <= 0:
+            continue
+        over = max(fig.bbox.x0 - bb.x0, bb.x1 - fig.bbox.x1,
+                   fig.bbox.y0 - bb.y0, bb.y1 - fig.bbox.y1)
+        if over > tolerance_px:
+            out.append({"text": " ".join((t.get_text() or "").split())[:40],
+                        "over_px": round(float(over), 1)})
+    _record_probe("cut", len(texts))
+    return out
+
+
 def markers_clipped_by_axes(fig, tolerance_frac=0.35):
     """Scatter points whose marker is cut by the axes frame.
 
@@ -619,24 +844,31 @@ def markers_clipped_by_axes(fig, tolerance_frac=0.35):
     return out
 
 
-def report(fig):
-    """All three checks as data, for callers that want to look rather than fail."""
+def report(fig, whole_canvas=False):
+    """Every check as data, for callers that want to look rather than fail.
+
+    `whole_canvas` is for a figure saved without a crop, whose file is its canvas: it adds the
+    check for labels the canvas edge cuts, which a cropped figure cannot suffer.
+    """
     LAST_PROBE.clear()
     found = {"struck": text_struck_by_ink(fig),
              "overlapping": texts_overlapping(fig),
              "clipped": markers_clipped_by_axes(fig),
              "crossed": reference_lines_through_text(fig),
              "erased": label_patches_over_spines(fig),
-             "translucent": translucent_legends(fig)}
+             "translucent": translucent_legends(fig),
+             "covered": data_under_legends(fig)}
+    if whole_canvas:
+        found["cut"] = texts_cut_by_canvas(fig)
     # Beside the verdicts, what each verdict was reached from. A caller that wants to know
     # whether "no collisions" means anything reads this.
     found["probed"] = probe_counts()
     return found
 
 
-def check(fig, stem=""):
+def check(fig, stem="", whole_canvas=False):
     """Every check, raising with everything needed to find the defect on the page."""
-    found = report(fig)
+    found = report(fig, whole_canvas=whole_canvas)
     if not any(v for k, v in found.items() if k != "probed"):
         return
     lines = ["%s: layout collisions" % (stem or "figure")]
@@ -661,4 +893,13 @@ def check(fig, stem=""):
                      "its %d entries shows through as a ghost -- set framealpha=1.0, or "
                      "frameon=False if seeing through it is the point"
                      % (d["alpha"], d["entries"]))
+    for d in found["covered"]:
+        lines.append("  plotted data under a legend: %d %s of %s under the legend that begins "
+                     "%r -- move the legend where nothing is plotted"
+                     % (d["n"], {"bars": "bars", "outline": "outline segments",
+                                 "line": "line segments", "markers": "markers"}[d["kind"]],
+                        repr(d["label"]) if d["label"] else "an unlabelled series", d["legend"]))
+    for d in found.get("cut", ()):
+        lines.append("  label cut by the canvas edge: %r runs %.1f px past it, and a figure "
+                     "saved whole loses what overhangs" % (d["text"], d["over_px"]))
     raise FigureCollision("\n".join(lines))

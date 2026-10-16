@@ -170,7 +170,9 @@ class TestR2TheSliceIsMeasuredAgainstTheDelivery:
         # 5 Oct 2026: the rebuilt Section IV-C defines the slice in its first sentence and
         # sets it against the delivery in its third paragraph, "A whole slice is ... times the
         # per-condition median end-to-end latencies we measured"; the anchor is that sentence.
-        assert re.search(r"waits\s+out\s+what\s+is\s+left\s+of\s+that\s+thread's", paper), \
+        # 16 Oct 2026: "that thread's" read as the woken thread's; the sentence now names it.
+        assert re.search(r"waits\s+out\s+what\s+is\s+left\s+of\s+the\s+running\s+thread's",
+                         paper), \
             "the slice is no longer the rest of the running thread's"
         i = re.search(r"A\s+whole\s+slice\s+is\s+\$" + RE_BS + r"sliceOverDeliveryLo", paper).start()
         passage = " ".join(paper[i:i + 420].split())
@@ -198,7 +200,10 @@ class TestR2TheSliceIsMeasuredAgainstTheDelivery:
         """
         flat = " ".join(paper.split())
         start = flat.index("label{sec:extcomp}")
-        sub = flat[start:flat.index(chr(92) + "subsection{", start)]
+        # 15 Oct 2026: the subsection is Section V's last, so it ends at the next section.
+        ends = [k for k in (flat.find(chr(92) + "subsection{", start),
+                            flat.find(chr(92) + "section{", start)) if k > 0]
+        sub = flat[start:min(ends)]
         i = sub.index("holds where it can be tested")
         assert chr(92) + "spreadIncommensurateTrueMs" in sub[i:i + 420], (
             "the claim is quantitative now: retention names the fraction, where the old "
@@ -279,10 +284,12 @@ class TestRecommendedItems:
                 "%s's factor is back in the paper; its bracket is S3.1's" % stem)
         s31 = " ".join(journal[journal.index("subsection{S3.1."):
                                journal.index("subsection{S3.2.")].split())
-        assert "Katz $95" in s31, "S3.1 names what the brackets are"
+        # 15 Oct 2026, both referees of version 9 (P9): S3.1's brackets resample whole runs, and
+        # the message-level Katz intervals and z left it; the postmortem keeps them.
+        assert "resampling whole runs, its $95" in s31, "S3.1 names what the brackets are"
         for stem in ("rtLow", "rtHigh"):
-            assert ("$[" + chr(92) + stem + "FactorCI]$") in s31, stem
-            assert ("$z=" + chr(92) + stem + "Z$") in s31, stem
+            assert ("$[" + chr(92) + stem + "FactorRunCI]$") in s31, stem
+            assert ("$z=" + chr(92) + stem + "Z$") not in s31, stem
         # The interval sat on the pair's second row rather than beside the factor: the
         # multirow cell already spanned both, so it cost no column width. Widening the cell
         # instead overfull-ed the table by 47pt, which is how that arrangement was found.
@@ -395,7 +402,10 @@ class TestRecommendedItems:
         assert "redrawing" in passage, "the row's own claim is about how figures travel"
 
     def test_the_bibliography_nits_are_closed(self):
-        bib = (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
+        # 15 Oct 2026: the entry moved to postmortem_references.bib, since only the postmortem
+        # cites it now (the shared file holds what the paper or the supplement cites).
+        bib = ((REPO / "manuscript_references.bib").read_text(encoding="utf-8") + "\n\n"
+               + (REPO / "postmortem_references.bib").read_text(encoding="utf-8"))
         assert "arXiv:2605.24217v2" not in bib, "no other entry carries a version suffix"
         i = bib.index("@misc{indexdev2026brokers")
         entry = bib[i:bib.index("}\n\n", i)]
@@ -502,10 +512,8 @@ class TestEveryTypedNumeralInTheMainTextIsADecision:
         "1.5": "the law campaign's registered bound on Python's rate over Java's "
                "(prediction P8), a threshold fixed in the plan before its runs and quoted "
                "from it; what the runs measured, 3.25 and 4.25, is the supplement's S6.2",
-        # 6 Oct 2026: two more thresholds fixed before their runs
-        "0.5": "the kernel trace's threshold, compiled into its probe as the counter "
-               "over_500us before the traced runs; the margin it stands for is a design "
-               "choice, not a result",
+        # 6 Oct 2026: two more thresholds fixed before their runs. 15 Oct 2026: the trace's
+        # 0.5 ms left the main text, which quotes the threshold table's range instead.
         "90": "the registered share prediction A9-1 asked of readings below zero mostly spent "
               "waiting, fixed in the plan before its runs; what the runs gave is emitted",
         "0": "the subscript of s_0, the name of the kernel's per-CPU slice constant",
@@ -515,8 +523,7 @@ class TestEveryTypedNumeralInTheMainTextIsADecision:
         "32": "a payload size the sweep set, naming the configuration whose registered pin "
               "failed in Section VIII",
         # statistical conventions, not measurements
-        "95": "the confidence level of the two Katz brackets, which is a convention and not a "
-              "result",
+        "95": "the confidence level of the brackets, which is a convention and not a result",
         # evaluation points and the form of a law, not measurements
         "1": "an evaluation point on the exposure curve, and the numerator of the 1/D by "
              "which the publish latency's relative error falls",
@@ -525,11 +532,8 @@ class TestEveryTypedNumeralInTheMainTextIsADecision:
         "0.35": "the one latency panel (a) of the deletion figure draws at four phases, a "
                 "constant of make_paper_figures.plot_phases chosen so that three phases are "
                 "deleted and one kept; an illustration, not a measurement",
-        # 12 Oct 2026, with freeze 37: the arithmetic of an integer, not a measurement
-        "1.8": "2^64 ms to two figures, what an unsigned 64-bit subtraction makes of a value "
-               "just below zero, as Quiver's summary subtracts; a property of its integers, "
-               "not a result, and that its maximum passed 10^18 ms in every run under the "
-               "offsets is checked by emit_paper_numbers.quiver_block_macros",
+        # 12 Oct 2026, with freeze 37: Quiver's 2^64 ms. 15 Oct 2026: the sentence left the
+        # main text with the cuts for the Computer Society layout; Table III gives 10^19 ms.
         # "1.0" and "2.0" left this inventory in round 76: the grid values are now emitted
         # (`ombGridPrintedLo`, `ombGridPrintedHi`) from the same rows Figure 4's ticks are drawn
         # from, so neither is typed anywhere in the main text any longer.
@@ -624,6 +628,9 @@ class TestEveryWordSpelledQuantityIsADecisionToo:
                 "its 5th to 95th percentile over runs; fixed by how workload_macros computes "
                 "the range, not a measurement",
         "ten": "the same share's denominator, nine runs out of ten",
+        # 15 Oct 2026, the v9 response
+        "fifty": "the publish rate freezes 39 to 41 set for the blocks that tested the fix "
+                 "and the order of arrivals, a design setting rather than a measurement",
     }
 
     def _word_macros(self):

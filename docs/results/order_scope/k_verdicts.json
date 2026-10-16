@@ -1,0 +1,214 @@
+{
+  "K-a": {
+    "checks": [
+      {
+        "Sk_negative_share": 0.0006014434643143544,
+        "holds": true,
+        "negatives": 4024,
+        "order_share": 0.002485089463220676,
+        "setup": "K-kafka-l88-ord"
+      },
+      {
+        "Sk_negative_share": 0.054029671210906176,
+        "holds": true,
+        "negatives": 60,
+        "order_share": 0.08333333333333333,
+        "setup": "K-kafka-l88-rt"
+      }
+    ],
+    "verdict": "confirmed"
+  },
+  "K-b": {
+    "checks": [
+      {
+        "Sk_negative_share": 0.8334001603849238,
+        "holds": true,
+        "negatives": 5160,
+        "order_share": 1.0,
+        "setup": "K-redis-l0-rt"
+      },
+      {
+        "Sk_negative_share": 0.33580593424218125,
+        "holds": true,
+        "negatives": 4098,
+        "order_share": 0.9980478282088824,
+        "setup": "K-redis-l88-rt"
+      }
+    ],
+    "described": [
+      {
+        "Sk_negative_share": 0.023255813953488372,
+        "negatives": 13,
+        "order_share": 0.23076923076923078,
+        "setup": "K-kafka-l0-ord"
+      },
+      {
+        "Sk_negative_share": 0.006248329323710238,
+        "negatives": 19,
+        "order_share": 0.05263157894736842,
+        "setup": "K-kafka-l0-rt"
+      },
+      {
+        "Sk_negative_share": 0.0006014434643143544,
+        "negatives": 4024,
+        "order_share": 0.002485089463220676,
+        "setup": "K-kafka-l88-ord"
+      },
+      {
+        "Sk_negative_share": 0.054029671210906176,
+        "negatives": 60,
+        "order_share": 0.08333333333333333,
+        "setup": "K-kafka-l88-rt"
+      },
+      {
+        "Sk_negative_share": 0.6502606255012029,
+        "negatives": 1545,
+        "order_share": 0.997411003236246,
+        "setup": "K-redis-l0-ord"
+      },
+      {
+        "Sk_negative_share": 0.8334001603849238,
+        "negatives": 5160,
+        "order_share": 1.0,
+        "setup": "K-redis-l0-rt"
+      },
+      {
+        "Sk_negative_share": 0.8329657845495857,
+        "negatives": 12,
+        "order_share": 0.8333333333333334,
+        "setup": "K-redis-l0-rt-w1"
+      },
+      {
+        "Sk_negative_share": 0.8334001603849238,
+        "negatives": 5243,
+        "order_share": 0.9506008010680908,
+        "setup": "K-redis-l88-ord"
+      },
+      {
+        "Sk_negative_share": 0.33580593424218125,
+        "negatives": 4098,
+        "order_share": 0.9980478282088824,
+        "setup": "K-redis-l88-rt"
+      },
+      {
+        "Sk_negative_share": 0.6607190590751136,
+        "negatives": 19,
+        "order_share": 0.7894736842105263,
+        "setup": "K-redis-l88-rt-w1"
+      }
+    ],
+    "verdict": "confirmed"
+  },
+  "K-c": {
+    "checks": [
+      {
+        "backend": "kafka",
+        "busy": 3886.739825000002,
+        "holds": true,
+        "idle": 228.8752300000001,
+        "rt": 274.0420100000001
+      },
+      {
+        "backend": "redis",
+        "busy": 3166.7083800000005,
+        "holds": true,
+        "idle": 105.50858500000001,
+        "rt": 94.44155
+      }
+    ],
+    "verdict": "confirmed"
+  },
+  "K-d": {
+    "checks": [
+      {
+        "falls": false,
+        "holds": false,
+        "judged_bins": 5,
+        "setup": "K-kafka-l88-ord",
+        "within": true
+      },
+      {
+        "falls": false,
+        "holds": false,
+        "judged_bins": 5,
+        "setup": "K-redis-l88-ord",
+        "within": true
+      }
+    ],
+    "described": [],
+    "verdict": "not confirmed"
+  },
+  "K-e": {
+    "decision": [
+      {
+        "load_pct": 0,
+        "order_share_one_worker": 0.8333333333333334,
+        "rate_one_worker": 0.00040096230954290296,
+        "rate_sixteen": 0.014434643143544507,
+        "the_lock_sets_it": true
+      },
+      {
+        "load_pct": 88,
+        "order_share_one_worker": 0.7894736842105263,
+        "rate_one_worker": 0.0006014434643143544,
+        "rate_sixteen": 0.00040096230954290296,
+        "the_lock_sets_it": false
+      }
+    ]
+  },
+  "K-v": {
+    "checks": [
+      {
+        "holds": true,
+        "median_us": 0.0,
+        "setup": "K-kafka-l0-ord"
+      },
+      {
+        "holds": true,
+        "median_us": 0.0,
+        "setup": "K-kafka-l0-rt"
+      },
+      {
+        "holds": true,
+        "median_us": 0.0,
+        "setup": "K-kafka-l88-ord"
+      },
+      {
+        "holds": true,
+        "median_us": 0.0,
+        "setup": "K-kafka-l88-rt"
+      },
+      {
+        "holds": true,
+        "median_us": 0.0,
+        "setup": "K-redis-l0-ord"
+      },
+      {
+        "holds": true,
+        "median_us": 0.0,
+        "setup": "K-redis-l0-rt"
+      },
+      {
+        "holds": true,
+        "median_us": 0.0,
+        "setup": "K-redis-l0-rt-w1"
+      },
+      {
+        "holds": true,
+        "median_us": 0.0,
+        "setup": "K-redis-l88-ord"
+      },
+      {
+        "holds": true,
+        "median_us": 0.0,
+        "setup": "K-redis-l88-rt"
+      },
+      {
+        "holds": true,
+        "median_us": 0.0,
+        "setup": "K-redis-l88-rt-w1"
+      }
+    ],
+    "verdict": "confirmed"
+  }
+}

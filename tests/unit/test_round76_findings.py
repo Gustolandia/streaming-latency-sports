@@ -105,14 +105,25 @@ def _rendered(name):
 class TestR1EveryStatedQuantityCarriesItsUncertainty:
 
     def test_the_shift_is_emitted_with_an_interval(self, ledger):
+        """15 Oct 2026: the pooled interval excludes zero at native resolution, and S16.9 says
+        so and reads it as the brokers' mix; the claim that no shift can be detected moved to
+        the shift inside each broker, whose interval is emitted beside it and must contain zero.
+        Until then this pinned the pooled interval to contain zero, S16.9's reading of the
+        50 us grid's estimator."""
         assert "recoveryShiftCI" in ledger, (
             "the shift is quoted bare; Section VIII-A's shift is not")
         lo, hi = (float(v) for v in
                   ledger["recoveryShiftCI"].replace("$ to $", " ").split())
-        assert lo < 0.0 < hi, (
-            "the interval no longer contains zero, so 'the populations do not [differ]' "
-            "has to be re-argued rather than re-emitted")
-        assert lo < float(ledger["recoveryShift"]) < hi
+        assert 0.0 < lo < float(ledger["recoveryShift"]) < hi, (
+            "the pooled interval contains zero again, so S16.9's 'an interval that excludes "
+            "zero' has to be re-argued rather than re-emitted")
+        for broker in ("Kafka", "Redis"):
+            blo, bhi = (float(v) for v in
+                        ledger["recovery%sShiftCI" % broker].replace("$ to $", " ").split())
+            assert blo < 0.0 < bhi, (
+                "%s's interval no longer contains zero, so 'within either broker, no shift can "
+                "be detected' has to be re-argued rather than re-emitted" % broker)
+            assert blo < float(ledger["recovery%sShift" % broker]) < bhi
 
     def test_both_exact_shares_are_emitted_with_wilson_intervals(self, ledger):
         for side in ("Pass", "Fail"):
@@ -178,22 +189,35 @@ class TestR1EveryStatedQuantityCarriesItsUncertainty:
 
 
 class TestW1TheMediansCross:
+    """15 Oct 2026: the crossing this class pinned was the 50 us grid's. With the grid's exact
+    recoveries removed, the accepted groups' median stood above the rejected ones', a crossing
+    of two medians that round 77 showed to be the same artifact as the gap. At native
+    resolution no group recovers exactly, so the non-zero populations are the whole
+    populations and their medians, counts and shift are no longer emitted. What S16.9 sets
+    beside the two pooled verdicts now is each broker's two verdicts, whose counts its table
+    prints; the tests below hold that, each in place of the one it replaces."""
 
-    def test_the_crossing_is_emitted(self, ledger):
-        a = float(ledger["recoveryErrPassNonzero"])
-        b = float(ledger["recoveryErrFailNonzero"])
-        assert a > b, (
-            "with the exact recoveries removed the accepted conditions were the worse of "
-            "the two; if that has reversed, Section V-D's clause must change with it")
+    def test_the_non_zero_split_went_with_the_pile(self, ledger):
+        """Was `test_the_crossing_is_emitted`, which read the non-zero medians."""
+        import stat_intervals
+        assert not [n for n in ledger if n.startswith("recovery") and "Nonzero" in n], (
+            "a non-zero split is emitted again; at native resolution it is the whole population")
+        pops = stat_intervals.recovery_populations()
+        assert all(v > 0.0 for p in pops.values() for v in p), (
+            "a group recovers exactly again, and S16.9's 'No group recovers exactly' is false")
         assert float(ledger["recoveryErrFail"]) > float(ledger["recoveryErrPass"]), (
-            "and the ordering with them included is the opposite one, which is the point")
+            "pooled, the rejected groups' median is the higher, which S16.9 reads as the mix")
 
     def test_the_denominators_are_emitted_beside_the_medians(self, ledger):
+        """The table's counts add up both ways: each verdict's over the brokers, and each
+        broker's over the verdicts. Until 15 Oct 2026 this held the non-zero counts to each
+        verdict's count less its exact recoveries."""
         for side in ("Pass", "Fail"):
-            n = int(ledger["recovery%sNonzeroN" % side])
-            total = int(ledger["recovery%sN" % side])
-            exact = round(float(ledger["recovery%sExact" % side]) / 100.0 * total)
-            assert n == total - exact, "%s: %d != %d - %d" % (side, n, total, exact)
+            assert (int(ledger["recoveryKafka%sN" % side]) + int(ledger["recoveryRedis%sN" % side])
+                    == int(ledger["recovery%sN" % side])), side
+        for broker in ("Kafka", "Redis"):
+            assert (int(ledger["recovery%sPassN" % broker]) + int(ledger["recovery%sFailN" % broker])
+                    == int(ledger["recovery%sN" % broker])), broker
 
     def test_the_main_text_states_it(self, paper, supplement):
         """v5 (28 Sep): the non-zero shift left Section V-D with the rest of its statistics
@@ -203,17 +227,30 @@ class TestW1TheMediansCross:
         # non-zero populations is 0.0, so "crosses it" read a reversal into no shift at
         # all. The main text now states the shift; the medians stay in S16.9 as description.
         # Round 78 (R1): and states it as undetectable, not as absent.
+        # 15 Oct 2026: what cannot be detected is a shift inside either broker, so the two
+        # brokers' shifts stand where the non-zero shift stood.
         s = _s169(supplement)
         assert "no shift can be detected" in s and "crosses it" not in s
-        assert BS + "recoveryNonzeroShift$" in s
+        assert BS + "recoveryKafkaShift$" in s and BS + "recoveryRedisShift$" in s
         assert "crosses it" not in _section_iii_d(paper)
 
     def test_the_supplement_states_it_with_both_denominators(self, supplement):
+        """15 Oct 2026: S16.9 no longer reports the medians as crossing, since the non-zero
+        populations they were the medians of are gone; its table prints the count of every
+        broker's two verdicts instead."""
         section = _s169(supplement)
-        assert "they happen" in section and "to cross" in section, (
-            "the medians are still reported as crossing, as description only (round 77)")
-        for name in ("recoveryPassNonzeroN", "recoveryFailNonzeroN"):
-            assert BS + name in section, name
+        assert "happen to cross" not in section, "a crossing of medians is no finding (round 77)"
+        # Read in the table itself: the caption prints the cells' counts too, and a count typed
+        # into the table would hide behind it (tabular bodies are masked by the ledger gate).
+        table = section[section.index(BS + "begin{tabular}"):section.index(BS + "end{tabular}")]
+        for name in ("Pass", "Fail", "Kafka", "Redis", "KafkaPass", "KafkaFail", "RedisPass",
+                     "RedisFail"):
+            assert re.search(re.escape(BS + "recovery" + name + "N") + r"(?![A-Za-z])",
+                             table), name
+        # And no cell typed by hand: once the macros are taken out, the only digit left is the
+        # one in the column head "Q3".
+        typed = re.sub(re.escape(BS) + r"[A-Za-z]+", "", table).replace("Q3", "")
+        assert not re.search(r"\d", typed), re.findall(r"[^&]*\d[^&]*", typed)
 
 
 class TestW2NeitherDocumentImpliesTheRejectedNeverRecoverExactly:
@@ -226,9 +263,14 @@ class TestW2NeitherDocumentImpliesTheRejectedNeverRecoverExactly:
             "the one-sided clause is what invited the wrong reading")
 
     def test_the_supplement_says_both_shares_out_loud(self, supplement):
+        """15 Oct 2026: on the 50 us grid both verdicts had exact recoveries, and S16.9 said
+        "The rejected conditions recover exactly as well". At native resolution neither has
+        any, and S16.9 says that of both in one sentence, which is still both shares out loud."""
         section = _s169(supplement)
         assert BS + "recoveryPassExact" in section and BS + "recoveryFailExact" in section
-        assert "The rejected conditions recover exactly as well" in section
+        assert re.search(r"No group recovers exactly, neither among the \$" + re.escape(BS)
+                         + r"recoveryPassN\$ accepted.*?nor among the \$" + re.escape(BS)
+                         + r"recoveryFailN\$ rejected", section)
 
     def test_the_defect_that_prompted_this_is_caught(self, paper):
         """Mutation: put the one-sided clause back and the gate must fire.
@@ -238,9 +280,12 @@ class TestW2NeitherDocumentImpliesTheRejectedNeverRecoverExactly:
 
         5 Oct 2026: that sentence was cut too; the clause is put back after the last number
         of the rebuilt recovery paragraph (Section VI-B), its rejected population's upper
-        quartile."""
+        quartile.
+
+        15 Oct 2026: the paragraph quotes the recovery by broker, and its last number is
+        Redis's upper quartile, after which the clause is put back."""
         bad, n = re.subn(
-            r"\$" + re.escape(BS) + r"recoveryErrFailHi" + re.escape(BS) + r"%\$",
+            re.escape(BS) + r"recoveryErrRedisHi(?![A-Za-z])(?:" + re.escape(BS) + r"%)?\$?",
             lambda m: m.group(0) + ", and $" + BS + "recoveryPassExact" + BS + "%$ of the "
             "passing conditions recover the delivery exactly", paper)
         assert n == 1, "Section VI-B has been reworded; retarget this mutation"
@@ -252,12 +297,17 @@ class TestTheShapeTestTheRefereeAskedFor:
     """Not on either list; offered in Part 6 as "the number a statistician will ask for"."""
 
     def test_the_ks_statistic_and_its_permutation_p_are_emitted(self, ledger):
-        d = float(ledger["recoveryKsD"])
-        p = float(ledger["recoveryKsP"])
-        assert 0.0 < d < 1.0
-        assert p > 0.05, (
-            "the distributional claim no longer survives; 'the populations do not [differ]' "
-            "is a claim about distributions and this is the statistic that tests it")
+        """15 Oct 2026: inside each broker, where S16.9 now makes the distributional claim.
+        The pooled statistic went with the pooled claim, which at native resolution the
+        brokers' mix decides."""
+        for broker in ("Kafka", "Redis"):
+            d = float(ledger["recovery%sKsD" % broker])
+            p = float(ledger["recovery%sKsP" % broker])
+            assert 0.0 < d < 1.0, broker
+            assert p > 0.05, (
+                "%s: the distributional claim no longer survives; 'neither test detects a "
+                "difference in shape' is a claim about distributions and this is the statistic "
+                "that tests it" % broker)
         assert ledger["recoveryKsPerms"] == "20{,}000"
 
     def test_it_is_tie_correct(self):
@@ -270,10 +320,16 @@ class TestTheShapeTestTheRefereeAskedFor:
             "two identical samples must have D = 0 however many ties they carry")
 
     def test_the_supplement_says_why_a_shift_alone_would_not_carry_the_claim(self, supplement):
+        """15 Oct 2026: "tie-corrected" left with the ties. They were the 50 us grid's exact
+        recoveries, and at native resolution no two groups share an error. What the section
+        says instead is why the p is a permutation p: the asymptotic distribution is a
+        large-sample limit, and Kafka has eight rejected groups."""
         section = _s169(supplement)
         assert "differ in shape" in section
-        assert "tie-corrected" in section
-        assert BS + "recoveryKsD" in section and BS + "recoveryKsP" in section
+        assert "large-sample limit" in section and BS + "recoveryKafkaFailN" in section
+        for broker in ("Kafka", "Redis"):
+            assert BS + "recovery%sKsD" % broker in section, broker
+            assert BS + "recovery%sKsP" % broker in section, broker
 
 
 class TestW3AndW4TheTwoLiteratureItems:
@@ -462,7 +518,11 @@ class TestTheRenderedPageCarriesIt:
 
     def test_the_supplement_table_prints_its_intervals(self):
         """v5 (28 Sep): the column head names its method as well as its level, as round 79's
-        bracket rule asks of every interval. 29 Sep: the table is the postmortem's (S16.9)."""
-        flat = " ".join(_rendered("postmortem").split())
-        assert "Exact (Wilson 95% CI)" in flat
-        assert "Kolmogorov" in flat
+        bracket rule asks of every interval. 29 Sep: the table is the postmortem's (S16.9).
+
+        15 Oct 2026: the table lost its Exact column, which no group fills at native
+        resolution; S16.9's text gives the two empty shares with their Wilson intervals,
+        each bracket naming its method and level, and so they are read there."""
+        tight = "".join(_rendered_s169(_rendered("postmortem")).split())
+        assert tight.count("Wilson95%:") == 2
+        assert "Kolmogorov" in tight

@@ -64,7 +64,61 @@ class TestApply:
         assert rc["mathtext.rm"] == "Arial"
         assert rc["mathtext.it"] == "Arial:italic"
         assert rc["mathtext.bf"] == "Arial:bold"
-        assert rc["mathtext.default"] == "it"
+        assert rc["mathtext.default"] == figure_style.math_default()
+
+
+class TestDigitsAndOperatorsAreUpright:
+    """15 Oct 2026, an internal review of the printed figures: under matplotlib 3.11 "q = 3",
+    "phi = 0.00" and "D > 0" printed with italic digits and operators, as 3.11's "it" now sets
+    every character in italic; its "normal" is what "it" was until 3.10, letters italic and the
+    rest upright, as TeX sets them. The name is the one the running matplotlib accepts."""
+
+    def test_the_name_is_normal_where_matplotlib_knows_it_and_it_elsewhere(self, monkeypatch):
+        validators = dict(matplotlib.RcParams.validate)
+
+        def refuses(value):
+            if value == "normal":
+                raise ValueError("unknown value")
+            return value
+        monkeypatch.setitem(validators, "mathtext.default", refuses)
+        monkeypatch.setattr(matplotlib.RcParams, "validate", validators)
+        assert figure_style.math_default() == "it"
+        monkeypatch.setitem(validators, "mathtext.default", lambda value: value)
+        assert figure_style.math_default() == "normal"
+
+    def test_a_digit_is_set_upright_and_a_letter_italic(self):
+        """Read off the parser's own glyph choice, on whichever matplotlib this is."""
+        from matplotlib import mathtext
+        rc = figure_style.apply({})
+        with matplotlib.rc_context(rc):
+            parser = mathtext.MathTextParser("path")
+            glyphs = parser.parse("$q=3$", dpi=72).glyphs
+        # Each glyph is (font, size, codepoint, x, y); an italic face names itself so.
+        styles = dict((chr(g[2]), getattr(g[0], "style_name", "")) for g in glyphs)
+        assert "Italic" in styles["q"] or "Oblique" in styles["q"]
+        assert "Italic" not in styles["3"] and "Oblique" not in styles["3"]
+        assert "Italic" not in styles["="] and "Oblique" not in styles["="]
+
+
+class TestTheHelpersTheFiguresShare:
+
+    def test_a_decade_is_written_out(self):
+        assert [figure_style.plain_log_label(v) for v in (0.1, 1, 100, 1e3, 1e4, 1e6, 2e7)] \
+            == ["0.1", "1", "100", "1k", "10k", "1M", "20M"]
+
+    def test_a_label_with_subscripts_prints_them_at_six_and_a_half_points(self):
+        assert figure_style.MATH_PT * figure_style.SCRIPT_SHRINK == pytest.approx(6.5, abs=0.02)
+
+    def test_saving_whole_ignores_a_tight_bbox_set_elsewhere(self, tmp_path):
+        import matplotlib.pyplot as plt
+        from pypdf import PdfReader
+        fig, ax = plt.subplots(figsize=(2.0, 1.0))
+        ax.axis("off")
+        with matplotlib.rc_context({"savefig.bbox": "tight"}):
+            path = figure_style.save_whole(fig, str(tmp_path / "w.pdf"))
+        plt.close(fig)
+        box = PdfReader(path).pages[0].mediabox
+        assert (float(box.width) / 72.0, float(box.height) / 72.0) == pytest.approx((2.0, 1.0))
 
     def test_every_mathtext_slot_is_set(self, monkeypatch):
         """An unset slot silently falls back to DejaVu inside maths only."""

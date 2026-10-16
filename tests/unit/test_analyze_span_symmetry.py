@@ -318,6 +318,61 @@ class TestMain:
         assert text.count("IQR") >= 4
 
 
+class TestNativeMedians:
+    """15 Oct 2026: the medians the CSV reports are the messages' own, and the recovery is the
+    median of S plus the median of A, as Section VI describes it (both referees, M4)."""
+
+    def test_interpolation_spreads_the_mass_across_the_bin_that_holds_the_median(self):
+        assert ass.median_interpolated([(0, 4), (STEP, 4), (2 * STEP, 4)], 12) == 1.5 * STEP
+        assert ass.median_interpolated([(0, 10)], 10) == 0.5 * STEP
+
+    def test_interpolation_of_an_exhausted_or_empty_series(self):
+        assert ass.median_interpolated([(0, 1)], 10) == STEP
+        assert ass.median_interpolated([], 0) == 0.0
+
+    def test_a_per_message_median_is_taken_over_the_bins(self):
+        acc = {"median_us": 523.9}
+        assert ass.group_median(acc, [(500, 10)], 10) == (523.9, "messages")
+        assert ass.group_median({}, [(500, 10)], 10) == (500 + 0.5 * STEP, "interpolated")
+
+    def _run(self, tmp_path, monkeypatch, medians):
+        payload = json.loads(synthetic(tmp_path, extra_conditions=4).read_text(encoding="utf-8"))
+        for cond in payload["conditions"].values():
+            for q, m in medians.items():
+                cond[q]["median_us"] = m
+        path = tmp_path / "native.json"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        monkeypatch.setattr(ass, "IN_JSON", str(path))
+        monkeypatch.setattr(ass, "OUT_CSV", str(tmp_path / "out.csv"))
+        ass.main()
+        return list(csv.DictReader(open(tmp_path / "out.csv")))
+
+    def test_the_csv_reports_the_messages_medians_and_the_recovery_they_give(
+            self, tmp_path, monkeypatch, capsys):
+        rows = self._run(tmp_path, monkeypatch, {"S": 610.5, "D": 1222.25, "A": 604.0})
+        row = next(r for r in rows if r["condition"] == "kafka_n2_feed1#pass")
+        assert (float(row["median_S_us"]), float(row["median_D_us"]),
+                float(row["median_A_us"])) == (610.5, 1222.25, 604.0)
+        assert float(row["recovered_medD_us"]) == 1214.5
+        assert float(row["recovery_err_us"]) == -7.75
+        assert row["median_source"] == "messages" and row["bin_width_us"] == str(STEP)
+        # The bin edges stay beside them, and the grid estimator keeps its own columns.
+        assert (row["median_S_bin_us"], row["median_D_bin_us"], row["median_A_bin_us"]) == (
+            "550", "1150", "550")
+        assert float(row["recovered_medD_centre_us"]) == int(row["centre_S_us"]) + 550
+        out = capsys.readouterr().out
+        assert "med(D) ~ med(S) + med(A), medians from messages" in out
+        assert "kafka groups" in out and "redis groups" in out
+        assert "THE ESTIMATOR PRINTED UNTIL 15 OCT 2026" in out
+
+    def test_without_per_message_medians_the_bins_are_interpolated(self, tmp_path,
+                                                                    monkeypatch):
+        rows = self._run(tmp_path, monkeypatch, {})
+        assert {r["median_source"] for r in rows} == {"interpolated"}
+        row = next(r for r in rows if r["condition"] == "kafka_n2_feed1#pass")
+        assert float(row["median_S_us"]) == 600.0, "the triangle's centre, not its bin edge"
+
+
 class TestTheBinWidthIsReadNotAssumed:
     """span_by_condition.py declares `bin_width_us`; this script must use it.
 

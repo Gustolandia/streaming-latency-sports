@@ -69,7 +69,9 @@ class TestR1TheConclusionAgreesWithTheReportingRule:
         assert not re.search(r"\bindependen", conclusion), (
             "the Conclusion calls something independent again; the two waits are measured "
             "correlated")
-        assert ("because a thread waits for a core, for up to a scheduler's slice, before it "
+        # 15 Oct 2026: the Conclusion of the v9 response states it as its own sentence, "A
+        # thread waits for a core, for up to a scheduler's slice, before it reads the clock".
+        assert ("A thread waits for a core, for up to a scheduler's slice, before it "
                 "reads the clock") in conclusion
 
     def test_it_uses_the_introductions_own_phrase(self, paper):
@@ -94,7 +96,7 @@ class TestR1TheConclusionAgreesWithTheReportingRule:
                                                                   + "section{Introduction}") + 9)]
         conclusion = self._conclusion(paper)
         assert "A thread must wait for a core before it can read the clock" in intro
-        assert re.search(r"a thread waits for a core,[^.]{0,40} before it reads the clock",
+        assert re.search(r"[Aa] thread waits for a core,[^.]{0,40} before it reads the clock",
                          conclusion)
 
     def test_the_rule_it_was_contradicting_is_still_there_and_still_measured(self, paper,
@@ -144,8 +146,10 @@ class TestR1TheConclusionAgreesWithTheReportingRule:
         flat = re.sub(r"IEEE TRANSACTIONS ON COMPUTERS \d+ ", "", flat)
         i = flat.rindex("CONCLUSION")
         conclusion = flat[i:flat.index("ACKNOWLEDGMENT", i)]
-        assert re.search(r"because a thread waits for a core, for up to a scheduler.s slice",
-                         conclusion), conclusion[:400]
+        # 16 Oct 2026: the premise is stated per broker since version 9's reviews, so the wait
+        # is its own sentence, beside the broker that delivers first, not a "because".
+        assert re.search(r"A thread waits for a core, for up to a scheduler.s slice, before it "
+                         r"reads the clock", conclusion), conclusion[:400]
         assert "independent" not in conclusion
 
 
@@ -208,8 +212,9 @@ class TestW1TheWordIsOnTheReviewList:
         which the mutation turns back into two threads waiting independently.
         """
         import apply_vocabulary as av
-        bad = re.sub(r"because\s+a\s+thread\s+waits\s+for\s+a\s+core",
-                     "because the two threads wait for a core independently", paper, count=1)
+        # 15 Oct 2026: retargeted to the v9 response's Conclusion, "A thread waits for a core".
+        bad = re.sub(r"A\s+thread\s+waits\s+for\s+a\s+core,",
+                     "The two threads wait for a core independently,", paper, count=1)
         assert bad != paper, "the Conclusion has been reworded; retarget this mutation"
         _, _, review = av.rewrite(bad, "paper.tex", True, av.load_adjudications(), set())
         assert any("independently" in r for r in review)

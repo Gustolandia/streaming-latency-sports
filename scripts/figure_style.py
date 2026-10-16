@@ -62,6 +62,15 @@ DEFAULT_METRICS = {
 #: TrueType. The whole point of this module: anything but matplotlib's default of 3.
 TRUETYPE = 42
 
+#: Mathtext sets a sub- or superscript at this fraction of its label's size.
+SCRIPT_SHRINK = 0.7
+
+#: The size of a label whose maths carries sub- or superscripts, in points. At the 8 pt of every
+#: other label its subscripts printed at 5.6 pt, and in Figs. 1 and 5 they are what tells
+#: t_rx,ack, t_ack, t_rx and t_recv apart (15 Oct 2026, an internal review of the printed
+#: figures). At 9.3 pt they print at 6.5 pt, figure_legibility.MIN_SCRIPT_PT.
+MATH_PT = 9.3
+
 # The PDF creation stamp every figure carries, pinned so a rebuild is byte-identical to the
 # build it repeats. Zero is the reproducible-builds convention: it claims no date at all
 # rather than a plausible false one, and it prints as 1970, which no reader mistakes for the
@@ -117,8 +126,52 @@ def apply(rc=None):
     for slot, suffix in (("rm", ""), ("it", ":italic"), ("bf", ":bold"),
                          ("sf", ""), ("tt", "")):
         target["mathtext.%s" % slot] = "%s%s" % (family, suffix)
-    target["mathtext.default"] = "it"
+    target["mathtext.default"] = math_default()
     return target
+
+
+def math_default():
+    """The mathtext font that sets letters in italic and digits and operators upright, as TeX does.
+
+    Up to matplotlib 3.10 that is "it": in that mode its parser italicizes only characters of
+    the Unicode letter class and sets the rest roman. Matplotlib 3.11 made "it" italicize every
+    character and moved the old behaviour to a new name, "normal", which 3.10 and earlier reject.
+    Pinned to "it" since round 6, the figures built here under 3.11 printed "q = 3", "phi = 0.00",
+    "D > 0" and "<= 0" with italic digits and operators, while CI's matplotlib 3.9 printed them
+    upright (15 Oct 2026, an internal review of the printed figures). So the name is the one the
+    running matplotlib accepts: "normal" where it exists, "it" where it does not.
+    """
+    try:
+        return matplotlib.RcParams.validate["mathtext.default"]("normal")
+    except (KeyError, ValueError):
+        return "it"
+
+
+def plain_log_label(value, _pos=None):
+    """A value on a log axis written out in plain digits: "1", "100", "10k", "1M", "0.1".
+
+    Matplotlib labels a decade "10^n" in mathtext, and the exponent, which is the value itself,
+    prints at SCRIPT_SHRINK of the label: 5.6 pt for 8 pt ticks (15 Oct 2026, an internal
+    review of the printed figures). Written out, every digit prints at the label's size; the
+    axis label says the scale is logarithmic.
+    """
+    for scale, suffix in ((1e6, "M"), (1e3, "k")):
+        if value >= scale:
+            return "%g%s" % (value / scale, suffix)
+    return "%g" % value
+
+
+def save_whole(fig, path, **kwargs):
+    """Write the figure's whole canvas, uncropped, whatever `savefig.bbox` another module set.
+
+    A figure drawn at exactly the width the page prints it at is saved this way, so that the
+    file is that width and the page neither enlarges nor shrinks it (15 Oct 2026). `bbox_inches`
+    left unset would mean "ask rcParams", and a module elsewhere in this repository sets
+    `savefig.bbox = 'tight'` at import time.
+    """
+    with matplotlib.rc_context({"savefig.bbox": None}):
+        fig.savefig(path, **kwargs)
+    return path
 
 
 def resolved_family():

@@ -277,17 +277,36 @@ class TestW2TheShiftSaysWhichWayItPoints:
         assert "%.1f" % statistics.median(diffs) == ledger["recoveryShift"]
         assert float(ledger["recoveryShift"]) > 0, "positive: the rejected sit higher"
 
-    def test_both_worst_conditions_lie_within_two_points(self, supplement, ledger):
+    def test_the_tails_compare_as_s16_9_says(self, supplement, ledger):
         """v5 (28 Sep): "Both worst conditions are ..." left Section V-D with the rest of its
         statistics (editorial review, Section 5). S16.9 says it as "the worst condition is the
         same on both sides", beside a table printing both maxima, and the ledger must still bear
-        it out, as it must for any sentence in the article that says it again."""
+        it out, as it must for any sentence in the article that says it again.
+
+        Until 15 Oct 2026 this was `test_both_worst_conditions_lie_within_two_points`."""
         # 7 Oct 2026: the late messages left out, the maxima read 38 and 36, and the sentence
         # says what they share now rather than that they are equal.
+        # 15 Oct 2026: at native resolution the pooled maxima are 35 and 31, four points apart,
+        # and S16.9 compares the tails inside each broker, where the pooled split's mix cannot
+        # reach them: on Kafka the rejected groups' upper quartile and worst error are the
+        # smaller, and on Redis the upper quartiles lie within a point of each other and the
+        # worst rejected group lies below the worst accepted one. Each of those is held here,
+        # on the populations, since the printed figures round.
+        import stat_intervals
         s = _between(supplement, "S16.9.", "S17. The 1970 counter note")
-        assert "the worst conditions lie within two points of each other" in s
-        assert BS + "recoveryPassMax" in s and BS + "recoveryFailMax" in s
-        assert abs(float(ledger["recoveryPassMax"]) - float(ledger["recoveryFailMax"])) <= 2
+        assert "the worst conditions lie within two points of each other" not in s
+        assert ("on " + BS + "kafka{} the rejected groups' upper quartile and worst error are "
+                "the smaller") in s
+        assert ("on " + BS + "redis{} the two upper quartiles lie within a point of each other "
+                "and the worst rejected group lies below the worst accepted one") in s
+        cells = stat_intervals.recovery_populations(split="both")
+        q3 = {k: stat_intervals.nearest_rank(v, 0.75) for k, v in cells.items()}
+        assert q3["KafkaFail"] < q3["KafkaPass"] and max(cells["KafkaFail"]) < max(cells["KafkaPass"])
+        assert abs(q3["RedisFail"] - q3["RedisPass"]) < 1.0
+        assert max(cells["RedisFail"]) < max(cells["RedisPass"])
+        for name in ("KafkaPass", "KafkaFail", "RedisPass", "RedisFail"):
+            assert BS + "recovery%sMax" % name in s, name
+            assert BS + "recoveryErr%sHi" % name in s, name
 
 
 class TestW3Figure4ShowsTheCountItsLegendPrints:
@@ -362,8 +381,12 @@ class TestW6OneFormForAccessDates:
             i = bib.index("{" + key + ",")
             return bib[i:bib.index("\n}", i)]
         assert "Accessed: Sep. 13, 2026" in entry("gregg2016runqlat")
+        # 15 Oct 2026, referee B (t9) of version 9 asked that the issue be dated, and the paper
+        # held its twelve pages in the Computer Society layout with both entries dated, which
+        # test_round69_findings' page-budget gate checks on every build; so both now carry the
+        # one form, and the condition the earlier referee set is met.
         for key in ("omb_issue216", "statsbomb2023"):
-            assert "Accessed" not in entry(key), key
+            assert "Accessed: Oct. 15, 2026" in entry(key), key
 
     def test_each_retired_form_is_rewritten(self):
         import normalize_access_dates as nad
@@ -397,8 +420,11 @@ class TestTheRenderedPagesCarryIt:
         # 5 Oct 2026: the payload fall's Katz bracket prints in the journal supplement's S3.3;
         # the shift's direction and the retention correlation's Fisher bracket print in the
         # postmortem (S16.9 and S10), where the rebuilt documents leave them.
+        # 16 Oct 2026: S3.3 brackets the payload fall with the bootstrap over runs, as both
+        # referees of version 9 asked; Katz's interval stays in the postmortem.
         journal = _rendered("supplement")
-        assert re.search(r"\[Katz\s*95\s*%\s*:", journal), "the payload fall's bracket"
+        assert re.search(r"fell\s*\S+-fold \[bootstrap over runs,\s*95\s*%\s*:", journal), \
+            "the payload fall's bracket"
         post = _rendered("postmortem")
         assert "rejected minus accepted" in post
         assert re.search(r"Fisher\s*95\s*%\s*:", post), "the retention correlation's"

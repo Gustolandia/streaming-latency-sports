@@ -27,7 +27,15 @@ What is computed per condition:
 
     median and a symmetry centre for S, D, A. The centre minimises a mirrored-mass score
     (0 = perfectly symmetric); the score at the best centre says how symmetric the
-    distribution can be made by any choice of centre.
+    distribution can be made by any choice of centre. Since 15 Oct 2026 the medians are the
+    messages' own, at native resolution, from the `median_us` span_by_condition.py writes
+    (interpolated within the 50 us bin where an artefact has none); the bin edge that holds
+    each median is kept beside it as `median_<q>_bin_us`, and every row names its bin width
+    and its median's source.
+
+    the recovery a benchmark that keeps only medians can make: med(S) + med(A) against
+    med(D). The symmetry-centre estimator the CSV carried until 15 Oct 2026, centre(S) +
+    med(A) on the grid, is kept under its own name, `recovered_medD_centre_us`.
 
     the independence prediction: S_hat = D convolved with -A on the shared 50 us grid, and
     the distance between S_hat and S (total variation), plus predicted-vs-observed negative
@@ -70,12 +78,46 @@ def to_series(acc, bin_lo_us):
 
 
 def median_us(series, n):
+    """The lower edge of the bin that holds the median: the grid the centre scan walks on.
+
+    15 Oct 2026: this was every median the CSV printed, so each one sat on the lower edge of a
+    50 us bin. It now only anchors `best_centre`, whose scan steps along the bin edges, and is
+    written beside the native medians as `median_<q>_bin_us`, named for what it is.
+    """
     cum = 0
     for lo, c in series:
         cum += c
         if cum >= 0.5 * n:
             return lo
     return series[-1][0] if series else 0.0
+
+
+def median_interpolated(series, n):
+    """The median read off the bins with the mass spread evenly across the bin that holds it.
+
+    The fallback for a histogram that carries no per-message median (15 Oct 2026): better than
+    the bin's lower edge by up to a bin, and still only as good as the bin width allows.
+    """
+    cum = 0
+    for lo, c in series:
+        if cum + c >= 0.5 * n:
+            return lo + STEP * (0.5 * n - cum) / c
+        cum += c
+    return series[-1][0] + STEP if series else 0.0
+
+
+def group_median(acc, series, n):
+    """(median in us, where it came from) for one quantity of one group.
+
+    The per-message median span_by_condition.py writes since 15 Oct 2026 when the artefact
+    carries it, "messages"; the median interpolated within its 50 us bin when it does not,
+    "interpolated". The CSV names the source in every row, so a reader never has to guess
+    which resolution a median has.
+    """
+    native = acc.get("median_us")
+    if native is not None:
+        return float(native), "messages"
+    return median_interpolated(series, n), "interpolated"
 
 
 def asym_score(counts, centre_us, half_width_us=10_000):
@@ -164,11 +206,17 @@ def main():
             pooled_S[lo] = pooled_S.get(lo, 0) + c
         pooled_n += nS
 
-        medS = median_us(sS, nS)
-        medD = median_us(sD, nD)
-        medA = median_us(sA, nA)
-        cS, scoreS = best_centre(sS, nS, medS)
-        cD, scoreD = best_centre(sD, nD, medD)
+        # The bin edges anchor the centre scan, which walks the grid; the medians the CSV
+        # reports are the messages' own (15 Oct 2026), or interpolated where the artefact has
+        # none.
+        binS = median_us(sS, nS)
+        binD = median_us(sD, nD)
+        binA = median_us(sA, nA)
+        medS, source = group_median(S, sS, nS)
+        medD, _ = group_median(D, sD, nD)
+        medA, _ = group_median(A, sA, nA)
+        cS, scoreS = best_centre(sS, nS, binS)
+        cD, scoreD = best_centre(sD, nD, binD)
         counts = dict(sS)
         score0 = asym_score(counts, 0)
 
@@ -225,11 +273,11 @@ def main():
 
         rows.append({
             "condition": cond, "n_events": nS,
-            "median_S_us": medS, "centre_S_us": cS, "score_S": round(scoreS, 4),
+            "median_S_us": round(medS, 3), "centre_S_us": cS, "score_S": round(scoreS, 4),
             "score_S_at_zero": round(score0, 4) if score0 is not None else "",
             "score_D": round(scoreD, 4),
-            "median_D_us": medD, "median_A_us": medA,
-            "medD_minus_medA_us": medD - medA,
+            "median_D_us": round(medD, 3), "median_A_us": round(medA, 3),
+            "medD_minus_medA_us": round(medD - medA, 3),
             "neg_frac_obs": round(neg_obs, 5),
             "neg_frac_pred_indep": round(neg_pred, 5),
             "neg_frac_obs_pairs": round(obs_pairs, 5),
@@ -237,10 +285,25 @@ def main():
             "tv_pred_vs_obs": round(tv, 4),
             "rho_DA": round(rho, 4),
             "rho_DA_within": round(rho_w, 4),
-            # the remedy under test: recover delivery's median from the corrupted span plus a
+            # The remedy under test: recover delivery's median from the corrupted span plus a
             # purely producer-side quantity. Error in us; med(D) is the ground truth.
-            "recovered_medD_us": cS + medA,
-            "recovery_err_us": (cS + medA) - medD,
+            #
+            # 15 Oct 2026: the median of S plus the median of A, which is what Section VI and
+            # S2.1 describe and all a benchmark that keeps only medians can add. Until today
+            # this added the median of A to the symmetry centre of S's histogram, which no
+            # such benchmark can compute and which differed from the median in 51 of the 70
+            # groups (both referees, M4). That estimator stays below under its own name.
+            "recovered_medD_us": round(medS + medA, 3),
+            "recovery_err_us": round((medS + medA) - medD, 3),
+            # What the medians are and how they were read, in every row.
+            "bin_width_us": STEP,
+            "median_source": source,
+            "median_S_bin_us": binS, "median_D_bin_us": binD, "median_A_bin_us": binA,
+            # The estimator printed until 15 Oct 2026, exactly as it was computed: the centre
+            # of S's histogram plus the bin edge holding A's median, against the bin edge
+            # holding D's, all on the 50 us grid.
+            "recovered_medD_centre_us": cS + binA,
+            "recovery_err_centre_us": (cS + binA) - binD,
         })
 
     os.makedirs(os.path.dirname(OUT_CSV), exist_ok=True)
@@ -321,24 +384,30 @@ def main():
         print("  on %d pairs; %d (%.2f%%) outside the window, excluded"
               % (kept, outside, 100.0 * outside / (kept + outside)))
     print("")
-    print("THE REMEDY UNDER TEST: med(D) ~ centre(S) + med(A)")
+    print("THE REMEDY UNDER TEST: med(D) ~ med(S) + med(A), medians from %s"
+          % ", ".join(sorted({r["median_source"] for r in rows})))
 
-    def _remedy(subset, label):
+    def _remedy(subset, label, err="recovery_err_us", truth="median_D_us"):
         if len(subset) < 3:
             print("  %-22s (only %d conditions, skipped)" % (label, len(subset)))
             return
-        errs = [r["recovery_err_us"] for r in subset]
-        rel = [100.0 * abs(r["recovery_err_us"]) / r["median_D_us"]
-               for r in subset if r["median_D_us"] > 0]
+        errs = [r[err] for r in subset]
+        rel = [100.0 * abs(r[err]) / r[truth] for r in subset if r[truth] > 0]
         print("  %-22s n=%-3d  err median %+d us  IQR [%+d, %+d]   |err| median %.1f%% of med(D)"
               % (label, len(subset), st.median(errs),
                  st.quantiles(errs, n=4)[0], st.quantiles(errs, n=4)[2], st.median(rel)))
 
     # The split that decides whether this becomes a VI-B rule: a remedy for already-collected
     # data earns its keep on the population the gate rejects, so it is scored there separately.
+    # 15 Oct 2026: and by broker, because Kafka's margin is several times Redis's and a pooled
+    # error hid that the medians recover one broker far better than the other (referee B, M4).
     _remedy(rows, "all conditions")
     _remedy([r for r in rows if r["condition"].endswith("#pass")], "gate-passing runs")
     _remedy([r for r in rows if r["condition"].endswith("#fail")], "gate-failing runs")
+    for broker in ("kafka", "redis"):
+        _remedy([r for r in rows if r["condition"].startswith(broker + "_")], broker + " groups")
+    print("THE ESTIMATOR PRINTED UNTIL 15 OCT 2026: centre(S) + med(A), on the 50 us grid")
+    _remedy(rows, "all conditions", "recovery_err_centre_us", "median_D_bin_us")
     print("")
     print("wrote %s" % OUT_CSV)
 

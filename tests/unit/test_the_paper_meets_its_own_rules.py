@@ -247,7 +247,9 @@ class TestThePapersOwnPercentilesCarryTheirDenominators:
     """
 
     def test_the_recovery_quartiles_name_their_populations(self, paper):
-        for name in ("recoveryPassN", "recoveryFailN"):
+        # 15 Oct 2026, both referees of version 9 (M4, S4): the quartiles are by broker, so the
+        # denominators are each broker's groups; the verdicts' counts stay in the postmortem.
+        for name in ("recoveryKafkaN", "recoveryRedisN"):
             assert ("\\" + name) in paper, \
                 "%s is not printed, so a quartile is quoted with no denominator" % name
 
@@ -285,8 +287,14 @@ class TestAPrintedPercentageKeepsItsSignificantFigure:
         # A genuine 1% is legal; what is not is a value under one rounded up to it. The
         # emitter now formats by magnitude, so this asserts the formatter rather than
         # guessing at intent.
-        source = (REPO / "scripts" / "emit_paper_numbers.py").read_text(encoding="utf-8")
-        assert '("%.1f" if pct < 1.0 else "%.0f") % pct' in source, \
+        # 15 Oct 2026: asserted by behavior, not by its source line. That day the formatter
+        # widened below ten, since referee A divided 650 us by 10 ms and got 6.5%, which the
+        # rule had printed as 6; below one it widens as before.
+        import sys
+        sys.path.insert(0, str(REPO / "scripts"))
+        import emit_paper_numbers
+        fmt = emit_paper_numbers._exposure_pct
+        assert (fmt(0.725), fmt(6.5), fmt(72.4)) == ("0.7", "6.5", "72"), \
             ("the exposure formatter no longer widens below one; %s may be a rounded-up "
              "fraction" % ", ".join(offenders) if offenders else
              "the exposure formatter no longer widens below one")

@@ -94,6 +94,28 @@ def retention_points(path=RETENTION_CSV):
     return pts
 
 
+def incommensurate_points(path=RETENTION_CSV):
+    """(retention %, printed median ms) of every captured setting at an incommensurate rate.
+
+    15 Oct 2026, referee B (Fig. 4): the retention law's test rests on the configurations whose
+    publish interval bears no ratio of small whole numbers to the clock's step, the arms
+    `stat_intervals.spread_cells` returns with `commensurate` false. A cell of the retention
+    file is one of them when its campaign paced the producer at one of those rates, which its
+    name gives ("r457_rep2"). Of the seven rates, the benchmark's own summary was captured at
+    two, so their cells are the ones panel (b) can mark.
+    """
+    import csv
+    loose = {c["rate_hz"] for c in stat_intervals.spread_cells() if not c["commensurate"]}
+    pts = []
+    with open(path, encoding="utf-8", newline="") as fh:
+        for r in csv.DictReader(fh):
+            m = re.match(r"^r(\d+)_rep\d+$", r.get("cell", ""))
+            if m and int(m.group(1)) in loose:
+                pts.append((float(r["retention_pct"]), float(r["omb_p50_ms"]),
+                            int(m.group(1))))
+    return pts
+
+
 def _payload_label(cell):
     """The payload a cell name encodes, as a printable size, or "" if it encodes none.
 
@@ -129,7 +151,8 @@ COINCIDENT_RATIO = 1.06
 # page rendering as a single figure-of-eight -- the same undercount the spreading was written
 # to prevent, one step further along. Two diameters of centre separation is what makes two
 # markers read as two. That is 0.21 of a decade, or 3.7% of this axis, still small enough that
-# the caption's disclosure covers it and no reading of position changes.
+# no reading of position changes; the label of a payload whose markers were set apart says so
+# (since 15 Oct 2026; the caption was said to and did not).
 SEPARATION_RATIO = 1.62
 
 
@@ -169,8 +192,13 @@ def spread_coincident(xs, ys, ratio=COINCIDENT_RATIO, separation=SEPARATION_RATI
     return out
 
 
-def plot_deletion(ax, pts, quantum_ms=AT_GRID_MAX_MS):
+def plot_deletion(ax, pts, quantum_ms=AT_GRID_MAX_MS, marked=()):
     """Retention against the median the benchmark printed, every committed cell.
+
+    `marked` (15 Oct 2026) holds the cells at an incommensurate rate, ringed on top of their
+    own markers and counted in the legend, because the retention law's test rests on them: an
+    incommensurate rate spreads the publish instants evenly over the clock's step, as the law
+    assumes.
 
     Every cell is drawn, including the four where the payload is large enough that the
     quantum stops binding. Dropping them would be the same move the paper is about. They
@@ -178,6 +206,7 @@ def plot_deletion(ax, pts, quantum_ms=AT_GRID_MAX_MS):
     confined to the region where the interval it is asked to measure is smaller than the
     instrument it measures with.
     """
+    from matplotlib.ticker import FuncFormatter
     ret = np.array([p[0] for p in pts])
     med = np.array([p[1] for p in pts])
     tags = [p[2] if len(p) > 2 else "" for p in pts]
@@ -204,11 +233,23 @@ def plot_deletion(ax, pts, quantum_ms=AT_GRID_MAX_MS):
                zorder=3, label="printed %s" % grid_label)
     ax.scatter(above_x, ret[~at_grid], s=18, facecolors="none", edgecolors=GREY,
                linewidths=0.9, zorder=3, label="printed above %g ms, by payload (%d)" % (quantum_ms, (~at_grid).sum()))
+    if marked:
+        # Drawn over the column they sit in, as diamonds that do not hide its markers. 15 Oct
+        # 2026, three internal reviews: the long label ("8 settings at incommensurate rates, 383
+        # and 457 msg/s") made the legend so wide that its markers fell on the 1 ms column, one
+        # over the lowest retention, each reading as a datum. The entry counts what it marks,
+        # as the other two do, and the caption names the two rates of Section V-C's seven.
+        ax.scatter([p[1] for p in marked], [p[0] for p in marked], s=30, marker="D",
+                   facecolors="none", edgecolors="#222222", linewidths=0.9, zorder=4,
+                   label="incommensurate rate (%d)" % len(marked))
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("median latency the benchmark printed (ms)", fontsize=8)
-    ax.set_ylabel("samples retained (%)", fontsize=8)
+    # "log" in the labels, and the ticks written out: as 10^n their exponents printed at 5.75 pt
+    # (15 Oct 2026, an internal review of the printed figures).
+    ax.set_xlabel("median latency the benchmark printed (ms, log)", fontsize=8)
+    ax.set_ylabel("samples retained (%, log)", fontsize=8)
     ax.tick_params(labelsize=8)
+    ax.yaxis.set_major_formatter(FuncFormatter(figure_style.plain_log_label))
     ax.grid(alpha=0.25, lw=0.5)
     ax.axhline(100, color=GREY, lw=0.6, ls=":", zorder=0)
 
@@ -226,17 +267,15 @@ def plot_deletion(ax, pts, quantum_ms=AT_GRID_MAX_MS):
     ax.set_xticklabels(["%g" % v for v in grid_values], minor=True)
     # Round 77 (W3). matplotlib drops a minor tick that coincides with a major one, so the
     # grid value 1 kept its decade label "10^0" while 2 read "2": the caption's two values in
-    # two notations. Where a grid value falls on a decade, the decade label now prints it the
-    # way the minor tick beside it does.
-    from matplotlib.ticker import FuncFormatter
-    decade = ax.xaxis.get_major_formatter()
-    ax.xaxis.set_major_formatter(FuncFormatter(
-        lambda x, pos: ("%g" % x) if any(abs(x - g) < 1e-9 for g in grid_values)
-        else decade(x, pos)))
+    # two notations. Since 15 Oct 2026 every decade is written out as the grid values are, "1",
+    # "10", "1k", so the two notations cannot return.
+    ax.xaxis.set_major_formatter(FuncFormatter(figure_style.plain_log_label))
     # 8 pt, not the 7 that would fit more comfortably: `figure_legibility` holds every figure
     # to the journal's floor and caught the smaller size on the first build. A tick a reader
-    # cannot read is not a repair for a claim a reader cannot check.
-    ax.tick_params(axis="x", which="minor", labelsize=8, length=2.5, pad=1.5)
+    # cannot read is not a repair for a claim a reader cannot check. The minor tick's length and
+    # pad add up to the major's 3.5 and 3.5, so that "2" sits on the line the decades' labels
+    # sit on: with a pad of 1.5 it floated 4 pt above them (15 Oct 2026).
+    ax.tick_params(axis="x", which="minor", labelsize=8, length=2.5, pad=4.5)
 
     # Each grid column's count, just above its topmost marker, from the same data the legend
     # totals. Derived per grid value, like the ticks, so a third value would get a third count.
@@ -261,14 +300,25 @@ def plot_deletion(ax, pts, quantum_ms=AT_GRID_MAX_MS):
     # binding once the interval is larger than it, and the payload is what made it larger. One
     # label per distinct payload, at the leftmost of its replicates, so replicates at the same
     # size do not print the same word twice.
+    # 15 Oct 2026, an internal review: replicates spread apart by `spread_coincident` were said
+    # to be disclosed by the caption, which did not; the label says it now, with their count.
+    # Under its group, right-aligned under the last marker, so that the longer label stays clear
+    # of the frame at the right of the axis.
+    above_tags = [tg for tg, g in zip(tags, at_grid) if not g]
+    moved = {tg for x0, x1, tg in zip(med[~at_grid], above_x, above_tags) if x1 != x0}
+    last = dict((tg, x) for x, tg in sorted(zip(above_x, above_tags)))
     seen = set()
-    for x, y, tag in sorted(zip(above_x, ret[~at_grid],
-                                [tg for tg, g in zip(tags, at_grid) if not g])):
+    for x, y, tag in sorted(zip(above_x, ret[~at_grid], above_tags)):
         if not tag or tag in seen:
             continue
         seen.add(tag)
-        ax.annotate(tag, xy=(x, y), xytext=(0, -9), textcoords="offset points",
-                    fontsize=8, color=GREY, ha="center", va="top")
+        if tag in moved:
+            ax.annotate("%s\n(×%d, set apart)" % (tag, above_tags.count(tag)),
+                        xy=(last[tag], y), xytext=(6, -9), textcoords="offset points",
+                        fontsize=8, color=GREY, ha="right", va="top", linespacing=1.1)
+        else:
+            ax.annotate(tag, xy=(x, y), xytext=(0, -9), textcoords="offset points",
+                        fontsize=8, color=GREY, ha="center", va="top")
 
     leg = ax.legend(fontsize=8, frameon=False, loc="lower right", handletextpad=0.4)
     # The legend's marker is the category, not a depth of overlap: drawn opaque.
@@ -319,7 +369,9 @@ def plot_spectrum(ax, bins, slice_ms=None):
             # different answers -- 4.5x the bucket below it and 5.0x the one above. The body
             # says "its lower neighbor", and a figure that says only "its neighbor" sends a
             # reader checking the histogram by eye to the wrong bar.
-            ax.annotate("base slice: %.0f ms\n%.1f× the one below"
+            # "%.1f": the derived slice is 2.8 ms, which "%.0f" printed as 3 ms, the slice the
+            # registered campaign set by hand and Fig. 3 draws (15 Oct 2026, an internal review).
+            ax.annotate("base slice: %.1f ms\n%.1f× the one below"
                         % (slice_ms, rise),
                         xy=(i + 0.62, share[i] * 0.72),
                         xytext=(len(los) - 0.5, max(share) * 1.30),
@@ -567,6 +619,108 @@ def plot_priority_ladder(ax, rows):
     ax.legend(fontsize=8, frameon=False, loc="upper right")
 
 
+MECH_INTERVALS = RESULTS / "model" / "manipulation_intervals.csv"
+
+
+def priority_forest_rows(path=MECH_INTERVALS):
+    """{broker: [pair, ...]} for the forest of the real-time factor, ordered by load and then
+    campaign, each pair {"campaign", "level", "rho", "factor", "lo", "hi"} with the run-level
+    95% interval of the committed intervals file; an unbounded upper end is math.inf."""
+    import csv
+    import math
+    import priority_pairs
+    rho = {(p["campaign"], p["level"]): p["rho"] for p in priority_pairs.usable()}
+    out = {}
+    with open(path, encoding="utf-8", newline="") as fh:
+        for r in csv.DictReader(fh):
+            if r["result"] != "priority":
+                continue
+            out.setdefault(r["backend"], []).append({
+                "campaign": r["campaign"], "level": r["level"],
+                "rho": rho[(r["campaign"], r["level"])], "factor": float(r["factor"]),
+                "lo": float(r["factor_lo"]),
+                "hi": math.inf if r["factor_hi"] == "inf" else float(r["factor_hi"])})
+    for pairs in out.values():
+        pairs.sort(key=lambda p: (p["rho"], p["campaign"]))
+    return out
+
+
+#: The factor axis of the forest: wide enough for every bounded interval, with room at the
+#: right edge for the arrows of the unbounded ones.
+FOREST_XLIM = (1.0, 2000.0)
+
+
+def plot_priority_forest(axes, rows):
+    """Every matched pair's real-time factor with its run-level interval, one panel a broker.
+
+    15 Oct 2026, both referees (A on the priority pairs' intervals, B on Table II): the range of
+    point factors hides how wide each interval is and that five of Kafka's eight have no upper
+    end. A forest shows each pair, and the dashed line marks the smallest lower bound, the floor
+    every pair's interval clears. An interval with no upper end runs to the panel's edge as an
+    arrow.
+    """
+    from matplotlib.ticker import FuncFormatter
+    for ax, (key, name, colour) in zip(axes, BROKER_COLOURS):
+        pairs = rows[key]
+        ys = list(range(len(pairs)))[::-1]
+        for y, p in zip(ys, pairs):
+            hi = p["hi"] if p["hi"] != float("inf") else FOREST_XLIM[1]
+            ax.plot([p["lo"], hi], [y, y], color=colour, lw=1.4, solid_capstyle="butt")
+            if p["hi"] == float("inf"):
+                ax.annotate("", xy=(FOREST_XLIM[1], y), xytext=(FOREST_XLIM[1] / 2.2, y),
+                            arrowprops=dict(arrowstyle="->", color=colour, lw=1.2))
+            ax.plot([p["factor"]], [y], "o", ms=4.5, color=colour, mec="none")
+        floor = min(p["lo"] for p in pairs)
+        ax.axvline(floor, color=GREY, lw=0.8, ls=(0, (3, 2)), zorder=0)
+        # Above the top row, beside the line rather than across it; literal signs, as the
+        # ladder figure prints its factors, since mathtext pads a \times. The bound is rounded
+        # down, as the ledger rounds it, so the label never claims more than every pair shows.
+        import emit_paper_numbers
+        ax.text(floor * 1.12, len(pairs) + 0.05,
+                "every pair ≥ %s×" % emit_paper_numbers.floor_to_tenth(floor),
+                fontsize=8, color=GREY, ha="left", va="center")
+        ax.set_xscale("log")
+        ax.set_xlim(*FOREST_XLIM)
+        ax.set_ylim(-0.7, len(pairs) + 0.9)
+        ax.set_yticks(ys)
+        ax.set_yticklabels(["%s%%  %s" % (p["level"].lstrip("l"), p["campaign"]) for p in pairs],
+                           fontsize=8)
+        # "log" in the label and the factors written out, "1k" for 10^3: as 10^n the exponents
+        # printed at 5.8 pt (15 Oct 2026, an internal review of the printed figures).
+        ax.set_xlabel("normal-priority rate over real-time rate (log)", fontsize=8)
+        ax.xaxis.set_major_formatter(FuncFormatter(figure_style.plain_log_label))
+        ax.set_title(name, fontsize=8, loc="left")
+        ax.tick_params(labelsize=8)
+        ax.grid(axis="x", alpha=0.25, lw=0.5)
+    # Written out, so the typography gate can read each panel's opening word; BROKER_COLOURS
+    # holds Kafka first and Redis second.
+    axes[0].set_title("(a) Kafka", fontsize=8, loc="left")
+    axes[1].set_title("(b) Redis", fontsize=8, loc="left")
+    axes[1].tick_params(labelleft=False)
+
+
+#: The supplement's one-column text block, which a figure it includes at \columnwidth fills;
+#: the legibility gate holds a figure no document includes yet to it (15 Oct 2026).
+SUPPLEMENT_WIDTH_IN = figure_legibility.ONECOLUMN_WIDTH_IN
+
+
+def build_priority_forest(out_dir):
+    """Supplement S3.1's forest of the eight matched pairs on both brokers (15 Oct 2026).
+
+    Drawn at the width the supplement prints it at, a fraction of its one-column width (the
+    whole text block when no document includes it yet), so that its 8 pt type prints at 8 pt:
+    drawn at the whole block and included at 0.9 of it, it printed at 7.2 pt (15 Oct 2026).
+    """
+    figure_style.apply()   # in force when the artists are made, not merely at import
+    width = figure_legibility.print_widths().get("priority_forest", SUPPLEMENT_WIDTH_IN)
+    # Saved whole at that width, 2.29 in tall: the page prints it as drawn, no taller than the
+    # cropped and enlarged 2.5 in canvas printed before (165.5 pt).
+    fig, axes = plt.subplots(1, 2, figsize=(width, 2.29), sharey=True)
+    plot_priority_forest(axes, priority_forest_rows())
+    fig.tight_layout(w_pad=1.2, pad=0.3)
+    return _save(fig, out_dir, "priority_forest", intended_in=SUPPLEMENT_WIDTH_IN, whole=True)
+
+
 def build_priority_ladder(out_dir):
     figure_style.apply()   # in force when the artists are made, not merely at import
     import priority_pairs
@@ -578,14 +732,28 @@ def build_priority_ladder(out_dir):
 
 # --- driver -----------------------------------------------------------------------------
 
-def _save(fig, out_dir, stem):
+def _save(fig, out_dir, stem, intended_in=None, whole=False):
+    """Gate a figure and write it. `intended_in` is the width a figure no document includes
+    yet will print at (15 Oct 2026): the legibility gate measures a figure only at the width a
+    document gives it, so a new figure would otherwise pass unmeasured until the text took it
+    up, which is how a 7 pt legend once reached the paper.
+
+    `whole` writes the canvas uncropped, for a figure drawn at exactly the width the page
+    prints it at: the file is that width, so the page neither enlarges nor shrinks it, and
+    the collision gate checks that no label is cut by the canvas edge (15 Oct 2026)."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / ("%s.pdf" % stem)
-    figure_collisions.check(fig, stem)
-    figure_legibility.check(fig, stem)
+    figure_collisions.check(fig, stem, whole_canvas=whole)
+    widths = figure_legibility.print_widths()
+    if intended_in is not None and stem not in widths:
+        widths[stem] = intended_in
+    figure_legibility.check(fig, stem, widths)
     figure_vocabulary.check(fig, stem)
-    fig.savefig(path, bbox_inches="tight", pad_inches=0.02)
+    if whole:
+        figure_style.save_whole(fig, path)
+    else:
+        fig.savefig(path, bbox_inches="tight", pad_inches=0.02)
     plt.close(fig)
     return path
 
@@ -614,15 +782,21 @@ def build_deletion_phases(out_dir):
     # at 7.16 in by 2.10 in it hung below the edge and was never checked. No tight_layout:
     # a gridspec with its own spacing is one it leaves alone, with a warning, so the call
     # changed nothing.
-    fig = plt.figure(figsize=(7.16, 2.30))
-    gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.15], wspace=0.25,
-                          left=0.02, right=0.985, bottom=0.18)
+    # 15 Oct 2026: saved whole at exactly the text width. Cropped to its ink the file was 6.975
+    # in, and the page enlarged it 2.75%, which printed it 4.1 pt taller in both columns.
+    fig = plt.figure(figsize=DELETION_PHASES_IN)
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.15], wspace=0.22,
+                          left=0.004, right=0.992, bottom=0.215, top=0.91)
     left = fig.add_subplot(gs[0, 0])
     right = fig.add_subplot(gs[0, 1])
     make_paper_figures.plot_phases(left)
-    plot_deletion(right, retention_points())
+    plot_deletion(right, retention_points(), marked=incommensurate_points())
     right.set_title("(b) What the benchmark printed, and what it kept", fontsize=8, loc="left")
-    return _save(fig, out_dir, "deletion_phases")
+    return _save(fig, out_dir, "deletion_phases", whole=True)
+
+
+#: Fig. 4's canvas: the paper's text width exactly, and saved whole (15 Oct 2026).
+DELETION_PHASES_IN = (figure_legibility.TEXT_WIDTH_IN, 2.04)
 
 
 # --- the exposure curve -------------------------------------------------------------------
@@ -716,11 +890,13 @@ SPAN_CSV = RESULTS / "span_symmetry.csv"
 
 
 def repair_rows(path=SPAN_CSV):
-    """Per condition: (median D in ms, the proxy's error and the repaired error, in % of D).
+    """Per group: (median D in ms, the proxy's error and the repaired error, in % of D, broker).
 
     The proxy is the latency timed from the acknowledgment, S; the repair adds the publish
     latency back, S + A, as Section VI-B does. Both errors are against the condition's own
     median D, which is how `stat_intervals.recovery_populations` and the ledger count them.
+    15 Oct 2026: the repair is the median of S plus the median of A, at native resolution, as
+    the CSV now holds it; and each row names its broker, which the figure marks.
     """
     import csv
     out = []
@@ -730,13 +906,32 @@ def repair_rows(path=SPAN_CSV):
             if not d:
                 continue
             out.append((d / 1000.0, 100.0 * (d - float(r["median_S_us"])) / d,
-                        100.0 * abs(float(r["recovery_err_us"])) / d))
+                        100.0 * abs(float(r["recovery_err_us"])) / d,
+                        r["condition"].split("_")[0]))
     if not out:
         raise ValueError("no conditions in %s" % path)
     return sorted(out)
 
 
-def plot_repair(ax, rows, lags):
+#: The brokers as the paper's Fig. 3 colours them, for the figures that mark them (15 Oct 2026).
+BROKER_COLOURS = (("kafka", "Kafka", "#1f77b4"), ("redis", "Redis", "#d62728"))
+#: The model curve's ink, neutral so that no broker's colour reads as the curve's.
+CURVE = "#4d4d4d"
+
+
+def padding_points(path=None):
+    """[(campaign, broker, [(median D in ms, 100 A/D)])], one trajectory per campaign and broker,
+    from the padding campaign's committed medians (manipulation_runs.padding_spans)."""
+    import manipulation_runs
+    rows = manipulation_runs.read_padding(path or manipulation_runs.PADDING_CSV)
+    out = {}
+    for r in rows:
+        out.setdefault((r["campaign"], r["backend"]), []).append(
+            (int(r["pad_bytes"]), r["median_d_ms"], 100.0 * r["median_a_ms"] / r["median_d_ms"]))
+    return [(c, b, [(d, e) for _p, d, e in sorted(pts)]) for (c, b), pts in sorted(out.items())]
+
+
+def plot_repair(ax, rows, lags, padding=None):
     """Panel (a) of Fig. 4: the proxy's error on every condition, and the error once repaired.
 
     4 Oct 2026, the author: "show how things could be improved". The curve says how large the
@@ -746,31 +941,60 @@ def plot_repair(ax, rows, lags):
     """
     typical, _hi, _lo, p10, p90 = lags
     t_ms = np.logspace(np.log10(0.1), np.log10(200.0), 400)
+    # 15 Oct 2026: the curve and its band in neutral ink, since colour now marks the broker.
     ax.fill_between(t_ms, 100.0 * p10 / (t_ms * 1000.0), 100.0 * p90 / (t_ms * 1000.0),
-                    color=DELETED, alpha=0.14, linewidth=0)
+                    color=CURVE, alpha=0.18, linewidth=0)
     # 6 Oct 2026: the curve is one path at the median publish latency; across conditions the
     # publish latency grows with the end-to-end latency, so the crosses sit above it, and the
     # label says which it is.
-    ax.plot(t_ms, 100.0 * typical / (t_ms * 1000.0), color=DELETED, lw=1.2,
+    ax.plot(t_ms, 100.0 * typical / (t_ms * 1000.0), color=CURVE, lw=1.2,
             label="$A/D$ at a fixed $A$")
     ax.axhline(100, color=GREY, lw=0.8, ls="--", zorder=1)
-    ax.axvspan(0.1, 1.0, color=GREY, alpha=0.10, zorder=0)
+    # Lighter than the band since 15 Oct 2026, when the band turned grey with the curve.
+    ax.axvspan(0.1, 1.0, color=GREY, alpha=0.06, zorder=0)
     ax.text(0.12, 60, "below 1 ms", fontsize=8, color=GREY, ha="left", va="center")
-    xs = [r[0] for r in rows]
-    ax.scatter(xs, [r[1] for r in rows], s=10, marker="x", color=DELETED, linewidths=0.8,
-               label="timed from the acknowledgment", zorder=3)
-    ax.scatter(xs, [r[2] for r in rows], s=10, color=KEPT, edgecolors="none",
-               label="with $A$ added back", zorder=3)
+    # 15 Oct 2026, referee B (Fig. 6): pooled, the dots said the repair works everywhere.
+    # Kafka's groups sit near 2--3 ms and repair to within about a per cent; Redis's sit near
+    # 1 ms and repair to within a few tens. Each broker in the colour Fig. 3 gives it, the
+    # marker saying what was timed.
+    for key, _name, colour in BROKER_COLOURS:
+        mine = [r for r in rows if r[3] == key]
+        xs = [r[0] for r in mine]
+        ax.scatter(xs, [r[1] for r in mine], s=11, marker="x", color=colour, linewidths=0.8,
+                   zorder=3)
+        ax.scatter(xs, [r[2] for r in mine], s=10, color=colour, edgecolors="none", zorder=3)
+    # 15 Oct 2026, referee A (m25): the padding campaign, E-A10 and its repeat, A/D at each
+    # padding level, joined in order of padding. Load is held there, and the referee expected
+    # the publish latency to hold too; on Kafka it grows with the payload almost as fast as
+    # the end-to-end latency, so its points stay high where the curve falls.
+    for _campaign, key, pts in padding or ():
+        colour = dict((k, c) for k, _n, c in BROKER_COLOURS)[key]
+        ax.plot([d for d, _e in pts], [e for _d, e in pts], color=colour, lw=0.6, alpha=0.6,
+                zorder=2)
+        ax.scatter([d for d, _e in pts], [e for _d, e in pts], s=13, marker="D",
+                   facecolors="white", edgecolors=colour, linewidths=0.8, zorder=4)
     ax.set_xscale("log")
-    ax.set_xlim(0.1, 200)
+    ax.set_xlim(0.1, 300)
     ax.set_ylim(-4, 125)
     ax.set_xlabel("end-to-end latency (ms)", fontsize=8)
     ax.set_ylabel("error (% of the end-to-end latency)", fontsize=8)
     ax.tick_params(labelsize=8)
     ax.grid(alpha=0.25, lw=0.5)
-    # Above the axes, where neither the band nor the points can run into it.
-    ax.legend(fontsize=8, frameon=False, loc="lower center", bbox_to_anchor=(0.5, 1.0),
-              ncol=2, handletextpad=0.7, columnspacing=1.2, borderaxespad=0.6)
+    # Above the axes, where neither the band nor the points can run into it. What a marker
+    # means in neutral ink, and which broker a colour is.
+    handles = [plt.Line2D([], [], color=CURVE, lw=1.2),
+               plt.Line2D([], [], marker="x", ls="none", color=GREY, markersize=4,
+                          markeredgewidth=0.9),
+               plt.Line2D([], [], marker="o", ls="none", color=GREY, markersize=3.5),
+               plt.Line2D([], [], marker="D", ls="none", markerfacecolor="white",
+                          markeredgecolor=GREY, markersize=3.5),
+               plt.Rectangle((0, 0), 1, 1, color=BROKER_COLOURS[0][2]),
+               plt.Rectangle((0, 0), 1, 1, color=BROKER_COLOURS[1][2])]
+    labels = ["$A/D$ at a fixed $A$", "timed from the acknowledgment", "with $A$ added back",
+              "padding, $A/D$", BROKER_COLOURS[0][1], BROKER_COLOURS[1][1]]
+    ax.legend(handles, labels, fontsize=8, frameon=False, loc="lower center",
+              bbox_to_anchor=(0.5, 1.0), ncol=2, handletextpad=0.5, columnspacing=1.2,
+              borderaxespad=0.5, handlelength=1.4)
 
 
 def plot_priority_pairs(ax, rows):
@@ -823,8 +1047,8 @@ def build_remedies(out_dir):
     lags = emit_paper_numbers._exposure_lags()
     if lags is None:                      # pragma: no cover - the corpus ships with the repo
         raise SystemExit("span_symmetry.csv is missing; the repair panel has no source")
-    fig, a = plt.subplots(figsize=(3.5, 2.6))
-    plot_repair(a, repair_rows(), lags)
+    fig, a = plt.subplots(figsize=(3.5, 2.5))
+    plot_repair(a, repair_rows(), lags, padding_points())
     fig.tight_layout()
     return _save(fig, out_dir, "remedies")
 
@@ -1074,11 +1298,16 @@ def build_ttrue(out_dir):
 # The arms of the pre-registered payload manipulation, and where each one's replicates live.
 # 200 B is the baseline at the same rate: two campaigns ran it, and both belong to the arm --
 # dropping either would narrow the spread by selection rather than by measurement.
+#: 15 Oct 2026, two internal reviews: the arms were grey, red and blue, the red and blue the
+#: paper and the supplement give the two brokers, and every arm ran on one broker. They are told
+#: apart now by a grey that darkens with the payload and by marker shape, which no other
+#: figure gives a meaning, and their names stand beside them in both panels.
 PAYLOAD_ARMS = (
-    ("200 B", (("rate_q", 300), ("ultimate", 300)), GREY),
-    ("32 KB", (("ultimate_pay300", 32768),), DELETED),
-    ("64 KB", (("ultimate_pay300", 65536),), KEPT),
+    ("200 B", (("rate_q", 300), ("ultimate", 300)), "#8c8c8c"),
+    ("32 KB", (("ultimate_pay300", 32768),), "#4d4d4d"),
+    ("64 KB", (("ultimate_pay300", 65536),), "#111111"),
 )
+PAYLOAD_MARKERS = {"200 B": "o", "32 KB": "s", "64 KB": "^"}
 PAYLOAD_Q = 3  # 300 msg/s against a 1 ms tick is 10/3 in lowest terms
 
 
@@ -1160,7 +1389,8 @@ def plot_payload_grid(ax, arms, q=PAYLOAD_Q):
     tol = 0.04 * (max(every) - min(every)) if len(every) > 1 else 0.0
     for x, (label, vals, colour) in enumerate(arms):
         swarm = [x + d for d in swarm_offsets(vals, tol)]
-        ax.scatter(swarm, vals, s=15, color=colour, edgecolors="none", zorder=3)
+        ax.scatter(swarm, vals, s=15, color=colour, edgecolors="none", zorder=3,
+                   marker=PAYLOAD_MARKERS.get(label, "o"))
     # The label sits inside the axes, so the rule has to stop short of it: an axhline spans
     # the full width and printed each grid line straight through its own "k/q".
     left, label_x = -0.5, len(arms) - 0.55
@@ -1178,7 +1408,9 @@ def plot_payload_grid(ax, arms, q=PAYLOAD_Q):
     # cannot exceed 100, so the space is empty by construction.
     ax.set_ylim(25, 108)
     ax.set_ylabel("retention (%)", fontsize=8)
-    ax.set_title("(a) Replicates against the $q=%d$ grid" % q, fontsize=8)
+    # "lattice", the supplement's word for the retentions 0, 1/q, ..., 1 a configuration can
+    # reach, as its caption says; it keeps "grid" for the instants a timestamp changes value.
+    ax.set_title("(a) Replicates against the $q=%d$ lattice" % q, fontsize=8)
     ax.tick_params(labelsize=8)
 
 
@@ -1192,7 +1424,9 @@ def plot_payload_flip(ax, pos, q=PAYLOAD_Q):
     # last word.
     ax.annotate("half step width", xy=(0.0, half), xytext=(0, 3),
                 textcoords="offset points", fontsize=8, color=GREY, va="bottom", ha="left")
-    top = max(s for _, _, s, _, _ in pos) * 1.22
+    # 1.30, not 1.22: at 1.22 the label over the highest arm, 200 B, crossed the top spine (15 Oct
+    # 2026, an internal review of the printed figures).
+    top = max(s for _, _, s, _, _ in pos) * 1.30
     # A label set four points above its marker occupies roughly this much of the data range.
     # Any marker sitting that close beneath the boundary would have the rule printed through
     # its label, so the label hangs below the marker instead.
@@ -1208,7 +1442,8 @@ def plot_payload_flip(ax, pos, q=PAYLOAD_Q):
         for off in offsets:
             ax.plot([frac - 0.012, frac + 0.012], [off, off], color=colour, lw=0.9,
                     alpha=0.8, zorder=2, solid_capstyle="butt")
-        ax.scatter([frac], [spread], s=22, color=colour, edgecolors="none", zorder=3)
+        ax.scatter([frac], [spread], s=22, color=colour, edgecolors="none", zorder=3,
+                   marker=PAYLOAD_MARKERS.get(label, "o"))
         # A point in the right-hand third would carry its label off the axis, so the label
         # turns around and sits to its left instead.
         right = frac > 0.55
@@ -1221,7 +1456,8 @@ def plot_payload_flip(ax, pos, q=PAYLOAD_Q):
     ax.set_xlim(-0.03, 0.75)
     ax.set_ylim(0, top)
     ax.set_xlabel(r"frac($q\theta$)", fontsize=8)
-    ax.set_ylabel("replicate spread (pts)", fontsize=8)
+    # Percentage points of retention, written out: "(pts)" could be read as type or data points.
+    ax.set_ylabel("replicate spread\n(percentage points)", fontsize=8)
     ax.set_title("(b) The flat/full flip", fontsize=8)
     ax.tick_params(labelsize=8)
 
@@ -1237,83 +1473,76 @@ def build_payload(out_dir):
     """
     figure_style.apply()   # in force when the artists are made, not merely at import
     arms = payload_arms()
-    fig, axes = plt.subplots(2, 1, figsize=(3.50, 2.86))
+    # 2.855 in, from 2.86, since the spread's axis label took a second line (15 Oct 2026): the
+    # crop came out a hair narrower, and the page would have printed the figure 0.2 pt taller.
+    fig, axes = plt.subplots(2, 1, figsize=(3.50, 2.855))
     plot_payload_grid(axes[0], arms)
     plot_payload_flip(axes[1], payload_positions(arms))
     fig.tight_layout(h_pad=1.0)
     return _save(fig, out_dir, "payload_flip")
 
 
-# --- the recovery populations (Supplement S16.9) ------------------------------------------
+# --- the recovery populations (the postmortem's S16.9) -------------------------------------
 
-def _tie_offsets(values, row, spread=0.05, height=0.6):
-    """Vertical positions for a strip plot that stacks equal values instead of hiding them.
+def plot_recovery(axes, pops, cells):
+    """The recovery's error on the groups the check accepts and those it rejects, as
+    empirical distribution functions: (a) pooled, (b) on Kafka, (c) on Redis.
 
-    Fourteen of the accepted conditions recover the delivery exactly, and a strip that drew
-    them at one point would show one mark where the argument turns on there being fourteen.
-    Each run of equal values is fanned symmetrically about its row, narrower when the run is
-    long so that no run spills into the other row.
-    """
-    counts = {}
-    for x in values:
-        counts[x] = counts.get(x, 0) + 1
-    seen, ys = {}, []
-    for x in values:
-        k, i = counts[x], seen.get(x, 0)
-        seen[x] = i + 1
-        ys.append(row + (i - (k - 1) / 2.0) * min(spread, height / k))
-    return ys
-
-
-def plot_recovery(ax_cdf, ax_strip, pops, band):
-    """Both recovery populations, as empirical distribution functions and as every condition.
-
-    Round 77. S16.9's argument had become four paragraphs about the shape of two small
-    distributions -- a pile at zero, where the rest sits, whether a shift describes them --
-    with no picture of either, and its prose had described that shape wrongly twice. The
-    left panel shows what the Kolmogorov-Smirnov statistic measures and where the curves
-    change order; the right shows the counts the band tallies are made of.
+    Round 77 drew the two pooled populations, beside a strip of every group, for S16.9's
+    argument about their shape around a pile of exact recoveries. 15 Oct 2026, S16.9
+    rewritten: at native resolution that pile is gone, and the pooled verdicts part because
+    they mix the brokers unevenly. So (a) draws the pooled verdicts, which part, and (b) and (c)
+    each broker's, which interleave. Every group is a mark on its curve, and the axis is
+    logarithmic, because Kafka's errors lie an order of magnitude below Redis's and a linear
+    axis stacked all of Kafka's groups on its first tick. One axis for all three panels, so
+    that the brokers' errors sit where they sit against each other.
     """
     # The rejected population in grey, not DELETED red (round 78, W3). Red means "deleted" in
-    # Figure 4 and in the deletion histogram, and S16.9's whole point is that these conditions
-    # were kept and measured: a reader carrying Figure 4's legend here would read them as
-    # discarded. Grey is what the paper already draws for what is printed and kept.
-    series = (("Pass", "check accepts", KEPT, 1), ("Fail", "check rejects", GREY, 0))
-    for key, label, colour, row in series:
-        v = sorted(pops[key])
-        xs = sorted(set(v))
-        fs = [sum(1 for t in v if t <= x) / len(v) for x in xs]
-        ax_cdf.step([xs[0]] + xs, [0.0] + fs, where="post", color=colour, lw=1.3,
-                    label="%s (%d)" % (label, len(v)))
-        ax_strip.scatter(v, _tie_offsets(v, row), s=10, color=colour, edgecolors="none",
-                         alpha=0.85)
-    top = max(max(p) for p in pops.values())
-    for ax in (ax_cdf, ax_strip):
-        ax.axvline(band, color=GREY, lw=0.8, ls=":", zorder=0)
-        ax.set_xlim(-1.5, top + 2.0)
-        ax.set_xlabel("recovery error (% of median end-to-end latency)", fontsize=8)
+    # Figure 4 and in the deletion histogram, and S16.9's whole point is that these groups were
+    # kept and measured: a reader carrying Figure 4's legend here would read them as discarded.
+    # Grey is what the paper already draws for what is printed and kept.
+    from matplotlib.ticker import FuncFormatter
+    series = (("Pass", "check accepts", KEPT), ("Fail", "check rejects", GREY))
+    panels = ((axes[0], pops, ""), (axes[1], cells, "Kafka"), (axes[2], cells, "Redis"))
+    every = [v for p in pops.values() for v in p]
+    for ax, source, broker in panels:
+        for key, label, colour in series:
+            v = sorted(source[broker + key])
+            xs = sorted(set(v))
+            fs = [sum(1 for t in v if t <= x) / len(v) for x in xs]
+            ax.step([xs[0]] + xs, [0.0] + fs, where="post", color=colour, lw=1.2, label=label)
+            ax.plot(xs, fs, "o", color=colour, mec="none", ms=3.0, ls="none")
+        ax.set_xscale("log")
+        ax.set_xlim(min(every) / 2.0, max(every) * 2.0)
+        ax.xaxis.set_major_formatter(FuncFormatter(figure_style.plain_log_label))
+        ax.set_ylim(0.0, 1.03)
         ax.tick_params(labelsize=8)
         ax.grid(alpha=0.25, lw=0.5)
-    ax_cdf.set_ylim(0.0, 1.03)
-    ax_cdf.set_ylabel("share of conditions", fontsize=8)
-    ax_cdf.legend(fontsize=8, frameon=False, loc="lower right", handletextpad=0.4)
-    # Titled as the caption names the panels, and on a capital: `test_figure_typography`
-    # holds every panel title in the submission to that, and bare "(a)"/"(b)" failed it.
-    ax_cdf.set_title("(a) Distribution functions", fontsize=8, loc="left")
-    ax_strip.set_yticks([1, 0])
-    ax_strip.set_yticklabels(["check accepts", "check rejects"], fontsize=8)
-    ax_strip.set_ylim(-0.55, 1.55)
-    ax_strip.set_title("(b) Every condition", fontsize=8, loc="left")
+    # One legend, in the corner of (a) that both pooled curves leave empty: low errors are
+    # Kafka's, and fewer than three quarters of either verdict's groups lie there. Each panel's
+    # counts are the caption's, from the ledger; in a legend of every panel, Kafka's sat on
+    # its own curves.
+    axes[0].legend(fontsize=8, frameon=False, loc="upper left", handletextpad=0.4,
+                   borderaxespad=0.3)
+    axes[0].set_ylabel("share of groups", fontsize=8)
+    # One label for the three axes they share, under the middle one; "log" in it, and the
+    # ticks written out, as the paper's other logarithmic axes have them (15 Oct 2026).
+    axes[1].set_xlabel("recovery error (% of median end-to-end latency, log)", fontsize=8)
+    # Titled as the caption names the panels, and on a capital: `test_figure_typography` holds
+    # every panel title in the submission to that, and reads the titles written out here.
+    axes[0].set_title("(a) Both brokers", fontsize=8, loc="left")
+    axes[1].set_title("(b) Kafka", fontsize=8, loc="left")
+    axes[2].set_title("(c) Redis", fontsize=8, loc="left")
 
 
 def build_recovery(out_dir):
     figure_style.apply()   # in force when the artists are made, not merely at import
     import stat_intervals
-    fig, (ax_cdf, ax_strip) = plt.subplots(1, 2, figsize=(6.5, 2.35))
-    pops = stat_intervals.recovery_populations()
-    # The same derived edge the ledger emits (round 78): the accepted population's upper
-    # quartile, so the dotted line and the counted bands cannot disagree.
-    plot_recovery(ax_cdf, ax_strip, pops, stat_intervals.recovery_band_edge(pops))
+    fig, axes = plt.subplots(1, 3, figsize=(6.5, 2.35), sharey=True)
+    # The populations the ledger's macros are made from, through the one loader both read
+    # (round 77): pooled by verdict, and each broker's two verdicts (15 Oct 2026).
+    plot_recovery(axes, stat_intervals.recovery_populations(),
+                  stat_intervals.recovery_populations(split="both"))
     fig.tight_layout()
     return _save(fig, out_dir, "recovery_populations")
 
@@ -1323,7 +1552,8 @@ def main(argv=None):
     ap.add_argument("--out", default=os.path.join("docs", "results", "figures"))
     ap.add_argument("--only",
                     choices=("deletion_phases", "spectrum", "grid", "mechanism", "ttrue",
-                             "payload", "exposure", "recovery", "priority", "remedies"),
+                             "payload", "exposure", "recovery", "priority", "remedies",
+                             "priority_forest"),
                     default=None)
     args = ap.parse_args(argv)
 
@@ -1332,7 +1562,7 @@ def main(argv=None):
                 "mechanism": build_mechanism, "ttrue": build_ttrue,
                 "payload": build_payload, "exposure": build_exposure,
                 "priority": build_priority_ladder, "recovery": build_recovery,
-                "remedies": build_remedies}
+                "remedies": build_remedies, "priority_forest": build_priority_forest}
     todo = [args.only] if args.only else list(builders)
     for name in todo:
         path = builders[name](args.out)

@@ -1,0 +1,35 @@
+{
+  "I": {
+    "decision": {
+      "bump_share_default": 0.04204808587071782,
+      "bump_share_poll": 0.056882383153569596,
+      "the_mode_is_idle_wake": false
+    },
+    "described": [
+      {
+        "backend": "kafka",
+        "dack_median": 191.01775,
+        "dack_waited_share": 1.0,
+        "idle_poll": false
+      },
+      {
+        "backend": "kafka",
+        "dack_median": 176.21525,
+        "dack_waited_share": 1.0,
+        "idle_poll": true
+      },
+      {
+        "backend": "redis",
+        "dack_median": 62.716750000000005,
+        "dack_waited_share": 0.09172012830793905,
+        "idle_poll": false
+      },
+      {
+        "backend": "redis",
+        "dack_median": 61.515249999999995,
+        "dack_waited_share": 0.09843624699278268,
+        "idle_poll": true
+      }
+    ]
+  }
+}

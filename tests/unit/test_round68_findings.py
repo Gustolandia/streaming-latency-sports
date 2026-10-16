@@ -74,8 +74,12 @@ def _band_clause(paper):
     percentiles of A across conditions, 500--1900 us." The sentence that prints the band's
     two ends is that clause.
     """
-    i = paper.index(chr(92) + "label{fig:exposure}")
-    caption = " ".join(paper[paper.rindex(chr(92) + "caption{", 0, i):i].split())
+    # 15 Oct 2026: the figure moved to Supplement S2.1 (sfig:exposure) for the paper's page
+    # budget; its caption, read from the supplement, still introduces the band once.
+    paper = (REPO / "supplement.tex").read_text(encoding="utf-8")
+    i = paper.index(chr(92) + "label{sfig:exposure}")
+    start = max(paper.rfind(chr(92) + "caption{", 0, i), paper.rfind(chr(92) + "caption[", 0, i))
+    caption = " ".join(paper[start:i].split())
     sentences = [s for s in re.split(r"(?<=\.) ", caption)
                  if chr(92) + "exposureLagLo" in s]
     assert len(sentences) == 1, "the exposure band's clause has moved; retarget this pin"
@@ -136,12 +140,17 @@ class TestR1TheExposureBand:
         crossover bands derived from it went with the old Section III-D. The numbers are read
         from the ledger rather than typed, and the median's are refused inside the band.
         """
+        # 16 Oct 2026: the band of publish latencies left with the figure for Supplement S2.1,
+        # whose caption the source pins hold; the paper prints the band of errors that band
+        # gives at 10 ms, in Section VI, from "tenth to ninetieth percentiles" to its percent.
         flat = " ".join(rendered_paper.split())
         i = flat.index("tenth to ninetieth percentiles")
-        band = flat[i:flat.index("s.", i) + 2]
-        assert len(band) < 160, "the band clause no longer ends nearby: %r" % band[:200]
-        assert ledger["exposureLagLo"] in band and ledger["exposureLagHi"] in band, \
-            "the band names the two percentiles"
+        band = flat[i:flat.index("%.", i) + 2]
+        assert len(band) < 120, "the band clause no longer ends nearby: %r" % band[:200]
+        assert ledger["exposureErrTenLo"] in band and ledger["exposureErrTenHi"] in band, \
+            "the band names the errors at the two percentiles"
+        assert ledger["exposureErrTen"] not in band, \
+            "the median's error is inside the band; that is round 68's defect"
         assert ledger["ackLagMedianUs"] not in band, \
             "the median publish latency is inside the band; that is round 68's defect"
         assert ledger["exposureCrossover"] not in band, \
@@ -302,11 +311,13 @@ class TestRecommendedItems:
         assert "---" not in table, "an em-dash in an IEEE table reads 'not measured'"
         assert "dashed" not in paper[:i][-900:], \
             "the caption stopped needing to explain the glyph"
+        # 16 Oct 2026: Table I is generated whole, each row a span's symbol, its origin
+        # timestamp and then its smallest value, so a publish-timed row reads "t pub 0 0 0".
         flat = " ".join(rendered_paper.split())
-        assert flat.count("publish (chain)0 0 0") == 3, \
+        assert len(re.findall(r"t ?pub 0 0 0 \d", flat)) == 3, \
             "all three publish-referenced chain rows print three measured zeros -- the "\
             "publish latency joined them in round 70"
-        assert "event time0 0 0" in flat, "and so does E"
+        assert re.search(r"t ?sched 0 0 0 \d", flat), "and so does E"
 
     def test_w4_the_supplement_imports_the_papers_labels_under_a_prefix(self, supplement):
         """v5 (28 Sep): the paper's new exposure figure took `fig:exposure`, the label the
@@ -387,7 +398,10 @@ class TestRecommendedItems:
         applies only if the rule comes back.
         """
         flat = " ".join(paper.split())
-        assert re.search("busy-polling a dedicated core should buy the same", flat, re.I), (
+        # 15 Oct 2026: "A busy-polling thread, spinning on a core of its own, never waits to
+        # be woken and should buy the same for the price of that core".
+        assert re.search("busy-polling thread, spinning on a core of its own, never waits to "
+                         "be woken and should buy the same", flat, re.I), (
             "J. Kunkel's busy-poll sentence has gone from the paper again; it was asked for in "
             "correspondence, beside the real-time-priority mitigation")
         i = paper.find("Do not assume co-location makes the measurement safer")

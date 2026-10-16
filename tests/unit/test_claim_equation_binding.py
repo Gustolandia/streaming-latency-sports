@@ -183,7 +183,10 @@ class TestEveryClaimAboutAnEquationMatchesTheEquation:
             "Related Work no longer claims the rate's dependence on the delivery; if that is "
             "deliberate, say what replaced the delta over Villain et al.")
         mechanism = flat[flat.index(r"\label{sec:mechanism}"):flat.index(r"\label{sec:external}")]
-        assert re.search(r"We show by \\emph\{manipulation\}", mechanism), (
+        # 15 Oct 2026: freeze 41 adds the kernel's timestamps to the manipulations, "We show,
+        # by the kernel's timestamps and by \emph{manipulation}, ...".
+        assert re.search(r"We show, by the kernel's timestamps and by \\emph\{manipulation\}",
+                         mechanism), (
             "the delta over Villain et al. is the dependence *and* the manipulations; the "
             "dependence alone is what they already had")
 

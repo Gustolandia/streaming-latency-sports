@@ -490,7 +490,8 @@ class TestTheIndustrysNames:
         # Where the model says each span starts: t_pub at the publish call, and E at the
         # moment the message fell due.
         assert "$t_{\\mathrm{pub}}$, read immediately before the publish call" in flat
-        assert "mark when the message was due" in flat
+        # 15 Oct 2026: "$t_{\mathrm{sched}}$, when the replayed schedule made it due".
+        assert "when the replayed schedule made it due" in flat
 
 
 class TestEachNameIsBuiltWhereAReaderFirstMeetsIt:
@@ -515,8 +516,10 @@ class TestEachNameIsBuiltWhereAReaderFirstMeetsIt:
                # 13 Oct 2026: Section VI names the fix freeze 39 tested where it first gives it.
                "kernel-timed latency",
                # 15 Oct 2026: Section VI says how any tool reads those timestamps, and names the
-               # setting, the queue it returns them on and the queue a packet waits in.
-               "socket option", "error queue", "device queue")
+               # setting and the queue it returns them on. The "device queue" left the same day:
+               # referee A (m12) asked for the kernel documentation's name, the timestamp taken
+               # before the packet scheduler.
+               "socket option", "error queue")
 
     @staticmethod
     def _reader_text(paper):

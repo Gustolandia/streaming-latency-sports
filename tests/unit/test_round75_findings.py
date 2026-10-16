@@ -92,9 +92,16 @@ def _recovery(paper):
 
     v5 (28 Sep): v4's "The displacement can be recovered rather than discarded" paragraph is
     the last of Section III-D. Its opening sentence did not survive the rewrite, so it is found
-    by what it prints, both populations' median errors, rather than by how it begins."""
+    by what it prints, both populations' median errors, rather than by how it begins.
+
+    15 Oct 2026: found by the two brokers' median errors instead of the two verdicts'. The
+    paper quotes the recovery by broker and drops the pooled split by the sign check's verdict,
+    because that split is the brokers' mix: most rejected groups are Redis's, whose errors are
+    an order of magnitude larger than Kafka's (the postmortem's S16.9, rewritten that day)."""
+    def prints(p, macro):
+        return re.search(re.escape(BS + macro) + r"(?![A-Za-z])", p)
     paras = [p for p in re.split(r"\n\s*\n", _section_iii_d(paper))
-             if BS + "recoveryErrPass" in p and BS + "recoveryErrFail" in p]
+             if prints(p, "recoveryErrKafka") and prints(p, "recoveryErrRedis")]
     assert len(paras) == 1, "Section III-D's recovery paragraph has moved; retarget this pin"
     return " ".join(paras[0].split())
 
@@ -218,7 +225,11 @@ class TestR1TheIndexTermsNameTheirOwnSubject:
 #: both populations' median errors over their counts and both upper quartiles, and claims
 #: neither a separation nor a sameness; the mutations below put each claim back after the
 #: last of its numbers.
-RECOVERY_END = r"\$" + re.escape(BS) + r"recoveryErrFailHi" + re.escape(BS) + r"%\$"
+#: 15 Oct 2026: the paragraph quotes the errors by broker, and its last number is Redis's upper
+#: quartile; the anchor takes it with or without the per cent sign and the closing dollar, so
+#: that it follows the number rather than one way of setting it.
+RECOVERY_END = (re.escape(BS) + r"recoveryErrRedisHi(?![A-Za-z])(?:" + re.escape(BS)
+                + r"%)?\$?")
 
 
 class TestR2TheRecoveryPopulationsDoNotSeparate:
@@ -236,34 +247,73 @@ class TestR2TheRecoveryPopulationsDoNotSeparate:
                      "recoveryPassMax", "recoveryFailMax"):
             assert name in got, "%s is not emitted beside the numbers it qualifies" % name
 
-    def test_the_shift_is_small_and_the_maxima_agree(self, ledger):
-        """The two facts Section V-D now asserts, checked against the ledger rather than
-        against the sentence."""
-        assert abs(float(ledger["recoveryShift"])) < 3.0, (
-            "the Hodges-Lehmann shift has moved; Section V-D's 'the populations behind them "
-            "do not differ' must be re-argued, not merely re-emitted")
-        # 7 Oct 2026: leaving out the late messages parted the two maxima by two points, 38
-        # and 36, and S16.9 now says the worst conditions lie within two points of each other.
-        assert abs(float(ledger["recoveryPassMax"]) - float(ledger["recoveryFailMax"])) <= 2, (
-            "S16.9 says the worst conditions lie within two points of each other; if they "
-            "part further the sentence is false")
+    def test_the_pooled_shift_excludes_zero_and_each_broker_s_contains_it(self, ledger,
+                                                                          supplement):
+        """The two facts S16.9 now asserts, checked against the ledger rather than against the
+        sentence.
 
-    def test_the_concentration_at_zero_is_what_moves_the_median(self, ledger):
-        """The structure the corrected sentence attributes the median gap to."""
-        exact = float(ledger["recoveryPassExact"])
-        gap = float(ledger["recoveryErrFail"]) - float(ledger["recoveryErrPass"])
-        assert exact >= 25.0, (
-            "fewer than a quarter of accepted conditions recover exactly, so the "
-            "concentration at zero no longer explains the %.1f-point median gap" % gap)
-        assert gap > 0
+        Until 15 Oct 2026 this was `test_the_shift_is_small_and_the_maxima_agree`: the pooled
+        shift under three points and the two worst groups within two points of each other,
+        S16.9's reading of the 50 us grid's estimator. At native resolution the pooled shift is
+        3.7 points and its interval excludes zero, which S16.9 reads as the brokers' mix; what
+        carries "the recovery holds where the check rejects" now is the shift inside each
+        broker, whose interval must contain zero. The maxima are held where S16.9 now compares
+        them, broker by broker (round 79's W2). Were either fact to stop holding, S16.9 would
+        have to be re-argued, not re-emitted."""
+        lo, hi = (float(v) for v in ledger["recoveryShiftCI"].split("$ to $"))
+        assert 0.0 < lo < float(ledger["recoveryShift"]) < hi, (
+            "S16.9 says the pooled interval excludes zero")
+        for broker in ("Kafka", "Redis"):
+            blo, bhi = (float(v) for v in ledger["recovery%sShiftCI" % broker].split("$ to $"))
+            assert blo < 0.0 < bhi, (
+                "%s's interval no longer contains zero: 'within either broker, no shift can be "
+                "detected' must be re-argued, not re-emitted" % broker)
+            assert blo <= float(ledger["recovery%sShift" % broker]) <= bhi
+        # And the sentences that say so are the ones S16.9 prints, beside the brackets.
+        s169 = _s169(supplement)
+        assert (BS + "recoveryShiftCI$), an interval that excludes zero") in s169
+        assert (BS + "recoveryRedisShiftCI$). Both intervals contain zero") in s169
+
+    def test_the_pile_at_zero_was_the_grid_s_and_kafka_s(self, ledger, supplement):
+        """What S16.9 now says of the concentration at zero its old reading turned on.
+
+        Until 15 Oct 2026 this was `test_the_concentration_at_zero_is_what_moves_the_median`:
+        a quarter or more of the accepted groups recovered exactly, which was said to open the
+        gap between the two medians. At native resolution no group of either verdict recovers
+        exactly. The grid's exact recoveries are emitted under names of their own, and only
+        while every one is a Kafka group's, with an error under one grid step. The gap between
+        the pooled medians is still there, because the rejected groups are mostly Redis's and
+        the accepted ones mostly Kafka's."""
+        assert ledger["recoveryPassExact"] == ledger["recoveryFailExact"] == "0"
+        assert int(ledger["recoveryGridPassExactN"]) > 0 and int(ledger["recoveryGridFailExactN"]) > 0
+        assert float(ledger["recoveryGridExactMaxUs"]) < float(ledger["recoveryGridStepUs"]), (
+            "S16.9 says each group the grid printed as exact had an error under one step")
+        assert float(ledger["recoveryErrFail"]) > float(ledger["recoveryErrPass"])
+        assert 2 * int(ledger["recoveryRedisFailN"]) > int(ledger["recoveryFailN"]), \
+            "S16.9: the rejected groups are mostly Redis's"
+        assert 2 * int(ledger["recoveryKafkaPassN"]) > int(ledger["recoveryPassN"]), \
+            "S16.9: the accepted groups are mostly Kafka's"
+        s169 = _s169(supplement)
+        for said in ("Every one of them was " + BS + "kafka{}'s.",
+                     "no " + BS + "redis{} group printed as exact",
+                     "Pooling sets mostly " + BS + "redis{} groups against mostly " + BS
+                     + "kafka{} ones"):
+            assert said in s169, said
 
     def test_the_referee_s_never_exact_is_not_repeated(self, ledger, paper, supplement):
-        """The referee's R2 said the recovery is 'never exact on the rejected ones'. It is
-        exact on `recoveryFailExact` percent of them. Neither document may say otherwise."""
-        assert float(ledger["recoveryFailExact"]) > 0.0
+        """The referee's R2 said the recovery is 'never exact on the rejected ones', as if
+        exactness told the verdicts apart. On the 50 us grid it was exact on six of them.
+
+        15 Oct 2026: at native resolution it is exact on none of either verdict's groups, so
+        exactness still tells the verdicts nothing; S16.9 says it of both together, and neither
+        document may say it of one alone."""
+        assert ledger["recoveryPassExact"] == ledger["recoveryFailExact"]
         for doc in (paper, supplement):
             flat = " ".join(doc.split())
             assert "never exact" not in flat
+        assert re.search(r"neither among the \$" + re.escape(BS) + r"recoveryPassN\$ accepted"
+                         r".*?nor among the \$" + re.escape(BS) + r"recoveryFailN\$ rejected",
+                         _s169(supplement)), "S16.9 states both shares, together"
 
     def test_section_v_d_and_section_viii_b_now_agree(self, paper, supplement):
         """The reason this mattered beyond one clause: the Discussion's fourth rule cited a
@@ -289,14 +339,26 @@ class TestR2TheRecoveryPopulationsDoNotSeparate:
         journal supplement no longer carries the shift; S16.9 of the postmortem does. Held:
         both populations described alike, no separation or sameness claimed, S16.9 as before,
         and the table of checks quoting only numbers the paragraph prints, so the two cannot
-        disagree."""
+        disagree.
+
+        15 Oct 2026: by broker. The postmortem's S16.9, rewritten that day, shows that the
+        pooled split by verdict is the brokers' mix and that the recovery holds where the check
+        rejects only read inside each broker. So the paragraph is held to each broker's median
+        error and upper quartile instead of each verdict's (the pooled figures stay in S16.9's
+        table), and wherever it sets the groups the check passes beside those it rejects, it
+        must say the comparison is made within a broker."""
         vd = _recovery(paper)
-        for macro in ("recoveryErrPass", "recoveryErrFail", "recoveryPassN", "recoveryFailN",
-                      "recoveryErrPassHi", "recoveryErrFailHi"):
+        for macro in ("recoveryErrKafka", "recoveryErrRedis", "recoveryErrKafkaHi",
+                      "recoveryErrRedisHi"):
             assert re.search(re.escape(BS + macro) + r"(?![A-Za-z])", vd), macro
         for claim in ("separate", "do not differ", "indistinguishable", "no shift remains",
                       "the populations do not"):
             assert claim not in vd, claim
+        if re.search(r"\b(?:passes|accepts|rejects)\b", vd):
+            # Case-blind: the sentence may open on it, "On each broker, ...".
+            assert re.search(r"\b(?:within|inside|on) (?:each|either) broker\b", vd, re.I), (
+                "the paragraph compares the check's verdicts without saying the comparison is "
+                "made inside a broker; pooled, it measures the brokers' mix (S16.9)")
         s169 = _s169(supplement)
         assert BS + "recoveryShift$" in s169
         # Round 76 replaced the one-sided quote of `recoveryPassExact` here. It read "33% of
@@ -310,7 +372,11 @@ class TestR2TheRecoveryPopulationsDoNotSeparate:
         # medians as description. Round 78 (R1) reworded "no shift remains", a claim of
         # equivalence, to "no shift is detectable", which is what the interval supports; S16.9
         # words it "no shift can be detected".
-        assert BS + "recoveryNonzeroShift$" in s169 and "no shift can be detected" in s169
+        # 15 Oct 2026: at native resolution every group is non-zero, so the non-zero shift was
+        # the pooled shift under a second name, and its interval excludes zero. What cannot be
+        # detected now is a shift inside either broker, and the two brokers' shifts carry it.
+        assert BS + "recoveryKafkaShift$" in s169 and BS + "recoveryRedisShift$" in s169
+        assert "within either broker, no shift can be detected" in s169
         assert "the recovery holds where the check rejects as well as where it passes" in s169
         row = _checks_row(paper, "add it back")
         quoted = set(re.findall(re.escape(BS) + r"(recovery\w+)", row))
@@ -341,7 +407,10 @@ class TestR2TheRecoveryPopulationsDoNotSeparate:
         # can see which was excluded and why.
         assert "Mann" not in s169 and "Wilcoxon" not in s169
         assert "rank test" in s169, "the supplement says why, rather than leaving a gap"
-        assert "Kolmogorov" in s169 and BS + "recoveryKsD" in supplement
+        # 15 Oct 2026: the Kolmogorov-Smirnov statistic is computed inside each broker, where
+        # S16.9 now makes its distributional claim; the pooled one went with the pooled claim.
+        assert "Kolmogorov" in s169
+        assert BS + "recoveryKafkaKsD" in s169 and BS + "recoveryRedisKsD" in s169
 
     def test_the_defect_that_prompted_this_is_caught(self, paper):
         """Mutation, not inspection. Anchored on the claim across its line break, because
@@ -505,7 +574,14 @@ class TestTheRenderedPageCarriesIt:
 
     def test_the_supplement_table_prints(self):
         """5 Oct 2026: the recovery table and the monotonic-clock remedy are the postmortem's
-        (S16.9 and S16.6), so their pages are read from postmortem.pdf."""
+        (S16.9 and S16.6), so their pages are read from postmortem.pdf.
+
+        15 Oct 2026: the table has a row for each broker and verdict, under a Verdict column,
+        where it had two rows headed "Check accepts" and "Check rejects"."""
         flat = " ".join(_rendered("postmortem").split())
-        assert "Check accepts" in flat and "Check rejects" in flat
+        i = flat.rindex("S16.9. The displacement recovery")
+        table = flat[i:flat.index("No group recovers exactly", i)]
+        for words in ("Groups Verdict", "Both brokers accepted", "rejected", "Kafka all",
+                      "Redis all"):
+            assert words in table, words
         assert "CLOCK_MONOTONIC" in flat.replace(" ", "")

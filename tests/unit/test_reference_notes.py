@@ -51,6 +51,12 @@ ALLOWED = [
     r"\{Open Compute Project\}, Unified Intelligent Infrastructure workstream",
     r"Assigned to the Hewlett-Packard Company",
     r"\d{1,2} [A-Z][a-z]+ \d{4}",
+    # 16 Oct 2026: an RFC's standard number (RFC 7679 is STD 81), braced so that the style keeps
+    # its capitals, and a book's release and appendix, McKenney's as referee A (m32) cites it: a
+    # series number, an edition and a locator, each a publication detail.
+    r"\{STD\}~\d+",
+    r"Release v[\d.]+[a-z]?",
+    r"App\.~[A-Z]\.\d+(--[A-Z]\.\d+)?",
 ]
 
 

@@ -140,3 +140,47 @@ def test_the_plans_pilot_row_says_what_the_design_files_run():
     for name in ("l500_design.json", "l2000_design.json"):
         assert {s["load_pct"] for s in design(name)["setups"]} == {0}, name
     assert {s["load_pct"] for s in design("l50_design.json")["setups"]} == {0, 88}
+
+
+#: Each block, its committed run table, bin table and verdicts (15 Oct 2026, after the runs).
+JUDGED_FILES = (("K", "k_runs.csv", "k_bins.csv", "k_verdicts.json"),
+                ("R", "r_runs.csv", None, "r_verdicts.json"),
+                ("P", "p_runs.csv", None, "p_verdicts.json"),
+                ("L", "l_runs.csv", None, "l_verdicts.json"),
+                ("I", "i_runs.csv", None, "i_verdicts.json"))
+
+
+def _judged(block, runs, bins):
+    import order_scope
+    rows = order_scope.read_table(str(HERE / runs))
+    bin_rows = order_scope.read_table(str(HERE / bins)) if bins else []
+    return order_scope.JUDGES[block](rows, bin_rows)
+
+
+def test_the_committed_verdicts_are_the_judges_own():
+    """Each block's verdicts file is what scripts/order_scope.py's judge gives on the committed run
+    table, so a verdict cannot be edited by hand, and a judge changed later shows here."""
+    for block, runs, bins, verdicts in JUDGED_FILES:
+        committed = json.loads((HERE / verdicts).read_text(encoding="utf-8"))
+        assert json.loads(json.dumps(_judged(block, runs, bins), sort_keys=True)) == committed, block
+
+
+def test_the_record_prints_each_verdict_as_the_judge_gave_it():
+    """The record's tables of results, one row per prediction, against the verdicts files."""
+    text = (HERE / "README.md").read_text(encoding="utf-8")
+    printed = {}
+    import re
+    for line in text.splitlines():
+        # A cell may hold an escaped bar, as "Pr[S < 0 \| S_k]" does; split on the others.
+        cells = [c.strip() for c in re.split(r"(?<!\\)\|", line.strip().strip("|"))]
+        if len(cells) == 4 and cells[0][:2] in ("K-", "R-", "P-", "L-"):
+            printed[cells[0]] = cells[3]
+    expected = {}
+    for block, runs, bins, verdicts in JUDGED_FILES:
+        for name, entry in json.loads((HERE / verdicts).read_text(encoding="utf-8")).items():
+            if "verdict" in entry:
+                expected[name] = entry["verdict"]
+            else:
+                expected[name] = "decision recorded"
+    expected.pop("I")
+    assert printed == expected

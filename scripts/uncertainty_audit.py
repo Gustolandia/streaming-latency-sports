@@ -185,6 +185,10 @@ def main():
         "spanRunsAckOnlyPct", "spanKafkaRunsAckInvertsPct", "spanRedisRunsAckInvertsPct",
         "spanDeepestInversionMs", "spanSendFloorUs", "spanSendFloorOtherUs",
         "spanOffsetMargin", "rtResidualMin", "rtResidualMax", "invCeiling",
+        # 16 Oct 2026: the real-time rates in percent, extremes and medians over the pairs.
+        "rtResidualMinPct", "rtResidualMaxPct", "rtRedisResidualMinPct",
+        "rtRedisResidualMaxPct", "rtRedisFloorLightLoadPct", "rtRedisNormalLightLoadPct",
+        "rtRedisFloorHeavyLoadPct", "rtRedisNormalHeavyLoadPct",
         "ombKeptLo", "ombKeptHi", "ombRetentionFold",
         "ombMedianCells", "gridFlatRates",
     }

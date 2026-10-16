@@ -72,6 +72,10 @@ FIELDS = [
     "neg_ack", "neg_send", "neg_output_send", "neg_tti", "neg_output", "neg_acklag",
     "min_ack_us", "min_send_us", "median_ack_us", "median_send_us",
     "median_output_ns", "min_acklag_us",
+    # 15 Oct 2026: the run's smallest value of the two other chains Table I counts, so that
+    # every publish-timed span has its smallest observed value beside its count of zeros
+    # (referee B: "never below zero" is then seen to be far from zero, not just above it).
+    "min_output_send_us", "min_tti_us",
 ]
 
 # The six spans, as (output-prefix, later-stamp, earlier-stamp). Keeping them in one table
@@ -184,6 +188,8 @@ def summarise_run(run_id, backend, spans, n_late=0):
         # beside the count for the same reason `min_ack_us` sits beside `neg_ack`: a count
         # with no magnitude cannot be argued about.
         "min_acklag_us": round(min(spans["acklag"]) / 1000.0, 1),
+        "min_output_send_us": round(min(spans["output_send"]) / 1000.0, 1),
+        "min_tti_us": round(min(spans["tti"]) / 1000.0, 1),
     }
     for name, _, _ in SPANS:
         row["neg_" + name] = sum(1 for v in spans[name] if v < 0)
@@ -336,6 +342,13 @@ def totals(rows):
               if str(r.get("min_acklag_us", "")).strip() != ""]
     if floors:
         agg["shallowest_acklag_us"] = min(floors)
+    # The two other chains' smallest values (15 Oct 2026), guarded like the floor above, so a
+    # ledger written before the columns existed still yields every other quantity.
+    for name in ("output_send", "tti"):
+        mins = [float(r["min_%s_us" % name]) for r in rows
+                if str(r.get("min_%s_us" % name, "")).strip() != ""]
+        if mins:
+            agg["%s_floor_us" % name] = min(mins)
     return agg
 
 

@@ -218,20 +218,6 @@
   pages     = {387--394}
 }
 
-@techreport{rfc7679,
-  author      = {Almes, Guy and Kalidindi, Sunil and Zekauskas, Matthew and
-                 Morton, Al},
-  title       = {A One-Way Delay Metric for {IPPM}},
-  institution = {Internet Engineering Task Force},
-  type        = {RFC},
-  number      = {7679},
-  year        = {2016},
-  month       = jan,
-  note        = {Obsoletes RFC 2679},
-  annote      = {Obsoletes RFC 2679. Section 3.5 keeps negative values as
-                 distribution data rather than discarding them}
-}
-
 @misc{omb_pr398,
   author       = {Downs, Travis},
   title        = {Grow buffer if histogram can't fit (pull request \#398)},
@@ -942,4 +928,30 @@
   year         = {2026},
   note         = {\url{https://nightlies.apache.org/flink/flink-docs-master/docs/ops/metrics/}. Accessed: Sep. 14, 2026},
   annote       = {\url{https://nightlies.apache.org/flink/flink-docs-master/docs/ops/metrics/}; ``Flink assumes that the clocks of all machines in the cluster are in sync''; the feature ``is disabled by default'' and is recommended ``only \ldots{} for debugging purposes''. Accessed: Sep. 14, 2026}
+}
+
+@misc{indexdev2026brokers,
+  author       = {{Index.dev}},
+  title        = {{NATS} vs {Redis} vs {Kafka}: message broker comparison},
+  howpublished = {Practitioner comparison},
+  year         = {2026},
+  note         = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}. Accessed: Sep. 3, 2026},
+  annote       = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}; no retained fraction, rejection count, timestamp resolution or send rate. S1.9 records what we first read here and why it was wrong. Accessed: Sep. 3, 2026.}
+}
+
+@inproceedings{mytkowicz2009wrong,
+  author    = {Mytkowicz, Todd and Diwan, Amer and Hauswirth, Matthias and Sweeney, Peter F.},
+  title     = {Producing Wrong Data Without Doing Anything Obviously Wrong!},
+  booktitle = {Proc. 14th Int. Conf. Architectural Support for Programming Languages and Operating Systems (ASPLOS)},
+  year      = {2009},
+  pages     = {265--276},
+  publisher = {ACM}
+}
+
+@article{yang2022cloudprofiler,
+  title={Cloudprofiler: {TSC}-based inter-node profiling and high-throughput data ingestion
+         for cloud streaming workloads},
+  author={Yang, Shinhyung and Jeong, Jiun and Scholz, Bernhard and Burgstaller, Bernd},
+  journal={arXiv preprint arXiv:2205.09325},
+  year={2022}
 }

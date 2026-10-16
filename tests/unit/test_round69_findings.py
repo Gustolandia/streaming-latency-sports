@@ -70,7 +70,8 @@ class TestR1TheDitherRuleDoesNotClaimTheWhy:
         counter does not perform. One pin for each, as before."""
         flat = " ".join(paper.split())
         i = flat.index(chr(92) + "label{tab:checks}")
-        table = flat[i:flat.index(chr(92) + "end{table}", i)]
+        # 15 Oct 2026: Table IV spans both columns, a table* float.
+        table = flat[i:flat.index(chr(92) + "end{table", i)]
         assert "Randomize the publish instants (Poisson sampling)" in table, \
             "the randomization check has left the table of checks"
         paras = [" ".join(p.split()) for p in re.split(r"\n[ \t]*\n", paper)
@@ -316,7 +317,9 @@ class TestW1TheGeometryFigureStaysInTheSupplement:
         assert "deletion_phases" not in journal, "the deletion figure is printed twice"
         at = paper.index("deletion_phases")
         caption = " ".join(paper[at:paper.index(chr(92) + "end{figure", at)].split())
-        assert "four phases within one millisecond" in caption, \
+        # 15 Oct 2026: the caption names the phase it draws, "four phases $\varphi$ within one
+        # millisecond", since an internal review of the figures found the axis's phi undefined.
+        assert re.search(r"four phases (\$\\varphi\$ )?within one millisecond", caption), \
             "the paper's figure no longer draws the phases of one millisecond"
         for panel in ("a", "b"):
             assert ("Fig.~" + chr(92) + "ref{P-fig:deletion}" + panel) in journal, \

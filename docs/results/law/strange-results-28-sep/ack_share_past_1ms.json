@@ -1,0 +1,126 @@
+{
+ "all": {
+  "acks": 1516342,
+  "parts": 12,
+  "past": 161492,
+  "share": 0.10650104000284896,
+  "share_hi": 0.181655,
+  "share_lo": 0.047571
+ },
+ "at_ms": 1.0,
+ "by_broker": {
+  "kafka": {
+   "acks": 793092,
+   "parts": 6,
+   "past": 105809,
+   "share": 0.13341327361768873,
+   "share_hi": 0.181655,
+   "share_lo": 0.0863
+  },
+  "redis": {
+   "acks": 723250,
+   "parts": 6,
+   "past": 55683,
+   "share": 0.07698997580366401,
+   "share_hi": 0.109143,
+   "share_lo": 0.047571
+  }
+ },
+ "by_broker_and_load": {
+  "kafka, 75": {
+   "acks": 394052,
+   "parts": 3,
+   "past": 35819,
+   "share": 0.09089917066783064,
+   "share_hi": 0.093204,
+   "share_lo": 0.0863
+  },
+  "kafka, 88": {
+   "acks": 399040,
+   "parts": 3,
+   "past": 69990,
+   "share": 0.17539595028067362,
+   "share_hi": 0.181655,
+   "share_lo": 0.170527
+  },
+  "redis, 75": {
+   "acks": 349160,
+   "parts": 3,
+   "past": 16964,
+   "share": 0.0485851758506129,
+   "share_hi": 0.050099,
+   "share_lo": 0.047571
+  },
+  "redis, 88": {
+   "acks": 374090,
+   "parts": 3,
+   "past": 38719,
+   "share": 0.10350183111016066,
+   "share_hi": 0.109143,
+   "share_lo": 0.097407
+  }
+ },
+ "parts": {
+  "arm, kafka, 75": {
+   "acks": 169592,
+   "past": 15415,
+   "share": 0.090895
+  },
+  "arm, kafka, 88": {
+   "acks": 169592,
+   "past": 28920,
+   "share": 0.170527
+  },
+  "arm, redis, 75": {
+   "acks": 139664,
+   "past": 6645,
+   "share": 0.047578
+  },
+  "arm, redis, 88": {
+   "acks": 149640,
+   "past": 14576,
+   "share": 0.097407
+  },
+  "matched, kafka, 75": {
+   "acks": 149640,
+   "past": 13947,
+   "share": 0.093204
+  },
+  "matched, kafka, 88": {
+   "acks": 154628,
+   "past": 28089,
+   "share": 0.181655
+  },
+  "matched, redis, 75": {
+   "acks": 139664,
+   "past": 6997,
+   "share": 0.050099
+  },
+  "matched, redis, 88": {
+   "acks": 149630,
+   "past": 16331,
+   "share": 0.109143
+  },
+  "matched-b, kafka, 75": {
+   "acks": 74820,
+   "past": 6457,
+   "share": 0.0863
+  },
+  "matched-b, kafka, 88": {
+   "acks": 74820,
+   "past": 12981,
+   "share": 0.173496
+  },
+  "matched-b, redis, 75": {
+   "acks": 69832,
+   "past": 3322,
+   "share": 0.047571
+  },
+  "matched-b, redis, 88": {
+   "acks": 74820,
+   "past": 7812,
+   "share": 0.104411
+  }
+ },
+ "what": "the share of acknowledgments whose thread was still waiting for a core at at_ms, the point Fig. 3 divides every part's shares by: per part, pooled per broker and per broker and load, with the range over parts"
+}

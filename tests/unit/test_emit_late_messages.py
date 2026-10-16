@@ -16,7 +16,6 @@ SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import emit_paper_numbers as epn  # noqa: E402
-import priority_pairs  # noqa: E402
 import stat_intervals  # noqa: E402
 
 REPO = SCRIPTS_DIR.parent
@@ -37,7 +36,9 @@ class TestEachTableStatesTheRangeOfItsCells:
         m = dict(epn.cell_events_macros())
         assert (m["mechEventsLo"], m["mechEventsHi"]) == ("2{,}408", "2{,}985")
         assert (m["tracerEventsLo"], m["tracerEventsHi"]) == ("2{,}257", "2{,}985")
-        assert (m["prioEventsLo"], m["prioEventsHi"]) == ("2{,}973", "2{,}985")
+        # 15 Oct 2026: the priority table gives Redis's cells beside Kafka's, so its range
+        # opens at Redis's fewest; Kafka's own cells still hold 2,973 to 2,985.
+        assert (m["prioEventsLo"], m["prioEventsHi"]) == ("2{,}822", "2{,}985")
         assert (m["geomEventsLo"], m["geomEventsHi"]) == ("2{,}497", "2{,}985")
         assert (m["payloadEventsLo"], m["payloadEventsHi"]) == ("2{,}408", "2{,}980")
 
@@ -45,19 +46,28 @@ class TestEachTableStatesTheRangeOfItsCells:
         path = tmp_path / "runs.csv"
         with path.open("w", newline="", encoding="utf-8") as fh:
             w = csv.writer(fh)
-            w.writerow(("campaign", "cell", "backend", "run_events"))
-            w.writerows([("E-A3", "bg0", "kafka", "100"), ("E-A3", "bg0", "kafka", "20"),
-                         ("E-A3", "bg0", "redis", "7")])
+            w.writerow(("result", "campaign", "cell", "backend", "run_events"))
+            w.writerows([("path", "E-A3", "bg0", "kafka", "100"),
+                         ("path", "E-A3", "bg0", "kafka", "20"),
+                         ("path", "E-A3", "bg0", "redis", "7"),
+                         # 15 Oct 2026: the file carries the load ladder and the placement
+                         # campaign's other two core counts too, which Table II does not print.
+                         ("load", "E-A3", "bg4", "kafka", "50"),
+                         ("placement", "E-A6", "k5_conc", "kafka", "9"),
+                         ("placement", "E-A6", "k6_conc", "kafka", "3")])
         assert epn._configuration_events(str(path)) == {("E-A3", "bg0", "kafka"): 120,
-                                                         ("E-A3", "bg0", "redis"): 7}
+                                                         ("E-A3", "bg0", "redis"): 7,
+                                                         ("E-A6", "k6_conc", "kafka"): 3}
+        assert epn._configuration_events(str(path), results=("load",)) == {
+            ("E-A3", "bg4", "kafka"): 50}
 
     def test_one_table_with_cells_that_agree_prints_one_number_twice(self):
         assert epn._events_span("x", [5, 5]) == [("xLo", "5"), ("xHi", "5")]
 
     def test_a_missing_file_drops_only_its_own_ranges(self, monkeypatch):
-        """The run-level counts carry two tables, Table II's and the tracer table's."""
-        for target, name, gone in ((epn, "_configuration_events", ("mech", "tracer")),
-                                   (priority_pairs, "usable", ("prio",)),
+        """The run-level counts carry three tables: Table II's, the tracer table's and, since
+        15 Oct 2026 when it gained Redis's cells, the priority table's."""
+        for target, name, gone in ((epn, "_configuration_events", ("mech", "tracer", "prio")),
                                    (epn, "_geometry_rows", ("geom",)),
                                    (epn, "_payload_rows", ("payload",))):
             with monkeypatch.context() as m:
@@ -142,32 +152,43 @@ class TestTheCensusBehindTheDisclosure:
 
 
 class TestTheRecoveryCaptionFollowsTheCurves:
-    """S16.9's caption and its sentence on thirds hold only for the shape the data have."""
+    """S16.9's caption and its sentence on thirds hold only for the shape the data have.
 
-    def _macros(self, monkeypatch, crossings=None, split=None):
+    15 Oct 2026, S16.9 rewritten: the caption names no crossing point and the section counts no
+    thirds. It says that inside each broker the two verdicts' curves cross, which is read from
+    the curves below, and the macros that carried the pooled crossing and the thirds' edges are
+    no longer emitted, whatever shape the curves take. Each test says what it held until then."""
+
+    def _macros(self, monkeypatch, crossings=None):
         if crossings is not None:
             monkeypatch.setattr(stat_intervals, "ecdf_crossings", lambda a, b: crossings)
-        if split is not None:
-            monkeypatch.setattr(stat_intervals, "equal_split_edges", lambda values: split)
         return dict(epn._recovery_macros())
 
     def test_the_committed_curves_cross_once(self):
-        m = dict(epn._recovery_macros())
-        assert m["recoveryEcdfCross"] == "18.2" and "recoveryEcdfCrossLo" not in m
+        """Was: the pooled curves cross once, at 23.0 (18.2 on the 50 us grid). Now: inside each
+        broker they cross, once on Kafka and six times on Redis, as the caption says."""
+        cells = stat_intervals.recovery_populations(split="both")
+        got = {b: stat_intervals.ecdf_crossings(cells[b + "Pass"], cells[b + "Fail"])
+               for b in ("Kafka", "Redis")}
+        assert (len(got["Kafka"]), len(got["Redis"])) == (1, 6)
+        assert not any(k.startswith("recoveryEcdfCross") for k in dict(epn._recovery_macros()))
 
     def test_two_crossings_give_a_change_and_a_change_back(self, monkeypatch):
+        """Was: two pooled crossings emitted a change and a change back. No crossing is emitted
+        now, so none can be quoted when there are two."""
         m = self._macros(monkeypatch, crossings=[18.2, 34.8])
-        assert (m["recoveryEcdfCrossLo"], m["recoveryEcdfCrossHi"]) == ("18.2", "34.8")
-        assert "recoveryEcdfCross" not in m
+        assert not any(k.startswith("recoveryEcdfCross") for k in m)
 
     def test_curves_that_never_cross_give_neither(self, monkeypatch):
         m = self._macros(monkeypatch, crossings=[])
         assert not any(k.startswith("recoveryEcdfCross") for k in m)
 
     def test_the_committed_thirds_stop_short_of_the_quartile(self):
+        """Was: the grid's accepted groups split into thirds between 16.7% and 19.2%, read
+        from that estimator's columns to keep the old sentence building. The sentence and that
+        bridge are gone, and the grid is read only for what it printed as exact. Its companion,
+        `test_thirds_that_reach_the_quartile_withdraw_the_sentence`, went with
+        `stat_intervals.equal_split_edges`, the function it replaced to make the thirds fail."""
         m = dict(epn._recovery_macros())
-        assert (m["recoveryThirdsEdgeLo"], m["recoveryThirdsEdgeHi"]) == ("16.7", "19.2")
-
-    def test_thirds_that_reach_the_quartile_withdraw_the_sentence(self, monkeypatch):
-        m = self._macros(monkeypatch, split=(16.7, 20.0))
-        assert "recoveryThirdsEdgeLo" not in m and "recoveryThirdsEdgeHi" not in m
+        assert not any("Thirds" in k for k in m)
+        assert (m["recoveryGridPassExactN"], m["recoveryGridFailExactN"]) == ("14", "6")

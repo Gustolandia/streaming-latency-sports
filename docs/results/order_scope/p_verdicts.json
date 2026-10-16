@@ -1,0 +1,47 @@
+{
+  "P-a": {
+    "checks": [
+      {
+        "backend": "kafka",
+        "holds": true,
+        "slope_ms_per_ms": 0.9294737500000001
+      },
+      {
+        "backend": "redis",
+        "holds": true,
+        "slope_ms_per_ms": 0.953664625
+      }
+    ],
+    "verdict": "confirmed"
+  },
+  "P-b": {
+    "checks": [
+      {
+        "backend": "kafka",
+        "holds": false,
+        "move": 0.17768004127865553
+      },
+      {
+        "backend": "redis",
+        "holds": false,
+        "move": 0.21695242691652147
+      }
+    ],
+    "verdict": "not confirmed"
+  },
+  "P-c": {
+    "checks": [
+      {
+        "backend": "kafka",
+        "holds": true,
+        "slope_ms_per_ms": 0.9384029999999999
+      },
+      {
+        "backend": "redis",
+        "holds": true,
+        "slope_ms_per_ms": 0.9521908749999999
+      }
+    ],
+    "verdict": "confirmed"
+  }
+}

@@ -90,7 +90,10 @@ NOT_TOLD_APART = r"cannot\s+(?:be\s+told|tell)\s+apart"
 #: 5 Oct 2026: the rebuilt paper's recovery paragraph (Section VI-B) cut that sentence. It
 #: prints both populations' medians over their counts and both upper quartiles and says
 #: nothing about them, sameness included; its last number is where a claim would be added.
-RECOVERY_END = r"\$" + re.escape(BS) + r"recoveryErrFailHi" + re.escape(BS) + r"%\$"
+#: 15 Oct 2026: the paragraph quotes the recovery by broker, and its last number is Redis's
+#: upper quartile, taken with or without the per cent sign and the closing dollar.
+RECOVERY_END = (re.escape(BS) + r"recoveryErrRedisHi(?![A-Za-z])(?:" + re.escape(BS)
+                + r"%)?\$?")
 
 
 def _s169(supplement):
@@ -113,29 +116,41 @@ def _entry(bib, key):
 
 class TestR1TheWordsSayWhatTheIntervalsSay:
 
-    def test_the_margins_are_emitted_from_the_90_percent_intervals(self, ledger, pops):
+    def test_the_margins_are_emitted_from_the_90_percent_intervals(self, ledger):
+        """15 Oct 2026: the margins of the two shifts S16.9 states as undetectable, each
+        broker's, at the digits its interval is printed to. The pooled and non-zero margins
+        went with the pooled claim, whose interval now excludes zero."""
         import stat_intervals as si
-        a, b = pops["Pass"], pops["Fail"]
-        na, nb = [v for v in a if v > 0], [v for v in b if v > 0]
-        for macro, (x, y) in (("recoveryEquivMargin", (a, b)),
-                              ("recoveryNonzeroEquivMargin", (na, nb))):
-            lo, hi = si.hl_bootstrap_ci(x, y, conf=0.90)
-            assert ledger[macro] == "%.1f" % (round(max(abs(lo), abs(hi)), 1) + 0.0), macro
+        cells = si.recovery_populations(split="both")
+        for broker in ("Kafka", "Redis"):
+            a, b = cells[broker + "Pass"], cells[broker + "Fail"]
+            lo, hi = si.hl_bootstrap_ci(a, b, conf=0.90)
+            digits = len(ledger["recovery%sShift" % broker].split(".")[1])
+            assert ledger["recovery%sEquivMargin" % broker] == "%.*f" % (
+                digits, round(max(abs(lo), abs(hi)), digits) + 0.0), broker
+        assert "recoveryEquivMargin" not in ledger and "recoveryNonzeroEquivMargin" not in ledger
 
     def test_they_are_the_values_the_referee_computed(self, ledger):
         """8.3 and 7.1 as the referee computed them; 7.1 and 7.5 since the late messages
-        were left out of the groups (7 Oct 2026)."""
-        assert (ledger["recoveryEquivMargin"], ledger["recoveryNonzeroEquivMargin"]) == \
-            ("7.1", "7.5")
+        were left out of the groups (7 Oct 2026); 10.4 and 10.4 at native resolution, where
+        the non-zero populations are the whole ones. 15 Oct 2026: the margins S16.9 quotes
+        are each broker's, 0.39 points on Kafka and 5.9 on Redis."""
+        assert (ledger["recoveryKafkaEquivMargin"], ledger["recoveryRedisEquivMargin"]) == \
+            ("0.39", "5.9")
 
     def test_about_half_the_non_zero_median_errors(self, ledger):
         """S16.9 says so in words. Were the margins to shrink to a small fraction of the errors,
-        an equivalence claim might become defensible and the sentence would need re-arguing."""
-        medians = (float(ledger["recoveryErrPassNonzero"]),
-                   float(ledger["recoveryErrFailNonzero"]))
-        for macro in ("recoveryEquivMargin", "recoveryNonzeroEquivMargin"):
-            for med in medians:
-                assert 0.33 <= float(ledger[macro]) / med <= 0.67, (macro, med)
+        an equivalence claim might become defensible and the sentence would need re-arguing.
+
+        15 Oct 2026: the words are "about the whole of Kafka's median error, and two-fifths of
+        Redis's", so each broker's margin is held to its own broker's median error."""
+        kafka = float(ledger["recoveryKafkaEquivMargin"]) / float(ledger["recoveryErrKafka"])
+        redis = float(ledger["recoveryRedisEquivMargin"]) / float(ledger["recoveryErrRedis"])
+        assert 0.8 <= kafka <= 1.25, ("about the whole of Kafka's median error", kafka)
+        assert 0.35 <= redis <= 0.45, ("two-fifths of Redis's", redis)
+        s = _s169((REPO / "postmortem.tex").read_text(encoding="utf-8"))
+        assert ("about the whole of " + BS + "kafka{}'s median error, and two-fifths of "
+                + BS + "redis{}'s") in s
 
     def test_the_main_text_asserts_no_sameness(self, paper, supplement):
         """v5 (28 Sep): Section III-D kept one sentence of result, "two populations the data
@@ -158,21 +173,27 @@ class TestR1TheWordsSayWhatTheIntervalsSay:
         assert "no shift can be detected" in _s169(supplement)
 
     def test_the_supplement_asserts_no_sameness(self, supplement):
+        """15 Oct 2026: what the data cannot do is now said of each broker ("within either
+        broker, no shift can be detected"), where until then "Nothing in these data separates
+        them." was said of the pooled verdicts, whose shift now excludes zero. The margins
+        stated are each broker's, and the refusals stand."""
         s = _s169(supplement)
         for gone in ("They do not.", "no shift is left to explain",
-                     "nothing to choose between the populations", "no shift between them"):
+                     "nothing to choose between the populations", "no shift between them",
+                     "Nothing in these data separates them."):
             assert gone not in s, gone
-        assert "Nothing in these data separates them." in s
+        assert "within either broker, no shift can be detected" in s
         assert "claims no equivalence" in s
-        assert BS + "recoveryEquivMargin" in s and BS + "recoveryNonzeroEquivMargin" in s
+        assert BS + "recoveryKafkaEquivMargin" in s and BS + "recoveryRedisEquivMargin" in s
         assert BS + "mainBrokers" in s and "TOST" in s
 
     def test_the_figure_title_and_its_list_entry_change_together(self, supplement):
+        """15 Oct 2026: the lead is the figure's new claim (see round 77's caption pin)."""
         at = supplement.index("recovery_populations.pdf")
         m = re.search(re.escape(BS) + r"caption\[([^\]]*)\]\{" + re.escape(BS)
                       + r"textbf\{([^}]*)\}", supplement[at:])
         short, lead = m.group(1), " ".join(m.group(2).split())
-        assert lead == "Two populations with no detectable shift between them."
+        assert lead == "Within each broker, no shift between the verdicts can be detected."
         assert short == lead[:-1]
 
     def test_the_defect_that_prompted_this_is_caught(self, paper, supplement):
@@ -188,7 +209,10 @@ class TestR1TheWordsSayWhatTheIntervalsSay:
             self.test_the_main_text_asserts_no_sameness(bad, supplement)
 
     def test_the_supplement_defect_is_caught_too(self, supplement):
-        bad, n = re.subn(r"Nothing in these data separates them\.", "They do not.", supplement)
+        """15 Oct 2026: the sentence the sameness claim replaces is S16.9's statement inside
+        the brokers, where "Nothing in these data separates them." stood until then."""
+        bad, n = re.subn(r"within either broker, no shift can be detected between the groups\s+"
+                         r"the check accepts and those it rejects\.", "They do not.", supplement)
         assert n == 1, "S16.9 has been reworded; retarget this mutation"
         with pytest.raises(AssertionError):
             self.test_the_supplement_asserts_no_sameness(bad)
@@ -197,8 +221,11 @@ class TestR1TheWordsSayWhatTheIntervalsSay:
 class TestW1EveryBracketInSectionVDSaysWhatItIs:
 
     #: Each bracket's label as S16.9 prints it: the method and the level, inside the bracket.
+    #: 15 Oct 2026: the pooled shift's and each broker's; the non-zero shift's bracket went with
+    #: the non-zero populations, which at native resolution are the whole ones.
     LABELS = {"recoveryShiftCI": "($95" + BS + "%$ percentile bootstrap: ",
-              "recoveryNonzeroShiftCI": "($95" + BS + "%$ bootstrap: "}
+              "recoveryKafkaShiftCI": "($95" + BS + "%$ percentile bootstrap: ",
+              "recoveryRedisShiftCI": "($95" + BS + "%$ percentile bootstrap: "}
 
     def test_both_brackets_are_labeled(self, paper, supplement):
         """v5 (28 Sep): both brackets left Section V-D for S16.9 with the shifts they qualify
@@ -215,15 +242,22 @@ class TestW1EveryBracketInSectionVDSaysWhatItIs:
         assert not bare, bare
 
     def test_a_bare_bracket_is_caught(self, paper, supplement):
-        """v5 (28 Sep): the label is stripped from S16.9's second bracket, where it now is."""
-        bad, n = re.subn(r"\(\$95" + re.escape(BS) + r"%\$\s+bootstrap:\s+(\$" + re.escape(BS)
-                         + r"recoveryNonzeroShiftCI\$\))", r"(\1", supplement)
+        """v5 (28 Sep): the label is stripped from S16.9's second bracket, where it now is.
+        15 Oct 2026: the last bracket is Redis's shift's."""
+        bad, n = re.subn(r"\(\$95" + re.escape(BS) + r"%\$\s+percentile\s+bootstrap:\s+(\$"
+                         + re.escape(BS) + r"recoveryRedisShiftCI\$\))", r"(\1", supplement)
         assert n == 1, "S16.9 has been reworded; retarget this mutation"
         with pytest.raises(AssertionError):
             self.test_both_brackets_are_labeled(paper, bad)
 
 
 class TestW2TheBandEdgeIsTheQuartile:
+    """15 Oct 2026: the bands, their edge and the thirds went with the pile of exact recoveries
+    they counted, which was the 50 us grid's; `stat_intervals.recovery_band_edge` and
+    `equal_split_edges` were deleted with them. What round 78 asked of the edge -- that it be
+    the upper quartile the table prints, by one rule, and that figure and ledger take it from
+    one place -- is asked now of the table's upper-quartile column and of the one loader both
+    read. Each test says what it held until that day."""
 
     def test_the_constant_is_gone(self):
         import stat_intervals as si
@@ -231,52 +265,50 @@ class TestW2TheBandEdgeIsTheQuartile:
             "a constant that equals a quartile is free to part from it")
 
     def test_the_edge_is_the_upper_quartile_the_table_prints(self, ledger, pops):
+        """Was: the band edge equals the accepted upper quartile and `recoveryErrPassHi`. Now:
+        every upper quartile the table prints is the nearest-rank one of its population."""
         import stat_intervals as si
-        edge = si.recovery_band_edge(pops)
-        assert edge == si.nearest_rank(pops["Pass"], 0.75)
-        assert ledger["recoveryBandPct"] == ledger["recoveryErrPassHi"] == "%.0f" % edge
+        for side in ("Pass", "Fail"):
+            assert ledger["recoveryErr%sHi" % side] == "%.0f" % si.nearest_rank(pops[side], 0.75)
+        import emit_paper_numbers as epn
+        for name, v in si.recovery_populations(split="both").items():
+            assert ledger["recoveryErr%sHi" % name] == epn._exposure_pct(
+                si.nearest_rank(v, 0.75)), name
 
     def test_the_figure_and_the_ledger_call_the_same_function(self):
+        """Was: both call `recovery_band_edge`. Now: both read each broker's two verdicts
+        through `recovery_populations(split="both")`, so the table and the panels cannot
+        part."""
         import inspect
         import emit_paper_numbers as epn
         import make_result_figures as mrf
-        assert "recovery_band_edge(" in inspect.getsource(mrf.build_recovery)
-        assert "recovery_band_edge(" in inspect.getsource(epn._recovery_macros)
+        for source in (inspect.getsource(mrf.build_recovery),
+                       inspect.getsource(epn._recovery_macros)):
+            assert 'recovery_populations(' in source and 'split="both"' in source
 
-    def test_the_thirds_hold_over_the_stated_range_and_nowhere_else(self, ledger, pops):
-        """7 Oct 2026: the range stops just short of the quartile now, where it ended at
-        it; no accepted condition lies between its top and the quartile."""
+    def test_the_thirds_hold_over_the_stated_range_and_nowhere_else(self, ledger):
+        """Was: the accepted groups split into thirds for edges in the stated range alone.
+        At native resolution no group recovers exactly, so no edge gives thirds and the range
+        was read from the grid's columns only to keep the old sentence building. The sentence
+        and that bridge are gone, and neither the macros nor the functions may come back."""
         import stat_intervals as si
-        a = pops["Pass"]
-        lo, hi = si.equal_split_edges(a)
-        band = si.recovery_band_edge(pops)
-        assert ledger["recoveryThirdsEdgeLo"] == "%.1f" % lo
-        assert ledger["recoveryThirdsEdgeHi"] == "%.1f" % hi
-        assert hi < band and not any(hi < v < band for v in a)
-
-        def tally(e):
-            return (sum(v == 0.0 for v in a), sum(0.0 < v < e for v in a),
-                    sum(v >= e for v in a))
-        thirds = (len(a) // 3,) * 3
-        for e in (lo + 1e-6, (lo + hi) / 2.0, hi):
-            assert tally(e) == thirds, e
-        for e in (lo, lo - 1.0, hi + 1e-6, hi + 5.0):
-            assert tally(e) != thirds, e
+        for name in ("recovery_band_edge", "equal_split_edges", "RECOVERY_BAND_QUANTILE"):
+            assert not hasattr(si, name), name
+        assert not [n for n in ledger
+                    if n.startswith("recovery") and ("Thirds" in n or "Band" in n)]
 
     def test_the_supplement_says_what_the_edge_is(self, supplement):
+        """Was: S16.9 says the edge is the accepted upper quartile and the range of thirds.
+        Now: it says what its Q3 column is, and no band edge is left in the text or the
+        caption."""
         s = _s169(supplement)
-        assert "The edge is not a free choice" in s and "upper quartile" in s
-        assert BS + "recoveryThirdsEdgeLo" in s and "for no other" in s
+        assert ("\\emph{Median}, \\emph{Q3} and \\emph{Worst} are the median, the upper quartile "
+                "and the largest of the groups' errors") in s
+        for gone in ("band edge", "The edge is not a free choice", "for no other"):
+            assert gone not in s, gone
         cap = supplement[supplement.index("recovery_populations.pdf"):
                          supplement.index(BS + "label{fig:recovery}")]
-        assert "upper quartile" in " ".join(cap.split())
-
-    def test_equal_split_edges_refuses_what_cannot_split(self):
-        import stat_intervals as si
-        assert si.equal_split_edges([]) is None
-        assert si.equal_split_edges([0.0, 1.0, 2.0, 3.0]) is None      # three non-zero
-        assert si.equal_split_edges([1.0, 2.0, 2.0, 3.0]) is None      # a tie at the split
-        assert si.equal_split_edges([0.0, 1.0, 2.0, 3.0, 4.0]) == (2.0, 3.0)
+        assert "band" not in " ".join(cap.split())
 
     def test_nearest_rank_returns_a_value_the_data_contain(self):
         import stat_intervals as si
@@ -295,48 +327,46 @@ class TestW2TheBandEdgeIsTheQuartile:
         path.write_text("\n".join(rows) + "\n", encoding="utf-8")
         return dict(epn._recovery_macros(str(path)))
 
-    def test_thirds_that_reach_the_quartile_withdraw_the_sentence(self, tmp_path):
-        """S16.9 now says the range stops just short of the quartile; here it ends at it."""
-        got = self._macros(tmp_path, (0, 0, 50, 100, 150, 200))
-        assert got["recoveryBandPct"] == "15" and "recoveryThirdsEdgeLo" not in got
-
-    def test_too_few_exact_recoveries_emit_nothing(self, tmp_path):
-        got = self._macros(tmp_path, (0, 50, 100, 150, 200))
-        assert "recoveryBandPct" in got and "recoveryThirdsEdgeLo" not in got
-
-    def test_thirds_just_short_of_the_quartile_are_emitted(self, tmp_path):
-        # Six exact and twelve non-zero at 1%..12%: the halves split between 6% and 7%, and the
-        # nearest-rank upper quartile of eighteen values is the fourteenth, 8%, the next value
-        # up. That is the shape the committed data have had since 7 Oct 2026.
-        got = self._macros(tmp_path, (0,) * 6 + tuple(10 * i for i in range(1, 13)))
-        assert got["recoveryBandPct"] == "8"
-        assert (got["recoveryThirdsEdgeLo"], got["recoveryThirdsEdgeHi"]) == ("6.0", "7.0")
-
-    def test_a_quartile_away_from_the_split_emits_nothing(self, tmp_path):
-        # Ten exact and twenty non-zero at 1%..20%: the halves split between 10% and 11%, and
-        # the quartile is 13%, with 12% between them, so the range is not just short of it.
-        got = self._macros(tmp_path, (0,) * 10 + tuple(10 * i for i in range(1, 21)))
-        assert got["recoveryBandPct"] == "13" and "recoveryThirdsEdgeLo" not in got
+    @pytest.mark.parametrize("passing", [
+        # The four shapes round 78 and 7 Oct 2026 held the thirds to: thirds that reach the
+        # quartile, too few exact recoveries, thirds just short of the quartile (the committed
+        # shape from 7 to 15 Oct 2026), and a quartile away from the split.
+        (0, 0, 50, 100, 150, 200),
+        (0, 50, 100, 150, 200),
+        (0,) * 6 + tuple(10 * i for i in range(1, 13)),
+        (0,) * 10 + tuple(10 * i for i in range(1, 21)),
+    ])
+    def test_no_shape_brings_a_band_or_a_third_back(self, tmp_path, passing):
+        """Was four tests, one per shape, of when the thirds were emitted. Now no shape emits
+        them, while exact recoveries a file does hold are still counted, with their interval."""
+        got = self._macros(tmp_path, passing)
+        assert not [n for n in got if "Band" in n or "Thirds" in n]
+        exact = sum(1 for e in passing if e == 0)
+        assert got["recoveryPassExact"] == "%.0f" % (100.0 * exact / len(passing))
+        assert "recoveryPassExactCI" in got
 
 
 class TestW3RedMeansDeletedAndNothingElse:
 
     def test_the_rejected_population_is_not_drawn_in_deleted_red(self, pops):
+        """15 Oct 2026: three panels of curves with a mark per group, where there were a
+        panel of curves and a strip; the rule holds on every line and mark of all three, and
+        Redis's red from the paper's other figures is refused too, since here red would read as
+        deleted or as Redis and is meant as neither."""
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         from matplotlib.colors import to_hex
         import make_result_figures as mrf
         import stat_intervals as si
-        fig, (ax_cdf, ax_strip) = plt.subplots(1, 2)
+        fig, axes = plt.subplots(1, 3)
         try:
-            mrf.plot_recovery(ax_cdf, ax_strip, pops, si.recovery_band_edge(pops))
-            colours = {to_hex(line.get_color()) for line in ax_cdf.lines}
-            for coll in ax_strip.collections:
-                colours |= {to_hex(fc) for fc in coll.get_facecolors()}
+            mrf.plot_recovery(axes, pops, si.recovery_populations(split="both"))
+            colours = {to_hex(line.get_color()) for ax in axes for line in ax.lines}
         finally:
             plt.close(fig)
         assert to_hex(mrf.DELETED) not in colours
+        assert to_hex(dict((k, c) for k, _n, c in mrf.BROKER_COLOURS)["redis"]) not in colours
         assert to_hex(mrf.KEPT) in colours and to_hex(mrf.GREY) in colours
 
     def test_the_defect_that_prompted_this_is_caught(self, pops, monkeypatch):
@@ -356,10 +386,11 @@ class TestW4TheFigureFollowsItsHeading:
         assert "t" not in opt, "a top float lands above the heading of the page it shares"
 
     def test_on_the_rendered_page_the_heading_comes_first(self):
-        """29 Sep: S16.9 and Fig. S11 are the postmortem's; its pages are postmortem.pdf."""
+        """29 Sep: S16.9 and Fig. S11 are the postmortem's; its pages are postmortem.pdf.
+        15 Oct 2026: the caption's new lead."""
         pages = _rendered_pages("postmortem")
         heading = "S16.9. The displacement recovery, distribution by distribution"
-        caption = "Two populations with no detectable shift between them."
+        caption = "Within each broker, no shift between the verdicts can be detected."
         h = max(i for i, t in enumerate(pages) if heading in t)
         f = max(i for i, t in enumerate(pages) if caption in t)
         assert f >= h
@@ -438,8 +469,11 @@ class TestTheRenderedPagesCarryIt:
         assert tight.count("(95%percentilebootstrap:") + tight.count("(95%bootstrap:") >= 2
 
     def test_the_supplement(self):
-        """29 Sep: these are S16.9's words, which the postmortem keeps; postmortem.pdf."""
+        """29 Sep: these are S16.9's words, which the postmortem keeps; postmortem.pdf.
+        15 Oct 2026: S16.9 says of each broker what it said of the pooled verdicts, and the
+        figure's lead says the same."""
         flat = " ".join(_rendered_pages("postmortem"))
-        assert "Nothing in these data separates them." in flat
-        assert "no detectable shift between them" in flat
+        assert "within either broker, no shift can be detected" in flat
+        assert "no shift between the verdicts can be detected" in flat
         assert "claims no equivalence" in flat
+        assert "Nothing in these data separates them." not in flat

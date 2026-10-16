@@ -757,35 +757,45 @@ class TestKolmogorovSmirnov:
             si.ks_permutation_p([1.0], [])
 
 
+#: The committed group table the recovery comparison is read from.
+SPAN_CSV = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "docs", "results", "span_symmetry.csv")
+
+
 class TestTheRecoveryComparisonReproduces:
-    """End to end on the committed artifact: the four numbers Section V-D quotes."""
+    """End to end on the committed artifact: the comparison the postmortem's S16.9 makes.
+
+    15 Oct 2026: the recovery is the median of S plus the median of A, at native resolution,
+    as the paper describes it (both referees, M4). At that resolution no group recovers its
+    median exactly, and the reading S16.9 gave of the estimator it was written against, the
+    symmetry centre on the 50 us grid, no longer holds: the groups the check rejects recover
+    worse, because twenty of their twenty-eight are Redis's, whose medians recover to about
+    fifteen per cent where Kafka's recover to under one. That estimator's own reading is held
+    below, from the columns that keep it, as the record of what S16.9 used to say. S16.9 was
+    rewritten the same day to the native-resolution reading: the pooled shift excludes zero,
+    and inside each broker it does not, which the last test here holds.
+    """
 
     @staticmethod
-    def _populations():
-        import csv
-        import io
-        import os
-        path = os.path.join("docs", "results", "span_symmetry.csv")
-        rows = list(csv.DictReader(io.open(path, encoding="utf-8")))
-        out = {}
-        for suffix, name in (("#pass", "pass"), ("#fail", "fail")):
-            out[name] = sorted(
-                abs(float(r["recovery_err_us"])) / float(r["median_D_us"]) * 100.0
-                for r in rows
-                if r["condition"].endswith(suffix) and float(r["median_D_us"]))
-        return out["pass"], out["fail"]
+    def _populations(err="recovery_err_us", truth="median_D_us"):
+        pops = si.recovery_populations(SPAN_CSV, err=err, truth=truth)
+        return pops["Pass"], pops["Fail"]
 
     def test_the_shift_and_its_interval(self):
         a, b = self._populations()
-        # 7 Oct 2026: 0.61 without the late messages (1.17 before); the interval held.
-        assert si.hodges_lehmann(a, b) == pytest.approx(0.61, abs=0.01)
+        assert si.hodges_lehmann(a, b) == pytest.approx(3.69, abs=0.01)
         lo, hi = si.hl_bootstrap_ci(a, b)
-        assert lo < 0.0 < hi, "the interval contains zero, which is the claim"
-        assert (lo, hi) == pytest.approx((-1.8, 8.3), abs=0.1)
+        assert 0.0 < lo < hi, "at native resolution the interval excludes zero"
+        assert (lo, hi) == pytest.approx((0.2, 11.3), abs=0.1)
 
-    def test_the_distributions_do_not_differ_in_shape_either(self):
+    def test_the_rejected_groups_are_mostly_redis(self):
+        import csv
+        rows = list(csv.DictReader(open(SPAN_CSV, encoding="utf-8")))
+        fail = [r["condition"].split("_")[0] for r in rows if r["condition"].endswith("#fail")]
+        assert (fail.count("redis"), len(fail)) == (20, 28)
+
+    def test_the_distributions_do_not_differ_in_shape_at_five_per_cent(self):
         a, b = self._populations()
-        assert si.ks_two_sample(a, b) == pytest.approx(0.27, abs=0.01)
+        assert si.ks_two_sample(a, b) == pytest.approx(0.30, abs=0.01)
         assert si.ks_permutation_p(a, b) > 0.05
 
     def test_the_exact_recovery_shares_overlap(self):
@@ -794,12 +804,33 @@ class TestTheRecoveryComparisonReproduces:
         pb = si.wilson(sum(1 for v in b if v == 0.0), len(b))
         assert max(pa[0], pb[0]) < min(pa[1], pb[1])
 
-    def test_removing_the_exact_recoveries_crosses_the_medians(self):
+    def test_no_group_recovers_exactly_and_the_rejected_median_stays_higher(self):
         a, b = self._populations()
+        assert not [v for v in a + b if v == 0.0], "exact recoveries were medians on one grid"
+        assert si._median(sorted(b)) > si._median(sorted(a))
+
+    def test_the_grid_estimators_reading_still_reproduces_from_its_own_columns(self):
+        """What S16.9 says, of the estimator it was written against."""
+        a, b = self._populations("recovery_err_centre_us", "median_D_bin_us")
+        assert si.hodges_lehmann(a, b) == pytest.approx(0.61, abs=0.01)
+        lo, hi = si.hl_bootstrap_ci(a, b)
+        assert lo < 0.0 < hi
+        assert (sum(v == 0.0 for v in a), sum(v == 0.0 for v in b)) == (14, 6)
         na = sorted(v for v in a if v > 0.0)
         nb = sorted(v for v in b if v > 0.0)
         assert si._median(sorted(b)) > si._median(sorted(a)), "with the spike, fail is higher"
         assert si._median(na) > si._median(nb), "without it, the ordering reverses"
+
+    def test_inside_each_broker_the_shift_s_interval_contains_zero(self):
+        """S16.9's reading since 15 Oct 2026: the verdicts compared inside a broker."""
+        cells = si.recovery_populations(SPAN_CSV, split="both")
+        assert {k: len(v) for k, v in cells.items()} == {
+            "KafkaPass": 24, "KafkaFail": 8, "RedisPass": 18, "RedisFail": 20}
+        for broker in ("Kafka", "Redis"):
+            a, b = cells[broker + "Pass"], cells[broker + "Fail"]
+            lo, hi = si.hl_bootstrap_ci(a, b)
+            assert lo < si.hodges_lehmann(a, b) < hi and lo < 0.0 < hi, broker
+            assert si.ks_permutation_p(a, b) > 0.05, broker
 
 
 class TestNewcombeDifference:
@@ -855,7 +886,17 @@ class TestEcdfCrossings:
         pops = si.recovery_populations()
         got = si.ecdf_crossings(pops["Pass"], pops["Fail"])
         # 7 Oct 2026: one crossing without the late messages (18.2 and 34.8 before).
-        assert [round(x, 1) for x in got] == [18.2]
+        # 15 Oct 2026: 23.0 with the median-only recovery at native resolution; the grid
+        # estimator's crossing, 18.2, still reads off the columns that keep it.
+        assert [round(x, 1) for x in got] == [23.0]
+        grid = si.recovery_populations(err="recovery_err_centre_us", truth="median_D_bin_us")
+        assert [round(x, 1) for x in si.ecdf_crossings(grid["Pass"], grid["Fail"])] == [18.2]
+        # The same day S16.9's caption stopped naming the pooled crossing and says instead that
+        # inside each broker the two curves cross: once on Kafka and six times on Redis.
+        cells = si.recovery_populations(split="both")
+        assert [round(x, 2) for x in si.ecdf_crossings(cells["KafkaPass"],
+                                                       cells["KafkaFail"])] == [0.67]
+        assert len(si.ecdf_crossings(cells["RedisPass"], cells["RedisFail"])) == 6
 
     def test_empty_samples_raise(self):
         with pytest.raises(ValueError):
@@ -871,13 +912,17 @@ class TestRecoveryPopulations:
         assert pops["Pass"] == sorted(pops["Pass"])
 
     def test_the_band_counts_the_supplement_quotes(self):
+        """15 Oct 2026: S16.9 counts no bands since its rewrite that day (they counted the 50 us
+        grid's pile of exact recoveries, and `recovery_band_edge` went with them). What its
+        table quotes instead is each broker's two verdicts, which partition the verdicts' own
+        populations: held here, with the tally the bands gave last, (0, 31, 11) and (0, 15,
+        13) at the 13% edge, now read as each broker's share of each verdict."""
         pops = si.recovery_populations()
-        # The edge is derived since round 78: the accepted population's upper quartile.
-        band = si.recovery_band_edge(pops)
-        tally = {k: (sum(v == 0.0 for v in p), sum(0.0 < v < band for v in p),
-                     sum(v >= band for v in p)) for k, p in pops.items()}
-        # 7 Oct 2026: (14, 15, 13) without the late messages, thirds before.
-        assert tally == {"Pass": (14, 15, 13), "Fail": (6, 17, 5)}
+        cells = si.recovery_populations(split="both")
+        for side in ("Pass", "Fail"):
+            assert sorted(cells["Kafka" + side] + cells["Redis" + side]) == pops[side]
+        assert not [v for p in pops.values() for v in p if v == 0.0]
+        assert not hasattr(si, "recovery_band_edge") and not hasattr(si, "equal_split_edges")
 
     def test_it_reads_a_file_it_is_given(self, tmp_path):
         path = tmp_path / "s.csv"
@@ -885,3 +930,25 @@ class TestRecoveryPopulations:
                         "x#pass,10,100\ny#fail,-20,100\nz#pass,5,0\n", encoding="utf-8")
         pops = si.recovery_populations(str(path))
         assert pops == {"Pass": [10.0], "Fail": [20.0]}, "a zero median is skipped, not divided"
+
+    def test_it_splits_by_broker_and_reads_the_columns_it_is_named(self, tmp_path):
+        """15 Oct 2026: by broker beside the verdicts, and another estimator's columns."""
+        path = tmp_path / "s.csv"
+        path.write_text("condition,recovery_err_us,median_D_us,other_err,other_d\n"
+                        "kafka_n1_feed1#pass,10,100,5,50\nredis_n1_feed1#fail,-20,100,1,10\n"
+                        "kafka_n2_feed1#fail,2,100,0,50\n", encoding="utf-8")
+        assert si.recovery_populations(str(path), split="broker") == {
+            "Kafka": [2.0, 10.0], "Redis": [20.0]}
+        assert si.recovery_populations(str(path), err="other_err", truth="other_d") == {
+            "Pass": [10.0], "Fail": [0.0, 10.0]}
+        # And each broker's two verdicts, for S16.9's comparison inside a broker; a cell with
+        # no group is an empty list, not a missing key.
+        assert si.recovery_populations(str(path), split="both") == {
+            "KafkaPass": [10.0], "KafkaFail": [2.0], "RedisPass": [], "RedisFail": [20.0]}
+
+    def test_an_unknown_split_is_refused(self, tmp_path):
+        path = tmp_path / "s.csv"
+        path.write_text("condition,recovery_err_us,median_D_us\nx#pass,1,10\n",
+                        encoding="utf-8")
+        with pytest.raises(ValueError, match="split must be"):
+            si.recovery_populations(str(path), split="campaign")

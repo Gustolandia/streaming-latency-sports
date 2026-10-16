@@ -292,10 +292,12 @@ class TestTheManipulationsOnBothBrokers:
         got = dict(epn.mechanism_interval_macros(self._world(tmp_path)))
         assert (got["rtRedisFactorLow"], got["rtRedisFactorHigh"]) == ("6.0", "7.8")
         assert (got["rtRedisResidualMin"], got["rtRedisResidualMax"]) == ("0.0170", "0.0245")
+        assert (got["rtRedisResidualMinPct"], got["rtRedisResidualMaxPct"]) == ("1.7", "2.5")
         assert got["placeRedisOrig"] == "0.65" and got["placeKafkaOrigCI"] == "0.50$--$3.60"
         assert got["pathRedisOrig"] == "8.0" and got["pathRedisOrigCI"] == "3.3$--$10.5"
         assert set(got) - {"rtRedisFactorLow", "rtRedisFactorHigh", "rtRedisResidualMin",
-                           "rtRedisResidualMax"} == set(epn.MECH_QUOTED)
+                           "rtRedisResidualMax", "rtRedisResidualMinPct",
+                           "rtRedisResidualMaxPct"} == set(epn.MECH_QUOTED)
 
     def test_an_unbounded_interval_ends_at_infinity(self):
         assert epn._mech_ci({"factor_lo": "4.0", "factor_hi": "inf"}) == "4.00$--$\\infty"

@@ -100,17 +100,24 @@ class TestR1TheAcknowledgmentLagIsCounted:
         """6 Oct 2026: Table I is the paper's again (tab:spans)."""
         i = paper.index("label{tab:spans}")
         table = paper[i:paper.index("end{table}", i)]
+        # 15 Oct 2026: Table I is generated whole and input, and referee A (m26) asked that its
+        # origin column name the timestamp, $t_{\mathrm{pub}}$, rather than "publish (chain)".
+        assert "\\input{docs/generated/spans_table}" in table
+        table += (REPO / "docs" / "generated" / "spans_table.tex").read_text(encoding="utf-8")
         assert "spanNegAckLag" in table, "the row exists"
-        assert table.count("publish (chain)") == 3, (
+        assert table.count("& $t_{\\mathrm{pub}}$ &") == 3, (
             "three spans now take the publish timestamp as their origin, and all three are rows")
         assert "---" not in table, "round 68's measured zeros stay measured zeros"
 
     def test_the_caption_gives_the_margin_rather_than_only_the_zero(self, paper):
         """5 Oct 2026: the caption reads "Values below zero by span and broker" and gives "the
         smallest run minimum of the publish latency A ... clear of zero"."""
+        # 15 Oct 2026, referee B (Table I, t3): every span's smallest value is a column of the
+        # table, A's included, and the caption says so; A's floor is printed in its row.
         caption = _spans_caption(paper)
-        assert "spanAckLagFloorUs" in caption
-        assert "clear of zero" in caption
+        assert "its smallest value" in caption
+        body = (REPO / "docs" / "generated" / "spans_table.tex").read_text(encoding="utf-8")
+        assert "\\spanAckLagFloorUs" in body
 
     def test_the_biconditional_no_longer_rests_on_a_premise_it_never_used(self, paper):
         """v5 (28 Sep): Section II-A says "Since Equation 1 holds per event, whatever the
@@ -173,10 +180,11 @@ class TestR1TheAcknowledgmentLagIsCounted:
                                   "zero"), "the table's claim is no longer that only S inverts"
 
     def test_the_rendered_table_shows_four_clean_chains(self):
-        """6 Oct 2026: on the paper's pages, where Table I is again."""
+        """6 Oct 2026: on the paper's pages, where Table I is again. 16 Oct 2026: its rows are
+        the spans' symbols, each with its origin timestamp and then its smallest value."""
         flat = " ".join(_rendered("paper").split())
-        assert flat.count("publish (chain)0 0 0") == 3
-        assert "event time0 0 0" in flat
+        assert len(re.findall(r"t ?pub 0 0 0 \d", flat)) == 3
+        assert re.search(r"t ?sched 0 0 0 \d", flat)
 
 
 class TestR2TheFloorIsAScaleNotALimit:
@@ -203,8 +211,10 @@ class TestR2TheFloorIsAScaleNotALimit:
         # a bound; and it may not call that range a floor or a bound the rate respects.
         flat = " ".join(paper.split())
         # 6 Oct 2026: both brokers' ranges, Kafka's first, then "not at zero".
-        m = re.search(r"settles at \$" + RE_BS + r"rtResidualMin\$--\$" + RE_BS
-                      + r"rtResidualMax\$ on .{0,120}?, not at zero", flat)
+        # 16 Oct 2026: in percent, the twins rtResidualMinPct and rtResidualMaxPct, the unit
+        # the paper gives every other rate in.
+        m = re.search(r"settles at \$" + RE_BS + r"rtResidualMinPct\$--\$" + RE_BS
+                      + r"rtResidualMaxPct" + RE_BS + r"%\$ on .{0,120}?, not at zero", flat)
         assert m, "the main text no longer says where the real-time rate settles"
         clause = flat[max(0, m.start() - 200):m.end() + 120]
         assert not re.search(r"\b(?:floor|bound|bounded|reaches but)\b", clause), clause

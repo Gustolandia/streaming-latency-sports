@@ -5,7 +5,8 @@
   author={StatsBomb},
   journal={GitHub Repository},
   year={2023},
-  url={https://github.com/statsbomb/open-data}
+  url={https://github.com/statsbomb/open-data},
+  note={Accessed: Oct. 15, 2026}
 }
 
 % Sports Domain Sources
@@ -28,15 +29,8 @@
          inference benchmarks},
   author={Chandrasekar, Ashok and Kramberger, Jason},
   journal={arXiv preprint arXiv:2605.24217},
-  year={2026}
-}
-
-@article{yang2022cloudprofiler,
-  title={Cloudprofiler: {TSC}-based inter-node profiling and high-throughput data ingestion
-         for cloud streaming workloads},
-  author={Yang, Shinhyung and Jeong, Jiun and Scholz, Bernhard and Burgstaller, Bernd},
-  journal={arXiv preprint arXiv:2205.09325},
-  year={2022}
+  year={2026},
+  month=may
 }
 
 @inproceedings{li2014tales,
@@ -45,6 +39,7 @@
   booktitle={Proc.\ ACM SoCC},
   pages={1--14},
   year={2014},
+  month=nov,
   publisher={ACM},
   doi={10.1145/2670979.2670988}
 }
@@ -70,20 +65,12 @@
   annote={Talk, Strange Loop / QCon; coined ``coordinated omission''.}
 }
 
-@inproceedings{mytkowicz2009wrong,
-  author    = {Mytkowicz, Todd and Diwan, Amer and Hauswirth, Matthias and Sweeney, Peter F.},
-  title     = {Producing Wrong Data Without Doing Anything Obviously Wrong!},
-  booktitle = {Proc. 14th Int. Conf. Architectural Support for Programming Languages and Operating Systems (ASPLOS)},
-  year      = {2009},
-  pages     = {265--276},
-  publisher = {ACM}
-}
-
 @inproceedings{dobbelaere2017kafka,
   author    = {Dobbelaere, Philippe and Esmaili, Kyumars Sheykh},
   title     = {Kafka versus {RabbitMQ}: A Comparative Study of Two Industry Reference Publish/Subscribe Implementations},
   booktitle = {Proc. 11th ACM Int. Conf. Distributed and Event-Based Systems (DEBS)},
   year      = {2017},
+  month     = jun,
   pages     = {227--238},
   publisher = {ACM}
 }
@@ -93,6 +80,7 @@
   title     = {Statistically Rigorous {Java} Performance Evaluation},
   booktitle = {Proc. 22nd ACM SIGPLAN Conf. Object-Oriented Programming, Systems, Languages and Applications (OOPSLA)},
   year      = {2007},
+  month     = oct,
   pages     = {57--76},
   publisher = {ACM}
 }
@@ -110,6 +98,7 @@
   title     = {On Calibrating Measurements of Packet Transit Times},
   booktitle = {Proc.\ ACM SIGMETRICS},
   year      = {1998},
+  month     = jun,
   pages     = {11--21},
   publisher = {ACM}
 }
@@ -126,6 +115,7 @@
   booktitle = {Proc.\ 43rd ACM/IEEE Int.\ Symp.\ Computer Architecture (ISCA)},
   pages     = {456--468},
   year      = {2016},
+  month     = jun,
   doi       = {10.1109/ISCA.2016.47}
 }
 
@@ -136,7 +126,8 @@
   volume  = {74},
   number  = {8},
   pages   = {2608--2620},
-  year    = {2025}
+  year    = {2025},
+  month   = aug
 }
 
 @inproceedings{kogias2019lancet,
@@ -145,18 +136,8 @@
   booktitle = {Proc. USENIX Annual Technical Conf. (ATC)},
   pages     = {881--896},
   year      = {2019},
+  month     = jul,
   annote    = {\S4.3: terminates and reports the results with an inconclusive verdict}
-}
-
-@incollection{kundel2024p4sta,
-  author    = {Kundel, Ralf},
-  title     = {{P4STA}: High Precision Network Function Benchmarking},
-  booktitle = {Accelerating Network Functions Using Reconfigurable Hardware},
-  series    = {Springer Theses},
-  publisher = {Springer Nature Switzerland},
-  doi       = {10.1007/978-3-031-52872-9_4},
-  pages     = {93--115},
-  year      = {2024}
 }
 
 @misc{openmessaging_pr56,
@@ -211,6 +192,7 @@
   booktitle = {Proc. IEEE Int. Symp. Precision Clock Synchronization for
                Measurement, Control and Communication (ISPCS)},
   year      = {2012},
+  month     = sep,
   pages     = {1--6},
   annote    = {{DTrace} breakdown against a DAG hardware reference}
 }
@@ -222,6 +204,7 @@
   booktitle = {Proc. Int. Conf. High Performance Computing, Networking, Storage
                and Analysis (SC)},
   year      = {2015},
+  month     = nov,
   publisher = {ACM},
   pages     = {73:1--73:12}
 }
@@ -257,6 +240,7 @@
   title     = {Benchmarking Distributed Stream Data Processing Systems},
   booktitle = {Proc.\ IEEE 34th Int. Conf. Data Engineering (ICDE)},
   year      = {2018},
+  month     = apr,
   pages     = {1507--1518},
   doi       = {10.1109/ICDE.2018.00169}
 }
@@ -269,6 +253,7 @@
   number  = {8},
   pages   = {1845--1858},
   year    = {2020},
+  month   = aug,
   doi     = {10.1109/TPDS.2020.2978480}
 }
 
@@ -346,6 +331,7 @@
                   (issue \#216)},
   howpublished = {\url{https://github.com/openmessaging/benchmark/issues/216}},
   year         = {2021},
+  note = {Accessed: Oct. 15, 2026},
   annote       = {The anomaly attributed to inter-node skew, on a same-node report}
 }
 
@@ -392,7 +378,8 @@
 @misc{zhou2025slice,
   author       = {Z. Zhou},
   title        = {sched: Reduce the default slice to avoid tasks getting an extra tick},
-  howpublished = {Linux kernel mailing list, commit 2ae891b82695},
+  howpublished = {Linux kernel source, commit 2ae891b82695, first released in v6.15},
+  note         = {\url{https://github.com/torvalds/linux/commit/2ae891b826958b60919ea21c727f77bcd6ffcc2c}. Accessed: Oct. 15, 2026},
   year         = {2025},
   annote       = {Reviewed-by V. Guittot; reduces the constant to \texttt{0.70} in v6.15, backported to stable v6.12.31 and v6.6.93 and by Ubuntu into linux-oracle-6.8 6.8.0-1043 (LP: \#2133301)}
 }
@@ -408,6 +395,7 @@
   number  = {11},
   pages   = {2600--2606},
   year    = {2018},
+  month   = mar,
   doi     = {10.1073/pnas.1708274114}
 }
 
@@ -422,7 +410,7 @@
 
 @misc{rabbitmq_perftest,
   author       = {{Broadcom}},
-  title        = {{RabbitMQ PerfTest} --- \texttt{TimestampProvider.java}},
+  title        = {{RabbitMQ PerfTest} --- \texttt{TimestampProvider.java} and \texttt{DefaultPerformanceMetrics.java}},
   howpublished = {Source repository},
   year         = {2026},
   note         = {\url{https://github.com/rabbitmq/rabbitmq-perf-test}. Accessed: Oct. 2, 2026},
@@ -511,15 +499,6 @@
   annote       = {\url{https://github.com/GoogleCloudPlatform/PerfKitBenchmarker}, read at commit e5fd49d7; the latency is floored to whole milliseconds and kept, sign and all. Accessed: Oct. 11, 2026}
 }
 
-@misc{indexdev2026brokers,
-  author       = {{Index.dev}},
-  title        = {{NATS} vs {Redis} vs {Kafka}: message broker comparison},
-  howpublished = {Practitioner comparison},
-  year         = {2026},
-  note         = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}. Accessed: Sep. 3, 2026},
-  annote       = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}; no retained fraction, rejection count, timestamp resolution or send rate. S1.9 records what we first read here and why it was wrong. Accessed: Sep. 3, 2026.}
-}
-
 @article{papadopoulos2021methodological,
   author  = {Papadopoulos, Alessandro Vittorio and Versluis, Laurens and Bauer, Andr{\'e} and
              Herbst, Nikolas and von Kistowski, J{\'o}akim and Ali-Eldin, Ahmed and Abad,
@@ -530,6 +509,7 @@
   number  = {8},
   pages   = {1528--1543},
   year    = {2021},
+  month   = aug,
   doi     = {10.1109/TSE.2019.2927908}
 }
 
@@ -539,6 +519,7 @@
   booktitle = {Proc.\ 30th ACM Symp.\ Operating Systems Principles (SOSP)},
   pages     = {265--279},
   year      = {2024},
+  month     = nov,
   doi       = {10.1145/3694715.3695973}
 }
 
@@ -550,6 +531,7 @@
   booktitle = {Proc.\ 15th ACM/SPEC Int.\ Conf.\ Performance Engineering (ICPE)},
   pages     = {2--13},
   year      = {2024},
+  month     = may,
   doi       = {10.1145/3629526.3645036}
 }
 
@@ -559,6 +541,7 @@
   booktitle = {Proc.\ 9th European Conf.\ Computer Systems (EuroSys)},
   pages     = {1--14},
   year      = {2014},
+  month     = apr,
   doi       = {10.1145/2592798.2592821},
   annote    = {Scheduling delay of a latency-critical server under co-located work. Verified
                against Crossref 2026-10-06.}
@@ -572,6 +555,7 @@
   booktitle = {Proc.\ 17th IEEE Real-Time Systems Symp.\ (RTSS)},
   pages     = {288--299},
   year      = {1996},
+  month     = dec,
   doi       = {10.1109/REAL.1996.563725},
   annote    = {The EEVDF algorithm in its peer-reviewed form; the kernel's documentation cites
                the 1995 technical report TR-95-22. Verified against Crossref 2026-10-06.}
@@ -585,20 +569,10 @@
   number  = {1},
   pages   = {196--207},
   year    = {2023},
+  month   = jan,
   doi     = {10.1109/TC.2022.3187351},
   annote  = {Measures the noise the OS adds to a thread, under normal and real-time classes.
              Verified against Crossref 2026-10-06.}
-}
-
-@misc{corbet2024eevdf,
-  author       = {Corbet, Jonathan},
-  title        = {Completing the {EEVDF} scheduler},
-  howpublished = {LWN.net},
-  month        = apr,
-  year         = {2024},
-  note         = {\url{https://lwn.net/Articles/969062/}. Accessed: Oct. 6, 2026},
-  annote       = {Custom slices requested through sched\_setattr(), in Linux 6.12 (commit
-                  857b158d).}
 }
 
 @inproceedings{baccelli2006pasta,
@@ -608,6 +582,7 @@
   booktitle = {Proc.\ ACM SIGCOMM},
   pages     = {231--242},
   year      = {2006},
+  month     = sep,
   doi       = {10.1145/1159913.1159940},
   annote    = {Probes at the instants of any mixing process, not only Poisson, see time
                averages; a periodic schedule need not. Verified against Crossref 2026-10-06.}
@@ -727,4 +702,127 @@
   year         = {2026},
   note         = {\url{https://github.com/apache/bookkeeper}. Accessed: Oct. 11, 2026},
   annote       = {\url{https://github.com/apache/bookkeeper}, read at commit 773a988d, release 4.18.1; a publish latency of zero is dropped with the failures. Accessed: Oct. 11, 2026}
+}
+
+% ---------------------------------------------------------------------------
+% 15 Oct 2026: the references two referees of the ninth version proposed, each verified against
+% the primary source before it was added (Crossref for the DOIs; the RFC's own header; the arXiv
+% record and the book's text for McKenney; GitHub's record of each kernel commit and the first
+% release that holds it; the Redis page's own text).
+% ---------------------------------------------------------------------------
+
+@techreport{rfc7679,
+  author      = {Almes, G. and Kalidindi, S. and Zekauskas, M. and Morton, Ed., A.},
+  title       = {A One-Way Delay Metric for {IP} Performance Metrics ({IPPM})},
+  institution = {Internet Engineering Task Force},
+  type        = {RFC},
+  number      = {7679},
+  note        = {{STD}~81},
+  month       = jan,
+  year        = {2016},
+  doi         = {10.17487/RFC7679},
+  annote      = {Sec. 3.4 defines one-way delay between wire times from Src to Dst, each the IP
+                 address of a host; Sec. 3.7.2 names the hosts' shares Hsource and Hdest.}
+}
+
+@inproceedings{zuo2026hoststack,
+  author    = {Zuo, Tianyu and Hwang, Jaehyun and Tang, Ao and Agarwal, Rachit and Cai, Qizhe},
+  title     = {Understanding Host Network Stack Latency},
+  booktitle = {Proc. ACM SIGCOMM 2026 Conf.},
+  pages     = {1127--1140},
+  month     = aug,
+  year      = {2026},
+  doi       = {10.1145/3789240.3829115},
+  annote    = {rx_sched, the delay between a sleeping read being woken by incoming data and the
+               thread being scheduled, is the main contributor to tail latency on client and
+               server; Linux 5.10 (CFS), with EEVDF results on 6.12.}
+}
+
+@misc{mckenney2023perfbook,
+  author       = {McKenney, Paul E.},
+  title        = {Is Parallel Programming Hard, And, If So, What Can You Do About It?},
+  howpublished = {arXiv preprint arXiv:1701.00854v6},
+  month        = jun,
+  year         = {2023},
+  note         = {Release v2023.06.11a, App.~A.3--A.4},
+  annote       = {A.4: a consumer preempted after reading the clock records a time before the
+                  producer's, so timestamps of two threads on one clock appear to go backwards.}
+}
+
+@inproceedings{qureshi2023fathom,
+  author    = {Qureshi, Mubashir Adnan and Yan, Junhua and Cheng, Yuchung and Hassas Yeganeh,
+               Soheil and Seung, Yousuk and Cardwell, Neal and De Bruijn, Willem and Jacobson, Van
+               and Kaur, Jasleen and Wetherall, David and Vahdat, Amin},
+  title     = {Fathom: Understanding Datacenter Application Network Performance},
+  booktitle = {Proc. ACM SIGCOMM 2023 Conf.},
+  pages     = {394--405},
+  month     = sep,
+  year      = {2023},
+  doi       = {10.1145/3603269.3604815},
+  annote    = {Segments RPC latency into host and network components with kernel and RPC stack
+               instrumentation, fleet-wide.}
+}
+
+@misc{redis_streams,
+  author       = {{Redis}},
+  title        = {Redis Streams: Latency tests results},
+  howpublished = {\url{https://redis.io/docs/latest/develop/data-types/streams/}},
+  year         = {2026},
+  note         = {Accessed: Oct. 15, 2026},
+  annote       = {"Processed between 0 and 1 ms -> 74.11 percent", timed from a millisecond timestamp the
+                  producer puts in each message. Accessed: Oct. 15, 2026}
+}
+
+@misc{zijlstra2024slice,
+  author       = {Zijlstra, Peter},
+  title        = {sched/eevdf: Use {sched\_attr::sched\_runtime} to set request/slice suggestion},
+  howpublished = {Linux kernel source, commit 857b158dc5e8, first released in v6.12},
+  note         = {\url{https://github.com/torvalds/linux/commit/857b158dc5e81c6de795ef6be006eed146098fc6}. Accessed: Oct. 15, 2026},
+  year         = {2024},
+  annote       = {A task asks for a slice of its own through sched_setattr(); first in v6.12, so the
+                  6.8 kernels of our runs lack it.}
+}
+
+@inproceedings{zilberman2017time,
+  author    = {Zilberman, Noa and Grosvenor, Matthew and Popescu, Diana Andreea and
+               Manihatty-Bojan, Neelakandan and Antichi, Gianni and W{\'o}jcik, Marcin and Moore,
+               Andrew W.},
+  title     = {Where Has My Time Gone?},
+  booktitle = {Passive and Active Measurement (PAM 2017)},
+  series    = {Lecture Notes in Computer Science},
+  pages     = {201--214},
+  publisher = {Springer},
+  year      = {2017},
+  doi       = {10.1007/978-3-319-54328-4_15}
+}
+
+@misc{linux_ksoftirqd,
+  author       = {{Linux Kernel Documentation}},
+  title        = {Reducing {OS} Jitter due to Per-cpu Kthreads: \texttt{ksoftirqd}},
+  howpublished = {\url{https://docs.kernel.org/admin-guide/kernel-per-CPU-kthreads.html}},
+  year         = {2026},
+  note         = {Accessed: Oct. 15, 2026},
+  annote       = {"Execute softirq handlers when threaded or when under heavy load." Accessed: Oct.
+                  15, 2026}
+}
+
+@misc{linux_hyperv_clocks,
+  author       = {{Linux Kernel Documentation}},
+  title        = {Clocks and Timers ({Hyper-V})},
+  howpublished = {\url{https://docs.kernel.org/virt/hyperv/clocks.html}},
+  year         = {2026},
+  note         = {Accessed: Oct. 15, 2026},
+  annote       = {x86 guests use the TSC-based clocksource, or the Hyper-V synthetic clock through a
+                  shared page (hyperv_clocksource_tsc_page). Accessed: Oct. 15, 2026}
+}
+
+@misc{macmullen2014rabbitmq,
+  author       = {MacMullen, Simon},
+  title        = {[rabbitmq-discuss] Messages are read by consumer befor than sender get
+                  confirmation},
+  howpublished = {rabbitmq-discuss mailing list,
+                  \url{https://lists.rabbitmq.com/pipermail/rabbitmq-discuss/2014-June/036711.html}},
+  month        = jun,
+  year         = {2014},
+  note         = {Accessed: Oct. 15, 2026}
 }

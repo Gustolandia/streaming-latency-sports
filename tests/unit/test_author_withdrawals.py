@@ -44,10 +44,22 @@ def _author_block(tex):
     return tex[start:i]
 
 
+#: How an affiliation footnote opens: IEEEtran's journal form, and since 15 Oct 2026 the Computer
+#: Society form TC's template issues, one item per author inside \IEEEcompsocitemizethanks.
+FOOTNOTES = ("\\thanks{", "\\IEEEcompsocthanksitem")
+
+
 def _byline(tex):
     """The names, without the affiliation footnotes that follow them."""
-    block = _author_block(tex)
-    return block[len("\\author{"):].split("\\thanks{")[0].rstrip("%\r\n ")
+    names = _author_block(tex)[len("\\author{"):]
+    for opener in FOOTNOTES + ("\\IEEEcompsocitemizethanks{",):
+        names = names.split(opener)[0]
+    return names.rstrip("%\r\n ")
+
+
+def _footnotes(block):
+    """How many affiliation footnotes an author block carries, in either form."""
+    return sum(block.count(opener) for opener in FOOTNOTES)
 
 
 class TestThePaperCarriesTwoAuthors:
@@ -63,9 +75,9 @@ class TestThePaperCarriesTwoAuthors:
 
     def test_there_is_one_affiliation_footnote_per_author(self):
         block = _author_block(PAPER.read_text(encoding="utf-8"))
-        assert block.count("\\thanks{") == len(AUTHORS), (
+        assert _footnotes(block) == len(AUTHORS), (
             "%d affiliation footnotes for %d authors. Every author gets one and nobody who "
-            "is not an author gets one." % (block.count("\\thanks{"), len(AUTHORS)))
+            "is not an author gets one." % (_footnotes(block), len(AUTHORS)))
 
     def test_there_is_one_biography_per_author(self):
         tex = PAPER.read_text(encoding="utf-8")

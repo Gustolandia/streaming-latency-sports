@@ -457,3 +457,30 @@ def _isolate_repo_writes(temp_dir, monkeypatch):
     points at a per-test temporary directory.
     """
     monkeypatch.setenv("SBL_OUT_DIR", str(temp_dir / "results"))
+
+
+#: Where scripts/emit_paper_numbers.py writes by default: committed files, every one of them.
+EMITTER_GENERATED = os.path.join("docs", "generated")
+
+
+@pytest.fixture(autouse=True)
+def _emitter_outputs_stay_out_of_the_repo(temp_dir, monkeypatch):
+    """Point scripts/emit_paper_numbers.py's default outputs at the test's temporary directory.
+
+    A test that runs the emitter's main() names the outputs it asserts on and lets the rest
+    default, and every default is a committed file under docs/generated, so each such test
+    rewrote the committed tables with whatever code it had loaded. On 15 Oct 2026 a session
+    that had started before a generator change rewrote two of them with the old code. Each
+    DEFAULT_* path under docs/generated is pointed at <temp_dir>/generated instead; main()
+    builds its parser when it is called, so these are the defaults it uses. Only a module the
+    test has already imported is patched, which covers every test that calls main(), and a
+    test that reads a committed generated file names its path and is left alone.
+    """
+    emitter = sys.modules.get("emit_paper_numbers")
+    if emitter is None:
+        return
+    for name, value in list(vars(emitter).items()):
+        if (name.startswith("DEFAULT_") and isinstance(value, str)
+                and os.path.dirname(os.path.normpath(value)) == EMITTER_GENERATED):
+            monkeypatch.setattr(emitter, name,
+                                str(temp_dir / "generated" / os.path.basename(value)))

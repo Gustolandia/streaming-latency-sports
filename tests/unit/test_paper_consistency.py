@@ -1621,7 +1621,10 @@ class TestNarrativeArc:
         # and tested by manipulation; the industry-wide audit; and the checks. The context still
         # says first why the numbers matter, and sets the one machine and one clock before the
         # finding, so a reader meets the setting that excludes clock skew before the result.
-        beats = ("Measured, their difference spreads over milliseconds", "The cause is scheduling",
+        # 15 Oct 2026, both referees of version 9 and freeze 41's block K: the cause is stated per
+        # broker, scheduling where the acknowledgment arrives first ("there the cause is
+        # scheduling"), and the other broker's delivery first; the beat keeps its place.
+        beats = ("Measured, their difference spreads over milliseconds", "there the cause is scheduling",
                  "An industry-wide audit", "We give checks")
         for beat in beats:
             assert beat in flat, f"abstract is missing the '{beat}' beat"
@@ -1634,12 +1637,16 @@ class TestNarrativeArc:
             "the abstract must say first why the numbers matter: they choose brokers"
         assert "below a millisecond" in context, \
             "the context must set the scale at which a late clock reading matters"
-        assert "one clock" in context, "the finding must be set on one clock before it is stated"
+        # 15 Oct 2026: "two readings on one machine's clock" in the v9 response's abstract.
+        assert "one machine's clock" in context, \
+            "the finding must be set on one clock before it is stated"
         assert "below zero" in finding, "the distribution beat must say part of S is below zero"
         for token in ("wait for a processor core", "manipulation", "real-time priority",
                       "slice"):
             assert token in mechanism, f"the mechanism beat is missing {token!r}"
-        for token in ("discarded uncounted", "millisecond clocks", "deletes the fastest messages"):
+        # 15 Oct 2026: the 200-word abstract of the v9 response says "a millisecond-clock filter
+        # deleting the fastest messages".
+        for token in ("discarded uncounted", "millisecond-clock filter", "the fastest messages"):
             assert token in audit, f"the audit beat is missing {token!r}"
         assert "withdr" not in flat.lower(), "the TC abstract no longer narrates withdrawals"
 
@@ -2019,7 +2026,9 @@ class TestNetemConfoundIsDisclosed:
         assert "common-mode" in s31, "the reason the manipulation fails must be named"
         assert "the injected delay cancels exactly" in s31
         mechanism = " ".join(_section(main_tex, "sec:twostate").split())
-        assert "Padding the payload lengthens the path without touching the scheduler" \
+        # 15 Oct 2026: the sentence says how padding lengthens the path, by transfer and
+        # parsing, at nearly unchanged utilization.
+        assert "Padding the payload lengthens the time to the consumer's reading" \
             in mechanism, "the path length must rest on a manipulation the delay sweep is not"
         assert "netem" not in main_tex.lower(), "the main text must not lean on the delay sweep"
 
@@ -2516,10 +2525,15 @@ class TestLoadGeometryAndTtrue:
         prose = " ".join(_resolved(_section(main_tex, "sec:twostate")).split())
         listed = sorted(f"{r:.2f}" for r in pooled)
         listed = ", ".join(listed[:-1]) + " and " + listed[-1]
-        spelled = {2: "two", 3: "three", 4: "four", 5: "five"}.get(len(pooled), "")
-        bare = prose.replace("{}", "")
-        assert f"ratios of {listed} in the {spelled} normal-priority configurations traced" \
-            in bare, "the ratios must be listed together, with the configurations they cover"
+        # 15 Oct 2026, referees A (M6(a)) and B (S5) of version 9: the main text gives the
+        # trace's agreement at every threshold from 0.25 to 2 ms, through the threshold table's
+        # macros, inside the factor of three fixed before it was read; the three ratios at
+        # 0.5 ms, pooled and against Kafka's rate alone, are read in Supplement S3.5.
+        raw = _section(main_tex, "sec:twostate")
+        for macro in (r"\tracedThresholdLowMs", r"\tracedThresholdHighMs",
+                      r"\tracedThresholdRatioLo", r"\tracedThresholdRatioHi"):
+            assert macro in raw, "the trace's agreement must come from the threshold table"
+        assert "factor of three fixed before it was read" in prose
         assert "(Supplement~%s)" % _heading_before(journal, journal.index(r"\label{stab:tracer}")) \
             in prose, "the sentence must point to where the arms are read"
         reading = " ".join(_resolved(_section(journal, "s:tracer")).split())
@@ -2584,13 +2598,15 @@ class TestLoadGeometryAndTtrue:
         section = _resolved(" ".join(_section(tex, "sec:practice").split()))
         assert "unpreemptable" in section or "real-time priority" in section, \
             "the measured mitigation must be recommended"
-        ratios = []
-        for name in ("stamping_priority", "stamping_priority_ea5b", "stamping_priority_ea7"):
-            for r in _rows("model", f"{name}.csv"):
-                if float(r["inv_rt"]) > 0:
-                    ratios.append(float(r["inv_base"]) / float(r["inv_rt"]))
-        assert f"${round(min(ratios))}$" in section and f"${round(max(ratios))}" in section, \
+        # 15 Oct 2026, referee B (S3) of version 9: the effect quoted is the smallest run-level
+        # lower bound over the matched pairs, on each broker, "at least" that many fold; the
+        # range of point estimates stays in Section IV-B and Table S6.
+        raw = " ".join(_section(tex, "sec:practice").split())
+        assert re.search(r"at least \$\\rtKafkaLowerBound\$-fold on \\kafka\{\} and "
+                         r"\$\\rtRedisLowerBound\$-fold on \\redis\{\}", raw), \
             "the recommendation must quote the effect its artefacts show"
+        macros = dict(_emitted_macros())
+        assert float(macros["rtKafkaLowerBound"]) > 1 and float(macros["rtRedisLowerBound"]) > 1
         # It reduces exposure; it does not remove it, and it perturbs what it measures.
         # 5 Oct 2026: "the rate settles at ... not at zero".
         assert re.search(r"not (?:at )?zero", section), "the floor must be stated as non-zero"
@@ -2730,9 +2746,14 @@ class TestLoadGeometryAndTtrue:
 
         # v6 (2 Oct 2026): the abstract quotes no numbers, at the authors' instruction; the
         # range is quoted in the introduction, through the macros that carry it.
+        # 15 Oct 2026, referee B (S3) of version 9: the introduction quotes the smallest
+        # run-level lower bound on each broker, and the range moves to Section IV-B.
         intro = _section(main_tex, "sec:intro")
-        assert "rtFactorLow" in intro and "rtFactorHigh" in intro, \
-            "the introduction must quote the range through the macros that carry it"
+        assert "rtKafkaLowerBound" in intro and "rtRedisLowerBound" in intro, \
+            "the introduction must quote the effect through the macros that carry it"
+        mechanism = _section(main_tex, "sec:twostate")
+        assert "rtFactorLow" in mechanism and "rtFactorHigh" in mechanism, \
+            "the range must still be quoted, through the macros that carry it"
 
     def test_every_float_is_referenced_from_the_text(self, tex):
         """A figure, table or equation no sentence points to is a float the reader never meets.
@@ -3139,8 +3160,11 @@ class TestRefereeRoundOne:
         # Either form of the caption: \caption{...} or \caption[short]{...}.
         start = max(float_.find(r"\caption{"), float_.find(r"\caption["))
         caption = " ".join(float_[start:float_.index(r"\label{")].split())
-        assert "each with disjoint intervals on its two rates" in caption, \
-            "the caption must say what the priority range is a range of"
+        # 15 Oct 2026, referee B (S3) of version 9: the caption says priority gives the range over
+        # the pairs and the smallest of their run-level lower bounds; S3.1 says every pair's two
+        # rates stay apart once whole runs are resampled.
+        assert "Priority gives the range over the pairs and the smallest of their lower bounds" \
+            in caption, "the caption must say what the priority range is a range of"
         body = (REPO / "docs" / "generated" / "mechanism_table.tex").read_text(encoding="utf-8")
         assert r"Real-time priority, \rtPairsWord{} pairs" in body \
             and "normal / real-time" in body, "the exhibit must show the matched pairs"
@@ -3559,9 +3583,11 @@ class TestCausalityFramingIsWithdrawn:
         # synchronization" and "timed widely used brokers on one clock" left with the rewrite).
         # The rival is named and closed where the result is stated, Section III, and the count
         # behind the exclusion is quoted there.
-        assert "On one machine and one clock" in flat, \
+        # 15 Oct 2026: the abstract of the v9 response names the two readings "on one machine's
+        # clock", still before any value below zero is reported.
+        assert "on one machine's clock" in flat, \
             "three expert readers reached for clock skew; the abstract must forestall it"
-        assert flat.index("one clock") < flat.index("below zero"), \
+        assert flat.index("one machine's clock") < flat.index("below zero"), \
             "the one clock must be set before the values below zero are reported"
         finding = " ".join(_section(main_tex, "sec:finding").split())
         # 6 Oct 2026: the issue cited reports an average publish latency above the average
@@ -3633,6 +3659,9 @@ class TestCausalityFramingIsWithdrawn:
         # 6 Oct 2026: the table is the paper's Table I again (tab:spans), in Section III.
         lbl = main_tex.index(r"\label{tab:spans}")
         table = main_tex[main_tex.rindex(r"\begin{table}", 0, lbl):main_tex.index(r"\end{table}", lbl)]
+        # 15 Oct 2026: Table I is generated whole and input; its body is read through the input.
+        assert r"\input{docs/generated/spans_table}" in table
+        table += (REPO / "docs" / "generated" / "spans_table.tex").read_text(encoding="utf-8")
         for macro in (r"\spanNegSend", r"\spanNegAckLag"):
             assert macro in table, "the send-referenced count must come from the recount artefact"
         macros = dict(_emitted_macros())
@@ -3665,7 +3694,8 @@ class TestCausalityFramingIsWithdrawn:
                 "the gate's justification must be the unusable reference, not impossibility"
         for phrase in TestCausalityFramingIsWithdrawn.FORBIDDEN:
             assert phrase not in gate.lower(), f"the check is justified by {phrase!r} again"
-        assert "It sees only the worst cases." in gate, \
+        # 15 Oct 2026: the sentence goes on, after a colon, to say what the check misses.
+        assert "It sees only the worst cases:" in gate, \
             "the check must say what it cannot see, which no appeal to impossibility could"
 
 
@@ -3853,9 +3883,13 @@ class TestRefereeRoundTwo:
         # collapse", and the falls themselves are printed where it points, Supplement S3.7.
         # Matched as whole macro names: \tracedModes is a prefix of \tracedModesWord.
         tail = " ".join(_section(main_tex, "sec:tail").split())
-        for macro in (r"\tracedModesWord", r"\tracedModeShare", r"\tracedModeRatio"):
+        # 15 Oct 2026: the mode's ratio to its neighbor left the main text for the page budget;
+        # Supplement S3.7 prints it, where the falls above the mode are read.
+        for macro in (r"\tracedModesWord", r"\tracedModeShare"):
             assert re.search(re.escape(macro) + r"(?![A-Za-z])", tail), \
                 f"{macro} must carry the new reading"
+        assert re.search(re.escape(r"\tracedModeRatio") + r"(?![A-Za-z])",
+                         _section(journal, "s:timescale")), "the mode's ratio must stay in S3.7"
         assert "above it the counts collapse (Supplement~%s)" % _heading_before(
             journal, journal.index(r"\label{sfig:spectrum}")) in tail, \
             "the collapse must be stated, and point to where its falls are printed"
@@ -3905,15 +3939,21 @@ class TestRefereeRoundTwo:
         # 5 Oct 2026: the main text names the events the trace filters on, the scheduler's
         # wakeup and switch events, and the tracepoints themselves are named where the trace is
         # reported in full, Supplement S3.5.
-        assert "kernel trace of the scheduler's wakeup and switch events" in " ".join(
+        # 15 Oct 2026: the main text names the trace by what it counts, every thread's
+        # wakeups; Supplement S3.5 still names the tracepoints.
+        assert "kernel trace of every thread's wakeups" in " ".join(
             main_tex.split())
         flat = " ".join(_section(journal, "s:tracer").split()).replace(chr(92) + "_", "_")
         assert "sched_wakeup" in flat and "sched_switch" in flat
         # 7 Oct 2026: without the late messages the normal-priority rate does not move under
         # the tracer, and the effect the paper discloses is the real-time configurations' zeros.
-        for macro in (r"\untracedRate", r"\tracedRate", r"\untracedRtNegatives",
-                      r"\untracedRtEvents"):
+        # 15 Oct 2026: the main text says the normal-priority rate did not move and points to
+        # Supplement S3.5, which prints the two rates; the real-time zeros stay in the paper.
+        for macro in (r"\untracedRtNegatives", r"\untracedRtEvents"):
             assert macro in main_tex
+        assert "normal-priority rate did not move (Supplement~S3.5)" in " ".join(main_tex.split())
+        for macro in (r"\untracedRate", r"\tracedRate"):
+            assert macro in journal
 
     # 5 Oct 2026: R18's pin on the broker comparison's span is retired with the comparison,
     # which left the rebuilt paper and its supplement.
@@ -4145,7 +4185,9 @@ class TestInterpreterLockRival:
         # v5 (28 Sep): the list became the opening paragraph of Threats and Limitations.
         # 5 Oct 2026: "the negatives" became "the values of $S$ below zero"; the paragraph is
         # read to its end rather than for a fixed 2,000 characters.
-        i = main_tex.index("Attributing the values of $S$ below zero to scheduling is an inference")
+        # 15 Oct 2026: Limitations open on Kafka's late readings, since freeze 41 found most of
+        # Redis's values below zero to be its reply order.
+        i = main_tex.index("That scheduling makes \\kafka{}'s readings late is an inference")
         para = " ".join(main_tex[i:main_tex.index("\n\n", i)].split())
         assert "interpreter lock" in para, \
             "Section V-E lists the rivals; the interpreter lock is one and must be named"
@@ -4153,8 +4195,11 @@ class TestInterpreterLockRival:
     def test_the_bound_is_the_generated_ratio_not_a_typed_one(self, main_tex):
         # 6 Oct 2026: the paper quotes the ratios against both brokers' pooled rate, which is
         # what the trace counts; the ratios against Kafka's rate alone stay in Supplement S3.5.
-        assert r"\tracedPooledRatios" in main_tex, \
+        # 15 Oct 2026, referees A (M6(a)) and B (S5) of version 9: the paper quotes the range at
+        # every threshold from 0.25 to 2 ms, and the 0.5 ms ratios move to Supplement S3.5.
+        assert r"\tracedThresholdRatioLo" in main_tex and r"\tracedThresholdRatioHi" in main_tex, \
             "the ratios must come from the artefact, not be typed into the prose"
+        assert r"\tracedPooledRatios" in (REPO / "supplement.tex").read_text(encoding="utf-8")
         for typed in ("0.78", "1.06", "1.32", "0.95", "1.22", "1.39"):
             assert typed not in main_tex, \
                 "ratio %s is hand-typed; it is emitted as a macro" % typed
@@ -4182,11 +4227,18 @@ class TestRoundTwelveRegressions:
             "CPython is a product name; small caps flatten it into a false acronym"
 
     def test_the_clocksource_antecedent_stays_plural(self, main_tex):
-        r"""`\clockAdmitted` expands to two clocksources joined by 'or'."""
-        i = main_tex.find(r"\clockAdmitted{}")
+        r"""`\clockAdmitted` expands to two clocksources joined by 'or'.
+
+        15 Oct 2026: the main text keeps the elimination's measured read cost, `\clockIncrementNs`,
+        and Supplement S3.6 names what remains, "What remains, \clockAdmitted{}, carries the
+        coherence guarantee": two clocksources joined by 'or' take a singular verb there."""
+        assert r"\clockIncrementNs" in main_tex, "the elimination must quote its read cost"
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        i = journal.find(r"\clockAdmitted{}")
         assert i > 0, "the clocksource elimination must quote the generated list"
-        assert "both of which" in main_tex[i:i + 200], \
-            "two admitted clocksources need a plural antecedent, not a bare 'which'"
+        assert " ".join(journal[i:i + 60].split()).startswith(r"\clockAdmitted{}, carries") \
+            or "both of which" in journal[i:i + 200], \
+            "two admitted clocksources need a verb that agrees with them"
 
     def test_the_headroom_argument_still_disowns_shared_endpoints(self, main_tex):
         """The disclaimer marks an argument this paper abandoned; see recount_spans.totals().
@@ -4203,9 +4255,11 @@ class TestRoundTwelveRegressions:
         # value of $S$ would have driven $D$ below zero, while the smallest $D$ observed caps any
         # offset ... lower".
         flat_main = " ".join(main_tex.split())
-        assert re.search(r"an offset large enough for the deepest value of \$S\$ would have "
-                         r"driven \$D\$ below zero, while the smallest \$D\$ observed caps "
-                         r"any offset", flat_main), "the headroom result must be stated"
+        # 15 Oct 2026: Limitations state it in one sentence, "Since $D$ never fell below zero, no
+        # offset can exceed its smallest value, ... times smaller than the deepest value of $S$."
+        assert re.search(r"Since \$D\$ never fell below zero, no offset can exceed its smallest "
+                         r"value, \$\\spanOffsetMargin\$ times smaller than the deepest value of "
+                         r"\$S\$", flat_main), "the headroom result must be stated"
         supp = " ".join((REPO / "postmortem.tex").read_text(encoding="utf-8").split())
         i = supp.find("closes the channel a second time on headroom")
         assert i > 0, "the headroom argument must be present"
@@ -4545,21 +4599,25 @@ class TestNoSummaryIsOfferedAsABound:
         """
         body = re.sub(r"\\begin\{(table|figure)\*?\}.*?\\end\{\1\*?\}",
                       lambda m: " " * len(m.group(0)), tex, flags=re.S)
-        i = body.index(r"\recoveryErrPass")
+        # 15 Oct 2026, both referees of version 9 (M4, S4): the sentence gives the error by
+        # broker, each over its own groups and with its upper quartile, and says the check's
+        # verdicts make no detectable difference broker by broker; the pooled split by
+        # verdict was the brokers' mix (postmortem S16.9).
+        i = body.index(r"\recoveryErrKafka")
         start = body.rfind("\n\n", 0, i)
         end = body.find("\n\n", i)
         return " ".join(body[start:end if end != -1 else len(body)].split())
 
     def test_the_recovery_claim_names_both_populations(self, tex):
         para = self._recovery(tex)
-        for macro in (r"\recoveryPassN", r"\recoveryFailN"):
+        for macro in (r"\recoveryKafkaN", r"\recoveryRedisN"):
             assert macro in para, (
                 "the recovery sentence must say how many conditions each figure is a "
                 "median over; %s is missing" % macro)
 
     def test_the_recovery_claim_shows_its_spread(self, tex):
         para = self._recovery(tex)
-        assert r"\recoveryErrPassHi" in para or r"\recoveryErrFailHi" in para, (
+        assert r"\recoveryErrKafkaHi" in para and r"\recoveryErrRedisHi" in para, (
             "a median offered as guidance needs the spread beside it; that is the "
             "manuscript's own finding about the exposure curve and the stall distribution")
 
@@ -4570,7 +4628,7 @@ class TestNoSummaryIsOfferedAsABound:
         # Every quote of the medians in the main text, the summary table's cell included, calls
         # them medians. (The first \end{document} in the package is the paper's.)
         flat = " ".join(tex[:tex.index(r"\end{document}")].split())
-        for m in re.finditer(r"\\recoveryErrPass(?![A-Za-z])", flat):
+        for m in re.finditer(r"\\recoveryErr(?:Pass|Kafka)(?![A-Za-z])", flat):
             sentence = flat[flat.rfind(". ", 0, m.start()) + 1:flat.find(". ", m.start()) + 1]
             assert "within" not in sentence.lower() and "median" in sentence.lower(), (
                 "the recovery's accuracy is quoted as a bound, or not as a median: %r"
@@ -4632,7 +4690,8 @@ class TestTheAbstractPromisesWhatItDelivers:
         # 6 Oct 2026: two of Table I's six checks are marked "Not measured", so the sentence says
         # what most of them buy; it is still the last one.
         last = re.split(r"(?<=[.!?])\s+", flat.replace(r"\end{abstract}", "").strip())[-1]
-        assert last == "We give checks, and measure what most of them buy.", \
+        # 15 Oct 2026: shortened with the abstract to 200 words; still its last sentence.
+        assert last == "We give checks and measure what most buy.", \
             "nothing may follow the checks as if it were one of them"
 
     def test_the_checks_name_the_audience_they_are_for(self, main_tex):
@@ -4738,10 +4797,11 @@ class TestTheReportingRulesAreInternallyConsistent:
         assert gate.endswith("The check therefore needs the repair that follows."), (
             "the check must hand over to the recovery; without it the reader meets 'recover "
             "it' after 'decline to publish it' and has to reconcile the two unaided")
-        rule = self._rule(tex, r"The repair is Equation~\ref{eq:model}.", "sec:cost")
+        # 15 Oct 2026: the identity follows after a colon, D = S + A for every message.
+        rule = self._rule(tex, r"The repair is Equation~\ref{eq:model}:", "sec:cost")
         # 6 Oct 2026: the check passes or rejects runs, not conditions; each condition's runs
         # are grouped by its verdict (Supplement S2.1), so the sentence now says runs.
-        assert "runs the sign check passes" in rule and "it rejects" in rule, (
+        assert "runs the sign check passes" in rule and "those it rejects" in rule, (
             "the recovery rule must say how it sits beside the check, on both sides of it")
         assert "end-to-end latency" in rule, (
             "the bridge is that recovery reports the end-to-end latency rather than the proxy, so the "
@@ -4906,12 +4966,16 @@ class TestTheExposureCurveIsGeneratedNotTyped:
         return main_tex[start:main_tex.index("\n\n", start)]
 
     def _caption(self, main_tex):
-        """The caption of the figure the paragraph draws its curve in, Fig. 5 (remedies)."""
-        i = main_tex.index(r"\label{fig:exposure}")
+        """The caption of the figure the paragraph draws its curve in (remedies).
+
+        15 Oct 2026: the figure moved to Supplement S2.1 (sfig:exposure) for the paper's page
+        budget, and the paragraph points there; its caption is read from the supplement."""
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        i = journal.index(r"\label{sfig:exposure}")
         # Either form of the caption: \caption{...} or \caption[short]{...}.
-        start = max(main_tex.rfind(r"\caption{", 0, i), main_tex.rfind(r"\caption[", 0, i))
+        start = max(journal.rfind(r"\caption{", 0, i), journal.rfind(r"\caption[", 0, i))
         assert start != -1, "the remedies figure has no caption"
-        return main_tex[start:i]
+        return journal[start:i]
 
     def test_the_identical_systems_gap_is_in_s12(self):
         supp = (REPO / "postmortem.tex").read_text(encoding="utf-8")
@@ -4920,7 +4984,8 @@ class TestTheExposureCurveIsGeneratedNotTyped:
     def test_every_exposure_number_is_a_macro(self, main_tex):
         para = self._paragraph(main_tex)
         # 6 Oct 2026: the figure keeps one panel, the repair, so the pointer drops its letter.
-        assert r"(Fig.~\ref{fig:exposure})" in para, "the paragraph must point to its curve"
+        # 15 Oct 2026: the figure is in Supplement S2.1 now, and the pointer goes there.
+        assert "(Supplement~S2.1 draws both)" in para, "the paragraph must point to its curve"
         for name in self.EXPOSURE_MACROS:
             # Whole names: \exposureErrTen is a prefix of \exposureErrTenLo and ...Hi.
             assert re.search(r"\\%s(?![A-Za-z])" % name, para), (
@@ -5130,49 +5195,52 @@ class TestEveryPlannedFigureIsPlacedOrExcusedInWriting:
 
 
 class TestTableThreeMarksEveryToolRun:
-    """Table III's last column says which tools were read at source and which were run in the
-    registered campaign, and the Tools run subsection reports every tool the tools block ran.
+    """Table III says which tools were read at source and which were run in the registered
+    campaign, and the Tools run subsection reports every tool the tools block ran.
 
     Nothing read that column until 12 October 2026, when a reading of the paper found nine tools
-    of freezes 35 to 37 still marked "read" alone, two folds after they had run. Each row is mapped here to the
-    tools block's names, and a row marked "run" must name only tools the block ran, a row not
-    so marked none, and every tool the block ran must have a row. A new row with no entry below
-    fails too, so the mapping cannot fall behind the table either."""
+    of freezes 35 to 37 still marked "read" alone, two folds after they had run. Each row is
+    mapped here to the tools block's names, and a new row with no entry below fails too, so the
+    mapping cannot fall behind the table either.
+
+    15 Oct 2026, both referees of version 9: the "Read, run" column left the table. Every tool
+    was read at source and run unless its row says otherwise, so a row must say "not run"
+    exactly when the block did not run all its tools, and "not read" exactly when the reading at
+    source did not cover them (scripts/emit_paper_numbers.py, TOOL_REGISTRY_PATHS). fio, btt and
+    Rezolus, which time no message, left the table for Supplement S5."""
 
     #: A phrase only that row's first cell holds -> the tools block's names for its tools.
     ROWS = {
-        "OpenMessaging Benchmark": ("omb",),
         "Apache Pulsar's performance client": ("pulsar-perf",),
-        "emqtt-bench": ("emqtt-bench",),
         "rdkafka": ("rdkafka_performance",),
-        "Trogdor": ("trogdor",),
+        "OpenMessaging Benchmark": ("omb",),
         "RabbitMQ Stream PerfTest": ("stream-perftest",),
         "Yahoo Streaming Benchmark": ("ysb",),
-        "PerfKit Benchmarker": ("pkb",),
         "Artemis": ("artemis-perf",),
+        "emqtt-bench": ("emqtt-bench",),
         "Pub/Sub": ("pubsub-loadtest",),
+        "Trogdor": ("trogdor",),
         "Quiver": ("quiver",),
         "kgo-repeater": ("kgo-repeater", "rocketmq-benchmark"),
-        "end-to-end and producer tools": ("kafka-end-to-end", "kafka-producer-perf"),
-        "RabbitMQ PerfTest": ("rabbitmq-perftest",),
-        "NATS command-line latency test": ("nats-latency",),
-        "Xinfra Monitor": ("xinfra-monitor",),
-        "Strimzi Canary": ("strimzi-canary",),
+        "PerfKit Benchmarker": ("pkb",),
         "Storage Benchmark Kit": ("sbk",),
+        "Strimzi Canary": ("strimzi-canary",),
+        "NATS command-line latency test": ("nats-latency",),
         "Pravega benchmark": ("pravega-benchmark",),
+        "end-to-end tool": ("kafka-end-to-end",),
+        "RabbitMQ PerfTest": ("rabbitmq-perftest",),
+        "Xinfra Monitor": ("xinfra-monitor",),
         "BookKeeper": ("bookkeeper-benchmark",),
+        "producer tool": ("kafka-producer-perf",),
         "Sarama": ("sarama-producer-perf", "mqtt-benchmark"),
         "wrk2": ("wrk2",),
-        "\\texttt{hey}": ("hey", "k6", "memtier_benchmark", "valkey-benchmark", "vegeta", "ycsb",
-                          "nats-bench"),
-        "fio": (),
-        "btt": (),
-        "Rezolus": (),
+        "\\texttt{hey}": ("hey", "k6", "memtier_benchmark", "nats-bench", "valkey-benchmark",
+                          "vegeta", "ycsb"),
     }
 
     @staticmethod
     def _rows(main_tex):
-        """(first cell, last cell) for every tool row of Table III."""
+        """(first cell, whole row) for every tool row of Table III."""
         body = main_tex[main_tex.index("\\label{tab:tools}"):]
         body = body[body.index("\\midrule"):body.index("\\end{tabular}")]
         found = []
@@ -5181,13 +5249,19 @@ class TestTableThreeMarksEveryToolRun:
             if not chunk or chunk.startswith("\\multicolumn"):
                 continue
             cells = [c.strip() for c in chunk.split("&")]
-            found.append((" ".join(cells[0].split()), " ".join(cells[-1].split())))
+            found.append((" ".join(cells[0].split()), " ".join(chunk.split())))
         return found
 
     @staticmethod
     def _block():
         with (RESULTS / "tools" / "tools_t1.csv").open(encoding="utf-8") as fh:
             return {r["tool"] for r in csv.DictReader(fh)}
+
+    @staticmethod
+    def _not_read():
+        sys.path.insert(0, str(REPO / "scripts"))
+        import emit_paper_numbers
+        return {t for t, where in emit_paper_numbers.TOOL_REGISTRY_PATHS.items() if where is None}
 
     def _tools(self, first):
         keys = [k for k in self.ROWS if k in first]
@@ -5204,17 +5278,33 @@ class TestTableThreeMarksEveryToolRun:
         for first, _ in rows:
             self._tools(first)
 
-    def test_a_row_is_marked_run_exactly_when_the_block_ran_its_tools(self, main_tex):
+    def test_a_row_says_not_run_exactly_when_the_block_did_not_run_its_tools(self, main_tex):
         block, wrong = self._block(), []
-        for first, last in self._rows(main_tex):
+        for first, row in self._rows(main_tex):
             tools = self._tools(first)
-            ran = bool(tools) and set(tools) <= block
-            marked = "run" in [w.strip() for w in last.split(",")]
-            if marked != ran:
-                wrong.append((first, last, sorted(set(tools) - block)))
+            ran = set(tools) <= block
+            if ("not run" in row) == ran:
+                wrong.append((first, sorted(set(tools) - block)))
         assert not wrong, (
-            "Table III marks these rows against the tools block (row, mark, tools the block "
-            "did not run): %s" % wrong)
+            "Table III's rows disagree with the tools block (row, tools the block did not run): "
+            "%s" % wrong)
+
+    def test_a_row_says_not_read_exactly_when_the_reading_missed_its_tools(self, main_tex):
+        unread, wrong = self._not_read(), []
+        for first, row in self._rows(main_tex):
+            tools = set(self._tools(first))
+            if ("not read" in row) != (tools <= unread):
+                wrong.append((first, sorted(tools & unread)))
+            assert not (tools & unread) or tools <= unread, (
+                "row %r mixes tools read at source with tools not read" % first)
+        assert not wrong, "Table III's 'not read' marks disagree with the registry: %s" % wrong
+
+    def test_the_caption_says_what_an_unmarked_row_means(self, main_tex):
+        i = main_tex.index("\\label{tab:tools}")
+        # Either form of the caption: \caption{...} or \caption[short]{...}.
+        start = max(main_tex.rfind("\\caption{", 0, i), main_tex.rfind("\\caption[", 0, i))
+        caption = " ".join(main_tex[start:i].split())
+        assert "unless its row says otherwise" in caption
 
     def test_every_tool_the_block_ran_has_a_row(self):
         block = self._block()

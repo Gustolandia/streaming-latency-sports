@@ -6,11 +6,24 @@ that decides whether each prediction held. Researchers call this *pre-registrati
 
 ## Why the plans are committed here
 
-A prediction convinces a reader only if it was written down before the data. Every commit in
-this public repository carries a date and an identifier, and neither can be changed later
-without the change showing (a commit is a saved version of every file in the repository). So a
-plan committed here shows what was predicted, and how it would be judged, before the first run
-it covers.
+A prediction convinces a reader only if it was written down before the data. A plan committed
+here and pushed to GitHub before its runs shows what was predicted, and how it would be judged,
+before the first run it covers (a commit is a saved version of every file in the repository).
+
+How a reader can check that order, and what each check rests on (written 15 October 2026, after a
+referee pointed out that the earlier wording overstated it):
+
+- A commit's own date is set by its author's clock, and a branch can be rewritten. This
+  repository's history was rewritten twice on 15 September 2026, before freeze 01, and twice on
+  5 October 2026. The last rewrite gave every commit made before it a new identifier, so a run made
+  before that date records a commit identifier the history now holds under another one.
+- The fingerprints in each freeze's `SHA256SUMS` (rule 2) depend on the files alone, so no rewrite
+  changes them, and every run folder records the commit it ran in `lane.json`.
+- GitHub records the time of each push and of the checks each push started, dates its author cannot
+  set; it keeps those records for about ninety days.
+- No archive dated by a third party yet holds a freeze: the latest archived version on Zenodo,
+  3.0.0, dates from 4 September 2026, before freeze 01. The next archived version will hold every
+  freeze, though after the runs each covers.
 
 ## The rules
 

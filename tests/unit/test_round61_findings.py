@@ -136,7 +136,8 @@ class TestAMedianTravelsWithItsSpread:
         5 and 7.3, "twelve numbers in eight lines") and is in S12's "What the comparison costs,
         in full". The worst-case half of the pin follows it there, and it may not come back to
         the paper without saying which thing reaches it."""
-        i = paper.find(r"\spanRatioConditions")
+        # 15 Oct 2026, referee B (S2) of version 9: the denominator is each broker's groups.
+        i = paper.find(r"\exposureKafkaGroups")
         assert i > 0, "the denominator has gone"
         window = paper[i:i + 320]
         assert "conditions whose interquartile" not in window, (

@@ -234,8 +234,10 @@ class TestTheOtherMentionsAgree:
         abstract = flat(paper[paper.index("\\begin{abstract}"):paper.index("\\end{abstract}")])
         # 15 Oct 2026, both referees of version 9 (A M2, B M3): the abstract names Linux and
         # the tool's own sockets, and no longer says "even under load" (block L, L-b).
+        # 16 Oct 2026: and scopes the claim, since at 2,000 messages a second a pull consumer's
+        # wait enters W (referee A, M2 fix 2: "any scope condition").
         assert ("Kernel timestamps, read on a tool's own Linux sockets, exclude the "
-                "clock-reading threads' wait.") in abstract
+                "clock-reading threads' wait at modest rates.") in abstract
         assert "even under load" not in abstract
 
     def test_the_conclusion_says_what_to_report(self, paper):

@@ -130,6 +130,14 @@ ALLOWED = {
     ("supplement.tex", "fullFixEffectRatio", r"slices, 1.5 and 3~ms"):
         "the same slice, equal to the factor by which F-d required the load to raise the 99th "
         "percentile of D; a slice and a plan's ratio sharing two digits",
+    # 16 Oct 2026: freeze 41's ladder, described at each rung for the referees of version 9
+    # (ladder_detail_macros), prints Kafka's idle rate at 50 messages a second as a value S4.3
+    # already types for a registered prediction.
+    ("supplement.tex", "osRateKafkaAtFiftyPct", r"at $0.055$ and $0.56$ from the payload"):
+        "the registered prediction's frac(q theta) for 64 KB in S4.3's flip figure, computed "
+        "from the payload sweep's theta before the campaign, equal to Kafka's idle "
+        "negative-span rate at 50 messages a second in percent; a plan's fraction and a rate "
+        "sharing two digits",
     # 7 Oct 2026: leaving out the late messages (stale_backlog.py) moved several emitted values
     # onto numbers the documents already type for other quantities.
     ("supplement.tex", "backlogFastestMedianMs", r"slices, 1.5 and 3~ms"):

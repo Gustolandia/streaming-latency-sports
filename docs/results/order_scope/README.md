@@ -124,9 +124,10 @@ no message, and the campaign ran it again as `a2`, as the plan provides.
 - *The ladder, described.* At 2,000 messages a second, 99.7% (Kafka) and 96.2% (Redis) of messages
   were delivered in answer to a request sent after the message left, and their W_so was longer:
   1,213 against 767 µs on Kafka, 953 against 551 µs on Redis. At 500 messages a second the flag
-  stayed at 0.2% and 0.07%. Kafka's reads drained more than one packet in 97% of reads at 50 and
-  75% at 2,000; Redis's almost never. The share of S below zero, idle, was 0.56% and 0.04% at 50
-  (Kafka, Redis), 0.4% and 18% at 500, and 3.7% and 0.7% at 2,000. At 500 it split between runs:
+  stayed at 0.2% and 0.07%. On the idle host Kafka's reads drained more than one packet in 97%,
+  81% and 75% of reads at 50, 500 and 2,000 messages a second; Redis's in at most 0.01%. The share
+  of S below zero, idle, was 0.56% and 0.040% at 50 (Kafka, Redis), 0.38% and 18% at 500, and 3.7%
+  and 0.74% at 2,000, each a setup's median over its runs. At 500 it split between runs:
   two of the eight (one per broker) had 88.5% and 99.6% of S below zero, with A above D by a steady
   margin for the whole run; the rest stayed at 0.1 to 20%. The ladder's journal covered the
   consumer only, so these runs cannot say which arrived first.
@@ -156,10 +157,18 @@ below zero are, by this rule, its reply order.
 
 **Read after the verdicts.**
 - *Kafka's margin.* The acknowledgment reached the client machine first in almost every message:
-  the setup medians of S_k were 72 to 92 µs, and S_k < 0 held for under 1% of messages in all but
-  two runs (13% and 32%). The acknowledging thread's median delay was 163 to 180 µs in every
-  setup, the client's own processing, and its tail was the wait: 3.9 ms at 88% load, back to
-  0.27 ms at real-time priority.
+  the setup medians of S_k were 72 to 92 µs, and S_k < 0 held for under 1% of messages in 21 of
+  the 24 runs (the other three: 3.2%, 12.8% and 31.6%). The acknowledging thread's median delay
+  was 163 to 180 µs in every setup, the client's own processing, and its tail was the wait: 3.9 ms
+  at 88% load, back to 0.27 ms at real-time priority.
+- *The delay, by the sign of S.* In the two setups K-d judges (88% load, normal priority), the
+  readings below zero had a median acknowledging-thread delay of 2,339 µs on Kafka and 958 µs on
+  Redis, against 171 and 58 µs for the other readings: the values below zero are the ones read
+  late. Each is the setup's median over its runs of the run's own median, in the run table's
+  columns `dack_neg_median` and `dack_pos_median` (with their 99th percentiles beside them). The
+  four columns were added to `k_runs.csv` on 16 October, after the verdicts, to describe this; no
+  judge reads them, and `k_verdicts.json` came out the same, byte for byte, when the table was read
+  again.
 - *Redis's order, run by run.* In 16 of the 24 sixteen-worker runs the delivery came first for most
   messages (setup medians of S_k of -16 to -51 µs where it did); in the rest the acknowledgment
   came first. With the delivery first, S < 0 needs no wait, only that the acknowledging thread's
@@ -170,9 +179,10 @@ below zero are, by this rule, its reply order.
 - *K-d.* The prediction from each setup's own delays was nearly flat across the quintiles
   (Kafka 13.5% to 13.3%), because the margins (57 to 159 µs) are short beside the waits; the
   observed shares (11.7% to 15.0%) rose and then fell within that band. The paper's p G(S_k), with
-  p the share of acknowledgments read more than 0.1 ms after they arrived, predicted 99.6% to 100%
-  on Kafka, where every acknowledgment is read later than that: the client's processing alone
-  exceeds 0.1 ms there.
+  p the share of acknowledgments read more than 0.1 ms after they arrived, predicted 99.6% to 99.9%
+  on Kafka, where almost every acknowledgment is read later than that, because the client's
+  processing alone exceeds 0.1 ms there, and 6.6% to 11.4% on Redis, whose measured shares were
+  3.7% to 7.4% (`k_bins.csv`, columns `pG` and `observed`).
 - *R.* With run-to-parity off, the rate and the acknowledging thread's 99th-percentile delay stayed
   where they were on both brokers, run for run (Kafka's runs 11% to 26% either way, its delay tails
   3.8 to 4.6 ms either way).

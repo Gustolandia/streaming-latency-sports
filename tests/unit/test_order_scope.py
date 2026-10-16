@@ -183,6 +183,10 @@ class TestReadingRuns:
         assert row["sched_features"] == "NO_RUN_TO_PARITY"
         assert row["flagged"] == 1, "the third message's request left after the message did"
         assert row["dack_waited"] == 1, "only the late reading waited past 100 us"
+        # 16 Oct 2026: the delay apart for the readings below zero (1,900 and 60 us) and the rest.
+        assert row["dack_neg_median"] == pytest.approx(980.0)
+        assert row["dack_pos_median"] == pytest.approx(100.0)
+        assert row["dack_neg_p99"] > row["dack_neg_median"] and row["dack_pos_p99"] is not None
         assert row["ack_checked"] == 3 and row["ack_diff_median"] == pytest.approx(2.0)
         assert len(full) == 3 and full[1]["dack"] == pytest.approx(1900.0)
 

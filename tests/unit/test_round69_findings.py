@@ -82,7 +82,8 @@ class TestR1TheDitherRuleDoesNotClaimTheWhy:
             "the randomization's precedents are no longer cited where it is conceded"
         assert "its cure, phase jitter, are in a 1970 counter note" in passage, \
             "the cure is no longer conceded to the 1970 note"
-        assert "What we add is these checks" in passage, (
+        # 16 Oct 2026: in referee A's form (version 9, Section 11), "We add these checks".
+        assert "We add these checks" in passage, (
             "Related Work claims something other than the checks beside the cure's "
             "precedents; the why is Hewlett-Packard's")
         j = flat.index("The arithmetic is in Hewlett-Packard's 1970 counter note")

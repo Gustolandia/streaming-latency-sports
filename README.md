@@ -1153,6 +1153,31 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 
 ## 16. Changelog
 
+### 16 Oct 2026 — both reviews of version 9 read again, item by item, against the text (not yet deposited)
+**A second reading.** Read against the final text, ten of referee A's items and eight of B's had
+been only partly done, and some sentences of the response said more than the paper did; each item
+is now done or answered with its reason, and the response says what the paper and supplement say.
+**The pipeline first:** freeze 41's reader adds four columns to `k_runs.csv`, the acknowledging
+thread's delay for the readings below zero and for the rest (median and 99th percentile), read
+after the verdicts; `k_verdicts.json` is unchanged, byte for byte. `scripts/order_scope_numbers.py`
+now emits block K described beside its verdicts (Kafka's S_k below zero run by run, under 1% in 21
+of 24 runs; the delay by setup and by the sign of S; the paper's p G(S_k), 99.6-99.9% on Kafka and
+6.6-11.4% on Redis) and the rate ladder at each rung (the negative-span rate and the share of
+reads that drained more than one packet at 50, 500 and 2,000 messages a second, and the pull flag
+at 500). **The paper:** the abstract scopes the fix ("at modest rates") and names the rate the laws
+govern; Sections IV to VIII state what the review asked for (K-d's comparator, the trace as
+consistent rather than predictive, the registered prediction m7 left unconfirmed, a pull
+consumer's wait entering the kernel-timed latency at 2,000 messages a second); Fig. 4 is read a
+subsection earlier, so that it and Fig. 5 sit within a page of their first callouts; 12 pages.
+**The supplement:** S3.11 gives the new readings, with p G(S_k) beside the measured share in
+each fifth of the margin; S3.4 and S3.6 lose wording the paper had already corrected; paragraphs
+that said a thing twice were tightened; 30 pages. **Two clarity reads** rewrote about eighty
+sentences across both documents. The second, of every passage changed that day, found four where
+a trim had said more than the evidence (Fig. 5's caption, Section II on brokers that deliver
+first, L9-2b's verdict in Section IV-B, and S3.11's two split ladder runs, one on each broker),
+and each now says what the data show. The freeze-41 README had counted two Kafka runs with S_k
+below zero for more than 1% of messages; there are three (3.2%, 12.8% and 31.6%).
+
 ### 15 Oct 2026 — two internal reviews of version 9 answered, and freeze 41 run (not yet deposited)
 **Freeze 41 timed the acknowledgment's own arrival by the kernel.** The clients now journal every
 read and write on their broker connections (`scripts/so_timestamps.py --so-journal`,

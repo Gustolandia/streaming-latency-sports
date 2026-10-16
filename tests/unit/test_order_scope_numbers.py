@@ -147,7 +147,8 @@ def parity_rows():
 
 class TestBlockK:
     def test_the_order_macros(self, tmp_path):
-        _write(str(tmp_path), "k_runs.csv", order_rows())
+        # 16 Oct 2026: with the columns the described readings also read.
+        _write(str(tmp_path), "k_runs.csv", described_rows())
         _write(str(tmp_path), "k_bins.csv", order_bins())
         got = dict(osn.order_scope_macros(str(tmp_path)))
         assert (got["osKafkaMarginLoUs"], got["osKafkaMarginHiUs"]) == ("70", "90")
@@ -165,6 +166,58 @@ class TestBlockK:
 
     def test_a_setup_with_too_few_values_is_its_own_factor_one(self):
         assert osn.fifths_factor(order_bins(), "K-none") == 1.0
+
+
+def described_rows():
+    """order_rows() with the run table's columns the described readings use (16 Oct 2026)."""
+    rows = order_rows()
+    delays = {"K-kafka-l0-ord": (172.0, 400.0, 170.0), "K-kafka-l88-ord": (180.0, 2339.0, 171.0),
+              "K-kafka-l88-rt": (163.0, 500.0, 150.0), "K-redis-l88-ord": (59.0, 958.0, 58.0)}
+    for r in rows:
+        median, neg, pos = delays.get(r["setup"], (60.0, 100.0, 55.0))
+        r.update({"dack_median": median, "dack_neg_median": neg, "dack_pos_median": pos})
+    rows[2]["Sk_neg"] = 20      # K-kafka-l88-rt: S_k below zero for 2% of its messages
+    return rows
+
+
+class TestTheDescribedReadings:
+    """16 Oct 2026, for referees A (M2, M3) and B (M1, M3): what freeze 41's runs show beside its
+    verdicts, each read from the reader's own columns."""
+
+    def test_two_significant_figures(self):
+        assert [osn.two_figures(x) for x in (0.56, 3.7, 18.27, 0.0404)] == [
+            "0.56", "3.7", "18", "0.040"]
+        assert osn.two_figures(0.0) == "0" and osn.two_figures(-1.0) == "0"
+
+    def test_block_k(self, tmp_path):
+        _write(str(tmp_path), "k_runs.csv", described_rows())
+        _write(str(tmp_path), "k_bins.csv", order_bins())
+        got = dict(osn.order_scope_macros(str(tmp_path)))
+        # Three Kafka runs, two of them with S_k below zero for under 1% of their messages.
+        assert (got["osKafkaRuns"], got["osKafkaSkUnderOneRuns"]) == ("3", "2")
+        assert got["osKafkaSkNegMostPct"] == "2"
+        assert (got["osDackMedianLoUs"], got["osDackMedianHiUs"]) == ("163", "180")
+        assert (got["osDackIdleKafkaUs"], got["osDackRtKafkaUs"]) == ("200", "300")
+        assert got["osWaitedMs"] == "0.1"
+        # The delays K-d's two setups gave their readings below zero and the rest.
+        assert (got["osDackNegKafkaUs"], got["osDackPosKafkaUs"]) == ("2{,}339", "171")
+        assert (got["osDackNegRedisUs"], got["osDackPosRedisUs"]) == ("958", "58")
+        assert (got["osPgKafkaLoPct"], got["osPgKafkaHiPct"]) == ("50.0", "50.0")
+        assert (got["osPgRedisLoPct"], got["osPgRedisHiPct"]) == ("50.0", "50.0")
+        # The measured share in each fifth, beside which p G(S_k) is read.
+        assert (got["osSeenKafkaLoPct"], got["osSeenKafkaHiPct"]) == ("10.0", "11.0")
+        assert (got["osSeenRedisLoPct"], got["osSeenRedisHiPct"]) == ("1.0", "5.0")
+
+    def test_the_ladder_at_each_rung(self, tmp_path):
+        _write(str(tmp_path), "l_runs.csv", ladder_rows())
+        got = dict(osn.order_scope_macros(str(tmp_path)))
+        # On the idle host: 1, 90 and 4 of Kafka's 100 values of S below zero; 0, 10 and 1 of
+        # Redis's.
+        assert [got["osRateKafkaAt%sPct" % r] for r in osn.RUNGS] == ["1.0", "90", "4.0"]
+        assert [got["osRateRedisAt%sPct" % r] for r in osn.RUNGS] == ["0", "10", "1.0"]
+        # One of every ten reads drained more than one packet, on both brokers, at every rung.
+        assert [got["osMultiKafkaAt%sPct" % r] for r in osn.RUNGS] == ["10", "10", "10"]
+        assert got["osMultiRedisMostPct"] == "10.00" and got["osPullMidMostPct"] == "0.0"
 
 
 class TestTheVerdictTable:

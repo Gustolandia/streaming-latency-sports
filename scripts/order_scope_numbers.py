@@ -9,6 +9,7 @@ verdicts the record gives. scripts/emit_paper_numbers.py calls the two public fu
     render_order_scope_table(root)  -> Supplement S3.11's table of verdicts, "" until every block
                                        is committed
 """
+import math
 import os
 import statistics
 import sys
@@ -156,16 +157,88 @@ def order_macros(rows, verdicts, bins):
     ]
 
 
+def two_figures(pct):
+    """A percentage to two significant figures, as the paper prints a rate: 0.56, 3.7, 18."""
+    if pct <= 0:
+        return "0"
+    return "%.*f" % (max(0, 1 - int(math.floor(math.log10(pct)))), pct)
+
+
+def order_detail_macros(rows, verdicts, bins):
+    """Block K described beside its verdicts, for referee B (M1 (i) to (iii), 16 Oct 2026): how
+    often S_k fell below zero on Kafka, run by run; the acknowledging thread's median delay in
+    every Kafka setup, and its 99th percentile idle and at real-time priority; in the two setups
+    K-d judges, that delay for the readings below zero and for the rest, read after the verdicts
+    from the run table's own columns; and the paper's p G(S_k) over those setups' fifths of the
+    margin, which K-d described beside its own prediction, with the share measured in each."""
+    kafka_runs = [r for r in rows if r["backend"] == "kafka"]
+    shares = [int(r["Sk_neg"]) / float(r["timed"]) for r in kafka_runs]
+    medians = [_setup_value(rows, "dack_median", setup=s)
+               for s in sorted(set(r["setup"] for r in kafka_runs))]
+    delay = {c["backend"]: c for c in verdicts["K-c"]["checks"]}
+    out = [("osKafkaRuns", str(len(kafka_runs))),
+           ("osKafkaSkUnderOneRuns", str(sum(1 for x in shares if x < 0.01))),
+           ("osKafkaSkNegMostPct", "%.0f" % (100.0 * max(shares))),
+           ("osDackMedianLoUs", "%.0f" % min(medians)), ("osDackMedianHiUs", "%.0f" % max(medians)),
+           ("osDackIdleKafkaUs", "%.0f" % delay["kafka"]["idle"]),
+           ("osDackRtKafkaUs", "%.0f" % delay["kafka"]["rt"]),
+           ("osWaitedMs", "%.1f" % (order_scope.WAITED_US / 1e3))]
+    for check in verdicts["K-d"]["checks"]:
+        name = "Kafka" if "kafka" in check["setup"] else "Redis"
+        fifths = [b for b in bins if b["setup"] == check["setup"]]
+        pg = [100.0 * float(b["pG"]) for b in fifths]
+        # The measured share in each fifth, beside which p G(S_k) is read (16 Oct 2026).
+        seen = [100.0 * float(b["observed"]) for b in fifths]
+        out += [("osDackNeg%sUs" % name,
+                 thousands(round(_setup_value(rows, "dack_neg_median", setup=check["setup"])))),
+                ("osDackPos%sUs" % name,
+                 thousands(round(_setup_value(rows, "dack_pos_median", setup=check["setup"])))),
+                ("osPg%sLoPct" % name, "%.1f" % min(pg)), ("osPg%sHiPct" % name, "%.1f" % max(pg)),
+                ("osSeen%sLoPct" % name, "%.1f" % min(seen)),
+                ("osSeen%sHiPct" % name, "%.1f" % max(seen))]
+    return out
+
+
+#: The ladder's rungs by name, lowest first, in the macros that describe each.
+RUNGS = ("Fifty", "Mid", "Top")
+
+
+def ladder_detail_macros(rows):
+    """Block L at each rung on an idle host, the one setting every rung ran, described for the
+    referees (A, M2 fix 3, and B, M3 fix 3; 16 Oct 2026): the negative-span rate beside the
+    kernel-timed latency, and the share of reads that drained more than one packet; and the
+    largest share of messages carrying the pull flag at the middle rung. Each is a setup's value
+    as DESIGN.md defines it, the median over its runs of each run's own share."""
+    rates = sorted(set(r["rate"] for r in rows))
+
+    def share(backend, rate, part, whole):
+        return order_scope._run_share([r for r in rows if r["backend"] == backend
+                                       and r["rate"] == rate and r["load_pct"] == 0],
+                                      part, whole)
+    out = []
+    for rate, rung in zip(rates, RUNGS):
+        for backend in ("kafka", "redis"):
+            out.append(("osRate%sAt%sPct" % (backend.capitalize(), rung),
+                        two_figures(100.0 * share(backend, rate, "S_neg", "S_count"))))
+        out.append(("osMultiKafkaAt%sPct" % rung,
+                    "%.0f" % (100.0 * share("kafka", rate, "reads_multi", "reads"))))
+    out += [("osMultiRedisMostPct", "%.2f" % max(100.0 * share("redis", rate, "reads_multi",
+                                                                "reads") for rate in rates)),
+            ("osPullMidMostPct", "%.1f" % max(100.0 * share(b, rates[1], "flagged", "flag_known")
+                                              for b in ("kafka", "redis")))]
+    return out
+
+
 def order_scope_macros(root=ROOT):
     """Every freeze 41 macro whose block is committed."""
     read = reading(root)
     out = []
     if "K" in read:
-        out += order_macros(*read["K"])
+        out += order_macros(*read["K"]) + order_detail_macros(*read["K"])
     if "P" in read:
         out += control_macros(read["P"][1])
     if "L" in read:
-        out += ladder_macros(*read["L"][:2])
+        out += ladder_macros(*read["L"][:2]) + ladder_detail_macros(read["L"][0])
     if "I" in read:
         out += idle_macros(read["I"][1])
     return out

@@ -2626,7 +2626,13 @@ Read after the verdicts, and marked so in Supplement S3.11 and the record
   for this, and for the two items below that a cut for the page budget had removed, came out of
   phrases that said a thing twice: Section 5.2's worst failures (B-M7) and Section 6's lineage
   sentence at the four steps (B-M3, fix 2) are back, and Table 3's caption states the
-  classifier's rule for the two edge cases (A-M5, fix 4). Tables 2 and S6 now print each lower
+  classifier's rule for the two edge cases (A-M5, fix 4). A second reading of both reports, item
+  by item against the final text, then found ten of A's items and eight of B's only partly done;
+  each is now done, or answered with its reason below. A last read of every changed passage for
+clarity then rewrote about forty sentences; in four of them a trim had said more than the
+evidence (Fig. 5's caption, Section 2's sentence on brokers that deliver first, L9-2b's verdict
+in Section 4.2, and S3.11's two split runs of the ladder), and each now says what the data
+show. Tables 2 and S6 now print each lower
   bound rounded down and each interval rounded outward, so they agree with the text's "at least
   4.4-fold" and "4.2-fold", where they had printed 4.5 and 4.3; and Fig. 1 is on page 2 again.
 
@@ -2686,8 +2692,8 @@ producer first.
   These are medians of the four pairs at 60 to 75% and the four at 88 to 95%. Section 8 and S3.1
   now say the floor is Redis's reply order.
 - Fix 5, and (d). Done. Section 2 says Kafka sends the acknowledgment before it answers the
-  consumer's waiting request, Redis writes the delivery to a waiting consumer first, and a broker
-  may confirm a message only after delivering it; S3.6 quotes RabbitMQ's case from its developers'
+  consumer's waiting request, Redis writes the delivery to a waiting consumer first, and some
+  brokers can deliver a message before confirming it; S3.6 quotes RabbitMQ's case from its developers'
   list. The sign check in Section 6 now says it assumes a broker that acknowledges no later than it
   delivers, and that on one that delivers first it should read the publish-timed spans alone;
   Table 4 says the same.
@@ -2712,14 +2718,19 @@ producer first.
   Native Interface or the foreign-function interface, or on Linux 6.15 and later an eBPF program
   for its transmit timestamps.
 - Fix 2. Done with one change. The abstract reads "Kernel timestamps, read on a tool's own Linux
-  sockets, exclude the clock-reading threads' wait." We did not write "even with every core busy",
-  because block L found Redis's kernel-timed latency rising 25.7% under load on the second pair.
-  The conclusion says "On Linux a tool can"; Section 6's lead says "in a Linux tool that can read
-  its sockets' timestamps, at the rates we tested"; Fig. 5's caption says "at the rates we tested",
-  and "in the case drawn" for the waits that fall in H_out or H_in.
+  sockets, exclude the clock-reading threads' wait at modest rates." We did not write "even with
+  every core busy", because block L found Redis's kernel-timed latency rising 25.7% under load on
+  the second pair; "at modest rates" is the scope, since at 2,000 messages a second a pull
+  consumer's wait enters W. The conclusion says "On Linux a tool can"; Section 6's lead says "in a
+  Linux tool that can read its sockets' timestamps, at the rates we tested"; Fig. 5's caption says
+  "at fifty messages a second", and "As drawn" for each client thread's wait on the message's
+  path, which falls in H_out or H_in; the acknowledging thread's wait is on the acknowledgment's
+  path, and S_k holds no wait.
 - Fix 3. Done as block L, at 50, 500 and 2,000 messages a second on the second pair, reporting W
-  from sockets and captures, the flagged share and the rate of S below zero. 5,000 was out of
-  reach. L-a and L-c were confirmed and L-b was not (Section 6, Section 8, S3.11).
+  from sockets and captures, the flagged share and the rate of S below zero, which S3.11 gives at
+  each rung on the idle host (Kafka 0.56%, 0.38% and 3.7%; Redis 0.040%, 18% and 0.74%). 5,000 was
+  out of reach. L-a and L-c were confirmed and L-b was not, and Section 8 now says that at 2,000
+  messages a second a pull consumer's wait entered W (Section 6, Section 8, S3.11).
 - Fix 4. Done. "We did not measure what taking the timestamps costs" is gone. Against freeze 39's
   runs, which shared the design without the module, the clients' own time, D − W, moved by −51 to
   +76 µs on Kafka and +15 to +45 µs on Redis, and D's 99th percentile by −197 to +183 µs, the drift
@@ -2769,7 +2780,8 @@ run. Section 2 adds "as a sparse event feed does".
   process, eight of them timing a round trip and four only the acknowledgment (Sections 1 and
   5.2); and the 19 tools whose figures stayed within a quarter of the moved clock's offset (5.2).
   Section 5.2 now separates the last two: PerfKit Benchmarker reads one clock across two processes
-  on one machine, and the Pravega benchmark, one process, could not be placed by the test. S5 lists
+  on one machine, and the Pravega benchmark, one process, could not be placed by the test; there
+  each carries its noun, "the 19 one-clock tools" and "these 19 one-process tools". S5 lists
   the members of its own 19, those of all 27 tools that dispose of the value uncounted.
 - (c) and fix 4. Done. Section 5.1 names the two edge cases and gives the count without them, 17,
   and under the strictest reading, twelve, eleven of them uncounted. Table 3's caption states the
@@ -2789,11 +2801,15 @@ run. Section 2 adds "as a sparse event feed does".
 
 **A-M6. Say exactly what each mechanism check shows.**
 - (a) and fix 1. Done. Section 4.2 now leads with each acknowledgment's own wait: in the registered
-  recording 79.4 to 92.0% of the readings below zero had mostly been waiting for a core, and in
-  block K the acknowledging thread's delay, timed from the acknowledgment's arrival, had a 99th
-  percentile 17 and 30 times higher under load. The earlier trace follows as agreement: its share
-  of waits longer than any threshold from 0.25 to 2 ms stood at 0.63 to 1.61 times the pooled
-  normal-priority rate, inside the factor of three fixed before it was read. Section 8 says the
+  recording 79.4 to 92.0% of the readings below zero had mostly been waiting for a core (L9-1), and
+  the share of acknowledgments whose own wait outlasted the run's margin put the rate at medians
+  of 1.11 to 1.30 times the measured one, but held on only four of six pair and broker
+  combinations, so L9-2b was not confirmed, as Section 8 and Table S26 also say. In block K's kernel-timed runs the acknowledging thread's 99th-percentile delay was 17
+  and 30 times higher under load. The earlier trace follows as consistent with the
+  mechanism but not a test of it, since it pools both brokers' threads, with the threshold's
+  origin, Kafka's median of S with no load: at thresholds from 0.25 to 2 ms around it, its share
+  of longer waits stood at 0.63 to 1.61 times the pooled normal-priority rate, inside the factor
+  of three fixed before it was read. Section 8 says the
   trace pools both brokers' threads, and S3.5 keeps the ratios against Kafka's rate alone, as first
   computed.
 - (b) and fix 2. Done. Section 4.3 now says that on Kafka the rate fell inside the band at 8 CPUs,
@@ -2823,8 +2839,8 @@ said the plain class is what TC's selector issues is corrected.
   nearly unchanged utilization".
 - **m4.** Done. Section 4.3 points to S3.7 and says Ubuntu backported the change to the 6.8 kernels
   we ran.
-- **m5.** Done. Table 2 prints "7–80 [≥4.5]" on Kafka and "6.0–7.8 [≥4.3]" on Redis, the smallest
-  run-level lower bounds, and Sections 1 and 6 and Table 4 quote those as "at least". Checking the
+- **m5.** Done. Table 2 prints "7–80 [≥4.4]" on Kafka and "6.0–7.8 [≥4.2]" on Redis, the smallest
+  run-level lower bounds rounded down, as a lower bound must be, and Sections 1 and 6 and Table 4 quote those as "at least". Checking the
   70% pair found the source of every Kafka pair's real-time residue: each such value is among a
   run's first five messages, published together at its first instant and waiting 107 to 395 ms for
   the first acknowledgment (Section 6).
@@ -2896,7 +2912,8 @@ said the plain class is what TC's selector issues is corrected.
   S3.11 gives the runs.
 - **Table 1.** No change was asked; it gained each span's smallest value (B).
 - **Table 2.** The priority row prints the smallest run-level lower bounds; the text scopes the
-  61-fold rise to Kafka. The load row keeps its interval, [33–215], as printed.
+  61-fold rise to Kafka. The load row keeps its run-level interval, [33–215], beside the factor,
+  and the text gives the factor with its broker (m2).
 - **Fig. 3.** The share past 1 ms is given, and the twelve parts are thin lines, with their median
   in bold.
 - **Table 3.** As A-M5, with a count per group in each heading, for example "13 tools; 5 drop,
@@ -2951,7 +2968,8 @@ said the plain class is what TC's selector issues is corrected.
    processing, and three more points for a tool's author.
 7. **S5.** Done: the selection rule, the maintainers, and a per-tool table giving what each tool
    times, whether it was read, what it does with a value at or below zero, whether it counts it,
-   and the freeze, plan version, date and pair of its block. The tool-by-tool prose stays.
+   and the freeze, plan version, date and pair of its block. The prose is kept for the six tools
+  whose results need explaining; the other tools' notes moved to the postmortem's S25.2 and S25.3.
 8. **S6.** Done: Fig. S3, and the kernel code behind the rest of a slice (S3.7).
 
 #### Typos and style
@@ -2961,8 +2979,8 @@ said the plain class is what TC's selector issues is corrected.
 - Section 5.2: "the clock of the process that subtracts was set back".
 - Section 6: "Read the error queue at every write and read"; "the captures' latency".
 - Section 8: "One rival is not excluded" became the per-broker result.
-- Section 7's "What we add is these checks" is gone; its paragraph now ends on the retention
-  arithmetic.
+- Section 7's last sentence now reads "We add these checks, applied where a benchmark reports a
+  latency."
 - S1.1 points to S3.6.
 - Page 12 is now full, and the second biography no longer floats.
 
@@ -2996,7 +3014,8 @@ said the plain class is what TC's selector issues is corrected.
 - **Biographies.** Unchanged, under 145 words each; photos are due only with the final files.
 - **Abstract.** 198 words, no mathematics, no references.
 - **Keywords.** Eight; "kernel timestamping" replaced "multithreading" (B-m12).
-- **Figures.** Five, vector, near their callouts.
+- **Figures.** Five, vector, each within a page of its first callout: Fig. 4 is now read a
+  subsection early, so that it sits on the page of its callout and Fig. 5 follows within a page.
 - **Supplemental material.** A separate file, with no appendix in the paper.
 - **References' completeness.** See m28.
 - **Review model.** Single-anonymous; the byline stays.
@@ -3022,27 +3041,31 @@ said the plain class is what TC's selector issues is corrected.
   and Redis's replies in request order, the route A proposed, in place of base offsets and entry
   identifiers.
 - (i) The share of S_k below zero per broker. On Kafka S_k fell below zero for under 1% of messages
-  in all but two runs, and its setup medians were 72 to 92 µs; on Redis the delivery came first for
-  most messages in 16 of the 24 runs with sixteen workers (Section 4.1; S3.11).
-- (ii) The late reading, message by message. The acknowledging thread's delay is reported by setup,
-  not split by the sign of S: on Kafka its median was 163 to 180 µs in every setup, and its 99th
-  percentile 229, 3,887 and 274 µs (idle, 88% normal, 88% real-time). With K-a, under which 99.75%
-  of Kafka's values below zero under load had the acknowledgment first, this shows that those
-  values are late readings.
+  in 21 of its 24 runs and for at most 32% in the other three, and its setup medians were 72 to
+  92 µs; on Redis the delivery came first for most messages in 16 of the 24 runs with sixteen
+  workers (Section 4.1; S3.11).
+- (ii) The late reading, message by message. Split by the sign of S, read after the verdicts from
+  the run table's own columns: under load at normal priority the readings below zero had a median
+  delay of 2,339 µs on Kafka and 958 µs on Redis, against 171 and 58 µs for the rest. On Kafka the
+  delay's median was 163 to 180 µs in every setup, and its 99th percentile 229, 3,887 and 274 µs
+  (idle, 88% normal, 88% real-time). S3.11 gives each.
 - (iii) Equation 3 inside conditions. Registered as K-d: in each quintile of S_k the share of
   values below zero lay within 1.14 times (Kafka) and 1.85 times (Redis) of what each setup's own
-  delays predict, but it did not fall from one quintile to the next, so K-d was not confirmed. The
-  margins are short beside the waits, so the prediction is nearly flat. Section 8 says so.
+  delays predict, Pr[δ_ack − δ_recv > S_k], but it did not fall from one quintile to the next, so
+  K-d was not confirmed. The margins are short beside the waits, so the prediction is nearly flat.
+  The paper's p G(S_k), which S3.11 gives beside it, put the share at 99.6 to 99.9% on Kafka, whose
+  client's processing alone outlasts the 0.1 ms that p counts as a wait, and 6.6 to 11.4% on
+  Redis, against measured shares of 11.7 to 15.0% and 3.7 to 7.4%. Sections 4.2 and 8 say so.
 - Rewrite Section 8 and S3.6, add a sentence to Section 4 and a new S3.11. Done.
 
 **B-M2. The premise contradicts the margin, and holds for some brokers only.**
 - **1.** Done. Section 1 says "should come in that order on a broker that acknowledges first,
-  separated only by the time the message still needs to reach the consumer"; Section 3, "a small
-  positive margin"; Section 9, "which should come in that order where the broker acknowledges
+  separated only by the time the message still needs to reach the consumer"; Section 3, "On a broker
+  that acknowledges first, S is ideally a small positive margin"; Section 9, "which should come in that order where the broker acknowledges
   first". The abstract no longer states a premise, because "should come in order" would be false
   for Redis, whose delivery often came first.
-- **2.** Done. Section 2 gives each broker's order and says a broker may confirm a message only after
-  delivering it; S3.6 gives RabbitMQ's case. The sign check now states its premise, and Table 4
+- **2.** Done. Section 2 gives each broker's order and says some brokers can deliver a message
+  before confirming it; S3.6 gives RabbitMQ's case. The sign check now states its premise, and Table 4
   says what to check on a broker that delivers first. Pub/Sub and MQTT are not cited, since
   RabbitMQ carries the point.
 - "Should almost always come in order", with the share: the premise is scoped per broker instead,
@@ -3050,8 +3073,8 @@ said the plain class is what TC's selector issues is corrected.
 
 **B-M3. The fix: its scope, its validation and its lineage.**
 - The four mechanisms. Reads that drain several packets stay in Section 6, and block L measured
-  them: Kafka's reads drained more than one packet in 97% of reads at fifty messages a second and
-  75% at 2,000, Redis's almost never. The pull consumer's cadence and deferred receive processing
+  them: Kafka's reads drained more than one packet in 97%, 81% and 75% of reads at 50, 500 and
+  2,000 messages a second, Redis's in at most 0.01% (S3.11, described). The pull consumer's cadence and deferred receive processing
   are added (A-M2). Two machines: Section 6 and Table 4's first row say the clocks must then be
   synchronized well below the latency.
 - Applicability. Section 6 says "a Linux tool", gives the Java routes (A-M2, fix 1), says in step 4
@@ -3106,7 +3129,10 @@ gave 2.4% and 18.8%; from the messages' own medians the numbers are those printe
 - **1.** Done. Section 5.1 gives the strict counts (A-M5(c)), and Section 1 says that under the
   strictest reading twelve still cut. S5 now tabulates the count under each exclusion; in every
   reading all but one of the tools that cut count none of what they cut.
-- **2.** Done (A-M5(d)).
+- **2.** Answered with its reason. Section 5.1 states how the tools were chosen, in rounds, not by a
+  rule fixed in advance, and a rule written now would be fitted to the set we have. So the claim is
+  the audited tools': Section 5 opens on "the tools we audited", S5 says its counts describe these
+  tools, not the field, and Section 8 says the set is not a sample.
 - **3.** A statement only; left to the author (below).
 - **4.** Done: "the rest cannot see a separate receiving process's wait".
 - **5.** Done: "20 maintainers, 14 of them organizations".
@@ -3130,9 +3156,11 @@ chronology is one clause, and Section 6 was not cut.
   traced campaign are copied from the archive into `docs/results/depth/ea9b/`, beside the first
   campaign's, to be committed with this revision.
 - **m7.** Done. Section 4.3 gives the free reading at every hand-set slice, with slopes on s of 0.76
-  (Kafka) and 1.01 (Redis), beside the frozen verdict. S3.7 names run-to-parity. Block R ran the
-  condition with it off, and the rate and the delay did not move. Section 8 has the Linux 6.17
-  note.
+  (Kafka) and 1.01 (Redis), and says the registered predictions, which needed the fitted shape
+  there too, were not confirmed. S3.7 names
+  run-to-parity. Block R ran the condition with it off, and the rate and the delay did not move.
+  Section 8's Linux 6.17 note says the change matters only where threads set slices of their
+  own, which Section 6 introduces with Linux 6.12.
 - **m8.** Done: "IP measurement randomizes probe times [RFC 2330, PASTA], since a periodic schedule
   can synchronize with periodic behavior [RFC 3432], here the clock's step."
 - **m9.** Done (A-m19).

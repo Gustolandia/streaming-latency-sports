@@ -218,6 +218,11 @@ def read_order_run(run_dir, driver, broker, receiver, warmup_s):
         values = [m[name] for m in full if m[name] is not None]
         out[name + "_median"], out[name + "_p99"] = _median(values), _p99(values)
     out["dack_waited"] = sum(1 for m in full if m["dack"] > WAITED_US)
+    # 16 Oct 2026, read after the verdicts, which it does not enter (referee B, M1 (ii)): the
+    # acknowledging thread's delay for the readings below zero and for the rest, apart.
+    for name, part in (("neg", [m["dack"] for m in negative]),
+                       ("pos", [m["dack"] for m in full if m["S"] >= 0])):
+        out["dack_%s_median" % name], out["dack_%s_p99" % name] = _median(part), _p99(part)
     out["flagged"] = sum(1 for m in msgs if m["flagged"])
     backend = params.get("backend")
     pcap = os.path.join(run_dir, "sender_full.pcap")

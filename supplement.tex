@@ -238,13 +238,13 @@ The rate is derived from the plan and checked against wall time before every cam
 \subsection{S1.3. Where each timestamp is taken, and which spans fall below zero}
 \label{s:setup-timestamps}
 
-The publish timestamp is read on the calling thread immediately before the client is invoked.
+The publish timestamp is read on the calling thread just before the client is invoked.
 The two clients read the acknowledgment timestamp in different places, but in both it is read
 only after a thread that was not running has been woken and then given a core. Under \redis{} it
 is read on the calling thread the moment the synchronous \texttt{xadd} returns, with no second
 thread involved. Under \kafka{} it is read, by default, in the client's I/O thread when the
-delivery callback fires. Our \kafka{} producer's \texttt{inline} mode instead timestamps on the
-calling thread once the publish future resolves, and requires one request outstanding.
+delivery callback fires. Our \kafka{} producer's \texttt{inline} mode, which requires one request
+outstanding, instead timestamps on the calling thread once the publish future resolves.
 
 The consumer reads $t_{\mathrm{recv}}$ when it holds the record, and $t_{\mathrm{out}}$ once it
 has handled it. Our \kafka{} consumer parses the payload inside \texttt{poll()}, before
@@ -318,7 +318,7 @@ gone and no run could be repeated. One lost messages. The other delayed them, an
 messages every number from that testbed counts.
 
 \paragraph{The consumer stopped during long pauses} A consumer stops after $15$~s without a
-message. The producer replays a match in real time, and many matches pause for longer than that.
+message. The producer replays a match in real time, and many matches pause for longer.
 In \idleRuns{} runs the consumer stopped during such a pause, and the producer published the rest
 of the match to a broker that acknowledged it and that no one read: \idleMessages{} of the
 \idlePublished{} messages published, each among its run's last. A message no one received has no
@@ -521,10 +521,10 @@ manipulation can be checked pair by pair. Generated at build time from the campa
 Only the normal-priority rate moves with load. The real-time rate stays between $\rtResidualMin$
 and $\rtResidualMax$ over the whole ladder, as it should if priority moves the waiting probability $p$ of
 Equation~\ref{P-eq:occupancy} directly. The factor tends to grow with load but not at every step,
-so it is reported as a range. For E-A5's two pairs, resampling whole runs, its $95\%$ intervals
+so we report a range. For E-A5's two pairs, resampling whole runs, its $95\%$ intervals
 are $[\rtLowFactorRunCI]$ at $\rtLowLoadPct\%$ load and $[\rtHighFactorRunCI]$ at
 $\rtHighLoadPct\%$. They are wide because the real-time configurations hold few values of $S$
-below zero, in few of their runs.
+below zero, in few runs.
 
 Every campaign ran both brokers, $25$ runs a configuration on each, and
 Table~\ref{stab:priority} gives both; the E-A5 intervals above are \kafka{}'s, the half the first
@@ -532,7 +532,9 @@ analyses read. \redis{}'s real-time rate settled at $\rtRedisResidualMin$--$\rtR
 over the pairs was $\rtRedisFloorLightLoad$ at $\rtRedisLightLoadLo$--$\rtRedisLightLoadHi\%$ load and
 $\rtRedisFloorHeavyLoad$ at $\rtRedisHeavyLoadLo$--$\rtRedisHeavyLoadHi\%$, while the
 normal-priority rate rose from $\rtRedisNormalLightLoad$ to $\rtRedisNormalHeavyLoad$. Unlike
-\kafka{}'s, which sits among a run's first messages, it is spread through the run, at ranks
+\kafka{}'s, which sits among the first \rtFloorBurstWord{} messages of a run, published together
+at its first instant and waiting $\rtFloorAckLoMs$--$\rtFloorAckHiMs$~ms for the first
+acknowledgment, it is spread through the run, at ranks
 $\rtFloorRedisRankLo$ to $\rtFloorRedisRankHi$ of its runs' messages. Timed by the kernel in
 freeze 41, all but a few of \redis{}'s real-time values below zero had the delivery first: that
 floor is the broker's reply order (\ref{s:orderscope}).
@@ -616,7 +618,8 @@ $0.8778$/$0.8822$.}
 \label{s:payload}
 
 The same waits must outlast a longer interval to put $S$ below zero, so a longer path should give
-fewer such values. Padding the payload lengthens the path without touching the scheduler. In
+fewer such values. Padding the payload lengthens the time to the consumer's reading, by transfer and parsing, at
+nearly unchanged utilization. In
 E-A10 the median of $S$ rose $\payloadTransportFactor$-fold over $\payloadLevels$ levels while
 \kafka{}'s negative-span rate fell $\payloadRateFall$-fold [bootstrap over runs, $95\%$:
 $\payloadRateFallRunCI$], monotonically, and a repeat on another day, E-A10b, agrees
@@ -648,11 +651,11 @@ A thread that reads the clock is either running, and reads it late by a narrow j
 for a core. From an idle host to the heaviest load before its processors are fully busy, E-A3's
 negative-span rate grows $\invGrowth$-fold while the jitter's width grows only $\coreGrowth$-fold
 (Table~\ref{stab:mixture}). Load therefore moves mostly the waiting probability $p$ of
-Equation~\ref{P-eq:occupancy}, the chance that the thread is waiting, and little the running
+Equation~\ref{P-eq:occupancy}, the chance the thread is waiting, and little the running
 state's jitter. A scale family, in which load only widens one distribution, has one parameter and
-cannot move the two this differently. The tails agree. The two states change $p$, so the tail
+cannot move the two this differently. The tails agree. If load moves only $p$, the tail
 curves of two loads should shift vertically and stay parallel on a log scale, where a scale family
-would rescale them horizontally. Over tail estimates backed by at least $20$ events, the log ratio
+would rescale them horizontally. Over tail estimates from at least $20$ events, the log ratio
 of two conditions' tail masses varies over thresholds by a median factor of $1.34$ across
 conditions, while the scale-family collapse fails by $23\times$. That test was exploratory; the
 registered test of $p$ is the priority manipulation of \ref{s:priority}.
@@ -672,9 +675,10 @@ $\rbdUpLo$ to $\rbdUpHi$ over four, eight and twelve bins a decade. The rises si
 runs the sign check rejects ($\rbdFailUp$ of $\rbdFailTestable$ conditions), not in those it
 passes ($\rbdPassUp$ of $\rbdPassTestable$), whose rates are low. Within a run $D$ and $A$
 correlate, with a median coefficient of $\spanRhoWithinMedian$ over our groups, so a long delivery
-comes with a long publish latency, and a message chosen for its long $D$ is likely to have had its
-acknowledgment read late as well. The margin itself cannot be read message by message. Between
-conditions, where padding lengthens it at fixed load, the rate falls as the equation says
+comes with a long publish latency, and a message chosen for its long $D$ likely had its
+acknowledgment read late too. These runs could not read the margin message by message; freeze 41 later did, as $S_k$, and
+the rate did not fall from one fifth of it to the next (\ref{s:orderscope}). Between
+conditions, where padding lengthens the margin at fixed load, the rate falls as predicted
 (\ref{s:payload}).
 
 \begin{table}[tb]
@@ -782,7 +786,7 @@ messages a configuration.}
 shown, not used.}
 \end{table}
 
-\subsection{S3.6. Rival explanations, each excluded or bounded}
+\subsection{S3.6. Rival explanations: excluded, bounded, or real on Redis}
 \label{s:rivals}
 
 Five rivals fall to the design and the manipulations. One clock excludes clock skew between
@@ -798,13 +802,13 @@ the kernel allows itself in order to batch wakeups. In Linux~6.8 a real-time tas
 gets at least $50\,\mu$s by default. But slack can delay only a wakeup that a timer makes. A thread
 that reads the clock after arriving data is woken by the data, not by a timer, so slack cannot
 delay it.
-Five more rivals need an argument each. Two of them, the hypervisor and the interpreter lock, are
+Five more rivals need an argument each. Two, the hypervisor and the interpreter lock, are
 bounded rather than excluded, and a third, the broker's reply order, is excluded on \kafka{} and
 real on \redis{}.
 
 \paragraph{The second thread} \kafka{}'s client reads the clock for the acknowledgment on its I/O
-thread when the delivery callback fires, and \redis{}'s on the calling thread the moment
-\texttt{XADD} returns (Figure~\ref{P-fig:model}). The hand-off is not the mechanism. \redis{}, which
+thread, and \redis{}'s on the calling thread (Figure~\ref{P-fig:model};
+\ref{s:setup-timestamps}). The hand-off is not the mechanism. \redis{}, which
 has no second thread, has values of $S$ below zero on $\spanRedisNegAckPct\%$ of its messages
 against \kafka{}'s $\spanKafkaNegAckPct\%$, and on more of its runs
 ($\spanRedisRunsAckInvertsPct\%$ against $\spanKafkaRunsAckInvertsPct\%$). Its calling thread,
@@ -868,8 +872,8 @@ clocks by the shortest end-to-end latency.
 twice, with the acknowledgment to the producer and the message to the consumer. A broker that
 delivered the message first would put $S$ below zero with no wait at all. Freeze 41 timed both
 arrivals by the kernel (\ref{s:orderscope}). On \kafka{}, which returns the acknowledgment before it
-answers the consumer's waiting request, the acknowledgment arrived first in practically every
-message, and $\osKafkaLatePct\%$ of its values below zero under load had it first: there the rival
+answers the consumer's waiting request, the acknowledgment arrived first in all but a few percent of
+messages, and $\osKafkaLatePct\%$ of its values below zero under load had it first: there the rival
 is excluded. \redis{} writes the delivery to a waiting consumer before it replies to the producer,
 and in $\osRedisFirstRuns$ of its $\osRedisRuns$ runs the delivery came first for most messages;
 $\osRedisOrderLoPct$--$\osRedisOrderHiPct\%$ of \redis{}'s values below zero had it first. On
@@ -882,10 +886,9 @@ consumer before it's been written to disk''~\cite{macmullen2014rabbitmq}.
 
 The traced waits have $\stallModeCount$ local maxima (Figure~\ref{sfig:spectrum}), and the upper
 one survives a change of bucket edges. How many maxima a histogram shows depends on its bin edges
-as well as on its counts, and these edges came from \texttt{bpftrace}. The per-event waits were not
-retained, so coarsening is the only test available. Merging adjacent buckets doubles the bin
-width, and starting the merge at the first bucket or the second puts the edges in different
-places. The spectrum has $\stallModeCount$ maxima on the tool's own $\stallModeBuckets$ buckets,
+as well as its counts, and these edges came from \texttt{bpftrace}. The per-event waits were not
+retained, so coarsening is the only test. Merging adjacent buckets doubles the bin
+width, and starting the merge at the first bucket or the second places the edges differently. The spectrum has $\stallModeCount$ maxima on the tool's own $\stallModeBuckets$ buckets,
 $\stallModeCount$ again under both phasings at $\stallCoarsenFactor$ times the width, and fewer at
 $\stallLostFactor$ times, so the count holds to within a factor of $\stallCoarsenFactor$ in bin
 width.
@@ -1058,7 +1061,7 @@ prediction.}
 \input{docs/generated/full_fix_table}
 \end{table}
 
-The predictions held, all five (Table~\ref{stab:fullfix}). The first two asked that $W$ not move
+All five predictions held (Table~\ref{stab:fullfix}). The first two asked that $W$ not move
 with the load or with the priority. The median of $W$ moved by at most $\fullFixMedianMovePct\%$
 between the loads at each priority and between the priorities at each load, on both brokers,
 against the $\fullFixMedianMarginPct\%$ allowed, and its 99th percentile by at most
@@ -1115,8 +1118,7 @@ the repository under \brk{docs/results/full_fix}, read by \brk{scripts/full_fix.
 A benchmark tool would not run a packet capture. It would ask the kernel for its timestamps on its
 own sockets, through the \texttt{SO\_TIMESTAMPING} \emph{socket option}, a setting a program asks
 the kernel for on one of its sockets. We tested that form by a second plan and five predictions
-fixed before any of its runs, with the captures of \ref{s:fullfix} running in the same runs as the
-reference.
+fixed before its runs, with \ref{s:fullfix}'s captures, taken in the same runs, as the reference.
 
 The runs repeated the design of \ref{s:fullfix}, with the same pair and both brokers, no
 background load on the client machine or $\fullFixLoadPct\%$, and normal or real-time priority for
@@ -1155,7 +1157,7 @@ figure is a setup's median over its six runs of each run's statistic, in microse
 \input{docs/generated/so_fix_table}
 \end{table}
 
-The predictions held, all five (Table~\ref{stab:sofix}). The first asked that the sockets and the
+All five predictions held (Table~\ref{stab:sofix}). The first asked that the sockets and the
 captures agree. In every setup the median of $|W_{\mathrm{so}} - W|$ was
 $\soFixAgreeMedianLoUs$--$\soFixAgreeMedianHiUs\,\mu$s, against the $\soFixAgreeMedianBarUs\,\mu$s
 allowed, and its 99th percentile at most $\soFixAgreeTailHiUs\,\mu$s, against
@@ -1171,8 +1173,7 @@ $\soFixMessages$ messages had $W_{\mathrm{so}}$ at or below zero, and every mess
 socket timestamps. The fifth asked that load still lengthen $D$ in the same runs. At normal
 priority it raised the 99th percentile of $D$ $\soFixTailRatioLo$--$\soFixTailRatioHi$-fold, where
 the plan required $\fullFixEffectRatio$-fold, and moved the mean of $W_{\mathrm{so}}$ by at most
-$\soFixWireSharePct\%$ of the rise in the mean of $D$, against the $\fullFixWireShareBarPct\%$
-allowed.
+$\soFixWireSharePct\%$ of the rise in the mean of $D$, against $\fullFixWireShareBarPct\%$.
 
 In \soFixPausedRunsWord{} \kafka{} runs a pause held messages more than $150$~ms, in $D$ and in
 $W_{\mathrm{so}}$ alike, so the pause lay between the kernel's timestamps, not in the clients'
@@ -1260,22 +1261,39 @@ tables through the block's own judge.}
 \input{docs/generated/order_scope_table}
 \end{table}
 
-\textbf{The order of the two arrivals.} On \kafka{} the acknowledgment arrived first in practically
-every message, by $\osKafkaMarginLoUs$--$\osKafkaMarginHiUs\,\mu$s at the setups' medians, so its
-values of $S$ below zero are late readings. In $\osRedisFirstRuns$ of \redis{}'s $\osRedisRuns$
-runs with sixteen publish workers the delivery came first for most messages, and $\osRedisOrderLoPct$--$\osRedisOrderHiPct\%$ of
-\redis{}'s values below zero had it first, at either priority and either load; the design's rule
-counts those as the broker's reply order. With the delivery first, a value below zero needs no
+\textbf{The order of the two arrivals.} On \kafka{} the acknowledgment arrived first, by
+$\osKafkaMarginLoUs$--$\osKafkaMarginHiUs\,\mu$s at the setups' medians. $S_k$ fell below zero for
+under 1\% of the messages in $\osKafkaSkUnderOneRuns$ of its $\osKafkaRuns$ runs and for at most
+$\osKafkaSkNegMostPct\%$ in the others, and under load $\osKafkaLatePct\%$ of its values of $S$ below
+zero had $S_k \geq 0$, so they are late readings (K-a). In
+$\osRedisFirstRuns$ of \redis{}'s $\osRedisRuns$ runs with sixteen publish workers the delivery
+came first for most messages, by $\osRedisLeadLoUs$--$\osRedisLeadHiUs\,\mu$s at the medians of the
+setups where it did. Of \redis{}'s values below zero, $\osRedisOrderLoPct$--$\osRedisOrderHiPct\%$
+had it first, at either priority and either load, and the design's rule counts those as the
+broker's reply order. With the delivery first, a value below zero needs no
 wait, only that the acknowledging thread's delay not fall short of the consumer's by more than the
-delivery's lead. A few \redis{} runs had most of their values of $S$ below zero for the whole run,
-as two of the ladder's runs did at $\osMidRate$ messages a second.
+delivery's lead. A few \redis{} runs had most values of $S$ below zero for the whole run,
+as did \osMidSplitRunsWord{} of the \osMidRunsWord{} ladder runs at $\osMidRate$ messages a second,
+one on each broker.
 
 \textbf{The delay itself.} The acknowledging thread's 99th-percentile delay rose
-$\osDackLoadKafka$- and $\osDackLoadRedis$-fold under load and fell back at real-time priority.
-Message by message, the share of values below zero in each fifth of the margin lay within
-$\osKdFactorKafka\times$ on \kafka{} and $\osKdFactorRedis\times$ on \redis{} of the share the
-setup's own delays predict, but did not fall from one fifth to the next, because the margins are
-short beside the waits and the prediction is nearly flat across them (K-d). Turning off
+$\osDackLoadKafka$- and $\osDackLoadRedis$-fold under load and fell back at real-time priority
+(K-c). Read after the verdicts, \kafka{}'s median delay, $\osDackMedianLoUs$--$\osDackMedianHiUs\,\mu$s in
+every setup, is the client's own processing. Its 99th percentile was $\osDackIdleKafkaUs\,\mu$s idle,
+$\osDackBusyKafkaMs$~ms at $88\%$ load and $\osDackRtKafkaUs\,\mu$s at real-time priority. Under load
+at normal priority, the readings below zero had a median delay of $\osDackNegKafkaUs\,\mu$s on
+\kafka{} and $\osDackNegRedisUs\,\mu$s on \redis{}, against $\osDackPosKafkaUs$ and
+$\osDackPosRedisUs\,\mu$s for the rest, so they were read late. Message by message, the share of
+values below zero in each fifth of the margin lay within $\osKdFactorKafka\times$ on \kafka{} and
+$\osKdFactorRedis\times$ on \redis{} of the share the setup's own delays predict,
+$\Pr[\delta_{\mathrm{ack}} - \delta_{\mathrm{recv}} > S_k]$, but did not fall from one fifth to the
+next, because the margins are short beside the waits and the prediction is nearly flat across
+them (K-d). The paper's $p\,G(S_k)$, with $p$ the share of acknowledgments read more than
+$\osWaitedMs$~ms after they arrived and $G$ the rest of a slice of Fig.~\ref{P-fig:residual}, put
+the share of values below zero at $\osPgKafkaLoPct$--$\osPgKafkaHiPct\%$ on \kafka{} and
+$\osPgRedisLoPct$--$\osPgRedisHiPct\%$ on \redis{}, against measured shares of
+$\osSeenKafkaLoPct$--$\osSeenKafkaHiPct\%$ and $\osSeenRedisLoPct$--$\osSeenRedisHiPct\%$. On \kafka{}
+the client's processing alone outlasts $\osWaitedMs$~ms, so $p$ counts it as a wait. Turning off
 run-to-parity moved neither the rate nor the delay (R). With one publish worker, \redis{}'s real-time
 rate fell from $\osGilIdleSixteenPct\%$ to $\osGilIdleOnePct\%$ with no load, so there the
 interpreter lock the workers share sets most of it, but not under load (K-e).
@@ -1284,12 +1302,18 @@ interpreter lock the workers share sets most of it, but not under load (K-e).
 $W_{\mathrm{so}}$ $\osSlopeWLo$--$\osSlopeWHi$~ms and $D$ $\osSlopeDLo$--$\osSlopeDHi$~ms for each
 millisecond added, while the publish latency, whose path the delay does not touch, moved by
 $\osAMoveLoPct$--$\osAMoveHiPct\%$ between setups without following the delay, its runs
-scattering more than the $10\%$ band (P). The sockets
-agreed with the captures at every rung (L-a). At 50 messages a second no message carried the pull
-flag, and under load \kafka{}'s $W_{\mathrm{so}}$ held while \redis{}'s rose
-$\osLadderRedisRisePct\%$, in the captures as in the sockets, $\osLadderRedisSharePct\%$ of the
+scattering more than the $10\%$ band (P). On the idle host the runs' median negative-span rate was
+$\osRateKafkaAtFiftyPct$, $\osRateKafkaAtMidPct$ and $\osRateKafkaAtTopPct\%$ on \kafka{} at 50,
+$\osMidRate$ and $\osTopRate$ messages a second, and $\osRateRedisAtFiftyPct$, $\osRateRedisAtMidPct$
+and $\osRateRedisAtTopPct\%$ on \redis{}. \kafka{}'s reads drained more than one packet in
+$\osMultiKafkaAtFiftyPct$, $\osMultiKafkaAtMidPct$ and $\osMultiKafkaAtTopPct\%$ of reads, \redis{}'s
+in at most $\osMultiRedisMostPct\%$ (described, not judged), yet the sockets agreed with the
+captures at every rung (L-a). At 50 messages a second no message carried the pull flag, and at
+$\osMidRate$ at most $\osPullMidMostPct\%$ did. Under load at 50, \kafka{}'s $W_{\mathrm{so}}$ held
+while \redis{}'s rose $\osLadderRedisRisePct\%$, in the captures as in the sockets, $\osLadderRedisSharePct\%$ of the
 rise in the mean of $D$, for a cause we have not traced (L-b). At $\osTopRate$ a second
-$\osPullTopLoPct$--$\osPullTopHiPct\%$ of messages carried the flag. Keeping idle processors
+$\osPullTopLoPct$--$\osPullTopHiPct\%$ of messages carried the flag, and their kernel-timed
+latency was $\osPullExtraLoUs$--$\osPullExtraHiUs\,\mu$s longer than the others'. Keeping idle processors
 spinning did not shrink \redis{}'s mode of values near $-200\,\mu$s on that pair
 ($\osBumpDefaultPct\%$ of its values below zero on the stock boot, $\osBumpPollPct\%$ with
 \texttt{idle=poll}), so there it is not the wake of an idle processor (I). In the paper's
@@ -1317,17 +1341,16 @@ from two millisecond timestamps, so the value, though in microseconds, is a whol
 \begin{quote}
 \texttt{if (endToEndLatencyMicros > 0)}
 \end{quote}
-decides whether that value reaches the histogram. The message has already been counted as
-received, but nothing counts what the condition drops.
+decides whether that value reaches the histogram. Each message is counted as received; what the
+filter drops is not.
 
 We add counters in an \texttt{else} branch of that condition and change nothing else: not the
 latency computation, not the filter, not any reported statistic. The benchmark's output is
-therefore exactly what it would have been unpatched, and its printed summary can be set beside
+therefore exactly what it would be unpatched, and its printed summary can be set beside
 the retention behind it (Fig.~\ref{P-fig:deletion}b of the paper). The four counters, for zero, negative,
 most negative and kept samples, separate sign. A value below zero and an end-to-end latency
 shorter than a millisecond both fail a \texttt{> 0} test, and one unsigned total cannot tell them
-apart (\ref{s:minus1000}). The patch is \brk{external/omb/workerstats_discard_counter.patch} in the
-artifact.
+apart (\ref{s:minus1000}). The patch is \brk{external/omb/workerstats_discard_counter.patch}.
 
 The counts are exact. The counters are shared across the JVM and their totals printed once at
 shutdown. A run that fails discards nothing, and its zero count would look measured, so a validity
@@ -1501,7 +1524,7 @@ The drivers explain the difference. The \redis{} driver takes its publish timest
 \brk{entry.getID().getTime()} in \brk{RedisBenchmarkConsumer.java}:72, the stream-entry
 identifier the \redis{} server assigns on \texttt{XADD}. The \kafka{} driver uses a
 producer-set timestamp. So the \redis{} span subtracts a server-side timestamp from a
-consumer-side clock reading, across two hosts, with both floored to the millisecond, while the
+consumer-side one, across two hosts, both floored to the millisecond, while the
 \kafka{} span floors two timestamps whose difference is taken inside one JVM.
 
 Two clocks floored to the same resolution and offset by less than one millisecond can disagree by
@@ -1575,8 +1598,7 @@ benchmark, Apache Artemis's perf client, Quiver and Apache BookKeeper's benchmar
 therefore not a random sample of the field's tools, and its counts describe these tools, not the
 field. The \emph{registry}, a file with one source line for each verdict, holds the
 \harnessAuditedWord{} tools whose handling of a value at or below zero was classified from a line
-of their source. It leaves out Pepper-Box, which times only the call that hands a message to
-\kafka{}'s client, and xk6-kafka, which times only whole calls of its script (the last note
+of their source. It leaves out Pepper-Box and xk6-kafka, which do not make the measurement (the last note
 below).
 
 \textbf{Tools read at source.} Of the \harnessAuditedWord{} tools we read at source,
@@ -1700,8 +1722,8 @@ scheduler sampler discards, those whose two timestamps arrived out of order acro
 added on 12 August 2026; its other samplers have none.
 \item Four further tools we read are not in the count, because they do not make the measurement.
 SPECjms2007 defines Delivery Time and never reports it, Redpanda's \texttt{rpk} ships no latency
-benchmark, Pepper-Box times only the call that hands a message to Kafka's client, and xk6-kafka
-times whole calls of the script that runs it, four of whose latency figures are always zero.
+benchmark, Pepper-Box times only the call handing a message to Kafka's client, and xk6-kafka, four of
+whose latency figures are always zero, times whole calls of its script.
 \end{itemize}
 
 \textbf{Tools run.} Reading a tool tells what it does with a value below zero; running it tells
@@ -1900,7 +1922,7 @@ each round.}
 
 \textbf{\kafka{}'s own end-to-end tool, beside an observer.} \kafka{}'s end-to-end tool publishes
 each message, waits for its acknowledgment, and only then polls for the message, so it cannot time
-a message earlier than its acknowledgment, however early the message was readable. Version 35
+a message earlier than its acknowledgment. Version 35
 (\brk{freezes/32-experiment-plan}) ran a copy of the tool changed only to write down, for each
 message, its offset and the moments it began, was acknowledged and was polled. Beside it ran an
 observer on the same machine and clock, at real-time priority, that wrote down when each message
@@ -1975,8 +1997,8 @@ statistics, and Quiver's its transfers, as it calls messages.}
 \input{docs/generated/s1_table}
 \end{table}
 
-Every verdict and number from these tests is recomputed from the per-run tables in
-\brk{docs/results/tools/} by the programs that judged them, which the postmortem's S25.3 names
+Every verdict and number here is recomputed from the per-run tables in
+\brk{docs/results/tools/} by the judging programs, which the postmortem's S25.3 names
 with every file, the readings made after the runs and each block's write-up.
 
 
@@ -1990,8 +2012,8 @@ true end-to-end latency is shorter than the resolution. The strong signature add
 1~ms. Neither says a reported number is wrong, only that it came from an unstated fraction of the
 samples. The search covered Google Scholar, Semantic Scholar, the web, the
 engineering blogs of the vendors whose brokers the benchmark has drivers for, and the benchmark's
-repository and its public copies, for reports dated up to 28 September 2026. A report was included
-if it named the benchmark or a fork of it as its tool and printed at least one numeric end-to-end
+repository and public copies, for reports up to 28 September 2026. A report was included
+if it named the benchmark or a fork as its tool and printed at least one numeric end-to-end
 percentile.
 
 The audit included $\reachReports$ reports, printing $\reachConfigs$ configurations, of which
@@ -2025,13 +2047,12 @@ the timestamp in 2020 and did not return the fix to the original.
 \label{s:law}
 
 A law for the negative-span rate, fixed before its runs, had one prediction confirmed on every
-campaign that tested it, three confirmed on one broker only, and the rest not confirmed
+campaign that tested it, three on one broker only, and the rest not confirmed
 (Table~\ref{stab:lawverdicts}). The one confirmed everywhere is that load raises the rate at the
-shortest end-to-end latencies. Neither prediction that the rate falls, as the end-to-end latency
-grows, where a slice set by hand puts it was confirmed, the predictions of how quickly it falls
-held on one broker at most, and Python's rate exceeded the registered limit relative to Java's.
-Frozen programs judged every prediction over 8,102 runs on machines the earlier campaigns never
-ran on.
+shortest end-to-end latencies. Neither prediction of where the rate falls with the end-to-end latency, at a slice set by hand,
+was confirmed. The predictions of how quickly it falls held on one broker at most, and Python's
+rate exceeded the registered limit relative to Java's.
+Frozen programs judged each prediction over 8,102 runs on machines no earlier campaign used.
 
 \subsection{S6.1. The law, and the design that tested it}
 \label{s:law-design}
@@ -2061,7 +2082,7 @@ real-time priority for the threads that read the clock, and L8 the client, \kafk
 client against our Python one. L6 records every \texttt{python3} thread's waits in half of L1's and
 L3's runs, and L9 records each of those threads' scheduling events in half its own runs. Each block
 carries numbered predictions, stated and judged in Table~\ref{stab:lawverdicts}. A further block,
-M0, asked a question about bursty traffic that bears on none of the claims here.
+M0, on bursty traffic, bears on no claim here.
 
 Each run replays messages at a steady 50 a second and measures its end-to-end latency, publish
 latency and negative-span rate after a 30~s warm-up. The end-to-end latency is set by delaying only

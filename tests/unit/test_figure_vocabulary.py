@@ -254,7 +254,9 @@ class TestTheRealFiguresPassTheirOwnGate:
                        # panel (a) carries the curve the retired column figure drew.
                        "build_remedies",
                        # 15 Oct 2026: the eight matched pairs' forest, for Supplement S3.1.
-                       "build_priority_forest")
+                       "build_priority_forest",
+                       # 17 Oct 2026: what the kernel-timed fix buys, Section VI.
+                       "build_fix_benefit")
 
     @pytest.mark.parametrize("builder", RESULT_BUILDERS)
     def test_a_result_figure_builds_without_a_retired_term(self, builder, tmp_path):

@@ -213,8 +213,12 @@ class TestR2TheFloorIsAScaleNotALimit:
         # 6 Oct 2026: both brokers' ranges, Kafka's first, then "not at zero".
         # 16 Oct 2026: in percent, the twins rtResidualMinPct and rtResidualMaxPct, the unit
         # the paper gives every other rate in.
+        # 17 Oct 2026, the author's rule (say what holds): both brokers' ranges and their
+        # consequence, "so the sign check stays", without "not at zero"; test_paper_consistency
+        # holds the ranges above zero in the ledger.
         m = re.search(r"settles at \$" + RE_BS + r"rtResidualMinPct\$--\$" + RE_BS
-                      + r"rtResidualMaxPct" + RE_BS + r"%\$ on .{0,120}?, not at zero", flat)
+                      + r"rtResidualMaxPct" + RE_BS + r"%\$ on .{0,120}?\(Supplement~S3\.1\), "
+                      r"so the sign check stays", flat)
         assert m, "the main text no longer says where the real-time rate settles"
         clause = flat[max(0, m.start() - 200):m.end() + 120]
         assert not re.search(r"\b(?:floor|bound|bounded|reaches but)\b", clause), clause

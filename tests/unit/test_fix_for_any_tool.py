@@ -80,7 +80,9 @@ class TestSectionSixOpensWithTheFix:
                                 "and as it arrives, read on the tool's own sockets;"), first
         # The row names the socket form, so it quotes the socket runs (S3.10), not the captures'.
         assert "\\soFixMedianMovePct" in first and "\\soFixTailRatioLo" in first, first
-        assert "(Supplement~S3.10)" in first and "\\fullFix" not in first, first
+        # 17 Oct 2026: the row also points at Fig. 6, which draws the same socket runs, so the
+        # pointer reads "(Fig. 6; Supplement S3.10)".
+        assert "Supplement~S3.10)" in first and "\\fullFix" not in first, first
 
     def test_the_fix_says_where_the_waits_go(self, paper):
         """The waits are not dropped from the report, they are moved beside the latency: D is the
@@ -91,7 +93,10 @@ class TestSectionSixOpensWithTheFix:
         assert "the transmit and receive timestamps" in text
         assert "from a message's transmit timestamp to its receive timestamp" in text
         assert "$D = H_{\\mathrm{out}} + W + H_{\\mathrm{in}}$ for every message" in text
-        assert "beside what the application saw, $D$" in text
+        # 17 Oct 2026: the paragraph's last sentence, that a tool can report W "beside what the
+        # application saw, D", gave its lines to Fig. 6; the fourth step gives the same advice as
+        # an instruction, so it is held there.
+        assert "Report that latency beside $D$" in steps(paper)[3]
 
 
 class TestTheStepsAreTheModulesSteps:
@@ -175,13 +180,20 @@ class TestWhatAToolMustHandle:
         text = flat(paragraph(paper, "What a tool must handle."))
         # 15 Oct 2026: the card's lead moved to the socket paragraph, and the share of reads
         # whose receive timestamps matched the captures' to Supplement S3.10.
-        for macro in ("\\soFixQueueLeadLoUs", "\\soFixQueueLeadHiUs",
-                      "\\osPullTopLoPct", "\\osPullTopHiPct"):
-            assert macro in text, macro
+        # 17 Oct 2026: the paragraph says what a tool must handle and where the counts are. The
+        # flagged share at the top rate is stated with the fix's limits in Section VIII, and the
+        # TX_SCHED timestamp's lead on the capture in Supplement S3.10.
+        assert "Supplement~S3.11 counts them at each rate" in text
+        supplement = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        limits = flat(section(paper, "sec:threats"))
+        for macro in ("\\osPullTopLoPct", "\\osPullTopHiPct"):
+            assert macro in limits, macro
+        for macro in ("\\soFixQueueLeadLoUs", "\\soFixQueueLeadHiUs"):
+            assert macro in supplement, macro
         sockets = flat(paragraph(paper, "Read those timestamps on the tool's own sockets."))
         for macro in ("\\fullFixKernelDelayLoUs", "\\fullFixKernelDelayHiUs"):
             assert macro in sockets, macro
-        assert "\\soFixSameReceivePct" in (REPO / "supplement.tex").read_text(encoding="utf-8")
+        assert "\\soFixSameReceivePct" in supplement
 
 
 @pytest.fixture(scope="module")
@@ -236,8 +248,11 @@ class TestTheOtherMentionsAgree:
         # the tool's own sockets, and no longer says "even under load" (block L, L-b).
         # 16 Oct 2026: and scopes the claim, since at 2,000 messages a second a pull consumer's
         # wait enters W (referee A, M2 fix 2: "any scope condition").
-        assert ("Kernel timestamps, read on a tool's own Linux sockets, exclude the "
-                "clock-reading threads' wait at modest rates.") in abstract
+        # 17 Oct 2026: the abstract names the clock-reading threads where their priority is
+        # raised, so this sentence says "those threads".
+        assert ("Kernel timestamps, read on a tool's own Linux sockets, exclude those threads' "
+                "wait at modest rates.") in abstract
+        assert "falls when clock-reading threads get real-time priority" in abstract
         assert "even under load" not in abstract
 
     def test_the_conclusion_says_what_to_report(self, paper):

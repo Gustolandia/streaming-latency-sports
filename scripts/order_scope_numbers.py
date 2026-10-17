@@ -105,10 +105,16 @@ def ladder_macros(rows, verdicts):
 
 
 def idle_macros(verdicts):
-    """Block I: Redis's share of S in the mode, on each boot."""
+    """Block I: Redis's share of S in the mode, on each boot, and where the mode sits.
+
+    The mode's place is the middle of the window block I registered, in microseconds below zero,
+    so the text says "a mode near -200 us" from the window the judge counted in, not from a typed
+    number."""
     decision = verdicts["I"]["decision"]
+    middle = -(order_scope.BUMP[0] + order_scope.BUMP[1]) / 2.0
     return [("osBumpDefaultPct", "%.1f" % (100.0 * decision["bump_share_default"])),
-            ("osBumpPollPct", "%.1f" % (100.0 * decision["bump_share_poll"]))]
+            ("osBumpPollPct", "%.1f" % (100.0 * decision["bump_share_poll"])),
+            ("osBumpMidUs", "%.0f" % middle)]
 
 
 def fifths_factor(bins, setup):

@@ -172,8 +172,12 @@ class TestR1TheIndexTermsNameTheirOwnSubject:
                  # "affects", and the first halves of its compound adjectives,
                  # "high-precision" and "industry-wide"; its nouns are latency, threading and
                  # audit.
+                 # 17 Oct 2026: the title names what the threading does and the fix (the
+                 # author's points 14 and 16); "distorts" is its verb, and "benchmarks" a noun
+                 # the index terms already carry.
                  if w not in ("faster", "light", "artifacts", "silent", "choose",
-                              "super", "precise", "affects", "precision", "industry")]
+                              "super", "precise", "affects", "precision", "industry",
+                              "distorts")]
         assert len(nouns) >= 4, "the title has changed shape; re-derive this list"
         terms = " ".join(_index_terms(paper)).lower()
         missing = [n for n in nouns if n[:6] not in terms]

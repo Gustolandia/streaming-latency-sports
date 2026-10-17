@@ -1177,6 +1177,14 @@ practice" heading and the list bound to it are gone, so their binding gate
 (`TestThePracticeListStaysWithItsHeading`) was retired; what the work means in practice is
 Section VI and its table of checks.
 
+17 October 2026: retitled *Super-Precise Latency: How CPU Threading Distorts Benchmarks, an
+Industry-Wide Audit, and How to Fix It*, by the author's points 14 and 16: the title says what the
+threading does and that the paper gives the fix. The same day the first half (abstract, Sections I
+to IV) took the author's rule in its plain form: a result is stated as the scope in which it holds
+("this holds for all these cases"), never as "this holds except for that", and every verdict and
+limit is stated whole in Section VIII. Neither moves a fact; each says it where the reader expects
+it.
+
 ## C. Register: a journal paper, not a blog post
 
 ### C1. No jokes — GATED

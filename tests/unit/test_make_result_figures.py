@@ -551,8 +551,9 @@ def test_main_builds_every_figure_by_default(tmp_path, capsys):
     eleven, with the forest of the eight matched pairs on both brokers for S3.1.
     """
     assert mrf.main(["--out", str(tmp_path)]) == 0
-    assert len(list(tmp_path.glob("*.pdf"))) == 11
-    assert capsys.readouterr().out.count("wrote") == 11
+    # 17 Oct 2026: twelve, with what the kernel-timed fix buys (Section VI).
+    assert len(list(tmp_path.glob("*.pdf"))) == 12
+    assert capsys.readouterr().out.count("wrote") == 12
 
 
 def test_the_spectrum_builder_takes_the_slice_from_the_derived_constants(tmp_path):
@@ -1076,3 +1077,43 @@ def test_the_payload_arms_are_told_apart_by_shade_and_shape_not_broker_colour():
         assert flip.get_ylim()[1] == pytest.approx(1.30 * top)
     finally:
         plt.close(fig)
+
+
+# --- what the fix buys, 17 Oct 2026 (the author's twelfth point) --------------------------------
+
+def test_fix_benefit_rows_are_supplement_s3_10s_setups():
+    """Each bar is a setup's median over its runs of each run's 99th percentile, as Table S10
+    gives it: under load at normal priority D's tail grows several-fold and the kernel-timed
+    latency's holds level."""
+    rows = mrf.fix_benefit_rows()
+    assert sorted(rows) == ["kafka", "redis"]
+    for setups in rows.values():
+        assert [s[0] for s in setups] == [label for label, _, _ in mrf.FIX_SETUPS]
+        (_, d_idle, w_idle), (_, d_load, w_load), (_, d_rt, w_rt) = setups
+        assert d_load > 4 * d_idle and d_rt < d_load / 2
+        assert abs(w_load - w_idle) < 0.1 * w_idle and abs(w_rt - w_idle) < 0.1 * w_idle
+    assert round(rows["kafka"][1][1] * 1000) == 8371 and round(rows["redis"][1][2] * 1000) == 682
+
+
+def test_plot_fix_benefit_draws_two_bars_a_setup_and_one_legend():
+    rows = {"kafka": [("idle", 2.0, 1.0), ("load", 8.0, 1.0), ("load,\nreal-time", 2.4, 1.0)],
+            "redis": [("idle", 1.0, 0.7), ("load", 4.6, 0.7), ("load,\nreal-time", 1.0, 0.7)]}
+    fig, axes = plt.subplots(1, 2, sharey=True)
+    try:
+        mrf.plot_fix_benefit(axes, rows)
+        kafka, redis = axes
+        assert len(kafka.patches) == 6 and len(redis.patches) == 6
+        assert kafka.get_legend() is None
+        assert [t.get_text() for t in redis.get_legend().get_texts()] == [
+            label for _, label, _ in mrf.FIX_SERIES]
+        assert kafka.get_title(loc="left") == "(a) Kafka"
+        assert redis.get_title(loc="left") == "(b) Redis"
+        assert kafka.get_ylim()[1] == pytest.approx(8.0 * 1.2)
+    finally:
+        plt.close(fig)
+
+
+def test_the_fix_benefit_builder_writes_a_pdf(tmp_path):
+    assert mrf.main(["--out", str(tmp_path), "--only", "fix_benefit"]) == 0
+    out = tmp_path / "fix_benefit.pdf"
+    assert out.is_file() and out.stat().st_size > 1000

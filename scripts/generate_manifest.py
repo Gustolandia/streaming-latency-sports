@@ -21,14 +21,14 @@ from pathlib import Path
 CODE_GLOBS = ["scripts/*.py", "configs/*.yaml", "docker-compose*.yml", "requirements.txt"]
 
 # Descriptive record of the corpus + the measurement protocol behind the paper
-# (Super-Precise Latency: How CPU Threading Affects High-Precision Latency, and an Industry-Wide Audit,
+# (Super-Precise Latency: How CPU Threading Distorts Benchmarks, an Industry-Wide Audit, and How to Fix It,
 # IEEE Transactions on Computers).
 # Kept in sync with
 # reproducibility/README.md and paper.tex; the JSA framing (decision-staleness / win-probability)
 # and the earlier ACM TOMPECS framing are retired and must not be reintroduced here.
 PROTOCOL = {
-    "paper": "Super-Precise Latency: How CPU Threading Affects High-Precision Latency, "
-             "and an Industry-Wide Audit "
+    "paper": "Super-Precise Latency: How CPU Threading Distorts Benchmarks, "
+             "an Industry-Wide Audit, and How to Fix It "
              "(IEEE Transactions on Computers). The Journal of Sports "
              "Analytics framing (decision-staleness / Age-of-Information / win-probability) is "
              "retired, as is the earlier ACM TOMPECS formatting.",

@@ -703,6 +703,81 @@ def plot_priority_forest(axes, rows):
 #: the legibility gate holds a figure no document includes yet to it (15 Oct 2026).
 SUPPLEMENT_WIDTH_IN = figure_legibility.ONECOLUMN_WIDTH_IN
 
+SO_FIX_RUNS = RESULTS / "so_fix" / "f2_runs.csv"
+
+#: The three setups the fix's figure draws, in reading order: what load does to each latency at
+#: normal priority, and what real-time priority does under that load.
+FIX_SETUPS = (("idle", 0, False), ("load", 88, False), ("load,\nreal-time", 88, True))
+
+#: What each latency is in the fix's figure: timed by the clients' threads, as benchmarks time
+#: it, or between the kernel's timestamps read on the clients' own sockets (freeze 40).
+FIX_SERIES = (("D_p99", "end-to-end latency $D$", DELETED),
+              ("Wso_p99", "kernel-timed latency $W$", KEPT))
+
+
+def fix_benefit_rows(path=SO_FIX_RUNS):
+    """{broker: [(setup label, D's 99th percentile, the kernel-timed latency's), ...]} in
+    milliseconds, one entry per FIX_SETUPS, each a setup's median over its runs of each run's
+    99th percentile, as Supplement S3.10's table gives them (scripts/full_fix.setup_value)."""
+    import csv
+    import full_fix
+    with open(path, encoding="utf-8", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    return {b: [(label,) + tuple(full_fix.setup_value(rows, b, load, rt, field) / 1000.0
+                                 for field, _, _ in FIX_SERIES)
+                for label, load, rt in FIX_SETUPS]
+            for b in full_fix.BACKENDS}
+
+
+def plot_fix_benefit(axes, rows):
+    """What the fix buys, one panel a broker (17 Oct 2026, the author's twelfth point: show with
+    a graph how things improve). Under load at normal priority the tail of D, timed by the
+    clients' threads as a benchmark times it, grows several-fold and real-time priority takes it
+    back; timed between the kernel's timestamps the same messages' tail holds level throughout.
+    Bars, side by side per setup, on one linear scale shared by both panels."""
+    width = 0.38
+    top = max(v for setups in rows.values() for s in setups for v in s[1:])
+    for ax, (key, name, _) in zip(axes, BROKER_COLOURS):
+        setups = rows[key]
+        xs = np.arange(len(setups))
+        for i, (_, label, colour) in enumerate(FIX_SERIES):
+            ax.bar(xs + (i - 0.5) * width, [s[1 + i] for s in setups], width, color=colour,
+                   label=label, edgecolor="none")
+        ax.set_xticks(xs)
+        ax.set_xticklabels([s[0] for s in setups], fontsize=8)
+        # Headroom for the legend, and for the 2.4 pt taller text boxes CI's matplotlib sets.
+        ax.set_ylim(0, top * 1.2)
+        ax.tick_params(labelsize=8)
+        ax.grid(axis="y", alpha=0.25, lw=0.5)
+        ax.set_axisbelow(True)
+    # Written out, so the typography gate can read each panel's opening word; BROKER_COLOURS
+    # holds Kafka first and Redis second.
+    axes[0].set_title("(a) Kafka", fontsize=8, loc="left")
+    axes[1].set_title("(b) Redis", fontsize=8, loc="left")
+    # On two lines: on one it overran the 1.9 in canvas.
+    axes[0].set_ylabel("99th percentile\n(ms)", fontsize=8)
+    axes[1].tick_params(labelleft=False)
+    # One legend, in the upper half of (b), which Redis's bars leave empty; in (a) it sat on
+    # Kafka's tall bar under load.
+    axes[1].legend(fontsize=8, frameon=False, loc="upper right", handlelength=1.0,
+                   handletextpad=0.4, borderaxespad=0.2)
+
+
+#: The paper's column, which the fix's figure fills when Section VI includes it.
+FIX_BENEFIT_IN = (figure_legibility.COLUMN_WIDTH_IN, 1.9)
+
+
+def build_fix_benefit(out_dir):
+    """Section VI's figure of what the kernel-timed fix buys, drawn at the column width the paper
+    prints it at, from freeze 40's committed run table."""
+    figure_style.apply()   # in force when the artists are made, not merely at import
+    width = figure_legibility.print_widths().get("fix_benefit", FIX_BENEFIT_IN[0])
+    fig, axes = plt.subplots(1, 2, figsize=(width, FIX_BENEFIT_IN[1]), sharey=True)
+    plot_fix_benefit(axes, fix_benefit_rows())
+    # A sliver kept on the left: tight_layout counted the two-line axis label short by 5 px.
+    fig.tight_layout(w_pad=0.6, pad=0.3, rect=(0.025, 0, 1, 1))
+    return _save(fig, out_dir, "fix_benefit", intended_in=FIX_BENEFIT_IN[0], whole=True)
+
 
 def build_priority_forest(out_dir):
     """Supplement S3.1's forest of the eight matched pairs on both brokers (15 Oct 2026).
@@ -1553,7 +1628,7 @@ def main(argv=None):
     ap.add_argument("--only",
                     choices=("deletion_phases", "spectrum", "grid", "mechanism", "ttrue",
                              "payload", "exposure", "recovery", "priority", "remedies",
-                             "priority_forest"),
+                             "priority_forest", "fix_benefit"),
                     default=None)
     args = ap.parse_args(argv)
 
@@ -1562,7 +1637,8 @@ def main(argv=None):
                 "mechanism": build_mechanism, "ttrue": build_ttrue,
                 "payload": build_payload, "exposure": build_exposure,
                 "priority": build_priority_ladder, "recovery": build_recovery,
-                "remedies": build_remedies, "priority_forest": build_priority_forest}
+                "remedies": build_remedies, "priority_forest": build_priority_forest,
+                "fix_benefit": build_fix_benefit}
     todo = [args.only] if args.only else list(builders)
     for name in todo:
         path = builders[name](args.out)

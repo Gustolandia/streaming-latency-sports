@@ -55,7 +55,10 @@ FIGURE_STEMS = ("pipeline_schematic", "measurement_model", "deletion_phases", "p
                 "kernel_timestamps",
                 # 15 Oct 2026: the eight matched pairs' real-time factors on both brokers, with
                 # their run-level intervals, for the supplement's S3.1 (both referees).
-                "priority_forest")
+                "priority_forest",
+                # 17 Oct 2026, the author's twelfth point: what the kernel-timed fix buys, drawn
+                # in Section VI from freeze 40's run table.
+                "fix_benefit")
 
 #: Figures built for a passage the text has not yet written, each with the date and why. The
 #: inclusion check below exempts them and fails once the text includes one, so that the entry

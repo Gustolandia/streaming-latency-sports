@@ -72,8 +72,10 @@ MUTATIONS = [
      r"$\rtFactorHigh$-fold on \kafka{} and",
      r"$\rtFactorLow$-fold on \kafka{} and"),
     # 15 Oct 2026: the caveat reads "settles ... on \redis{}, not at zero" in Section VI.
+    # 17 Oct 2026: it reads "... on \redis{} (Supplement~S3.1), so the sign check stays", the
+    # ranges themselves the caveat; the mutation sends the rate to zero and drops the check.
     ("drop the caveat that the rate stays above zero",
-     r"\redis{}, not at zero.", r"\redis{}, at zero."),
+     r"(Supplement~S3.1), so the sign", r"(Supplement~S3.1), and at zero, so no sign"),
     ("break a cross-reference",
      r"(Fig.~\ref{fig:twoways})", r"(Fig.~\ref{fig:nosuch})"),
     # The tracer's ratios bracket the observed rate rather than under-predicting it, which is

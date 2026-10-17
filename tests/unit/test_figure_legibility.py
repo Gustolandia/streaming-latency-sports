@@ -327,12 +327,13 @@ class TestEveryGlyphTheSubmissionPrintsIsLegible:
                 stem, smallest[1], smallest[0], fl.MIN_SCRIPT_PT))
 
     def test_a_main_text_figure_is_printed_at_its_own_size(self):
-        """Fig. 1 to 5 are drawn at exactly the width the paper prints them at and saved whole,
+        """Fig. 1 to 6 are drawn at exactly the width the paper prints them at and saved whole,
         so that the page neither enlarges a file (it printed Fig. 4 4.1 pt taller) nor shrinks
         its type."""
         pymupdf = pytest.importorskip("pymupdf")
         paper = fl.print_widths(("paper.tex",))
-        assert len(paper) == 5, sorted(paper)
+        # 17 Oct 2026: six, with Section VI's figure of what the fix buys.
+        assert len(paper) == 6, sorted(paper)
         for stem, width_in in sorted(paper.items()):
             with pymupdf.open(str(ROOT / "docs" / "results" / "figures" / (stem + ".pdf"))) as d:
                 assert d[0].rect.width / 72.0 == pytest.approx(width_in, abs=0.005), stem

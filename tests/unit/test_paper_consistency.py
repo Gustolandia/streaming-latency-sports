@@ -1624,8 +1624,13 @@ class TestNarrativeArc:
         # 15 Oct 2026, both referees of version 9 and freeze 41's block K: the cause is stated per
         # broker, scheduling where the acknowledgment arrives first ("there the cause is
         # scheduling"), and the other broker's delivery first; the beat keeps its place.
-        beats = ("Measured, their difference spreads over milliseconds", "there the cause is scheduling",
-                 "An industry-wide audit", "We give checks")
+        # 17 Oct 2026, the author's sixteen points (10 and 16): the abstract says what reading the
+        # difference as a latency costs before it says what was measured, so that "the cause"
+        # follows the values below zero it explains, and the last sentence names the checks'
+        # audience and calls them practical. The beats keep their order.
+        beats = ("Measured, it spreads over milliseconds", "there the cause is scheduling",
+                 "An industry-wide audit",
+                 "We give benchmark authors and readers practical checks")
         for beat in beats:
             assert beat in flat, f"abstract is missing the '{beat}' beat"
         first, second, third, remedy = (flat.index(b) for b in beats)
@@ -2609,7 +2614,14 @@ class TestLoadGeometryAndTtrue:
         assert float(macros["rtKafkaLowerBound"]) > 1 and float(macros["rtRedisLowerBound"]) > 1
         # It reduces exposure; it does not remove it, and it perturbs what it measures.
         # 5 Oct 2026: "the rate settles at ... not at zero".
-        assert re.search(r"not (?:at )?zero", section), "the floor must be stated as non-zero"
+        # 17 Oct 2026, the author's rule for the text (say what holds): the sentence gives where
+        # the rate settles, a measured range on each broker, and its consequence, "so the sign
+        # check stays". The ranges must be above zero in the ledger for the sentence to hold.
+        assert re.search(r"the rate settles at \$\\rtResidualMinPct\$--\$\\rtResidualMaxPct\\%\$",
+                         raw), "the floor must be stated, as the rate it settles at"
+        assert float(macros["rtResidualMinPct"]) > 0 \
+            and float(macros["rtRedisResidualMinPct"]) > 0, "the floor must be non-zero"
+        assert "so the sign check stays" in section
         assert "changes the system it measures" in section, \
             "the perturbation caveat must accompany the recommendation"
 
@@ -2999,10 +3011,13 @@ class TestConcurrentWork:
         assert "lozi2016wastedcores" in tex
         assert r"\paragraph{The presumption that a ready thread runs is not ours} It is " \
                r"documented: Lozi et al.~\cite{lozi2016wastedcores}" in " ".join(tex.split())
-        related = _lead_paragraph(main_tex, "Scheduling delay.")
-        assert "a single-parameter queueing law~\\cite{chandrasekar2026bias} that our placement " \
-               "contrast refutes" in related, \
-            "the geometry contrast must be scoped to what it actually refutes"
+        # 17 Oct 2026: the paper's 45 references made room for the stakes' four, and the
+        # concurrent preprint's single-parameter law went to the postmortem, which keeps its
+        # account. What the contrasts refute is scoped where they are stated, Section IV-B.
+        mechanism = " ".join(_section(main_tex, "sec:mechanism").split())
+        assert "That refutes any account in which utilization alone sets the rate" in mechanism, \
+            "the contrasts must be scoped to what they actually refute"
+        assert "chandrasekar2026bias" in tex, "the postmortem keeps the refuted model's account"
         geometry = " ".join(_section(journal, "s:geometry").split())
         assert "the contrast refutes not queueing itself but the single-parameter form" \
             in geometry
@@ -3309,7 +3324,12 @@ class TestRefereeRoundOne:
         list at 45, and HP AN 162-1 had to fit); an uncited key cannot carry a marker.
         """
         bib = (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
-        for key in ("sharma2026causality", "chandrasekar2026bias"):
+        # 17 Oct 2026: chandrasekar2026bias left the paper for the postmortem's bibliography,
+        # where its entry still says it is a preprint; the paper's concurrent preprint is held.
+        pm_bib = (REPO / "postmortem_references.bib").read_text(encoding="utf-8")
+        i = pm_bib.index("{chandrasekar2026bias,")
+        assert "preprint" in pm_bib[i:pm_bib.index("\n}", i)].lower()
+        for key in ("sharma2026causality",):
             assert key in main_tex, f"{key} is no longer cited"
             i = bib.index("{%s," % key)
             entry = bib[i:bib.index("\n}", i)].lower()
@@ -3593,8 +3613,9 @@ class TestCausalityFramingIsWithdrawn:
         # 6 Oct 2026: the issue cited reports an average publish latency above the average
         # end-to-end latency on one node, answered with skew between nodes; it never mentions a
         # value below zero, so the sentence now says what was reported.
+        # 17 Oct 2026: "One clock has no skew to blame.", the same sentence in fewer words.
         assert "were skewed between nodes" in finding \
-            and "On one clock there is no skew to blame." in finding, \
+            and "One clock has no skew to blame." in finding, \
             "the rival must be named, and closed, where the result is stated"
         assert "Nothing arrived early. On the same messages and the same clock" in finding, \
             "the exclusion is empirical, so the text must say what was measured, and how"
@@ -4187,7 +4208,9 @@ class TestInterpreterLockRival:
         # read to its end rather than for a fixed 2,000 characters.
         # 15 Oct 2026: Limitations open on Kafka's late readings, since freeze 41 found most of
         # Redis's values below zero to be its reply order.
-        i = main_tex.index("That scheduling makes \\kafka{}'s readings late is an inference")
+        # 17 Oct 2026, referee B of version 9 (M1, Why it matters, 1): with the late readings
+        # timed message by message, the first sentence's "an inference" became an observation.
+        i = main_tex.index("That scheduling makes \\kafka{}'s readings late is now observed")
         para = " ".join(main_tex[i:main_tex.index("\n\n", i)].split())
         assert "interpreter lock" in para, \
             "Section V-E lists the rivals; the interpreter lock is one and must be named"
@@ -4691,7 +4714,10 @@ class TestTheAbstractPromisesWhatItDelivers:
         # what most of them buy; it is still the last one.
         last = re.split(r"(?<=[.!?])\s+", flat.replace(r"\end{abstract}", "").strip())[-1]
         # 15 Oct 2026: shortened with the abstract to 200 words; still its last sentence.
-        assert last == "We give checks and measure what most buy.", \
+        # 17 Oct 2026, the author's sixteenth point (practical implications in the abstract): it
+        # names the checks' audience and calls them practical, and is still the last sentence.
+        assert last == ("We give benchmark authors and readers practical checks and measure what "
+                        "most buy."), \
             "nothing may follow the checks as if it were one of them"
 
     def test_the_checks_name_the_audience_they_are_for(self, main_tex):

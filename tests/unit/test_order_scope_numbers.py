@@ -99,6 +99,9 @@ class TestTheMacros:
         _write(str(tmp_path), "i_runs.csv", idle_rows())
         got = dict(osn.order_scope_macros(str(tmp_path)))
         assert (got["osBumpDefaultPct"], got["osBumpPollPct"]) == ("4.0", "6.0")
+        # 17 Oct 2026: the mode's place, the middle of the registered window (-250, -150) us,
+        # which Fig. 2's caption and Section VIII quote instead of a typed -200.
+        assert got["osBumpMidUs"] == "200"
 
     def test_a_setup_value_with_no_reading_is_none(self):
         assert osn._setup_value([{"x": ""}], "x") is None

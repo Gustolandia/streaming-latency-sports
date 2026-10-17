@@ -1,4 +1,4 @@
-# Super-Precise Latency: How CPU Threading Affects High-Precision Latency, and an Industry-Wide Audit
+# Super-Precise Latency: How CPU Threading Distorts Benchmarks, an Industry-Wide Audit, and How to Fix It
 
 *How a thread's wait for a processor core distorts sub-millisecond broker latencies, the laws that govern it, what the industry's benchmark tools do with the result, and how to fix it.*
 
@@ -39,8 +39,8 @@
 
 > ## 🎯 Current target — the contribution
 >
-> **Paper:** [`paper.tex`](paper.tex) — *Super-Precise Latency: How CPU Threading Affects
-> High-Precision Latency, and an Industry-Wide Audit*. IEEE format (`IEEEtran`, journal),
+> **Paper:** [`paper.tex`](paper.tex) — *Super-Precise Latency: How CPU Threading Distorts
+> Benchmarks, an Industry-Wide Audit, and How to Fix It*. IEEE format (`IEEEtran`, journal),
 > targeting **IEEE Transactions on Computers**, with its supplementary material in
 > [`supplement.tex`](supplement.tex) and the complete record of how the results were obtained in
 > [`postmortem.tex`](postmortem.tex), which is archived with the data and not submitted. Since
@@ -388,7 +388,7 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 
 ## 2. Abstract
 
-> **Title:** *Super-Precise Latency: How CPU Threading Affects High-Precision Latency, and an Industry-Wide Audit*
+> **Title:** *Super-Precise Latency: How CPU Threading Distorts Benchmarks, an Industry-Wide Audit, and How to Fix It*
 > **Target:** IEEE Transactions on Computers (`IEEEtran`, journal, `paper.tex`)
 > **Keywords:** Apache Kafka; benchmark auditing; CPU scheduling; latency benchmarking; message brokers; multithreading; Redis Streams; timestamp resolution.
 
@@ -1117,7 +1117,7 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 ```bibtex
 @article{ricou2026interval,
   author  = {Ricou, Gustavo Pedro and Duvignau, Romaric},
-  title   = {{Super-Precise Latency}: How CPU Threading Affects High-Precision Latency, and an Industry-Wide Audit},
+  title   = {{Super-Precise Latency}: How CPU Threading Distorts Benchmarks, an Industry-Wide Audit, and How to Fix It},
   year    = {2026},
   note    = {Manuscript targeting IEEE Transactions on Computers;
              code and data archived at \url{https://doi.org/10.5281/zenodo.21650031}}
@@ -1152,6 +1152,34 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 ---
 
 ## 16. Changelog
+
+### 17 Oct 2026 — the author's sixteen presentation points applied (not yet deposited)
+**Title and abstract.** Retitled *Super-Precise Latency: How CPU Threading Distorts Benchmarks, an
+Industry-Wide Audit, and How to Fix It*. The abstract now states what the late reading costs (read
+as a latency, the difference understates the end-to-end latency several-fold and distorts broker
+comparisons) and ends on the practical checks; 197 words, no digits, no tool names. **Opening.**
+A paragraph on the stakes, rooted in the wider literature: Dean and Barroso's tail at scale,
+Barroso et al.'s killer microseconds, Mytkowicz et al. on wrong data from sound-looking
+experiments, and Baker's Nature survey on reproducibility, each checked against Crossref; four
+references nothing else needed made room, so the paper stays at 45. **First half, positive.** Each
+result in Sections I to IV is stated as the scope in which it holds (L9-2b: the registered
+prediction held on four of six pair and broker combinations); every verdict and limit (L9-2b's,
+K-d, the fitted shape, Redis's untraced mode near -200 us, placement's untested opposite
+directions) is stated whole in Section VIII, where both referees asked for limits. **A graph of
+the fix's benefit (Fig. 6, new):** freeze 40's runs, by broker, idle, loaded and loaded at
+real-time priority: the tail of the end-to-end latency grows 4.2- to 4.7-fold under load while the
+kernel-timed latency holds level (`scripts/make_result_figures.py build_fix_benefit`, tested). To
+hold 12 pages, Table III's and Table IV's longest cells, Section V-B, VI, VII and VIII lost words
+that repeated a table, a figure or another section, checked item by item against both v9 reports.
+**A last read** of the day's changes against both reports, and a clarity read, put back what the
+trims had taken: contribution 4's one pair of machines and its margin (B M3, B m30), the sockets'
+run-level interval (A 8.5, B S6), Redis's reply-order clause (A M1), the trace's pooling in IV-B
+(A m16), kernel bypass (B M3), "tested nothing" (A m21), the freeze-39 bands with their
+intervals, the failed tenfold prediction stated as a failure, and the better-clock paragraph's
+residue; no benchmark but our own first one is said to time from the acknowledgment. **The
+pipeline:** the mode near -200 us is emitted from block I's registered window
+(`order_scope_numbers.idle_macros`, `osBumpMidUs`), not typed. The five sentences over fifty words
+were split, so the median sentence is 22 words. Paper 12 pages, supplement 30, postmortem 82.
 
 ### 16 Oct 2026 — both reviews of version 9 read again, item by item, against the text (not yet deposited)
 **A second reading.** Read against the final text, ten of referee A's items and eight of B's had

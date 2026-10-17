@@ -1,5 +1,5 @@
-% Supplementary material for "Super-Precise Latency: How CPU Threading Affects High-Precision
-% Latency, and an Industry-Wide Audit" (IEEE Transactions on Computers submission). This is the journal supplement: the
+% Supplementary material for "Super-Precise Latency: How CPU Threading Distorts Benchmarks, an
+% Industry-Wide Audit, and How to Fix It" (IEEE Transactions on Computers submission). This is the journal supplement: the
 % evidence behind each section of the paper, organized by the paper's sections. The complete
 % record of how the results were obtained -- the chronology, every withdrawn result, the law
 % campaign's run-by-run log -- is a separate document, postmortem.tex, archived with the data.
@@ -62,7 +62,7 @@
 % Title, byline and running head name the paper and are checked against paper.tex by
 % tests/unit/test_front_matter_agrees.py.
 \title{Supplementary Material for ``Super-Precise Latency: How CPU Threading\\
-Affects High-Precision Latency, and an Industry-Wide Audit''}
+Distorts Benchmarks, an Industry-Wide Audit, and How to Fix It''}
 \author{Gustavo~Pedro~Ricou~and~Romaric~Duvignau%
 \thanks{G.~P.~Ricou is with the School of Computer Science and Statistics, Trinity College
 Dublin, Dublin~2, Ireland. E-mail: pedrorig@tcd.ie.}%
@@ -1314,7 +1314,7 @@ while \redis{}'s rose $\osLadderRedisRisePct\%$, in the captures as in the socke
 rise in the mean of $D$, for a cause we have not traced (L-b). At $\osTopRate$ a second
 $\osPullTopLoPct$--$\osPullTopHiPct\%$ of messages carried the flag, and their kernel-timed
 latency was $\osPullExtraLoUs$--$\osPullExtraHiUs\,\mu$s longer than the others'. Keeping idle processors
-spinning did not shrink \redis{}'s mode of values near $-200\,\mu$s on that pair
+spinning did not shrink \redis{}'s mode of values near $-\osBumpMidUs\,\mu$s on that pair
 ($\osBumpDefaultPct\%$ of its values below zero on the stock boot, $\osBumpPollPct\%$ with
 \texttt{idle=poll}), so there it is not the wake of an idle processor (I). In the paper's
 Fig.~\ref{P-fig:twoways}, from the Oracle runs, the same mode holds a far larger share of

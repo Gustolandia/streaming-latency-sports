@@ -39,7 +39,7 @@ date-released: "2026-09-29"
 # was discarded at parse time and "Cite this repository" emitted a scaffolding version instead.
 preferred-citation:
   type: article
-  title: "Super-Precise Latency: How CPU Threading Affects High-Precision Latency, and an Industry-Wide Audit"
+  title: "Super-Precise Latency: How CPU Threading Distorts Benchmarks, an Industry-Wide Audit, and How to Fix It"
   authors:
     - family-names: "Ricou"
       given-names: "Gustavo Pedro"

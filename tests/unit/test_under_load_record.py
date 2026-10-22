@@ -141,8 +141,11 @@ def test_every_run_takes_every_instrument_and_the_setups_the_table_names():
             if rate in ul.UPPER_RATES:
                 assert {(s["load_pct"], bool(s.get("priority"))) for s in mine} == {
                     (0, False), (LOADED, False), (LOADED, True)}, (name, backend)
-                # Each loaded setup's duty is frozen from pilot round d before any judged run.
-                assert all("duty_pct" not in s and "load_blocks_s" not in s for s in mine)
+                # D46-11: each loaded setup's duty, frozen from pilot round d before any judged
+                # run, is the duty its passing pilot run used; idle setups name none.
+                assert all("load_blocks_s" not in s for s in mine)
+                assert all(s.get("duty_pct") == ROUND_D_DUTY.get("UP" + s["id"][1:])
+                           for s in mine), (name, backend)
             else:
                 assert [s["id"] for s in mine] == ["U50-%s-l0" % backend,
                                                    "U50-%s-l88-blocks" % backend]
@@ -150,12 +153,35 @@ def test_every_run_takes_every_instrument_and_the_setups_the_table_names():
                 assert "duty_pct" not in mine[0] and mine[0]["load_pct"] == 0
 
 
+def round_d_duties():
+    """{pilot setup: the duty its passing run used}, from pilot round d's reading (upd_runs.csv),
+    for the setups that ran a load."""
+    import csv
+    with open(HERE / "upd_runs.csv", encoding="utf-8", newline="") as fh:
+        return {r["setup"]: int(float(r["duty_pct"])) for r in csv.DictReader(fh)
+                if r["duty_pct"]}
+
+
+ROUND_D_DUTY = round_d_duties()
+
+
 def as_judged(pilot_setup):
-    """A round-d pilot setup as the judged block runs it: its id judged, and without the second
-    correction the pilot uses to find each loaded setup's duty."""
+    """A round-d pilot setup as the judged block runs it: its id judged, and, where it ran a load
+    at 500 or 2,000 messages a second, at the duty it found rather than with the second
+    correction that found it (D46-11)."""
     s = dict(pilot_setup, id="U" + pilot_setup["id"][2:])
-    s.pop("load_recorrect", None)
+    if s.pop("load_recorrect", None):
+        s["duty_pct"] = ROUND_D_DUTY[pilot_setup["id"]]
     return s
+
+
+def test_round_d_froze_every_loaded_setups_duty():
+    """Pilot round d's reading names a duty for every loaded setup, the 50 a second blocks at the
+    duty they were given, and every one within stress-ng's whole percentages."""
+    loaded = {s["id"] for f in FOURTH.values() for s in design(f)["setups"] if s["load_pct"]}
+    assert set(ROUND_D_DUTY) == loaded
+    assert all(1 <= d <= 100 for d in ROUND_D_DUTY.values())
+    assert {ROUND_D_DUTY[i] for i in loaded if ul.in_blocks(i)} == {BLOCKS["duty_pct"]}
 
 
 def test_round_d_is_the_judged_block_once_with_the_duty_found_in_the_run():

@@ -141,7 +141,60 @@ amends the block and changes no margin. In brief:
 - **Floor**: the fixed delay of a pair of connections.
 - **Duty**: the share of time stress-ng is asked to compute.
 
-**Pilot round d** (`up2000d`, `up500d`, `up50d`, and the collector runs `ug2000`) runs next. It finds
-each loaded setup's duty and gives the rounds by the same rule. Before any judged run, the record
-here states the duties, the rounds, the pilot's values of U-a's real-time clause and of U-d, and
-whether the pauses were the collector's.
+**Pilot round d** (22 October, from 17:18 UTC; `up2000d`, `up500d`, `up50d`, and the collector runs
+`ug2000`). Instruments only, never judged. It ran under version 46 after the push that made it public
+(`a4bfe285`), each campaign primed on both brokers first. All 18 runs passed the integrity rule. One
+attempt failed it: Kafka at 70% load at 500 a second, where the producer's lateness spread 286 ms
+between its 1st and 99th percentiles, about half a second of sends held back once. Its repeat passed
+at 0.02 ms, and the failed attempt is kept and described. Read with `scripts/under_load.py read
+--pilot` into [`upd_runs.csv`](upd_runs.csv), [`upd_tails.csv`](upd_tails.csv) and
+[`upd_attempts.csv`](upd_attempts.csv):
+- **Instruments.** Every timed message is split, and found in the broker's capture and in the card's,
+  in all 16 passing runs. No capture dropped a packet, and the sockets agreed with the captures
+  within 1.2-3.0 µs at the median.
+- **The load.** The loads held at 67.2-70.2%.
+- **The producer.** It ran at real-time priority in every setup: every thread of the Python
+  producer at SCHED_FIFO 80, and the consumer at SCHED_OTHER except in the real-time setups, as
+  `run_facts_clients.json` records. Its lateness spread was at most 0.54 ms in every passing run,
+  against 108-272 ms for Redis under load in freeze 42's pilot.
+- **The collectors.** Off, with no collection in any run.
+- **The consumer thread's own counters.** Under load at normal priority, 27-47% of its turnaround
+  time was spent waiting for a core; at real-time priority, 0.02-0.11%.
+- **The 50-a-second blocks.** 86.7% and 87.6% while on, and 0.03% and 0.06% while off.
+
+**Stated before any judged run (D46-11).**
+- **Each loaded setup's frozen duty**, the duty its passing pilot run used with the second
+  correction, now `duty_pct` in [`u2000_design.json`](u2000_design.json) and
+  [`u500_design.json`](u500_design.json):
+
+  | Rate | Kafka, normal | Kafka, real-time | Redis, normal | Redis, real-time |
+  |---|---|---|---|---|
+  | 2,000 msg/s | 75 | 77 | 75 | 75 |
+  | 500 msg/s | 71 | 73 | 71 | 72 |
+
+  The 50-a-second blocks keep their duty of 88, which held.
+- **The rounds: four.** `scripts/under_load_power.py --pilot-table upd_runs.csv`, 20,000 made-up
+  blocks per scenario.
+  - At the pilot's effects, the clauses confirm, each in all four cells at once: U-a's growth
+    clause in 100%, its real-time clause in 100%, U-b in 98.6% and U-c in 99.6% of blocks, against
+    the rule's 80%.
+  - U-d does not clear its margin in every cell at the pilot's means, so it rests on the floor of
+    four: its power is 22%.
+  - With the load's excess over idle halved: U-a 100% and 97.1%, U-b 53.9%, U-c 92.4%, U-d 2.2%.
+- **The pilot's values of U-a's real-time clause and of U-d.**
+  - U-a's real-time clause: the turnaround's 99th percentile at real-time priority over its value at
+    normal priority, 0.13 (Kafka, 2,000), 0.21 (Redis, 2,000), 0.21 (Kafka, 500) and 0.11 (Redis,
+    500).
+  - U-d: `W_so`'s 99th percentile at real-time priority over its value at normal priority, 0.19,
+    0.58, 0.24 and 0.22. At Redis's 2,000 it is above U-d's margin of at most 0.5.
+- **The pauses were the collector's.**
+  - In the two runs that kept it on and logged it, each consumer made six turnarounds over 10 ms
+    (the longest 58.4 and 73.2 ms), and five of each six fell on a logged collection, whose longest
+    full collections took 57.6 and 72.7 ms.
+  - In round d's idle runs at the same rate with the collector off, there was no turnaround over
+    10 ms and no collection.
+  - In freeze 42's, with the collector on, there were five, of up to 45 and 58 ms.
+- **The failure rules.** None fired:
+  - the lateness rule failed one attempt, and its repeat passed, so no rate failed it at 70%;
+  - the blocks held 88%;
+  - every client ran with its collector off.

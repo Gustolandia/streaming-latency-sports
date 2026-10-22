@@ -2529,22 +2529,25 @@ def _r1_runner(tmp_path, name, **switches):
     start = first + run.split(first, 1)[1].split("  chronyc -c tracking", 1)[0]
     head = '  if [ -n "$recv_full" ]; then'
     stop = head + run.split(head, 1)[1].split("\n  fi\n", 1)[0] + "\n  fi\n"
-    for head in ('  if [ -n "$hw_full" ]; then', '  if [ -n "$send_full" ]; then'):
+    for head in ('  if [ -n "$hw_full" ]; then', '  if [ -n "$send_full" ]; then',
+                 '  if [ -n "$broker_full" ]; then'):
         stop += head + run.split(head, 1)[1].split("\n  fi\n", 1)[0] + "\n  fi\n"
     run_dir, calls = tmp_path / name, tmp_path / (name + "_calls.txt")
     run_dir.mkdir()
     script = "\n".join([
         # ethtool, run through sudo, answers with the card's clock where FAKE_PHC names one, and
-        # ip with the links FAKE_LINK lists.
+        # ip with the links FAKE_LINK lists. What the broker is asked over ssh is written down too.
         'sudo () { echo "sudo $*" >> "$CALLS";'
         ' [ "$1" != ethtool ] || echo "PTP Hardware Clock: ${FAKE_PHC:-none}"; }',
+        'remote_broker () { echo "remote_broker $*" >> "$CALLS"; }',
         'ip () { printf "%s\\n" "${FAKE_LINK:-}"; }', "sleep () { :; }", "ps () { return 1; }",
         "r1 () {", '  local wrap_sched=""', start,
         '  echo "consumer=$consumer_wrap"', '  echo "producer=$wrap_sched"', stop, "}", "r1", ""])
     env = {"CALLS": calls.as_posix(), "RUN_DIR": run_dir.as_posix(), "BROKER_PRIV": "10.9.9.9",
            "DRIVER_PRIV": "10.8.8.8", "RECEIVER_IP": "10.7.7.7", "ME": "tester", "PRIORITY": "",
            "CONSUMER_PRIORITY": "", "RECV_CAPTURE": "", "SEND_CAPTURE": "", "HW_CAPTURE": "",
-           "SEND_CAPTURE_BOTH": "", "CAPTURE_BUFFER": ""}
+           "SEND_CAPTURE_BOTH": "", "CAPTURE_BUFFER": "", "BROKER_CAPTURE": "",
+           "BACKEND": "kafka", "KAFKA_BOOTSTRAP": "10.9.9.9:19092", "REDIS_PORT": "6379"}
     env.update(switches)
     said = bash(["-c", script], extra_env=env, capture_output=True, text=True, check=True).stdout
     handed = dict(line.split("=", 1) for line in said.splitlines())
@@ -3395,3 +3398,60 @@ def test_a_command_job_can_run_a_campaign_at_another_rate(tmp_path):
                        % (job, out, line))
     assert said == "rate=500 duration=70 warmup=20 queue=runs/azure/queues/l500.csv"
     assert _queue_call(tmp_path, 'field "%s" boot' % job) == "idlepoll"
+
+
+# --- Freeze 42 (22 Oct 2026): the consumer's turnaround where load and rate bite together
+# (docs/results/under_load/DESIGN.md). What block U asks of the kit beyond freeze 41's: the
+# broker's own capture of its port.
+
+def test_freeze_42s_broker_capture_reaches_the_runner_and_a_row_without_it_sets_none():
+    """A row's broker_capture becomes BROKER_CAPTURE; a row of any earlier block names none, and
+    its run is launched exactly as before."""
+    assert _row_reader_says({"broker_capture": True})["BROKER_CAPTURE"] == "1"
+    assert _row_reader_says({"so_timestamps": "sched", "so_journal": True})["BROKER_CAPTURE"] == ""
+
+
+@needs_bash
+def test_freeze_42s_broker_capture_is_its_own_port_stopped_by_its_id_and_copied_into_the_run(
+        tmp_path):
+    """Block U splits each message's kernel-timed latency at the broker, so the broker captures
+    its own port, both directions, at full length and to the nanosecond, with the larger buffer.
+    It is stopped by its own id and waited for before the capture and tcpdump's count of drops are
+    copied into the run's folder, and the broker's copies are removed. Redis's port for Redis, and
+    nothing asked of the broker where the setup asks for no capture."""
+    _, calls = _r1_runner(tmp_path, "kafka", BROKER_CAPTURE="1")
+    remote = [c for c in calls if c.startswith("remote_broker ")]
+    assert remote[0] == (
+        "remote_broker sudo sh -c 'kill -INT $(cat /tmp/sbl_bfull.pid 2>/dev/null) 2>/dev/null; "
+        "rm -f /tmp/sbl_bfull.pcap /tmp/sbl_bfull.err; nohup tcpdump -i eth0 -s 0 "
+        "--time-stamp-precision=nano -B 32768 -w /tmp/sbl_bfull.pcap tcp port 19092 > "
+        "/tmp/sbl_bfull.err 2>&1 & echo $! > /tmp/sbl_bfull.pid'")
+    assert remote[1].startswith("remote_broker sudo kill -INT $(cat /tmp/sbl_bfull.pid)")
+    assert "sudo kill -0 $(cat /tmp/sbl_bfull.pid) 2>/dev/null || break" in remote[1]
+    assert remote[2:] == [
+        "remote_broker sudo cat /tmp/sbl_bfull.pcap",
+        "remote_broker sudo cat /tmp/sbl_bfull.err; sudo rm -f /tmp/sbl_bfull.pcap "
+        "/tmp/sbl_bfull.err /tmp/sbl_bfull.pid"]
+    assert (tmp_path / "kafka" / "broker_full.pcap").exists()
+    assert (tmp_path / "kafka" / "broker_full.err").exists()
+    _, calls = _r1_runner(tmp_path, "redis", BROKER_CAPTURE="1", BACKEND="redis")
+    assert "tcp port 6379 >" in [c for c in calls if c.startswith("remote_broker ")][0]
+    _, calls = _r1_runner(tmp_path, "none")
+    assert not [c for c in calls if c.startswith("remote_broker ")]
+
+
+@needs_bash
+def test_freeze_42s_card_capture_takes_the_larger_buffer_where_the_setup_does(tmp_path):
+    """Block U runs the card's capture on a loaded driver at 2,000 messages a second, where a
+    dropped packet would leave every later byte of its stream unread, so it takes the 32 MiB
+    buffer wherever the setup's other captures do, after the file name, so that the patterns that
+    stop it still find it. Freeze 39's setups, which ask for no larger buffer, capture as before."""
+    _, calls = _r1_runner(tmp_path, "buffered", HW_CAPTURE="1", SEND_CAPTURE="1",
+                          SEND_CAPTURE_BOTH="1", FAKE_LINK=LINKS, FAKE_PHC="1")
+    run = (tmp_path / "buffered").as_posix()
+    card = [c for c in calls if "adapter_unsynced" in c and "pkill" not in c]
+    assert card == ["sudo tcpdump -i enP58460s1 -j adapter_unsynced -s 0 --time-stamp-precision="
+                    "nano -w %s/receiver_hw.pcap -B 32768 src host 10.9.9.9 and dst host 10.7.7.7"
+                    % run]
+    stops = [c.split(" -f ", 1)[1] for c in calls if "pkill" in c and "adapter_unsynced" in c]
+    assert stops and all(re.search(pattern, card[0]) for pattern in stops)

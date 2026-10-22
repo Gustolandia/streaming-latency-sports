@@ -1,0 +1,120 @@
+"""Freeze 42's record, docs/results/under_load, against the design it was fixed by.
+
+The design was fingerprinted before any pilot or judged run of block U (22 Oct 2026). Its
+fingerprint is checked here, so an edit made after the runs began fails the suite instead of
+passing unseen, and every design file the pair runs from must be one the design's table counts.
+"""
+import hashlib
+import json
+import re
+import sys
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent.parent
+HERE = REPO / "docs" / "results" / "under_load"
+sys.path.insert(0, str(REPO / "scripts"))
+
+import under_load as ul  # noqa: E402
+
+#: The first characters of the fingerprint written into DESIGN.sha256 before the pilot.
+FINGERPRINT = "b92ef54c"
+
+
+def test_the_design_is_the_one_fingerprinted_before_the_runs():
+    recorded = (HERE / "DESIGN.sha256").read_text(encoding="utf-8").split()[0]
+    assert hashlib.sha256((HERE / "DESIGN.md").read_bytes()).hexdigest() == recorded
+    assert recorded.startswith(FINGERPRINT)
+
+
+def test_the_design_checks_out_byte_for_byte():
+    """A Windows checkout converts line endings unless git is told not to, and a converted copy
+    would no longer match its fingerprint."""
+    rules = (REPO / ".gitattributes").read_text(encoding="utf-8").splitlines()
+    assert "docs/results/under_load/DESIGN.md -text" in rules
+
+
+def design(name):
+    return json.loads((HERE / name).read_text(encoding="utf-8"))
+
+
+JUDGED = {2000: "u2000_design.json", 500: "u500_design.json", 50: "u50_design.json"}
+PILOTS = {2000: "up2000_design.json", 500: "up500_design.json", 50: "up50_design.json"}
+
+
+def test_the_block_runs_what_the_design_table_counts():
+    """A block one campaign short of its design went unnoticed for four days once (A4), so the
+    files the pair runs from are counted against the table the predictions were fixed with."""
+    table = {}
+    for line in (HERE / "DESIGN.md").read_text(encoding="utf-8").splitlines():
+        m = re.match(r"^\| ([\d,]+) msg/s, 70 s \(20 s warm-up\) \| .* \| (\d+) \|$", line)
+        if m:
+            table[int(m.group(1).replace(",", ""))] = int(m.group(2))
+    assert table == {2000: 24, 500: 24, 50: 16}
+    for rate, name in JUDGED.items():
+        d = design(name)
+        assert d["rounds"] == 4 and len(d["setups"]) * d["rounds"] == table[rate], name
+        assert "RATE=%d DURATION=70 WARMUP_S=20" % rate in d["about"], name
+    assert sorted(p.name for p in HERE.glob("*_design.json")) == sorted(
+        list(JUDGED.values()) + list(PILOTS.values()))
+
+
+def test_the_judge_reads_every_judged_setup_and_no_pilot():
+    for rate, name in JUDGED.items():
+        ids = [s["id"] for s in design(name)["setups"]]
+        assert len(set(ids)) == len(ids), name
+        assert all(ul.SETUP_ID.match(i) and ul.setup_parts(i)[0] == rate for i in ids), name
+        pilot = design(PILOTS[rate])
+        assert pilot["rounds"] == 1
+        assert [s["id"] for s in pilot["setups"]] == ["UP" + i[1:] for i in ids]
+        assert all(ul.PILOT_ID.match(s["id"]) and not ul.SETUP_ID.match(s["id"])
+                   for s in pilot["setups"])
+        strip = lambda s: {k: v for k, v in s.items() if k != "id"}  # noqa: E731
+        assert [strip(s) for s in pilot["setups"]] == [strip(s) for s in design(name)["setups"]]
+
+
+def test_every_run_takes_every_instrument_and_the_setups_the_table_names():
+    instruments = {"so_timestamps": "sched", "so_journal": True, "recv_capture": True,
+                   "send_capture": True, "send_capture_both": True, "hw_capture": True,
+                   "broker_capture": True, "slice_ns": 3000000, "delay_ms": 0}
+    for rate, name in JUDGED.items():
+        setups = design(name)["setups"]
+        for s in setups:
+            assert all(s.get(k) == v for k, v in instruments.items()), s["id"]
+            assert bool(s.get("priority")) == s["id"].endswith("-rt"), s["id"]
+        wanted = ({(0, False), (80, False), (80, True)} if rate in ul.UPPER_RATES
+                  else {(0, False), (88, False)})
+        for backend in ("kafka", "redis"):
+            assert {(s["load_pct"], bool(s.get("priority"))) for s in setups
+                    if s["backend"] == backend} == wanted, (name, backend)
+
+
+def test_the_freeze_is_fingerprinted_and_listed():
+    """The plan is checked against the fingerprints in its folder, as every freeze is, and the
+    freezes' own record lists it."""
+    folder = REPO / "freezes" / "42-experiment-plan"
+    names = []
+    for line in (folder / "SHA256SUMS").read_text(encoding="utf-8").splitlines():
+        digest, name = line.split()
+        assert hashlib.sha256((folder / name).read_bytes()).hexdigest() == digest, name
+        names.append(name)
+    assert sorted(names) == ["experiment_plan.pdf", "experiment_plan.tex"]
+    record = (REPO / "freezes" / "README.md").read_text(encoding="utf-8")
+    assert "[`42-experiment-plan/`](42-experiment-plan/) | 22 October 2026 |" in record
+
+
+def test_the_plan_says_what_the_design_says():
+    """The plan's rows for block U carry the design's numbers, read against the files the pair
+    runs from and the judge's own margins."""
+    plan = " ".join((REPO / "freezes" / "42-experiment-plan" / "experiment_plan.tex")
+                    .read_text(encoding="utf-8").split())
+    assert "Version 45, frozen on 22 October 2026" in plan
+    assert "Sixteen setups, four rounds, 64 runs" in plan
+    assert sum(len(design(f)["setups"]) * design(f)["rounds"] for f in JUDGED.values()) == 64
+    assert "at least 1.5 times its value idle" in plan and ul.GROWTH == 1.5
+    assert "at most half its value at normal priority" in plan and ul.HALF == 0.5
+    assert "where it is at least 0.9" in plan and ul.ONLY_PATH == 0.9
+    assert "holds at least half of it" in plan and ul.NAMES_A_TERM == 0.5
+    assert "pooled 99th percentile of $F$" in plan and ul.TAIL_PERCENTILE == 99
+    for tag in range(1, 10):
+        assert "D45-%d &" % tag in plan and "\\chg{D45-%d}" % tag in plan, tag
+    assert "\\chg{D44-" not in plan, "version 44's tags are grey once version 45 is frozen"

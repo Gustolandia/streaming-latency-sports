@@ -1153,6 +1153,27 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 
 ## 16. Changelog
 
+### 22 Oct 2026 — freeze 42 registered: the consumer's turnaround, where load and rate bite together (not yet deposited)
+**What prompted it.** Read after freeze 41's verdicts, block L's runs showed how a pull consumer
+lets its own thread's time back into the kernel-timed latency: a message the broker holds while no
+request is waiting leaves only with the next request, which leaves after the consumer's thread
+turns around. That turnaround can be timed on the consumer's own socket, with no broker time in it.
+Freeze 41's load pilots, never judged, showed its tail growing to milliseconds under load, and
+freeze 41 had judged the fix under load at 50 messages a second only. **What it registers.** Block U
+on the second x86 pair ([`docs/results/under_load`](docs/results/under_load/README.md), plan
+version 45 in `freezes/42-experiment-plan`): Kafka and Redis at 500 and 2,000 messages a second,
+idle, at 80% load and at 80% load at real-time priority, and at 50 idle and at 88%, 64 runs, every
+run with both journals, both client captures, the network card's receive timestamps and, new, the
+broker's own capture of its port. Four predictions (U-a to U-d) and two decisions placing what the
+turnaround leaves (U-e, U-f), fingerprinted before the pilot. A check of the design against its
+judge, before the freeze, made every population and rule explicit and corrected five of the
+figures read beforehand. **The pipeline first:** `scripts/under_load.py` reads and judges
+the block and `scripts/under_load_power.py` sets its rounds (both at 100% branch coverage); the
+kit gains the `broker_capture` switch, and the card's capture the larger buffer
+(`cloud/azure/campaign.sh`, with their kit tests); and `tests/unit/test_under_load_record.py`
+holds the design to its fingerprint and the queues to its table. No paper text changes until the
+block is read.
+
 ### 17 Oct 2026 — the author's sixteen presentation points applied (not yet deposited)
 **Title and abstract.** Retitled *Super-Precise Latency: How CPU Threading Distorts Benchmarks, an
 Industry-Wide Audit, and How to Fix It*. The abstract now states what the late reading costs (read

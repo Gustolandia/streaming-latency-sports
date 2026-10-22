@@ -1,0 +1,93 @@
+{
+  "about": "Freeze 42, block U, at 2,000 messages a second: idle, at 80% load, and at 80% load with the producer and the consumer at real-time priority, on each broker. Run with RATE=2000 DURATION=70 WARMUP_S=20. Every run takes the socket timestamps at the device queue, both clients' journals, the receiver's capture and both directions of the sender's, the card's receive capture and the broker's own capture (docs/results/under_load/DESIGN.md). Queue: python3 scripts/run_queue.py make --design docs/results/under_load/u2000_design.json --out runs/azure/queues/u2000.csv",
+  "rounds": 4,
+  "seed": 20261101,
+  "setups": [
+    {
+      "id": "U2000-kafka-l0",
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "recv_capture": true,
+      "send_capture": true,
+      "send_capture_both": true,
+      "hw_capture": true,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "broker_capture": true,
+      "backend": "kafka",
+      "load_pct": 0
+    },
+    {
+      "id": "U2000-kafka-l80",
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "recv_capture": true,
+      "send_capture": true,
+      "send_capture_both": true,
+      "hw_capture": true,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "broker_capture": true,
+      "backend": "kafka",
+      "load_pct": 80
+    },
+    {
+      "id": "U2000-kafka-l80-rt",
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "recv_capture": true,
+      "send_capture": true,
+      "send_capture_both": true,
+      "hw_capture": true,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "broker_capture": true,
+      "backend": "kafka",
+      "load_pct": 80,
+      "priority": true
+    },
+    {
+      "id": "U2000-redis-l0",
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "recv_capture": true,
+      "send_capture": true,
+      "send_capture_both": true,
+      "hw_capture": true,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "broker_capture": true,
+      "backend": "redis",
+      "load_pct": 0
+    },
+    {
+      "id": "U2000-redis-l80",
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "recv_capture": true,
+      "send_capture": true,
+      "send_capture_both": true,
+      "hw_capture": true,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "broker_capture": true,
+      "backend": "redis",
+      "load_pct": 80
+    },
+    {
+      "id": "U2000-redis-l80-rt",
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "recv_capture": true,
+      "send_capture": true,
+      "send_capture_both": true,
+      "hw_capture": true,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "broker_capture": true,
+      "backend": "redis",
+      "load_pct": 80,
+      "priority": true
+    }
+  ]
+}

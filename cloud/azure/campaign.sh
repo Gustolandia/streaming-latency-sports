@@ -32,6 +32,7 @@
 #                batches of 200 (the paper's own settings); the clock's offset, the CPU counters
 #                and the TCP counters of the driver, the receiver's namespace and the broker are
 #                logged just before and just after it, and the broker's log for the run is kept;
+#                freeze 42: where the setup asks, the broker captures its own port meanwhile;
 #   6. checks    scripts/run_integrity.py, on this machine, as soon as the trial ends: the run
 #                counts, is repeated, or stops the campaign, and integrity.json says why;
 #   7. record    everything lands in the run's own directory, runs/law_<queue>_<key>, with
@@ -471,6 +472,9 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   # that clock sampled against the system's twice a second, so that each stamp can be put on the
   # system's clock. What the card saw first and the kernel stamped later is the kernel's own delay,
   # the part of the host the kernel's timestamp keeps.
+  # Freeze 42 (22 Oct 2026): where the setup takes the larger buffer, the card's capture takes it
+  # too, after the file name as the others do: block U runs it on a loaded driver at 2,000 messages
+  # a second, and a packet dropped from a capture leaves every later byte of its stream unread.
   local hw_full="" hw_clock="" hw_dev=""
   if [ -n "$HW_CAPTURE" ]; then
     hw_dev=$(ip -br link | awk '$4 ~ /SLAVE/ {print $1; exit}')
@@ -479,13 +483,25 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     echo "${hw_dev:-none} ${hw_clock:-none}" > "$RUN_DIR/hw_device.txt"
     if [ -n "$hw_clock" ]; then
       sudo tcpdump -i "$hw_dev" -j adapter_unsynced -s 0 --time-stamp-precision=nano \
-        -w "$RUN_DIR/receiver_hw.pcap" src host "$BROKER_PRIV" and dst host "$RECEIVER_IP" \
-        > "$RUN_DIR/receiver_hw.err" 2>&1 &
+        -w "$RUN_DIR/receiver_hw.pcap" "${capture_buffer[@]}" src host "$BROKER_PRIV" \
+        and dst host "$RECEIVER_IP" > "$RUN_DIR/receiver_hw.err" 2>&1 &
       hw_full=$!
       sudo python3 scripts/phc_offset.py --device "$hw_clock" --interval 0.5 \
         --out "$RUN_DIR/phc_offset.csv" > "$RUN_DIR/phc_offset.err" 2>&1 &
       sleep 2
     fi
+  fi
+  # Freeze 42 (22 Oct 2026): the broker's own capture of its port, both directions, at full length
+  # and to the nanosecond, on the broker's clock: when each request reached the broker and when
+  # each answer left it, so that the broker's own time can be split from the client's without the
+  # two machines' clocks ever meeting. A capture a crashed run left behind is stopped by its own id
+  # first, so no two write one file; the larger buffer keeps the kernel from dropping packets.
+  local broker_full="" broker_port="${KAFKA_BOOTSTRAP##*:}"
+  [ "$BACKEND" = redis ] && broker_port="$REDIS_PORT"
+  if [ -n "$BROKER_CAPTURE" ]; then
+    remote_broker "sudo sh -c 'kill -INT \$(cat /tmp/sbl_bfull.pid 2>/dev/null) 2>/dev/null; rm -f /tmp/sbl_bfull.pcap /tmp/sbl_bfull.err; nohup tcpdump -i eth0 -s 0 --time-stamp-precision=nano -B 32768 -w /tmp/sbl_bfull.pcap tcp port $broker_port > /tmp/sbl_bfull.err 2>&1 & echo \$! > /tmp/sbl_bfull.pid'" \
+      > /dev/null 2>&1 && broker_full=1
+    sleep 2
   fi
   chronyc -c tracking > "$RUN_DIR/clock_before.txt" 2>/dev/null
   head -n 1 /proc/stat > "$RUN_DIR/stat_before.txt"
@@ -556,6 +572,15 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     for _ in $(seq 1 20); do ps -p "$send_full" > /dev/null || break; sleep 0.5; done
     sudo pkill -KILL -f "[t]cpdump -i eth0 -s 0 --time-stamp-precision=nano -w $RUN_DIR/sender_full.pcap" 2>/dev/null
     wait "$send_full" 2>/dev/null
+  fi
+  if [ -n "$broker_full" ]; then
+    # Stopped by its own id, then waited for, so that tcpdump has written its last packets and its
+    # count of drops before either file is copied back into the run's folder.
+    remote_broker "sudo kill -INT \$(cat /tmp/sbl_bfull.pid) 2>/dev/null; for _ in \$(seq 1 40); do sudo kill -0 \$(cat /tmp/sbl_bfull.pid) 2>/dev/null || break; sleep 0.5; done" \
+      > /dev/null 2>&1
+    remote_broker "sudo cat /tmp/sbl_bfull.pcap" > "$RUN_DIR/broker_full.pcap" 2>/dev/null
+    remote_broker "sudo cat /tmp/sbl_bfull.err; sudo rm -f /tmp/sbl_bfull.pcap /tmp/sbl_bfull.err /tmp/sbl_bfull.pid" \
+      > "$RUN_DIR/broker_full.err" 2>/dev/null
   fi
   if [ -n "$receiver_capture" ]; then
     # Stopped by its own command line, not through the sudo that started it: sudo does not relay
@@ -657,6 +682,8 @@ values = {
     "SEND_WORKERS": "" if p.get("send_workers") is None else str(p["send_workers"]),
     "SCHED_FEATURES": str(p.get("sched_features") or ""),
     "IDLE_POLL": "" if p.get("idle_poll") is None else ("1" if p["idle_poll"] else "0"),
+    # Freeze 42 (22 Oct 2026): the broker's own capture of its port, where the setup asks for it.
+    "BROKER_CAPTURE": "1" if p.get("broker_capture") else "",
     "TRACE": 1 if int(hashlib.sha256(row["key"].encode()).hexdigest(), 16) % 2 == 0 else 0,
     "HZ": round(1000 / tick) if tick else "",
 }
@@ -675,7 +702,7 @@ PY
   echo "$ROW" > "$RUN_DIR/queue_row.json"
   printf '{"lane": "%s", "profile": "%s", "driver": "%s", "commit": "%s"}\n' "$LANE" \
     "${AZ_PROFILE:-unknown}" "$(hostname)" "$(git rev-parse HEAD 2>/dev/null)" > "$RUN_DIR/lane.json"
-  log "run $KEY: $BACKEND, load $LOAD%, slice ${SLICE_NS:-kernel default}, delay $DELAY_MS ms${PRIORITY:+, go-first}${CONSUMER_PRIORITY:+, go-first consumer}${RECV_CAPTURE:+, receiver capture}${SEND_CAPTURE:+, sender capture}${HW_CAPTURE:+, card capture}${SO_STAMPS:+, socket timestamps ($SO_STAMPS)}${SO_JOURNAL:+, journal=$SO_JOURNAL}${SEND_CAPTURE_BOTH:+, both directions of the sender}${SEND_WORKERS:+, $SEND_WORKERS send workers}${SCHED_FEATURES:+, $SCHED_FEATURES}${IDLE_POLL:+, idle_poll=$IDLE_POLL}${CPUS:+, $CPUS CPUs online}"
+  log "run $KEY: $BACKEND, load $LOAD%, slice ${SLICE_NS:-kernel default}, delay $DELAY_MS ms${PRIORITY:+, go-first}${CONSUMER_PRIORITY:+, go-first consumer}${RECV_CAPTURE:+, receiver capture}${SEND_CAPTURE:+, sender capture}${HW_CAPTURE:+, card capture}${SO_STAMPS:+, socket timestamps ($SO_STAMPS)}${SO_JOURNAL:+, journal=$SO_JOURNAL}${SEND_CAPTURE_BOTH:+, both directions of the sender}${SEND_WORKERS:+, $SEND_WORKERS send workers}${SCHED_FEATURES:+, $SCHED_FEATURES}${IDLE_POLL:+, idle_poll=$IDLE_POLL}${BROKER_CAPTURE:+, broker capture}${CPUS:+, $CPUS CPUs online}"
   REASON=""
   STOP_REASON=""
   run_one

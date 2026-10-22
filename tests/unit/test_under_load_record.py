@@ -39,6 +39,9 @@ def design(name):
 
 JUDGED = {2000: "u2000_design.json", 500: "u500_design.json", 50: "u50_design.json"}
 PILOTS = {2000: "up2000_design.json", 500: "up500_design.json", 50: "up50_design.json"}
+#: The pilot's second round (22 Oct 2026): its first round held an 80% load at 69.1-76.3% at 2,000
+#: messages a second, so the loaded setups at both upper rates run again at 70% (D45-7).
+SECOND = {2000: "up2000b_design.json", 500: "up500b_design.json"}
 
 
 def test_the_block_runs_what_the_design_table_counts():
@@ -55,7 +58,7 @@ def test_the_block_runs_what_the_design_table_counts():
         assert d["rounds"] == 4 and len(d["setups"]) * d["rounds"] == table[rate], name
         assert "RATE=%d DURATION=70 WARMUP_S=20" % rate in d["about"], name
     assert sorted(p.name for p in HERE.glob("*_design.json")) == sorted(
-        list(JUDGED.values()) + list(PILOTS.values()))
+        list(JUDGED.values()) + list(PILOTS.values()) + list(SECOND.values()))
 
 
 def test_the_judge_reads_every_judged_setup_and_no_pilot():
@@ -70,6 +73,21 @@ def test_the_judge_reads_every_judged_setup_and_no_pilot():
                    for s in pilot["setups"])
         strip = lambda s: {k: v for k, v in s.items() if k != "id"}  # noqa: E731
         assert [strip(s) for s in pilot["setups"]] == [strip(s) for s in design(name)["setups"]]
+
+
+def test_the_pilots_second_round_is_the_first_rounds_loaded_setups_at_70():
+    for rate, name in SECOND.items():
+        second = design(name)
+        first = [s for s in design(PILOTS[rate])["setups"] if s["load_pct"]]
+        assert second["rounds"] == 1 and len(second["setups"]) == 4
+        assert [s["id"] for s in second["setups"]] == [s["id"].replace("-l80", "-l70")
+                                                       for s in first]
+        assert all(dict(s, load_pct=80, id=f["id"]) == f
+                   for s, f in zip(second["setups"], first))
+        assert {s["load_pct"] for s in second["setups"]} == {70}
+        assert all(ul.PILOT_ID.match(s["id"]) and not ul.SETUP_ID.match(s["id"])
+                   for s in second["setups"])
+        assert "RATE=%d DURATION=70 WARMUP_S=20" % rate in second["about"]
 
 
 def test_every_run_takes_every_instrument_and_the_setups_the_table_names():

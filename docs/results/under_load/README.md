@@ -67,5 +67,21 @@ python scripts/under_load.py judge --runs-table docs/results/under_load/u_runs.c
 
 ## Where it stands
 
-Registered on 22 October 2026. The pilot, its reading and the block's runs are recorded here as
-they happen.
+Registered on 22 October 2026 (pushed at 01:53 UTC). The pilot, its reading and the block's runs are
+recorded here as they happen.
+
+## The pilot
+
+Instruments only, never judged; the predictions do not change.
+
+**First round** (22 October, from 01:57 UTC, `up2000`, `up500`, `up50`). Every idle run passed the
+integrity rule, every capture reported no packet dropped, the card's clock was sampled through its
+own device, and the producer's journal was kept. An 80% load did not hold beside the clients and
+the driver's three captures at 2,000 messages a second: it measured 75.8% on Kafka at normal priority, 69.1%
+at real-time priority and 76.3% on Redis, whose producer also fell to 1,877 messages a second. The
+campaign stopped itself, by its guard, after those three attempts, before Redis's real-time setup.
+
+**Second round** (`up2000b`, `up500b`). As D45-7 provides, the loaded setups at both upper rates
+run again at 70%, just above the least load the first round measured, to find whether it holds
+within the integrity rule's 3 points at both rates and priorities and whether Redis's producer then
+keeps its rate.

@@ -99,4 +99,18 @@ run: where a setup asks (`load_recorrect`), the duty is corrected a second time,
 the trial and inside its warm-up, against the background load the machine then shows less the
 clients' own share, which is what the integrity rule reads (`cloud/azure/campaign.sh`,
 `recorrect_load`). The same eight setups run again at 70% with it. 75% is not tried: at 76% Redis's
-producer already fell behind its rate in the first round.
+producer already fell behind its rate in the first round. All eight passed: 69.7%, 67.5%, 70.0% and
+69.2% at 2,000 messages a second (Kafka and Redis, normal and real-time priority), 70.4%, 69.3%,
+69.5% and 70.3% at 500, the duty corrected to 70-77% and the send rate kept.
+
+**What the pilot read.** Read with `scripts/under_load.py read --pilot`, every passing run's timed
+messages were all found in the broker's capture and in the card's (100.0% in each of its 25
+passing runs), no capture dropped a packet, the split reached every timed message, and the
+sockets agreed with the captures within 1.2-3.0 µs at the median.
+
+**The decision, before any judged run (D45-7).** 80% did not hold; 70% held within the integrity
+rule's 3 points in every loaded setup at both upper rates once the duty is corrected with the
+clients running. So every load setup at 500 and 2,000 messages a second runs at 70% with
+`load_recorrect` (`u2000_design.json`, `u500_design.json`, their ids `-l70` and `-l70-rt`). The 50
+messages a second campaign keeps its 88% and its instruments, which held in the first round. The
+predictions, their margins and the table's run counts do not change.

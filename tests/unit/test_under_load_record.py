@@ -66,6 +66,17 @@ def test_the_block_runs_what_the_design_table_counts():
         + list(THIRD.values()))
 
 
+def as_decided(pilot_setup):
+    """A first-round pilot setup, run as the design was frozen, as the judged block runs it once
+    D45-7 has set the load: its id judged, and a loaded setup at an upper rate at LOADED with the
+    duty corrected a second time."""
+    s = dict(pilot_setup, id="U" + pilot_setup["id"][2:])
+    if s["load_pct"] and ul.setup_parts(s["id"])[0] in ul.UPPER_RATES:
+        s.update(id=s["id"].replace("-l80", "-l%d" % LOADED), load_pct=LOADED,
+                 load_recorrect=True)
+    return s
+
+
 def test_the_judge_reads_every_judged_setup_and_no_pilot():
     for rate, name in JUDGED.items():
         ids = [s["id"] for s in design(name)["setups"]]
@@ -73,11 +84,9 @@ def test_the_judge_reads_every_judged_setup_and_no_pilot():
         assert all(ul.SETUP_ID.match(i) and ul.setup_parts(i)[0] == rate for i in ids), name
         pilot = design(PILOTS[rate])
         assert pilot["rounds"] == 1
-        assert [s["id"] for s in pilot["setups"]] == ["UP" + i[1:] for i in ids]
         assert all(ul.PILOT_ID.match(s["id"]) and not ul.SETUP_ID.match(s["id"])
                    for s in pilot["setups"])
-        strip = lambda s: {k: v for k, v in s.items() if k != "id"}  # noqa: E731
-        assert [strip(s) for s in pilot["setups"]] == [strip(s) for s in design(name)["setups"]]
+        assert [as_decided(s) for s in pilot["setups"]] == design(name)["setups"], name
 
 
 def test_the_pilots_second_round_is_the_first_rounds_loaded_setups_at_70():
@@ -103,6 +112,14 @@ def test_the_pilots_third_round_is_the_second_with_the_running_correction():
         assert "RATE=%d DURATION=70 WARMUP_S=20" % rate in third["about"]
 
 
+#: The loaded setups' level at 500 and 2,000 messages a second. The design's table says 80%; the
+#: pilot held it at 69.1-76.3% at 2,000 a second, and D45-7 then gives every load setup at both
+#: upper rates the highest load the pilot held within the rule's 3 points at both rates: 70%, with
+#: the duty corrected a second time once the clients run (load_recorrect), held at 67.5-70.4% in
+#: all eight. Recorded in README.md before any judged run.
+LOADED = 70
+
+
 def test_every_run_takes_every_instrument_and_the_setups_the_table_names():
     instruments = {"so_timestamps": "sched", "so_journal": True, "recv_capture": True,
                    "send_capture": True, "send_capture_both": True, "hw_capture": True,
@@ -112,8 +129,11 @@ def test_every_run_takes_every_instrument_and_the_setups_the_table_names():
         for s in setups:
             assert all(s.get(k) == v for k, v in instruments.items()), s["id"]
             assert bool(s.get("priority")) == s["id"].endswith("-rt"), s["id"]
-        wanted = ({(0, False), (80, False), (80, True)} if rate in ul.UPPER_RATES
+        wanted = ({(0, False), (LOADED, False), (LOADED, True)} if rate in ul.UPPER_RATES
                   else {(0, False), (88, False)})
+        for s in setups:
+            assert bool(s.get("load_recorrect")) == (rate in ul.UPPER_RATES
+                                                     and bool(s["load_pct"])), s["id"]
         for backend in ("kafka", "redis"):
             assert {(s["load_pct"], bool(s.get("priority"))) for s in setups
                     if s["backend"] == backend} == wanted, (name, backend)

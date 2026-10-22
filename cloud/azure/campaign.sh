@@ -103,6 +103,38 @@ features_back () {
   sudo python3 scripts/sched_settings.py set-feature RUN_TO_PARITY > "$1" 2>&1 \
     || log "RUN_TO_PARITY could not be put back on; the next run's settings check will say so"
 }
+#: Freeze 42 (22 Oct 2026): the duty corrected a second time, once, with the clients running.
+#: The first correction is made before the clients start. Block U's pilot found that clients
+#: sending 2,000 messages a second, at real-time priority above all, cost stress-ng more of its
+#: duty than they use themselves: 70% asked held 63.3-64.5% with the machine 78-86% busy, so the
+#: duty cycle lost the time, not the machine its room. Where the setup asks, this waits ten
+#: seconds into the trial, inside its warm-up and before any message is counted, reads the
+#: background load the machine shows less the clients' own share (what the integrity rule reads),
+#: corrects the duty against it and restarts stress-ng there. What it did is written beside the
+#: run. Run in the background by the run that asks for it, which stops it if the trial ends first.
+recorrect_load () {
+  local run_dir="$1" want="$2" duty="$3" cpus="$4" shown adjusted
+  sleep "${RECORRECT_AFTER_S:-10}"
+  shown=$(python3 -c 'import csv, statistics, sys
+rows = list(csv.DictReader(open(sys.argv[1], newline="", encoding="utf-8")))
+bg = []
+for r in rows[-6:]:
+    try:
+        bg.append(float(r["rho"]) - float(r.get("rho_clients") or 0))
+    except (KeyError, TypeError, ValueError):
+        pass
+print("%.2f" % (100 * statistics.fmean(bg)) if bg else "")' "$run_dir/utilisation.csv" 2>/dev/null)
+  [ -n "$shown" ] || return 0
+  adjusted=$(python3 -c 'import sys
+want, shown, duty = (float(x) for x in sys.argv[1:4])
+print("%d" % round(min(100.0, max(1.0, duty - (shown - want)))))' "$want" "$shown" "$duty")
+  printf '{"designed_pct": %s, "shown_running_pct": %s, "duty_before_pct": %s, "duty_used_pct": %s}\n' \
+    "$want" "$shown" "$duty" "$adjusted" > "$run_dir/load_recorrection.json"
+  if [ "$adjusted" != "$duty" ]; then
+    pkill -9 -x stress-ng 2>/dev/null
+    stress-ng --cpu "$cpus" --cpu-load "$adjusted" --timeout 3600s >/dev/null 2>&1 &
+  fi
+}
 finish_campaign () {
   reap
   # A campaign stopped in the middle of such a run is put back here, into no run's folder.
@@ -520,6 +552,11 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     [ -n "$SO_JOURNAL" ] && so_cons="$so_cons --so-journal $RUN_DIR/consumer_journal"
   fi
   began=$(date -u +%s)
+  local recorrect_pid=""
+  if [ -n "${LOAD_RECORRECT:-}" ] && [ -n "${stress_pid:-}" ]; then
+    recorrect_load "$RUN_DIR" "$LOAD" "${adjusted:-$LOAD}" "$want_cpus" &
+    recorrect_pid=$!
+  fi
   if [ "$BACKEND" = kafka ]; then
     client_args=()
     [ -n "${CLIENT:-}" ] && client_args+=(-CLIENT "$CLIENT")
@@ -543,6 +580,9 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     rc=$?
   fi
   ended=$(date -u +%s)
+  # A trial that ended before the second correction came due must not have stress-ng restarted
+  # after it, under the next run's setup.
+  if [ -n "$recorrect_pid" ]; then kill "$recorrect_pid" 2>/dev/null; wait "$recorrect_pid" 2>/dev/null; fi
   head -n 1 /proc/stat > "$RUN_DIR/stat_after.txt"
   chronyc -c tracking > "$RUN_DIR/clock_after.txt" 2>/dev/null
   tcp_counters after
@@ -682,8 +722,10 @@ values = {
     "SEND_WORKERS": "" if p.get("send_workers") is None else str(p["send_workers"]),
     "SCHED_FEATURES": str(p.get("sched_features") or ""),
     "IDLE_POLL": "" if p.get("idle_poll") is None else ("1" if p["idle_poll"] else "0"),
-    # Freeze 42 (22 Oct 2026): the broker's own capture of its port, where the setup asks for it.
+    # Freeze 42 (22 Oct 2026): the broker's own capture of its port, and the duty corrected a
+    # second time with the clients running, where the setup asks for either.
     "BROKER_CAPTURE": "1" if p.get("broker_capture") else "",
+    "LOAD_RECORRECT": "1" if p.get("load_recorrect") else "",
     "TRACE": 1 if int(hashlib.sha256(row["key"].encode()).hexdigest(), 16) % 2 == 0 else 0,
     "HZ": round(1000 / tick) if tick else "",
 }
@@ -702,7 +744,7 @@ PY
   echo "$ROW" > "$RUN_DIR/queue_row.json"
   printf '{"lane": "%s", "profile": "%s", "driver": "%s", "commit": "%s"}\n' "$LANE" \
     "${AZ_PROFILE:-unknown}" "$(hostname)" "$(git rev-parse HEAD 2>/dev/null)" > "$RUN_DIR/lane.json"
-  log "run $KEY: $BACKEND, load $LOAD%, slice ${SLICE_NS:-kernel default}, delay $DELAY_MS ms${PRIORITY:+, go-first}${CONSUMER_PRIORITY:+, go-first consumer}${RECV_CAPTURE:+, receiver capture}${SEND_CAPTURE:+, sender capture}${HW_CAPTURE:+, card capture}${SO_STAMPS:+, socket timestamps ($SO_STAMPS)}${SO_JOURNAL:+, journal=$SO_JOURNAL}${SEND_CAPTURE_BOTH:+, both directions of the sender}${SEND_WORKERS:+, $SEND_WORKERS send workers}${SCHED_FEATURES:+, $SCHED_FEATURES}${IDLE_POLL:+, idle_poll=$IDLE_POLL}${BROKER_CAPTURE:+, broker capture}${CPUS:+, $CPUS CPUs online}"
+  log "run $KEY: $BACKEND, load $LOAD%, slice ${SLICE_NS:-kernel default}, delay $DELAY_MS ms${PRIORITY:+, go-first}${CONSUMER_PRIORITY:+, go-first consumer}${RECV_CAPTURE:+, receiver capture}${SEND_CAPTURE:+, sender capture}${HW_CAPTURE:+, card capture}${SO_STAMPS:+, socket timestamps ($SO_STAMPS)}${SO_JOURNAL:+, journal=$SO_JOURNAL}${SEND_CAPTURE_BOTH:+, both directions of the sender}${SEND_WORKERS:+, $SEND_WORKERS send workers}${SCHED_FEATURES:+, $SCHED_FEATURES}${IDLE_POLL:+, idle_poll=$IDLE_POLL}${BROKER_CAPTURE:+, broker capture}${LOAD_RECORRECT:+, the load corrected again with the clients running}${CPUS:+, $CPUS CPUs online}"
   REASON=""
   STOP_REASON=""
   run_one

@@ -1,0 +1,69 @@
+{
+  "about": "Freeze 42, block U's pilot, third round (instruments only, never judged): the four loaded setups at 500 messages a second at 70% again, with the duty corrected a second time once the clients run (load_recorrect, cloud/azure/campaign.sh), after the second round held 70% at 63.3-64.5% at real-time priority at 2,000 a second with the machine 78-86% busy. Run with RATE=500 DURATION=70 WARMUP_S=20. Queue: python3 scripts/run_queue.py make --design docs/results/under_load/up500c_design.json --out runs/azure/queues/up500c.csv",
+  "rounds": 1,
+  "seed": 20261110,
+  "setups": [
+    {
+      "id": "UP500-kafka-l70",
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "recv_capture": true,
+      "send_capture": true,
+      "send_capture_both": true,
+      "hw_capture": true,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "broker_capture": true,
+      "backend": "kafka",
+      "load_pct": 70,
+      "load_recorrect": true
+    },
+    {
+      "id": "UP500-kafka-l70-rt",
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "recv_capture": true,
+      "send_capture": true,
+      "send_capture_both": true,
+      "hw_capture": true,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "broker_capture": true,
+      "backend": "kafka",
+      "load_pct": 70,
+      "priority": true,
+      "load_recorrect": true
+    },
+    {
+      "id": "UP500-redis-l70",
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "recv_capture": true,
+      "send_capture": true,
+      "send_capture_both": true,
+      "hw_capture": true,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "broker_capture": true,
+      "backend": "redis",
+      "load_pct": 70,
+      "load_recorrect": true
+    },
+    {
+      "id": "UP500-redis-l70-rt",
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "recv_capture": true,
+      "send_capture": true,
+      "send_capture_both": true,
+      "hw_capture": true,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "broker_capture": true,
+      "backend": "redis",
+      "load_pct": 70,
+      "priority": true,
+      "load_recorrect": true
+    }
+  ]
+}

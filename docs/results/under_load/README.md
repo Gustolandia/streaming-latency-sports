@@ -81,7 +81,22 @@ the driver's three captures at 2,000 messages a second: it measured 75.8% on Kaf
 at real-time priority and 76.3% on Redis, whose producer also fell to 1,877 messages a second. The
 campaign stopped itself, by its guard, after those three attempts, before Redis's real-time setup.
 
+The rest of the first round: at 500 messages a second 80% held on Kafka at normal priority
+(77.3%) and on Redis at both priorities (78.4%, 77.7%), and not on Kafka at real-time priority
+(74.3-74.8%, three attempts); at 50 a second every run passed, the 88% load held at 87.1-87.7%.
+
 **Second round** (`up2000b`, `up500b`). As D45-7 provides, the loaded setups at both upper rates
-run again at 70%, just above the least load the first round measured, to find whether it holds
-within the integrity rule's 3 points at both rates and priorities and whether Redis's producer then
-keeps its rate.
+ran again at 70%, just above the least load the first round measured. 70% held at both rates at
+normal priority (68.0-69.5%, Redis's producer keeping 2,029 messages a second) and at 500 a second
+at real-time priority (67.1%, 68.4%), and not at 2,000 a second at real-time priority: 63.3% and
+63.4% on Kafka, 64.5% on Redis, the campaign again stopped by its guard. The machine was not full:
+it was 78-86% busy, the clients' own share 13-23%. The duty is corrected once before the clients
+start, and clients sending 2,000 messages a second at real-time priority cost stress-ng's duty
+cycle more time than they use.
+
+**Third round** (`up2000c`, `up500c`). An instrument change, made in the pilot and before any judged
+run: where a setup asks (`load_recorrect`), the duty is corrected a second time, ten seconds into
+the trial and inside its warm-up, against the background load the machine then shows less the
+clients' own share, which is what the integrity rule reads (`cloud/azure/campaign.sh`,
+`recorrect_load`). The same eight setups run again at 70% with it. 75% is not tried: at 76% Redis's
+producer already fell behind its rate in the first round.

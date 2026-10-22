@@ -3455,3 +3455,79 @@ def test_freeze_42s_card_capture_takes_the_larger_buffer_where_the_setup_does(tm
                     % run]
     stops = [c.split(" -f ", 1)[1] for c in calls if "pkill" in c and "adapter_unsynced" in c]
     assert stops and all(re.search(pattern, card[0]) for pattern in stops)
+
+
+def test_freeze_42s_second_correction_reaches_the_runner_and_a_row_without_it_sets_none():
+    """A row's load_recorrect becomes LOAD_RECORRECT; a row of any earlier block names none."""
+    assert _row_reader_says({"load_recorrect": True})["LOAD_RECORRECT"] == "1"
+    assert _row_reader_says({"broker_capture": True})["LOAD_RECORRECT"] == ""
+
+
+def _recorrect(tmp_path, name, rows, want="70", duty="70"):
+    """recorrect_load, run in bash as the runner defines it, with its Python the real one and
+    sleep, pkill and stress-ng stood in for by commands that write down how they were called.
+    (The calls, the record it wrote or None.)"""
+    code = (KIT / "campaign.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
+    head = "recorrect_load () {"
+    function = head + code.split(head, 1)[1].split("\n}\n", 1)[0] + "\n}\n"
+    run = tmp_path / name
+    run.mkdir()
+    if rows is not None:
+        (run / "utilisation.csv").write_text(
+            "t_wall,rho,loadavg,rho_clients\n" + "".join(
+                "%d,%s,1.0,%s\n" % (i, rho, clients) for i, (rho, clients) in enumerate(rows)),
+            encoding="utf-8")
+    calls = tmp_path / (name + "_calls.txt")
+    script = "\n".join([
+        'python3 () { "$PYTHON" "$@"; }', 'sleep () { echo "sleep $*" >> "$CALLS"; }',
+        'pkill () { echo "pkill $*" >> "$CALLS"; }',
+        'stress-ng () { echo "stress-ng $*" >> "$CALLS"; }', function,
+        'recorrect_load "$RUN" %s %s 8' % (want, duty), "builtin wait", ""])
+    env = {"CALLS": calls.as_posix(), "RUN": run.as_posix(),
+           "PYTHON": Path(sys.executable).as_posix()}
+    bash(["-c", script], extra_env=env, capture_output=True, text=True, check=True)
+    record = run / "load_recorrection.json"
+    return ((calls.read_text(encoding="utf-8").splitlines() if calls.exists() else []),
+            json.loads(record.read_text(encoding="utf-8")) if record.exists() else None)
+
+
+@needs_bash
+def test_freeze_42s_second_correction_moves_the_duty_by_what_the_running_clients_cost(tmp_path):
+    """Ten seconds into the trial, inside its warm-up, the duty is corrected against the
+    background load the machine shows less the clients' own share, the quantity the integrity
+    rule reads, and stress-ng is restarted there. Block U's pilot held 63.3% of a 70% load with
+    real-time clients at 2,000 messages a second: here the last six samples show 63%, so the
+    duty goes to 77. Older samples are not read, and a duty already right is left alone."""
+    early = [("0.10", "0.20")] * 4
+    calls, record = _recorrect(tmp_path, "short", early + [("0.85", "0.22")] * 6)
+    assert calls == ["sleep 10", "pkill -9 -x stress-ng",
+                     "stress-ng --cpu 8 --cpu-load 77 --timeout 3600s"]
+    assert record == {"designed_pct": 70, "shown_running_pct": 63.0, "duty_before_pct": 70,
+                      "duty_used_pct": 77}
+    calls, record = _recorrect(tmp_path, "right", [("0.92", "0.22")] * 6)
+    assert calls == ["sleep 10"] and record["duty_used_pct"] == 70
+
+
+@needs_bash
+def test_freeze_42s_second_correction_is_bounded_and_leaves_a_silent_machine_alone(tmp_path):
+    calls, record = _recorrect(tmp_path, "absurd", [("0.0", "0.0")] * 6, duty="95")
+    assert record["duty_used_pct"] == 100 and calls[-1].endswith("--cpu-load 100 --timeout 3600s")
+    for name, rows in (("none", None), ("empty", []), ("garbled", [("x", "y")] * 6)):
+        calls, record = _recorrect(tmp_path, name, rows)
+        assert calls == ["sleep 10"] and record is None, name
+
+
+def test_freeze_42s_second_correction_runs_only_where_asked_and_never_outlives_the_trial():
+    """It starts only where the setup asks and a load is running, before the trial and so before
+    the warm-up it must fall inside; and once the trial has ended it is stopped, so that a trial
+    that ended early cannot have stress-ng restarted under the next run's setup."""
+    code = (KIT / "campaign.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
+    run = code.split("run_one () {", 1)[1]
+    start = run.index('if [ -n "${LOAD_RECORRECT:-}" ] && [ -n "${stress_pid:-}" ]; then')
+    assert run.index("began=$(date -u +%s)") < start < run.index("run_kafka_trial.sh")
+    assert 'recorrect_load "$RUN_DIR" "$LOAD" "${adjusted:-$LOAD}" "$want_cpus" &' in run
+    stop = run.index('if [ -n "$recorrect_pid" ]; then kill "$recorrect_pid" 2>/dev/null; '
+                     'wait "$recorrect_pid" 2>/dev/null; fi')
+    assert run.index("ended=$(date -u +%s)") < stop, "stopped once the trial has ended"
+    assert "pkill -9 -x stress-ng" in run[stop:], "and before the run's own load is stopped"
+    assert 'sleep "${RECORRECT_AFTER_S:-10}"' in code, "ten seconds, inside a 20 s warm-up"

@@ -1,0 +1,2053 @@
+{
+  "U-a": {
+    "checks": [
+      {
+        "backend": "kafka",
+        "grew": true,
+        "held": true,
+        "holds": true,
+        "idle": 438.06956000000014,
+        "load": 3589.6023299999974,
+        "rate": 500,
+        "realtime": 770.4106400000003
+      },
+      {
+        "backend": "redis",
+        "grew": true,
+        "held": true,
+        "holds": true,
+        "idle": 213.35405000000048,
+        "load": 2885.5390500000117,
+        "rate": 500,
+        "realtime": 316.4767449999999
+      },
+      {
+        "backend": "kafka",
+        "grew": true,
+        "held": true,
+        "holds": true,
+        "idle": 606.5629449999994,
+        "load": 12276.829699999984,
+        "rate": 2000,
+        "realtime": 1267.7781
+      },
+      {
+        "backend": "redis",
+        "grew": true,
+        "held": true,
+        "holds": true,
+        "idle": 404.61841500000014,
+        "load": 2046.9102800000007,
+        "rate": 2000,
+        "realtime": 446.75316999999984
+      }
+    ],
+    "not_judged": [],
+    "out_of_reach": [],
+    "verdict": "confirmed"
+  },
+  "U-b": {
+    "checks": [
+      {
+        "backend": "kafka",
+        "holds": true,
+        "idle": 656.6206999999998,
+        "load": 3087.1811850000013,
+        "rate": 500
+      },
+      {
+        "backend": "redis",
+        "holds": true,
+        "idle": 662.6245599999999,
+        "load": 1945.2685899999997,
+        "rate": 500
+      },
+      {
+        "backend": "kafka",
+        "holds": true,
+        "idle": 1812.5327899999997,
+        "load": 15463.821,
+        "rate": 2000
+      },
+      {
+        "backend": "redis",
+        "holds": true,
+        "idle": 1392.70372,
+        "load": 2659.703480000002,
+        "rate": 2000
+      }
+    ],
+    "gives_way_at": [
+      [
+        500,
+        "kafka"
+      ],
+      [
+        500,
+        "redis"
+      ],
+      [
+        2000,
+        "kafka"
+      ],
+      [
+        2000,
+        "redis"
+      ]
+    ],
+    "not_judged": [],
+    "out_of_reach": [],
+    "verdict": "confirmed"
+  },
+  "U-c": {
+    "checks": [
+      {
+        "after_U_b": true,
+        "backend": "kafka",
+        "high": 0.9904246384222593,
+        "holds": true,
+        "low": 0.8397548284159635,
+        "only_path": false,
+        "rate": 500,
+        "share": 0.9125043789886792,
+        "share_45": 0.9125043789886792,
+        "share_broker_bound": 1.0569818743822004,
+        "undefined_draws": 0
+      },
+      {
+        "after_U_b": true,
+        "backend": "redis",
+        "high": 1.026283685653524,
+        "holds": true,
+        "low": 0.700413370591618,
+        "only_path": false,
+        "rate": 500,
+        "share": 0.8202040296955864,
+        "share_45": 0.8075592159389107,
+        "share_broker_bound": 1.0938828815017214,
+        "undefined_draws": 0
+      },
+      {
+        "after_U_b": true,
+        "backend": "kafka",
+        "high": 1.0987386268957897,
+        "holds": true,
+        "low": 0.9968653912379123,
+        "only_path": true,
+        "rate": 2000,
+        "share": 1.0003595497219726,
+        "share_45": 1.0003595497219726,
+        "share_broker_bound": 1.0028218320419415,
+        "undefined_draws": 0
+      },
+      {
+        "after_U_b": true,
+        "backend": "redis",
+        "high": 1.5428807539023959,
+        "holds": true,
+        "low": 0.9524152691478897,
+        "only_path": true,
+        "rate": 2000,
+        "share": 1.1844561269895586,
+        "share_45": 1.2120086558562762,
+        "share_broker_bound": 1.3411747004359513,
+        "undefined_draws": 0
+      }
+    ],
+    "not_judged": [],
+    "out_of_reach": [],
+    "verdict": "confirmed"
+  },
+  "U-d": {
+    "checks": [
+      {
+        "backend": "kafka",
+        "holds": true,
+        "load": 3087.1811850000013,
+        "rate": 500,
+        "realtime": 706.4455200000002
+      },
+      {
+        "backend": "redis",
+        "holds": true,
+        "load": 1945.2685899999997,
+        "rate": 500,
+        "realtime": 757.2402500000001
+      },
+      {
+        "backend": "kafka",
+        "holds": true,
+        "load": 15463.821,
+        "rate": 2000,
+        "realtime": 2490.53891
+      },
+      {
+        "backend": "redis",
+        "holds": false,
+        "load": 2659.703480000002,
+        "rate": 2000,
+        "realtime": 1805.4431449999975
+      }
+    ],
+    "not_judged": [],
+    "out_of_reach": [],
+    "verdict": "not confirmed"
+  },
+  "U-e": {
+    "decisions": [
+      {
+        "backend": "kafka",
+        "floor": -48.329530381909535,
+        "load": 70,
+        "named": "wait",
+        "rate": 500,
+        "rise": 182.89633540703517,
+        "terms": {
+          "Q": -2.6055798994974886,
+          "ack": 0.0,
+          "excess": -1.8439841909548118,
+          "hand": -5.211185929648195,
+          "wait": 192.5570854271357
+        }
+      },
+      {
+        "backend": "redis",
+        "floor": -148.9037374170855,
+        "load": 70,
+        "named": "wait",
+        "rate": 500,
+        "rise": 178.01739269346737,
+        "terms": {
+          "Q": -3.6462592964824108,
+          "ack": 7.705533668341708,
+          "excess": -8.05459424120604,
+          "hand": -26.070015075376887,
+          "wait": 208.08272763819093
+        }
+      },
+      {
+        "backend": "kafka",
+        "floor": -163.54539412223335,
+        "load": 70,
+        "named": "hand",
+        "rate": 2000,
+        "rise": 2958.485755792254,
+        "terms": {
+          "Q": 139.55840467806843,
+          "ack": 0.0,
+          "excess": 26.250611426056295,
+          "hand": 3040.4890098088536,
+          "wait": -247.8122701207243
+        }
+      },
+      {
+        "backend": "redis",
+        "floor": 133.70481336519111,
+        "load": 70,
+        "named": "wait",
+        "rate": 2000,
+        "rise": 154.3791707897384,
+        "terms": {
+          "Q": -0.21321780684104752,
+          "ack": -135.4529592555332,
+          "excess": -1.836934089537234,
+          "hand": -6.102809356136788,
+          "wait": 297.98509129778677
+        }
+      }
+    ]
+  },
+  "U-f": {
+    "decisions": [
+      {
+        "backend": "kafka",
+        "between_runs": {
+          "floor": -57.0398100000001,
+          "named": "hand",
+          "rise": 2537.263912706342,
+          "terms": {
+            "Q": -20.295707677313885,
+            "ack": 0.0,
+            "excess": 3.61759562782951,
+            "hand": 2553.3431414188253,
+            "wait": 0.5988833370011737
+          }
+        },
+        "floor": -0.13209434226700978,
+        "load": 88,
+        "named": "hand",
+        "rate": 50,
+        "rise": 2557.751172853698,
+        "terms": {
+          "Q": -7.465900085290141,
+          "ack": 0.0,
+          "excess": 1.9706924572396485,
+          "hand": 2562.5795161588317,
+          "wait": 0.6668643229166666
+        }
+      },
+      {
+        "backend": "redis",
+        "between_runs": {
+          "floor": -168.08050883064504,
+          "named": null,
+          "rise": -11.408928299291773,
+          "terms": {
+            "Q": -13.139099702042902,
+            "ack": 0.0,
+            "excess": 1.6320350768319116,
+            "hand": 0.09813632591921362,
+            "wait": 0.0
+          }
+        },
+        "floor": -0.10059015905835622,
+        "load": 88,
+        "named": null,
+        "rate": 50,
+        "rise": -14.436153733223733,
+        "terms": {
+          "Q": -13.027467105974488,
+          "ack": 0.0,
+          "excess": 1.4009860514125316,
+          "hand": -2.8096726786617836,
+          "wait": 0.0
+        }
+      }
+    ]
+  },
+  "described": {
+    "capture_cost": [
+      {
+        "D_L": 1375.5680000000002,
+        "D_U": 1219.5104999999999,
+        "D_moved": -156.05750000000035,
+        "W_L": 737.449,
+        "W_U": 593.0305000000001,
+        "W_moved": -144.41849999999988,
+        "backend": "kafka",
+        "rate": 500
+      },
+      {
+        "D_L": 601.7775,
+        "D_U": 628.4884999999999,
+        "D_moved": 26.7109999999999,
+        "W_L": 467.3895,
+        "W_U": 487.62249999999995,
+        "W_moved": 20.232999999999947,
+        "backend": "redis",
+        "rate": 500
+      },
+      {
+        "D_L": 1910.8905,
+        "D_U": 2048.8265,
+        "D_moved": 137.93600000000015,
+        "W_L": 1204.07675,
+        "W_U": 1215.3135,
+        "W_moved": 11.236750000000029,
+        "backend": "kafka",
+        "rate": 2000
+      },
+      {
+        "D_L": 1099.9292500000001,
+        "D_U": 981.0339999999999,
+        "D_moved": -118.89525000000026,
+        "W_L": 951.58275,
+        "W_U": 811.912,
+        "W_moved": -139.67075,
+        "backend": "redis",
+        "rate": 2000
+      }
+    ],
+    "setups": [
+      {
+        "D_p50": 2048.8265,
+        "D_p99": 2800.9446599999997,
+        "Dif_p50": 1.5625,
+        "Dif_p99": 2.1329999999999814,
+        "F45_tail": 2447.126153420523,
+        "F_lo_p50": 754.1110000000001,
+        "F_lo_p99": 1308.86773,
+        "F_p50": 1180.288,
+        "F_tail": 2447.126153420523,
+        "Fb_p50": 798.575,
+        "Fb_p99": 1309.6009900000001,
+        "Fb_tail": 2237.6375010060365,
+        "G_p50": 259.66899999999976,
+        "G_p99": 804.0859899999998,
+        "Q_p50": 6.2155000000000005,
+        "Q_p99": 25.85423999999999,
+        "R_p50": 697.3235,
+        "R_p99": 1293.4191999999998,
+        "Tc45_p50": 466.12275,
+        "Tc45_p99": 606.5629449999994,
+        "Tc_cpu_share": 1.3506682822836986,
+        "Tc_p50": 466.12275,
+        "Tc_tail_cpu": 998.9152640273467,
+        "Tc_tail_mean": 804.6473616121887,
+        "Tc_tail_wait": 2.1633290931080387,
+        "Tc_wait_share": 0.000473027496633865,
+        "W_p50": 1215.3135,
+        "W_tail": 3394.8044129778673,
+        "ack_p50": 0.0,
+        "ack_p99": 0.0,
+        "b_max_p50": 444.028,
+        "b_max_p99": 592.7780099999998,
+        "b_min_p50": 428.2625,
+        "b_min_p99": 586.0597799999999,
+        "brange_p50": 0.9025000000000318,
+        "brange_p99": 110.37424999999998,
+        "brk_p50": 624.928,
+        "brk_p99": 1017.4078899999997,
+        "broker_matched_share": 1.0,
+        "card_matched_share": 1.0,
+        "card_window_ns": 1452.0,
+        "client_libraries": [
+          "python 3.10.12 kafka-python 2.3.2 redis-py 7.4.1"
+        ],
+        "client_policies": [
+          "kafka_consumer.py=SCHED_OTHER;kafka_producer.py=SCHED_FIFO/SCHED_OTHER"
+        ],
+        "duty_pct": null,
+        "exact_share": 0.04916355720337136,
+        "excess_p50": 3.535529999999852,
+        "excess_p99": 32.952059999999804,
+        "flagged_share": 0.9995070174556064,
+        "floor_hi": 544.4190000000001,
+        "floor_lo": 544.4190000000001,
+        "floor_pairs": 1.0,
+        "gc_consumer": 0.0,
+        "gc_producer": 0.0,
+        "hand_p50": 205.003,
+        "hand_p99": 385.91866999999905,
+        "irqbalance": [
+          "active"
+        ],
+        "late_p50_ms": 0.0831265,
+        "late_share": 0.0003169173499673022,
+        "late_spread_ms": 0.2240696799999999,
+        "load_measured": -0.20708699768567224,
+        "net_irq_cpus": [
+          "0;1;2;3;4;5;6;7"
+        ],
+        "net_p50": 547.8865,
+        "net_p99": 579.75071,
+        "preempt": [
+          "CONFIG_PREEMPT_VOLUNTARY_BUILD=y;CONFIG_PREEMPT_VOLUNTARY=y;CONFIG_PREEMPT_NOTIFIERS=y"
+        ],
+        "range_p50": 333.7635,
+        "range_p99": 534.5442399999998,
+        "reads_multi_share": 0.7978378313128676,
+        "rt_runtime_us": [
+          "950000"
+        ],
+        "s_max_p50": 450.318,
+        "s_max_p99": 597.93624,
+        "s_min_p50": 0.438,
+        "s_min_p99": 483.858,
+        "setup": "U2000-kafka-l0",
+        "split_share": 1.0,
+        "stall_share": 0.001765682378389255,
+        "stress_ng_version": [
+          "stress-ng, version 0.13.12 (gcc 11.3, x86_64 Linux 6.8.0-1064-azure)"
+        ],
+        "trip_p50": 627.548,
+        "wait_p50": 6.465499999999992,
+        "wait_p99": 493.13365
+      },
+      {
+        "D_p50": 4612.6075,
+        "D_p99": 29230.59626999997,
+        "Dif_p50": 1.5680000000000973,
+        "Dif_p99": 39.9008750000005,
+        "F45_tail": 1619.2472250755286,
+        "F_lo_p50": 531.2384999999999,
+        "F_lo_p99": 1271.68252,
+        "F_p50": 1186.0245,
+        "F_tail": 1619.2472250755286,
+        "Fb_p50": 724.5997500000003,
+        "Fb_p99": 1274.9658000000004,
+        "Fb_tail": 834.4402915407854,
+        "G_p50": 257.08681500000034,
+        "G_p99": 806.0023900000001,
+        "Q_p50": 15.1795,
+        "Q_p99": 99.39584500000004,
+        "R_p50": 1339.8867500000001,
+        "R_p99": 14933.180174999998,
+        "Tc45_p50": 839.9929999999999,
+        "Tc45_p99": 12276.829699999984,
+        "Tc_cpu_share": 0.6679496867435886,
+        "Tc_p50": 839.9929999999999,
+        "Tc_tail_cpu": 4363.158259159643,
+        "Tc_tail_mean": 16923.286565925526,
+        "Tc_tail_wait": 11832.233646306111,
+        "Tc_wait_share": 0.48021235743854784,
+        "W_p50": 1848.40225,
+        "W_tail": 18243.234103726085,
+        "ack_p50": 0.0,
+        "ack_p99": 0.0,
+        "b_max_p50": 1129.079,
+        "b_max_p99": 14730.363199999993,
+        "b_min_p50": 1060.36675,
+        "b_min_p99": 14655.0258,
+        "brange_p50": 83.66099999999994,
+        "brange_p99": 124.70149499999991,
+        "brk_p50": 772.0875000000001,
+        "brk_p99": 1743.0444749999992,
+        "broker_matched_share": 1.0,
+        "card_matched_share": 1.0,
+        "card_window_ns": 1482.0,
+        "client_libraries": [
+          "python 3.10.12 kafka-python 2.3.2 redis-py 7.4.1"
+        ],
+        "client_policies": [
+          "kafka_consumer.py=SCHED_OTHER;kafka_producer.py=SCHED_FIFO/SCHED_OTHER;stress-ng=SCHED_OTHER"
+        ],
+        "duty_pct": 75.0,
+        "exact_share": 8.079468727784717e-05,
+        "excess_p50": 5.440565000000021,
+        "excess_p99": 39.376009999999894,
+        "flagged_share": 0.9949340392812958,
+        "floor_hi": 469.8514999999999,
+        "floor_lo": 469.8514999999999,
+        "floor_pairs": 1.0,
+        "gc_consumer": 0.0,
+        "gc_producer": 0.0,
+        "hand_p50": 209.63899999999998,
+        "hand_p99": 376.98698499999875,
+        "irqbalance": [
+          "active"
+        ],
+        "late_p50_ms": 0.1356435,
+        "late_share": 0.00036724644159692277,
+        "late_spread_ms": 0.5046180199999998,
+        "load_measured": 69.6360206185567,
+        "net_irq_cpus": [
+          "0;1;2;3;4;5;6;7",
+          "0;1;3;4;5;6;7"
+        ],
+        "net_p50": 475.23599999999993,
+        "net_p99": 508.00429999999994,
+        "preempt": [
+          "CONFIG_PREEMPT_VOLUNTARY_BUILD=y;CONFIG_PREEMPT_VOLUNTARY=y;CONFIG_PREEMPT_NOTIFIERS=y"
+        ],
+        "range_p50": 637.4235000000001,
+        "range_p99": 1449.949,
+        "reads_multi_share": 0.5961782735017103,
+        "rt_runtime_us": [
+          "950000"
+        ],
+        "s_max_p50": 1208.565,
+        "s_max_p99": 14728.365835,
+        "s_min_p50": 505.8485,
+        "s_min_p99": 13929.116794999896,
+        "setup": "U2000-kafka-l70",
+        "split_share": 1.0,
+        "stall_share": 0.0009457644361653454,
+        "stress_ng_version": [
+          "stress-ng, version 0.13.12 (gcc 11.3, x86_64 Linux 6.8.0-1064-azure)"
+        ],
+        "trip_p50": 496.0855,
+        "wait_p50": 0.0,
+        "wait_p99": 390.8756750000002
+      },
+      {
+        "D_p50": 2712.6175,
+        "D_p99": 4103.323819999999,
+        "Dif_p50": 1.517500000000041,
+        "Dif_p99": 2.965629999999889,
+        "F45_tail": 2191.6026956740443,
+        "F_lo_p50": 811.8109999999999,
+        "F_lo_p99": 1525.0169299999998,
+        "F_p50": 1392.0164999999997,
+        "F_tail": 2191.6026956740443,
+        "Fb_p50": 876.139,
+        "Fb_p99": 1526.2610099999997,
+        "Fb_tail": 1993.2646961770624,
+        "G_p50": 240.24260000000004,
+        "G_p99": 848.4321099999999,
+        "Q_p50": 4.9855,
+        "Q_p99": 21.39,
+        "R_p50": 808.5325,
+        "R_p99": 1798.84433,
+        "Tc45_p50": 642.1055,
+        "Tc45_p99": 1267.7781,
+        "Tc_cpu_share": 1.303977519502699,
+        "Tc_p50": 642.1055,
+        "Tc_tail_cpu": 1688.7786251753155,
+        "Tc_tail_mean": 1413.0005353553063,
+        "Tc_tail_wait": 10.286475930727295,
+        "Tc_wait_share": 0.0005567539831996492,
+        "W_p50": 1497.7435,
+        "W_tail": 3167.9934336016095,
+        "ack_p50": 0.0,
+        "ack_p99": 0.0,
+        "b_max_p50": 542.5285,
+        "b_max_p99": 1206.85439,
+        "b_min_p50": 512.7545,
+        "b_min_p99": 1200.4448699999998,
+        "brange_p50": 48.185,
+        "brange_p99": 115.51969999999996,
+        "brk_p50": 704.733,
+        "brk_p99": 1332.78751,
+        "broker_matched_share": 1.0,
+        "card_matched_share": 1.0,
+        "card_window_ns": 1482.0,
+        "client_libraries": [
+          "python 3.10.12 kafka-python 2.3.2 redis-py 7.4.1"
+        ],
+        "client_policies": [
+          "kafka_consumer.py=SCHED_FIFO/SCHED_OTHER;kafka_producer.py=SCHED_FIFO/SCHED_OTHER;stress-ng=SCHED_OTHER"
+        ],
+        "duty_pct": 77.0,
+        "exact_share": 0.008927068563526569,
+        "excess_p50": 4.163144999999986,
+        "excess_p99": 38.41997499999996,
+        "flagged_share": 0.9900989327217351,
+        "floor_hi": 629.27043,
+        "floor_lo": 629.27043,
+        "floor_pairs": 1.0,
+        "gc_consumer": 0.0,
+        "gc_producer": 0.0,
+        "hand_p50": 206.5,
+        "hand_p99": 385.5943299999998,
+        "irqbalance": [
+          "active"
+        ],
+        "late_p50_ms": 0.127793,
+        "late_share": 0.0005282147157934749,
+        "late_spread_ms": 0.5057985299999999,
+        "load_measured": 67.38042783505153,
+        "net_irq_cpus": [
+          "0;1;2;3;4;5;6;7"
+        ],
+        "net_p50": 633.501,
+        "net_p99": 662.87771,
+        "preempt": [
+          "CONFIG_PREEMPT_VOLUNTARY_BUILD=y;CONFIG_PREEMPT_VOLUNTARY=y;CONFIG_PREEMPT_NOTIFIERS=y"
+        ],
+        "range_p50": 406.562,
+        "range_p99": 962.91987,
+        "reads_multi_share": 0.7630458233765791,
+        "rt_runtime_us": [
+          "950000"
+        ],
+        "s_max_p50": 569.7004999999999,
+        "s_max_p99": 1217.91977,
+        "s_min_p50": 4.507,
+        "s_min_p99": 990.4857799999997,
+        "setup": "U2000-kafka-l70-rt",
+        "split_share": 1.0,
+        "stall_share": 0.0013835706465539417,
+        "stress_ng_version": [
+          "stress-ng, version 0.13.12 (gcc 11.3, x86_64 Linux 6.8.0-1064-azure)"
+        ],
+        "trip_p50": 673.6804999999999,
+        "wait_p50": 0.0,
+        "wait_p99": 592.2198199999998
+      },
+      {
+        "D_p50": 981.0339999999999,
+        "D_p99": 1704.4543000000003,
+        "Dif_p50": 1.2270000000000039,
+        "Dif_p99": 1.7720399999999867,
+        "F45_tail": 1630.8453913480885,
+        "F_lo_p50": 632.6735,
+        "F_lo_p99": 1159.93028,
+        "F_p50": 811.912,
+        "F_tail": 1381.3992640845072,
+        "Fb_p50": 630.726,
+        "Fb_p99": 1159.99186,
+        "Fb_tail": 1319.9395311871226,
+        "G_p50": 255.98962499999996,
+        "G_p99": 695.0406136000001,
+        "Q_p50": 8.318,
+        "Q_p99": 18.43271000000002,
+        "R_p50": 434.62075000000004,
+        "R_p99": 995.171720000001,
+        "Tc45_p50": 175.029,
+        "Tc45_p99": 369.76191000000006,
+        "Tc_cpu_share": 1.1422259452218284,
+        "Tc_p50": 175.626,
+        "Tc_tail_cpu": 501.3959149027355,
+        "Tc_tail_mean": 514.6022946901753,
+        "Tc_tail_wait": 76.213891628626,
+        "Tc_wait_share": 0.08146315997335712,
+        "W_p50": 811.912,
+        "W_tail": 1807.4717620724346,
+        "ack_p50": 0.0,
+        "ack_p99": 245.49970000000053,
+        "b_max_p50": 165.31799999999998,
+        "b_max_p99": 439.19924000000003,
+        "b_min_p50": 162.767,
+        "b_min_p99": 437.5715000000001,
+        "brange_p50": 0.0,
+        "brange_p99": 42.14349999999999,
+        "brk_p50": 409.49875,
+        "brk_p99": 876.6271100000046,
+        "broker_matched_share": 1.0,
+        "card_matched_share": 1.0,
+        "card_window_ns": 1452.0,
+        "client_libraries": [
+          "python 3.10.12 kafka-python 2.3.2 redis-py 7.4.1"
+        ],
+        "client_policies": [
+          "redis_consumer.py=SCHED_OTHER;redis_producer.py=SCHED_FIFO/SCHED_OTHER"
+        ],
+        "duty_pct": null,
+        "exact_share": 0.007667253624006454,
+        "excess_p50": 3.008599999999973,
+        "excess_p99": 39.83593764999993,
+        "flagged_share": 0.9063817853777625,
+        "floor_hi": 594.3195000000001,
+        "floor_lo": 335.6649,
+        "floor_pairs": 6.0,
+        "gc_consumer": 0.0,
+        "gc_producer": 0.0,
+        "hand_p50": 60.9855,
+        "hand_p99": 147.69666000000052,
+        "irqbalance": [
+          "active"
+        ],
+        "late_p50_ms": 0.104006,
+        "late_share": 1.0061020087081206e-05,
+        "late_spread_ms": 0.0887698750000001,
+        "load_measured": 0.18463402061855672,
+        "net_irq_cpus": [
+          "0;1;2;3;4;5;6;7",
+          "1;2;3;4;5;6;7"
+        ],
+        "net_p50": 347.601,
+        "net_p99": 602.6782350000001,
+        "preempt": [
+          "CONFIG_PREEMPT_VOLUNTARY_BUILD=y;CONFIG_PREEMPT_VOLUNTARY=y;CONFIG_PREEMPT_NOTIFIERS=y"
+        ],
+        "range_p50": 138.06425000000002,
+        "range_p99": 306.2634600000001,
+        "reads_multi_share": 0.0,
+        "rt_runtime_us": [
+          "950000"
+        ],
+        "s_max_p50": 154.252,
+        "s_max_p99": 429.8893000000001,
+        "s_min_p50": 0.0,
+        "s_min_p99": 313.37536000000034,
+        "setup": "U2000-redis-l0",
+        "split_share": 1.0,
+        "stall_share": 0.00011570231304015373,
+        "stress_ng_version": [
+          "stress-ng, version 0.13.12 (gcc 11.3, x86_64 Linux 6.8.0-1064-azure)"
+        ],
+        "trip_p50": 589.2825,
+        "wait_p50": 170.99650000000003,
+        "wait_p99": 568.89562
+      },
+      {
+        "D_p50": 1038.2707500000001,
+        "D_p99": 3362.2736150000037,
+        "Dif_p50": 1.3669999999999334,
+        "Dif_p99": 2.4490000000000123,
+        "F45_tail": 1154.7427806841044,
+        "F_lo_p50": 444.53175,
+        "F_lo_p99": 878.6009950000002,
+        "F_p50": 761.21825,
+        "F_tail": 984.3378988933601,
+        "Fb_p50": 460.222,
+        "Fb_p99": 879.8313400000006,
+        "Fb_tail": 630.6479552313883,
+        "G_p50": 110.17381749999998,
+        "G_p99": 488.34403020000104,
+        "Q_p50": 6.788,
+        "Q_p99": 19.514,
+        "R_p50": 403.51300000000003,
+        "R_p99": 2300.5129250000045,
+        "Tc45_p50": 228.97825,
+        "Tc45_p99": 2021.2158500000005,
+        "Tc_cpu_share": 0.777906965564726,
+        "Tc_p50": 230.20625,
+        "Tc_tail_cpu": 368.1392005481206,
+        "Tc_tail_mean": 2555.1062740170937,
+        "Tc_tail_wait": 2158.5055596296297,
+        "Tc_wait_share": 0.38362596646322544,
+        "W_p50": 769.29975,
+        "W_tail": 3217.1445030181085,
+        "ack_p50": 0.0,
+        "ack_p99": 0.0,
+        "b_max_p50": 206.416,
+        "b_max_p99": 2174.1449650000063,
+        "b_min_p50": 198.66950000000003,
+        "b_min_p99": 2153.1048500000006,
+        "brange_p50": 0.0,
+        "brange_p99": 48.53584000000001,
+        "brk_p50": 402.125,
+        "brk_p99": 776.0039000000036,
+        "broker_matched_share": 1.0,
+        "card_matched_share": 1.0,
+        "card_window_ns": 1482.0,
+        "client_libraries": [
+          "python 3.10.12 kafka-python 2.3.2 redis-py 7.4.1"
+        ],
+        "client_policies": [
+          "redis_consumer.py=SCHED_OTHER;redis_producer.py=SCHED_FIFO/SCHED_OTHER;stress-ng=SCHED_OTHER"
+        ],
+        "duty_pct": 75.0,
+        "exact_share": 0.008846765112455903,
+        "excess_p50": 3.485829999999993,
+        "excess_p99": 40.89847560000016,
+        "flagged_share": 0.9924334931184837,
+        "floor_hi": 593.5224499999999,
+        "floor_lo": 334.366975,
+        "floor_pairs": 9.0,
+        "gc_consumer": 0.0,
+        "gc_producer": 0.0,
+        "hand_p50": 62.20849999999989,
+        "hand_p99": 151.32872000000032,
+        "irqbalance": [
+          "active"
+        ],
+        "late_p50_ms": 0.12589675,
+        "late_share": 0.00028172374730370253,
+        "late_spread_ms": 0.13177661000000002,
+        "load_measured": 69.12575257731959,
+        "net_irq_cpus": [
+          "0;1;2;3;4;5;6;7"
+        ],
+        "net_p50": 349.96950000000004,
+        "net_p99": 548.9883050000001,
+        "preempt": [
+          "CONFIG_PREEMPT_VOLUNTARY_BUILD=y;CONFIG_PREEMPT_VOLUNTARY=y;CONFIG_PREEMPT_NOTIFIERS=y"
+        ],
+        "range_p50": 178.564,
+        "range_p99": 638.3030900000001,
+        "reads_multi_share": 0.0011277381076609475,
+        "rt_runtime_us": [
+          "950000"
+        ],
+        "s_max_p50": 207.48275,
+        "s_max_p99": 2174.7507250000026,
+        "s_min_p50": 0.0,
+        "s_min_p99": 1814.183395000001,
+        "setup": "U2000-redis-l70",
+        "split_share": 1.0,
+        "stall_share": 0.00014589225720190157,
+        "stress_ng_version": [
+          "stress-ng, version 0.13.12 (gcc 11.3, x86_64 Linux 6.8.0-1064-azure)"
+        ],
+        "trip_p50": 392.884,
+        "wait_p50": 17.312499999999993,
+        "wait_p99": 372.05608
+      },
+      {
+        "D_p50": 1263.6032500000001,
+        "D_p99": 2197.746254999997,
+        "Dif_p50": 1.3220000000000027,
+        "Dif_p99": 2.313000000000045,
+        "F45_tail": 2034.7228128772636,
+        "F_lo_p50": 837.5807500000001,
+        "F_lo_p99": 1413.9629249999994,
+        "F_p50": 1026.5235000000002,
+        "F_tail": 1654.7993043259557,
+        "Fb_p50": 841.2607499999999,
+        "Fb_p99": 1414.4170999999992,
+        "Fb_tail": 1623.8982032193157,
+        "G_p50": 274.7781575,
+        "G_p99": 781.1491140999979,
+        "Q_p50": 7.1739999999999995,
+        "Q_p99": 18.3285,
+        "R_p50": 487.87825000000004,
+        "R_p99": 1224.1206249999993,
+        "Tc45_p50": 207.437,
+        "Tc45_p99": 365.05963999999994,
+        "Tc_cpu_share": 1.2169997581967533,
+        "Tc_p50": 208.262,
+        "Tc_tail_cpu": 742.3861149654092,
+        "Tc_tail_mean": 644.0251932191256,
+        "Tc_tail_wait": 7.891665208531352,
+        "Tc_wait_share": 0.0011723456959373516,
+        "W_p50": 1063.59925,
+        "W_tail": 2279.1694637826963,
+        "ack_p50": 0.0,
+        "ack_p99": 434.4106649999981,
+        "b_max_p50": 195.82475,
+        "b_max_p99": 550.4937850000006,
+        "b_min_p50": 193.43625,
+        "b_min_p99": 547.957815000002,
+        "brange_p50": 0.0,
+        "brange_p99": 41.57467500000001,
+        "brk_p50": 481.07750000000004,
+        "brk_p99": 1022.486199999996,
+        "broker_matched_share": 1.0,
+        "card_matched_share": 1.0,
+        "card_window_ns": 1482.0,
+        "client_libraries": [
+          "python 3.10.12 kafka-python 2.3.2 redis-py 7.4.1"
+        ],
+        "client_policies": [
+          "redis_consumer.py=SCHED_FIFO/SCHED_OTHER;redis_producer.py=SCHED_FIFO/SCHED_OTHER;stress-ng=SCHED_OTHER"
+        ],
+        "duty_pct": 75.0,
+        "exact_share": 0.17479938760659644,
+        "excess_p50": 3.3851500000000527,
+        "excess_p99": 33.59290540000002,
+        "flagged_share": 0.9001992948495517,
+        "floor_hi": 752.2080250000001,
+        "floor_lo": 488.68368,
+        "floor_pairs": 13.0,
+        "gc_consumer": 0.0,
+        "gc_producer": 0.0,
+        "hand_p50": 62.1685,
+        "hand_p99": 144.59949999999657,
+        "irqbalance": [
+          "active"
+        ],
+        "late_p50_ms": 0.12620825,
+        "late_share": 0.0007395338962507212,
+        "late_spread_ms": 0.12153198499999993,
+        "load_measured": 68.08894329896907,
+        "net_irq_cpus": [
+          "0;1;2;3;4;5;6;7",
+          "0;1;3;4;5;6;7",
+          "0;2;3;4;5;6;7",
+          "1;2;3;4;5;6;7"
+        ],
+        "net_p50": 506.2865,
+        "net_p99": 751.273675,
+        "preempt": [
+          "CONFIG_PREEMPT_VOLUNTARY_BUILD=y;CONFIG_PREEMPT_VOLUNTARY=y;CONFIG_PREEMPT_NOTIFIERS=y"
+        ],
+        "range_p50": 133.375,
+        "range_p99": 336.90856499999995,
+        "reads_multi_share": 0.0,
+        "rt_runtime_us": [
+          "950000"
+        ],
+        "s_max_p50": 190.6305,
+        "s_max_p99": 548.711,
+        "s_min_p50": 0.0,
+        "s_min_p99": 469.507,
+        "setup": "U2000-redis-l70-rt",
+        "split_share": 1.0,
+        "stall_share": 0.00010061273162671298,
+        "stress_ng_version": [
+          "stress-ng, version 0.13.12 (gcc 11.3, x86_64 Linux 6.8.0-1064-azure)"
+        ],
+        "trip_p50": 671.1800000000001,
+        "wait_p50": 187.36225000000002,
+        "wait_p99": 638.4164899999998
+      },
+      {
+        "D_p50": 1781.3115,
+        "D_p99": 2434.6134999999995,
+        "Dif_p50": 2.584000000000003,
+        "Dif_p99": 5.4296000000000415,
+        "F45_tail": 1125.43122,
+        "F_lo_p50": 786.165,
+        "F_lo_p99": 901.1599999999999,
+        "F_p50": 786.165,
+        "F_tail": 1125.43122,
+        "Fb_p50": 786.165,
+        "Fb_p99": 901.1599999999999,
+        "Fb_tail": 1125.43122,
+        "G_p50": 278.93882,
+        "G_p99": 391.7315999999999,
+        "Q_p50": 16.4125,
+        "Q_p99": 33.762979999999956,
+        "R_p50": 254.2615,
+        "R_p99": 355.3196999999998,
+        "Tc45_p50": 597.0930000000001,
+        "Tc45_p99": 921.640525,
+        "Tc_cpu_share": 1.4249533903978988,
+        "Tc_p50": 597.0930000000001,
+        "Tc_tail_cpu": 1607.9773799999998,
+        "Tc_tail_mean": 965.12958,
+        "Tc_tail_wait": 0.33752000000000004,
+        "Tc_wait_share": 0.0002675201437190724,
+        "W_p50": 786.165,
+        "W_tail": 1125.43122,
+        "ack_p50": 0.0,
+        "ack_p99": 0.0,
+        "b_max_p50": 0.0,
+        "b_max_p99": 0.0,
+        "b_min_p50": 0.0,
+        "b_min_p99": 0.0,
+        "brange_p50": 0.0,
+        "brange_p99": 0.0,
+        "brk_p50": 254.2615,
+        "brk_p99": 355.3196999999998,
+        "broker_matched_share": 1.0,
+        "card_matched_share": 1.0,
+        "card_window_ns": 1452.0,
+        "client_libraries": [
+          "python 3.10.12 kafka-python 2.3.2 redis-py 7.4.1"
+        ],
+        "client_policies": [
+          "kafka_consumer.py=SCHED_OTHER;kafka_producer.py=SCHED_FIFO/SCHED_OTHER"
+        ],
+        "duty_pct": null,
+        "exact_share": 0.0,
+        "excess_p50": 5.2715200000000095,
+        "excess_p99": 30.04893999999981,
+        "flagged_share": 0.0,
+        "floor_hi": 509.4284,
+        "floor_lo": 509.4284,
+        "floor_pairs": 1.0,
+        "gc_consumer": 0.0,
+        "gc_producer": 0.0,
+        "hand_p50": 254.2615,
+        "hand_p99": 355.3196999999998,
+        "irqbalance": [
+          "active"
+        ],
+        "late_p50_ms": 0.058433,
+        "late_share": 0.0,
+        "late_spread_ms": 0.05330875999999994,
+        "load_measured": 0.07610204081632654,
+        "net_irq_cpus": [
+          "0;1;2;3;4;5;6;7",
+          "1;2;3;4;5;6;7",
+          "1;2;3;4;5;7"
+        ],
+        "net_p50": 514.8095000000001,
+        "net_p99": 542.1436799999999,
+        "preempt": [
+          "CONFIG_PREEMPT_VOLUNTARY_BUILD=y;CONFIG_PREEMPT_VOLUNTARY=y;CONFIG_PREEMPT_NOTIFIERS=y"
+        ],
+        "range_p50": 0.0,
+        "range_p99": 0.0,
+        "reads_multi_share": 0.9591380673642426,
+        "rt_runtime_us": [
+          "950000"
+        ],
+        "s_max_p50": 0.0,
+        "s_max_p99": 0.0,
+        "s_min_p50": 0.0,
+        "s_min_p99": 0.0,
+        "setup": "U50-kafka-l0",
+        "split_share": 1.0,
+        "stall_share": 0.0,
+        "stress_ng_version": [
+          "stress-ng, version 0.13.12 (gcc 11.3, x86_64 Linux 6.8.0-1064-azure)"
+        ],
+        "trip_p50": 19125.714500000002,
+        "wait_p50": 0.0,
+        "wait_p99": 0.0
+      },
+      {
+        "D_p50": 1900.394,
+        "D_p99": 6056.592459999996,
+        "Dif_p50": 2.834000000000003,
+        "Dif_p99": 6.908579999999958,
+        "F45_tail": 1141.17924,
+        "F_lo_p50": 820.7864999999999,
+        "F_lo_p99": 926.3459799999994,
+        "F_p50": 820.7864999999999,
+        "F_tail": 1141.17924,
+        "Fb_p50": 820.7864999999999,
+        "Fb_p99": 926.3459799999994,
+        "Fb_tail": 1141.17924,
+        "G_p50": 272.79085999999995,
+        "G_p99": 375.7395799999995,
+        "Q_p50": 8.120000000000001,
+        "Q_p99": 34.219659999999884,
+        "R_p50": 251.3505,
+        "R_p99": 344.35139999999996,
+        "Tc45_p50": 644.8605,
+        "Tc45_p99": 4785.6120599999995,
+        "Tc_cpu_share": 0.8368675225551927,
+        "Tc_p50": 644.8605,
+        "Tc_tail_cpu": 1233.02804,
+        "Tc_tail_mean": 5168.937,
+        "Tc_tail_wait": 4166.2611799999995,
+        "Tc_wait_share": 0.3978118373607604,
+        "W_p50": 820.7864999999999,
+        "W_tail": 1141.17924,
+        "ack_p50": 0.0,
+        "ack_p99": 0.0,
+        "b_max_p50": 0.0,
+        "b_max_p99": 0.0,
+        "b_min_p50": 0.0,
+        "b_min_p99": 0.0,
+        "brange_p50": 0.0,
+        "brange_p99": 0.0,
+        "brk_p50": 251.3505,
+        "brk_p99": 344.35139999999996,
+        "broker_matched_share": 1.0,
+        "card_matched_share": 1.0,
+        "card_window_ns": 1462.0,
+        "client_libraries": [
+          "python 3.10.12 kafka-python 2.3.2 redis-py 7.4.1"
+        ],
+        "client_policies": [
+          "kafka_consumer.py=SCHED_OTHER;kafka_producer.py=SCHED_FIFO/SCHED_OTHER",
+          "kafka_consumer.py=SCHED_OTHER;kafka_producer.py=SCHED_FIFO/SCHED_OTHER;stress-ng=SCHED_OTHER"
+        ],
+        "duty_pct": 88.0,
+        "exact_share": 0.03125,
+        "excess_p50": 6.227100000000121,
+        "excess_p99": 40.12082000000005,
+        "flagged_share": 0.0,
+        "floor_hi": 548.77402,
+        "floor_lo": 548.77402,
+        "floor_pairs": 1.0,
+        "gc_consumer": 0.0,
+        "gc_producer": 0.0,
+        "hand_p50": 251.3505,
+        "hand_p99": 344.35139999999996,
+        "irqbalance": [
+          "active"
+        ],
+        "late_p50_ms": 0.050402,
+        "late_share": 0.0,
+        "late_spread_ms": 0.055132959999999925,
+        "load_measured": 86.9870606060606,
+        "net_irq_cpus": [
+          "0;1;2;3;4;5;6;7",
+          "1;2;3;4;5;6;7"
+        ],
+        "net_p50": 556.8155,
+        "net_p99": 585.3860199999999,
+        "preempt": [
+          "CONFIG_PREEMPT_VOLUNTARY_BUILD=y;CONFIG_PREEMPT_VOLUNTARY=y;CONFIG_PREEMPT_NOTIFIERS=y"
+        ],
+        "range_p50": 0.0,
+        "range_p99": 0.0,
+        "reads_multi_share": 0.969996769400258,
+        "rt_runtime_us": [
+          "950000"
+        ],
+        "s_max_p50": 0.0,
+        "s_max_p99": 0.0,
+        "s_min_p50": 0.0,
+        "s_min_p99": 0.0,
+        "setup": "U50-kafka-l88-blocks",
+        "split_share": 1.0,
+        "stall_share": 0.0008048289738430583,
+        "stress_ng_version": [
+          "stress-ng, version 0.13.12 (gcc 11.3, x86_64 Linux 6.8.0-1064-azure)"
+        ],
+        "trip_p50": 19061.61075,
+        "wait_p50": 0.0,
+        "wait_p99": 0.0
+      },
+      {
+        "D_p50": 1036.0175,
+        "D_p99": 1217.1977399999998,
+        "Dif_p50": 2.378499999999974,
+        "Dif_p99": 5.1561999999999575,
+        "F45_tail": 972.4209000000001,
+        "F_lo_p50": 797.4495,
+        "F_lo_p99": 857.2045399999997,
+        "F_p50": 797.4495,
+        "F_tail": 972.4209000000001,
+        "Fb_p50": 797.4495,
+        "Fb_p99": 857.2045399999997,
+        "Fb_tail": 972.4209000000001,
+        "G_p50": 114.96438,
+        "G_p99": 167.19233999999997,
+        "Q_p50": 25.1025,
+        "Q_p99": 37.20637999999999,
+        "R_p50": 83.8415,
+        "R_p99": 129.23062,
+        "Tc45_p50": 262.11625000000004,
+        "Tc45_p99": 410.8619550000001,
+        "Tc_cpu_share": 1.1162426398100576,
+        "Tc_p50": 262.324,
+        "Tc_tail_cpu": 560.6646000000001,
+        "Tc_tail_mean": 497.51262,
+        "Tc_tail_wait": 0.0,
+        "Tc_wait_share": 0.00042880923237113107,
+        "W_p50": 797.4495,
+        "W_tail": 972.4209000000001,
+        "ack_p50": 0.0,
+        "ack_p99": 0.0,
+        "b_max_p50": 0.0,
+        "b_max_p99": 0.0,
+        "b_min_p50": 0.0,
+        "b_min_p99": 0.0,
+        "brange_p50": 0.0,
+        "brange_p99": 0.0,
+        "brk_p50": 83.8415,
+        "brk_p99": 129.23062,
+        "broker_matched_share": 1.0,
+        "card_matched_share": 1.0,
+        "card_window_ns": 1452.0,
+        "client_libraries": [
+          "python 3.10.12 kafka-python 2.3.2 redis-py 7.4.1"
+        ],
+        "client_policies": [
+          "redis_consumer.py=SCHED_OTHER;redis_producer.py=SCHED_FIFO/SCHED_OTHER"
+        ],
+        "duty_pct": null,
+        "exact_share": null,
+        "excess_p50": 5.193320000000085,
+        "excess_p99": 32.73039999999993,
+        "flagged_share": 0.0,
+        "floor_hi": 682.0326799999999,
+        "floor_lo": 682.0326799999999,
+        "floor_pairs": 1.0,
+        "gc_consumer": 0.0,
+        "gc_producer": 0.0,
+        "hand_p50": 83.8415,
+        "hand_p99": 129.23062,
+        "irqbalance": [
+          "active"
+        ],
+        "late_p50_ms": 0.25444100000000003,
+        "late_share": 0.0,
+        "late_spread_ms": 0.23333261999999974,
+        "load_measured": 0.08896428571428572,
+        "net_irq_cpus": [
+          "0;1;2;3;4;5;6;7",
+          "1;2;3;4;5;6;7"
+        ],
+        "net_p50": 687.226,
+        "net_p99": 716.0595199999998,
+        "preempt": [
+          "CONFIG_PREEMPT_VOLUNTARY_BUILD=y;CONFIG_PREEMPT_VOLUNTARY=y;CONFIG_PREEMPT_NOTIFIERS=y"
+        ],
+        "range_p50": 0.0,
+        "range_p99": 0.0,
+        "reads_multi_share": 0.0,
+        "rt_runtime_us": [
+          "950000"
+        ],
+        "s_max_p50": 0.0,
+        "s_max_p99": 0.0,
+        "s_min_p50": 0.0,
+        "s_min_p99": 0.0,
+        "setup": "U50-redis-l0",
+        "split_share": 1.0,
+        "stall_share": 0.00040241448692152917,
+        "stress_ng_version": [
+          "stress-ng, version 0.13.12 (gcc 11.3, x86_64 Linux 6.8.0-1064-azure)"
+        ],
+        "trip_p50": 19453.3665,
+        "wait_p50": 0.0,
+        "wait_p99": 0.0
+      },
+      {
+        "D_p50": 902.4165,
+        "D_p99": 4233.910359999994,
+        "Dif_p50": 2.5640000000000214,
+        "Dif_p99": 5.687160000000038,
+        "F45_tail": 845.21346,
+        "F_lo_p50": 661.995,
+        "F_lo_p99": 769.1317599999995,
+        "F_p50": 661.995,
+        "F_tail": 845.21346,
+        "Fb_p50": 661.995,
+        "Fb_p99": 769.1317599999995,
+        "Fb_tail": 845.21346,
+        "G_p50": 109.33004,
+        "G_p99": 255.68715999999904,
+        "Q_p50": 12.608,
+        "Q_p99": 30.83737999999999,
+        "R_p50": 84.707,
+        "R_p99": 239.22759999999948,
+        "Tc45_p50": 269.56275000000005,
+        "Tc45_p99": 3725.9117550000024,
+        "Tc_cpu_share": 0.6265093706253555,
+        "Tc_p50": 270.2115,
+        "Tc_tail_cpu": 394.5109,
+        "Tc_tail_mean": 4101.7644,
+        "Tc_tail_wait": 3746.29202,
+        "Tc_wait_share": 0.4577325381665929,
+        "W_p50": 661.995,
+        "W_tail": 845.21346,
+        "ack_p50": 0.0,
+        "ack_p99": 0.0,
+        "b_max_p50": 0.0,
+        "b_max_p99": 0.0,
+        "b_min_p50": 0.0,
+        "b_min_p99": 0.0,
+        "brange_p50": 0.0,
+        "brange_p99": 0.0,
+        "brk_p50": 84.707,
+        "brk_p99": 239.22759999999948,
+        "broker_matched_share": 1.0,
+        "card_matched_share": 1.0,
+        "card_window_ns": 1457.5,
+        "client_libraries": [
+          "python 3.10.12 kafka-python 2.3.2 redis-py 7.4.1"
+        ],
+        "client_policies": [
+          "redis_consumer.py=SCHED_OTHER;redis_producer.py=SCHED_FIFO/SCHED_OTHER"
+        ],
+        "duty_pct": 88.0,
+        "exact_share": null,
+        "excess_p50": 5.831039999999945,
+        "excess_p99": 37.85877999999994,
+        "flagged_share": 0.0,
+        "floor_hi": 550.07204,
+        "floor_lo": 550.07204,
+        "floor_pairs": 1.0,
+        "gc_consumer": 0.0,
+        "gc_producer": 0.0,
+        "hand_p50": 84.707,
+        "hand_p99": 239.22759999999948,
+        "irqbalance": [
+          "active"
+        ],
+        "late_p50_ms": 0.2516515,
+        "late_share": 0.0,
+        "late_spread_ms": 0.2530197999999997,
+        "load_measured": 87.59737983193277,
+        "net_irq_cpus": [
+          "0;1;2;3;4;5;6;7",
+          "1;2;3;4;5;6;7",
+          "1;2;3;4;5;7"
+        ],
+        "net_p50": 555.6334999999999,
+        "net_p99": 584.9287999999999,
+        "preempt": [
+          "CONFIG_PREEMPT_VOLUNTARY_BUILD=y;CONFIG_PREEMPT_VOLUNTARY=y;CONFIG_PREEMPT_NOTIFIERS=y"
+        ],
+        "range_p50": 0.0,
+        "range_p99": 0.0,
+        "reads_multi_share": 0.0,
+        "rt_runtime_us": [
+          "950000"
+        ],
+        "s_max_p50": 0.0,
+        "s_max_p99": 0.0,
+        "s_min_p50": 0.0,
+        "s_min_p99": 0.0,
+        "setup": "U50-redis-l88-blocks",
+        "split_share": 1.0,
+        "stall_share": 0.0,
+        "stress_ng_version": [
+          "stress-ng, version 0.13.12 (gcc 11.3, x86_64 Linux 6.8.0-1064-azure)"
+        ],
+        "trip_p50": 19440.7595,
+        "wait_p50": 0.0,
+        "wait_p99": 0.0
+      },
+      {
+        "D_p50": 1219.5104999999999,
+        "D_p99": 1322.64592,
+        "Dif_p50": 1.6329999999999814,
+        "Dif_p99": 2.2285000000000537,
+        "F45_tail": 1144.5136224899597,
+        "F_lo_p50": 593.0305000000001,
+        "F_lo_p99": 656.4258999999998,
+        "F_p50": 593.0305000000001,
+        "F_tail": 1144.5136224899597,
+        "Fb_p50": 593.0305000000001,
+        "Fb_p99": 656.1306399999999,
+        "Fb_tail": 1130.202329317269,
+        "G_p50": 164.86698,
+        "G_p99": 233.03366,
+        "Q_p50": 5.9615,
+        "Q_p99": 33.21419999999999,
+        "R_p50": 153.68099999999998,
+        "R_p99": 211.51477999999994,
+        "Tc45_p50": 378.36425,
+        "Tc45_p99": 438.06956000000014,
+        "Tc_cpu_share": 1.4059588163286327,
+        "Tc_p50": 378.36425,
+        "Tc_tail_cpu": 679.7471465863454,
+        "Tc_tail_mean": 520.6817108433736,
+        "Tc_tail_wait": 0.1745261044176707,
+        "Tc_wait_share": 0.00032231295174242326,
+        "W_p50": 593.0305000000001,
+        "W_tail": 1159.8567590361447,
+        "ack_p50": 0.0,
+        "ack_p99": 0.0,
+        "b_max_p50": 0.0,
+        "b_max_p99": 0.0,
+        "b_min_p50": 0.0,
+        "b_min_p99": 0.0,
+        "brange_p50": 0.0,
+        "brange_p99": 0.0,
+        "brk_p50": 153.68099999999998,
+        "brk_p99": 211.51477999999994,
+        "broker_matched_share": 1.0,
+        "card_matched_share": 1.0,
+        "card_window_ns": 1457.0,
+        "client_libraries": [
+          "python 3.10.12 kafka-python 2.3.2 redis-py 7.4.1"
+        ],
+        "client_policies": [
+          "kafka_consumer.py=SCHED_OTHER;kafka_producer.py=SCHED_FIFO/SCHED_OTHER"
+        ],
+        "duty_pct": null,
+        "exact_share": 0.0,
+        "excess_p50": 2.319980000000072,
+        "excess_p99": 32.25066000000003,
+        "flagged_share": 0.0006840220496519534,
+        "floor_hi": 429.54051999999996,
+        "floor_lo": 429.54051999999996,
+        "floor_pairs": 1.0,
+        "gc_consumer": 0.0,
+        "gc_producer": 0.0,
+        "hand_p50": 153.68099999999998,
+        "hand_p99": 211.30719999999997,
+        "irqbalance": [
+          "active"
+        ],
+        "late_p50_ms": 0.0243525,
+        "late_share": 0.0,
+        "late_spread_ms": 0.015487339999999997,
+        "load_measured": -0.08427551020408167,
+        "net_irq_cpus": [
+          "0;1;2;3;4;5;6;7",
+          "1;2;3;4;5;6;7"
+        ],
+        "net_p50": 431.8605,
+        "net_p99": 461.79117999999994,
+        "preempt": [
+          "CONFIG_PREEMPT_VOLUNTARY_BUILD=y;CONFIG_PREEMPT_VOLUNTARY=y;CONFIG_PREEMPT_NOTIFIERS=y"
+        ],
+        "range_p50": 0.0,
+        "range_p99": 0.0,
+        "reads_multi_share": 0.8774668199428122,
+        "rt_runtime_us": [
+          "950000"
+        ],
+        "s_max_p50": 0.0,
+        "s_max_p99": 0.0,
+        "s_min_p50": 0.0,
+        "s_min_p99": 0.0,
+        "setup": "U500-kafka-l0",
+        "split_share": 1.0,
+        "stall_share": 0.0005230756850279644,
+        "stress_ng_version": [
+          "stress-ng, version 0.13.12 (gcc 11.3, x86_64 Linux 6.8.0-1064-azure)"
+        ],
+        "trip_p50": 1591.8615,
+        "wait_p50": 0.0,
+        "wait_p99": 0.0
+      },
+      {
+        "D_p50": 1564.3447500000002,
+        "D_p99": 5103.974905000004,
+        "Dif_p50": 1.7024999999999864,
+        "Dif_p99": 3.01949999999988,
+        "F45_tail": 1326.269204819277,
+        "F_lo_p50": 668.1370000000001,
+        "F_lo_p99": 911.014605000002,
+        "F_p50": 675.9385,
+        "F_tail": 1326.269204819277,
+        "Fb_p50": 675.9385,
+        "Fb_p99": 932.7349050000018,
+        "Fb_tail": 932.1385843373494,
+        "G_p50": 172.47698,
+        "G_p99": 389.30389500000183,
+        "Q_p50": 4.66675,
+        "Q_p99": 80.76698999999999,
+        "R_p50": 154.986,
+        "R_p99": 2531.338470000003,
+        "Tc45_p50": 533.0889999999999,
+        "Tc45_p99": 3589.6023299999974,
+        "Tc_cpu_share": 1.0003611707844398,
+        "Tc_p50": 533.0889999999999,
+        "Tc_tail_cpu": 875.9905983606557,
+        "Tc_tail_mean": 4095.4406290983607,
+        "Tc_tail_wait": 3432.2937602459015,
+        "Tc_wait_share": 0.3287317628358726,
+        "W_p50": 675.9385,
+        "W_tail": 3816.6411104417666,
+        "ack_p50": 0.0,
+        "ack_p99": 0.0,
+        "b_max_p50": 0.0,
+        "b_max_p99": 2387.6757000000066,
+        "b_min_p50": 0.0,
+        "b_min_p99": 2292.1965350000023,
+        "brange_p50": 0.0,
+        "brange_p99": 113.39235000000004,
+        "brk_p50": 154.986,
+        "brk_p99": 615.0198800000002,
+        "broker_matched_share": 1.0,
+        "card_matched_share": 1.0,
+        "card_window_ns": 1482.0,
+        "client_libraries": [
+          "python 3.10.12 kafka-python 2.3.2 redis-py 7.4.1"
+        ],
+        "client_policies": [
+          "kafka_consumer.py=SCHED_OTHER;kafka_producer.py=SCHED_FIFO/SCHED_OTHER;stress-ng=SCHED_OTHER"
+        ],
+        "duty_pct": 71.0,
+        "exact_share": 0.0034329164914508837,
+        "excess_p50": 3.10223500000005,
+        "excess_p99": 34.40485999999996,
+        "flagged_share": 0.17986479961371318,
+        "floor_hi": 504.22052,
+        "floor_lo": 504.22052,
+        "floor_pairs": 1.0,
+        "gc_consumer": 0.0,
+        "gc_producer": 0.0,
+        "hand_p50": 154.986,
+        "hand_p99": 265.5546450000004,
+        "irqbalance": [
+          "active"
+        ],
+        "late_p50_ms": 0.0204045,
+        "late_share": 0.0,
+        "late_spread_ms": 0.019458860000000015,
+        "load_measured": 68.98913402061855,
+        "net_irq_cpus": [
+          "0;1;2;3;4;5;6;7",
+          "0;2;3;4;5;6;7",
+          "1;2;3;4;5;6;7"
+        ],
+        "net_p50": 507.24675,
+        "net_p99": 534.8869050000001,
+        "preempt": [
+          "CONFIG_PREEMPT_VOLUNTARY_BUILD=y;CONFIG_PREEMPT_VOLUNTARY=y;CONFIG_PREEMPT_NOTIFIERS=y"
+        ],
+        "range_p50": 0.0,
+        "range_p99": 598.571035,
+        "reads_multi_share": 0.7066618202392576,
+        "rt_runtime_us": [
+          "950000"
+        ],
+        "s_max_p50": 0.0,
+        "s_max_p99": 2518.0034700000033,
+        "s_min_p50": 0.0,
+        "s_min_p99": 1915.553780000001,
+        "setup": "U500-kafka-l70",
+        "split_share": 1.0,
+        "stall_share": 0.0006236922581683566,
+        "stress_ng_version": [
+          "stress-ng, version 0.13.12 (gcc 11.3, x86_64 Linux 6.8.0-1064-azure)"
+        ],
+        "trip_p50": 1412.97725,
+        "wait_p50": 0.0,
+        "wait_p99": 38.117845000000784
+      },
+      {
+        "D_p50": 1273.38075,
+        "D_p99": 1700.87294,
+        "Dif_p50": 1.6420000000000243,
+        "Dif_p99": 2.98670499999998,
+        "F45_tail": 1127.4612670682732,
+        "F_lo_p50": 502.351,
+        "F_lo_p99": 638.8587999999995,
+        "F_p50": 502.361,
+        "F_tail": 1127.4612670682732,
+        "Fb_p50": 502.361,
+        "Fb_p99": 638.8924299999995,
+        "Fb_tail": 1092.3113373493975,
+        "G_p50": 162.25372000000002,
+        "G_p99": 256.25662500000004,
+        "Q_p50": 4.5615000000000006,
+        "Q_p99": 52.61105999999998,
+        "R_p50": 152.388,
+        "R_p99": 216.8841449999998,
+        "Tc45_p50": 479.01575,
+        "Tc45_p99": 770.4106400000003,
+        "Tc_cpu_share": 1.404526539180575,
+        "Tc_p50": 479.01575,
+        "Tc_tail_cpu": 1118.4323052208833,
+        "Tc_tail_mean": 853.6968694779116,
+        "Tc_tail_wait": 0.8947081741600549,
+        "Tc_wait_share": 0.00044185928218710036,
+        "W_p50": 502.361,
+        "W_tail": 1142.602889558233,
+        "ack_p50": 0.0,
+        "ack_p99": 0.0,
+        "b_max_p50": 0.0,
+        "b_max_p99": 0.0,
+        "b_min_p50": 0.0,
+        "b_min_p99": 0.0,
+        "brange_p50": 0.0,
+        "brange_p99": 0.0,
+        "brk_p50": 152.388,
+        "brk_p99": 216.8841449999998,
+        "broker_matched_share": 1.0,
+        "card_matched_share": 1.0,
+        "card_window_ns": 1482.0,
+        "client_libraries": [
+          "python 3.10.12 kafka-python 2.3.2 redis-py 7.4.1"
+        ],
+        "client_policies": [
+          "kafka_consumer.py=SCHED_FIFO/SCHED_OTHER;kafka_producer.py=SCHED_FIFO/SCHED_OTHER;stress-ng=SCHED_OTHER"
+        ],
+        "duty_pct": 73.0,
+        "exact_share": 0.0,
+        "excess_p50": 2.739720000000034,
+        "excess_p99": 33.95401999999998,
+        "flagged_share": 0.0013479549465973395,
+        "floor_hi": 338.51828,
+        "floor_lo": 338.51828,
+        "floor_pairs": 1.0,
+        "gc_consumer": 0.0,
+        "gc_producer": 0.0,
+        "hand_p50": 152.388,
+        "hand_p99": 215.19567000000023,
+        "irqbalance": [
+          "active"
+        ],
+        "late_p50_ms": 0.01895575,
+        "late_share": 0.0,
+        "late_spread_ms": 0.015509800000000021,
+        "load_measured": 69.58570802650956,
+        "net_irq_cpus": [
+          "0;1;2;3;4;5;6;7",
+          "0;2;3;4;5;6;7",
+          "1;2;3;4;5;6;7"
+        ],
+        "net_p50": 341.25800000000004,
+        "net_p99": 372.861725,
+        "preempt": [
+          "CONFIG_PREEMPT_VOLUNTARY_BUILD=y;CONFIG_PREEMPT_VOLUNTARY=y;CONFIG_PREEMPT_NOTIFIERS=y"
+        ],
+        "range_p50": 0.0,
+        "range_p99": 0.0,
+        "reads_multi_share": 0.7682969567984128,
+        "rt_runtime_us": [
+          "950000"
+        ],
+        "s_max_p50": 0.0,
+        "s_max_p99": 0.0,
+        "s_min_p50": 0.0,
+        "s_min_p99": 0.0,
+        "setup": "U500-kafka-l70-rt",
+        "split_share": 1.0,
+        "stall_share": 0.0007645057557786315,
+        "stress_ng_version": [
+          "stress-ng, version 0.13.12 (gcc 11.3, x86_64 Linux 6.8.0-1064-azure)"
+        ],
+        "trip_p50": 1487.9265,
+        "wait_p50": 0.0,
+        "wait_p99": 0.0
+      },
+      {
+        "D_p50": 628.4884999999999,
+        "D_p99": 803.1838,
+        "Dif_p50": 1.2169999999999845,
+        "Dif_p99": 1.9279999999999973,
+        "F45_tail": 694.9174819277109,
+        "F_lo_p50": 487.61749999999995,
+        "F_lo_p99": 662.6245599999999,
+        "F_p50": 487.62249999999995,
+        "F_tail": 694.9174819277109,
+        "Fb_p50": 487.62249999999995,
+        "Fb_p99": 662.4842199999999,
+        "Fb_tail": 694.7209036144579,
+        "G_p50": 54.685389999999984,
+        "G_p99": 116.40152999999992,
+        "Q_p50": 8.329,
+        "Q_p99": 13.446679999999997,
+        "R_p50": 41.512,
+        "R_p99": 96.88375999999997,
+        "Tc45_p50": 151.603,
+        "Tc45_p99": 200.38979000000003,
+        "Tc_cpu_share": 1.2145937124349608,
+        "Tc_p50": 151.8605,
+        "Tc_tail_cpu": 381.9276305220883,
+        "Tc_tail_mean": 333.60027108433735,
+        "Tc_tail_wait": 0.32078514056224905,
+        "Tc_wait_share": 0.0005746605147199118,
+        "W_p50": 487.62249999999995,
+        "W_tail": 694.9174819277109,
+        "ack_p50": 0.0,
+        "ack_p99": 0.0,
+        "b_max_p50": 0.0,
+        "b_max_p99": 0.0,
+        "b_min_p50": 0.0,
+        "b_min_p99": 0.0,
+        "brange_p50": 0.0,
+        "brange_p99": 0.0,
+        "brk_p50": 41.512,
+        "brk_p99": 96.88375999999997,
+        "broker_matched_share": 1.0,
+        "card_matched_share": 1.0,
+        "card_window_ns": 1452.5,
+        "client_libraries": [
+          "python 3.10.12 kafka-python 2.3.2 redis-py 7.4.1"
+        ],
+        "client_policies": [
+          "redis_consumer.py=SCHED_OTHER;redis_producer.py=SCHED_FIFO/SCHED_OTHER"
+        ],
+        "duty_pct": null,
+        "exact_share": 0.00390625,
+        "excess_p50": 2.566839999999985,
+        "excess_p99": 33.70517619999994,
+        "flagged_share": 6.0354886733995894e-05,
+        "floor_hi": 550.233725,
+        "floor_lo": 428.89077000000003,
+        "floor_pairs": 2.0,
+        "gc_consumer": 0.0,
+        "gc_producer": 0.0,
+        "hand_p50": 41.512,
+        "hand_p99": 96.73727999999988,
+        "irqbalance": [
+          "active"
+        ],
+        "late_p50_ms": 0.1090625,
+        "late_share": 0.0,
+        "late_spread_ms": 0.058423760000000005,
+        "load_measured": 0.006229591836734709,
+        "net_irq_cpus": [
+          "0;1;2;3;5;6;7",
+          "1;2;3;4;5;6;7"
+        ],
+        "net_p50": 433.573,
+        "net_p99": 580.7255399999999,
+        "preempt": [
+          "CONFIG_PREEMPT_VOLUNTARY_BUILD=y;CONFIG_PREEMPT_VOLUNTARY=y;CONFIG_PREEMPT_NOTIFIERS=y"
+        ],
+        "range_p50": 0.0,
+        "range_p99": 0.0,
+        "reads_multi_share": 0.0,
+        "rt_runtime_us": [
+          "950000"
+        ],
+        "s_max_p50": 0.0,
+        "s_max_p99": 0.0,
+        "s_min_p50": 0.0,
+        "s_min_p99": 0.0,
+        "setup": "U500-redis-l0",
+        "split_share": 1.0,
+        "stall_share": 4.023659115599726e-05,
+        "stress_ng_version": [
+          "stress-ng, version 0.13.12 (gcc 11.3, x86_64 Linux 6.8.0-1064-azure)"
+        ],
+        "trip_p50": 1816.6055,
+        "wait_p50": 0.0,
+        "wait_p99": 0.0
+      },
+      {
+        "D_p50": 669.5754999999999,
+        "D_p99": 3347.125969999998,
+        "Dif_p50": 1.4270000000000493,
+        "Dif_p99": 2.796900000000025,
+        "F45_tail": 1157.323108433735,
+        "F_lo_p50": 474.341,
+        "F_lo_p99": 657.9147,
+        "F_p50": 474.341,
+        "F_tail": 1127.6229096385541,
+        "Fb_p50": 474.341,
+        "Fb_p99": 592.1458399999999,
+        "Fb_tail": 522.0577831325302,
+        "G_p50": 53.11949999999996,
+        "G_p99": 172.19133999999997,
+        "Q_p50": 7.9190000000000005,
+        "Q_p99": 16.67666,
+        "R_p50": 41.552499999999995,
+        "R_p99": 1513.9002999999998,
+        "Tc45_p50": 196.77175,
+        "Tc45_p99": 2864.4304150000053,
+        "Tc_cpu_share": 0.7986345283940126,
+        "Tc_p50": 197.16649999999998,
+        "Tc_tail_cpu": 280.5400806941361,
+        "Tc_tail_mean": 3372.0325968803054,
+        "Tc_tail_wait": 3133.3647974239257,
+        "Tc_wait_share": 0.3470603030360417,
+        "W_p50": 474.341,
+        "W_tail": 2516.0776325301204,
+        "ack_p50": 0.0,
+        "ack_p99": 0.0,
+        "b_max_p50": 0.0,
+        "b_max_p99": 1462.6880199999998,
+        "b_min_p50": 0.0,
+        "b_min_p99": 1421.9570999999996,
+        "brange_p50": 0.0,
+        "brange_p99": 42.36620000000003,
+        "brk_p50": 41.552499999999995,
+        "brk_p99": 678.50218,
+        "broker_matched_share": 1.0,
+        "card_matched_share": 1.0,
+        "card_window_ns": 1482.0,
+        "client_libraries": [
+          "python 3.10.12 kafka-python 2.3.2 redis-py 7.4.1"
+        ],
+        "client_policies": [
+          "redis_consumer.py=SCHED_OTHER;redis_producer.py=SCHED_FIFO/SCHED_OTHER;stress-ng=SCHED_OTHER"
+        ],
+        "duty_pct": 71.0,
+        "exact_share": 0.002425382434754288,
+        "excess_p50": 2.999999999999943,
+        "excess_p99": 30.718539999999944,
+        "flagged_share": 0.05490520872929599,
+        "floor_hi": 419.9545,
+        "floor_lo": 419.9545,
+        "floor_pairs": 1.0,
+        "gc_consumer": 0.0,
+        "gc_producer": 0.0,
+        "hand_p50": 41.552499999999995,
+        "hand_p99": 132.45889999999997,
+        "irqbalance": [
+          "active"
+        ],
+        "late_p50_ms": 0.13352999999999998,
+        "late_share": 0.0,
+        "late_spread_ms": 0.11849897999999998,
+        "load_measured": 69.68714432989691,
+        "net_irq_cpus": [
+          "0;1;2;3;4;5;6;7",
+          "1;2;3;4;5;6;7"
+        ],
+        "net_p50": 423.1565,
+        "net_p99": 452.89215,
+        "preempt": [
+          "CONFIG_PREEMPT_VOLUNTARY_BUILD=y;CONFIG_PREEMPT_VOLUNTARY=y;CONFIG_PREEMPT_NOTIFIERS=y"
+        ],
+        "range_p50": 0.0,
+        "range_p99": 390.54675999999995,
+        "reads_multi_share": 0.0,
+        "rt_runtime_us": [
+          "950000"
+        ],
+        "s_max_p50": 0.0,
+        "s_max_p99": 1401.5895199999989,
+        "s_min_p50": 0.0,
+        "s_min_p99": 935.6052999999997,
+        "setup": "U500-redis-l70",
+        "split_share": 1.0,
+        "stall_share": 2.011829557799863e-05,
+        "stress_ng_version": [
+          "stress-ng, version 0.13.12 (gcc 11.3, x86_64 Linux 6.8.0-1064-azure)"
+        ],
+        "trip_p50": 1764.3072499999998,
+        "wait_p50": 0.0,
+        "wait_p99": 0.0
+      },
+      {
+        "D_p50": 887.893,
+        "D_p99": 980.299,
+        "Dif_p50": 1.4519999999999982,
+        "Dif_p99": 2.7789999999999964,
+        "F45_tail": 860.2319437751005,
+        "F_lo_p50": 708.2955,
+        "F_lo_p99": 756.4495,
+        "F_p50": 708.308,
+        "F_tail": 860.0763875502008,
+        "Fb_p50": 708.308,
+        "Fb_p99": 752.0,
+        "Fb_tail": 791.2453072289156,
+        "G_p50": 52.35650000000004,
+        "G_p99": 99.14316000000005,
+        "Q_p50": 6.4325,
+        "Q_p99": 13.952660000000133,
+        "R_p50": 41.332,
+        "R_p99": 83.20925,
+        "Tc45_p50": 175.906,
+        "Tc45_p99": 301.09379499999994,
+        "Tc_cpu_share": 1.2289050963760189,
+        "Tc_p50": 176.211,
+        "Tc_tail_cpu": 544.8436365461848,
+        "Tc_tail_mean": 473.3621646586345,
+        "Tc_tail_wait": 0.8858634538152611,
+        "Tc_wait_share": 0.00038624166798193317,
+        "W_p50": 708.308,
+        "W_tail": 860.5975502008032,
+        "ack_p50": 0.0,
+        "ack_p99": 0.0,
+        "b_max_p50": 0.0,
+        "b_max_p99": 0.0,
+        "b_min_p50": 0.0,
+        "b_min_p99": 0.0,
+        "brange_p50": 0.0,
+        "brange_p99": 0.0,
+        "brk_p50": 41.332,
+        "brk_p99": 83.20925,
+        "broker_matched_share": 1.0,
+        "card_matched_share": 1.0,
+        "card_window_ns": 1472.5,
+        "client_libraries": [
+          "python 3.10.12 kafka-python 2.3.2 redis-py 7.4.1"
+        ],
+        "client_policies": [
+          "redis_consumer.py=SCHED_FIFO/SCHED_OTHER;redis_producer.py=SCHED_FIFO/SCHED_OTHER;stress-ng=SCHED_OTHER"
+        ],
+        "duty_pct": 72.0,
+        "exact_share": 0.0,
+        "excess_p50": 3.2417500000000246,
+        "excess_p99": 26.806045000000104,
+        "flagged_share": 0.0033197859241076814,
+        "floor_hi": 655.9514999999999,
+        "floor_lo": 630.41525,
+        "floor_pairs": 1.0,
+        "gc_consumer": 0.0,
+        "gc_producer": 0.0,
+        "hand_p50": 41.332,
+        "hand_p99": 80.02745000000002,
+        "irqbalance": [
+          "active"
+        ],
+        "late_p50_ms": 0.12565475,
+        "late_share": 0.0,
+        "late_spread_ms": 0.10684486500000001,
+        "load_measured": 70.39038659793815,
+        "net_irq_cpus": [
+          "0;1;2;3;4;5;6;7",
+          "0;2;3;4;5;6;7",
+          "1;2;3;4;5;6;7"
+        ],
+        "net_p50": 659.0795,
+        "net_p99": 677.37325,
+        "preempt": [
+          "CONFIG_PREEMPT_VOLUNTARY_BUILD=y;CONFIG_PREEMPT_VOLUNTARY=y;CONFIG_PREEMPT_NOTIFIERS=y"
+        ],
+        "range_p50": 0.0,
+        "range_p99": 0.0,
+        "reads_multi_share": 0.0,
+        "rt_runtime_us": [
+          "950000"
+        ],
+        "s_max_p50": 0.0,
+        "s_max_p99": 0.0,
+        "s_min_p50": 0.0,
+        "s_min_p99": 0.0,
+        "setup": "U500-redis-l70-rt",
+        "split_share": 1.0,
+        "stall_share": 4.023901979376676e-05,
+        "stress_ng_version": [
+          "stress-ng, version 0.13.12 (gcc 11.3, x86_64 Linux 6.8.0-1064-azure)"
+        ],
+        "trip_p50": 1789.11225,
+        "wait_p50": 0.0,
+        "wait_p99": 0.0
+      }
+    ],
+    "wait_and_interference": [
+      {
+        "backend": "kafka",
+        "interference_p50": 100.6515,
+        "interference_p99": 332.34108000000015,
+        "rate": 500,
+        "wait_p50": 54.073249999999916,
+        "wait_p99": 2819.191689999997
+      },
+      {
+        "backend": "redis",
+        "interference_p50": 24.35050000000001,
+        "interference_p99": 103.1226949999994,
+        "rate": 500,
+        "wait_p50": 20.955499999999972,
+        "wait_p99": 2569.0623050000117
+      },
+      {
+        "backend": "kafka",
+        "interference_p50": 175.98275,
+        "interference_p99": 661.2151550000005,
+        "rate": 2000,
+        "wait_p50": 197.88749999999993,
+        "wait_p99": 11009.051599999984
+      },
+      {
+        "backend": "redis",
+        "interference_p50": 32.635999999999996,
+        "interference_p99": 42.1347549999997,
+        "rate": 2000,
+        "wait_p50": 21.94425000000001,
+        "wait_p99": 1600.157110000001
+      }
+    ],
+    "with_failed": [
+      {
+        "Tc_p99": 606.5629449999994,
+        "W_p99": 1812.5327899999997,
+        "attempts": 4,
+        "failed": 0,
+        "setup": "U2000-kafka-l0"
+      },
+      {
+        "Tc_p99": 12276.829699999984,
+        "W_p99": 15463.821,
+        "attempts": 4,
+        "failed": 0,
+        "setup": "U2000-kafka-l70"
+      },
+      {
+        "Tc_p99": 1248.6164400000002,
+        "W_p99": 2324.16497,
+        "attempts": 6,
+        "failed": 2,
+        "setup": "U2000-kafka-l70-rt"
+      },
+      {
+        "Tc_p99": 404.61841500000014,
+        "W_p99": 1392.70372,
+        "attempts": 4,
+        "failed": 0,
+        "setup": "U2000-redis-l0"
+      },
+      {
+        "Tc_p99": 2046.9102800000007,
+        "W_p99": 2659.703480000002,
+        "attempts": 4,
+        "failed": 0,
+        "setup": "U2000-redis-l70"
+      },
+      {
+        "Tc_p99": 446.75316999999984,
+        "W_p99": 1805.4431449999975,
+        "attempts": 4,
+        "failed": 0,
+        "setup": "U2000-redis-l70-rt"
+      },
+      {
+        "Tc_p99": 921.640525,
+        "W_p99": 901.1599999999999,
+        "attempts": 4,
+        "failed": 0,
+        "setup": "U50-kafka-l0"
+      },
+      {
+        "Tc_p99": 4785.6120599999995,
+        "W_p99": 926.3459799999994,
+        "attempts": 4,
+        "failed": 0,
+        "setup": "U50-kafka-l88-blocks"
+      },
+      {
+        "Tc_p99": 421.00984000000005,
+        "W_p99": 857.2045399999997,
+        "attempts": 4,
+        "failed": 0,
+        "setup": "U50-redis-l0"
+      },
+      {
+        "Tc_p99": 3757.524730000001,
+        "W_p99": 769.1317599999995,
+        "attempts": 4,
+        "failed": 0,
+        "setup": "U50-redis-l88-blocks"
+      },
+      {
+        "Tc_p99": 438.06956000000014,
+        "W_p99": 656.6206999999998,
+        "attempts": 4,
+        "failed": 0,
+        "setup": "U500-kafka-l0"
+      },
+      {
+        "Tc_p99": 3589.6023299999974,
+        "W_p99": 3087.1811850000013,
+        "attempts": 4,
+        "failed": 0,
+        "setup": "U500-kafka-l70"
+      },
+      {
+        "Tc_p99": 770.4106400000003,
+        "W_p99": 706.4455200000002,
+        "attempts": 4,
+        "failed": 0,
+        "setup": "U500-kafka-l70-rt"
+      },
+      {
+        "Tc_p99": 213.35405000000048,
+        "W_p99": 662.6245599999999,
+        "attempts": 4,
+        "failed": 0,
+        "setup": "U500-redis-l0"
+      },
+      {
+        "Tc_p99": 2885.5390500000117,
+        "W_p99": 1945.2685899999997,
+        "attempts": 4,
+        "failed": 0,
+        "setup": "U500-redis-l70"
+      },
+      {
+        "Tc_p99": 316.4767449999999,
+        "W_p99": 757.2402500000001,
+        "attempts": 4,
+        "failed": 0,
+        "setup": "U500-redis-l70-rt"
+      }
+    ]
+  }
+}

@@ -198,3 +198,63 @@ at 0.02 ms, and the failed attempt is kept and described. Read with `scripts/und
   - the lateness rule failed one attempt, and its repeat passed, so no rate failed it at 70%;
   - the blocks held 88%;
   - every client ran with its collector off.
+
+## The judged block
+
+On the second x86 pair, on 22 October 2026, after `5bda640e` made D46-11 public. Each campaign was
+primed on both brokers, and each was copied home and checked when it ended, the list holding until
+it had been (`hold_for_collection.sh`):
+- **2,000 msg/s:** from 18:35 UTC, 24 runs, and two failed attempts, both Kafka with the consumer at
+  real-time priority. One measured 66.9% load against 70; the other's producer lateness spread
+  235 ms. Both were repeated, and both are kept.
+- **500 msg/s:** from 20:00 UTC, 24 runs, no failed attempt.
+- **50 msg/s:** from 20:59 UTC, 16 runs, no failed attempt.
+
+Read with `scripts/under_load.py read` into [`u_runs.csv`](u_runs.csv), [`u_tails.csv`](u_tails.csv)
+and [`u_attempts.csv`](u_attempts.csv), and judged into [`u_verdicts.json`](u_verdicts.json), each by
+the commands under *How it is read*.
+
+**The instruments held:**
+- every timed message split, and every run in the pool;
+- no capture dropped a packet;
+- no client collected;
+- the producer's lateness spread at most 0.52 ms;
+- the loads at 67.0-70.5%, and 86.8-87.8% in the on-blocks;
+- the sockets agreed with the captures within 1.1-3.0 µs at the median.
+
+| Prediction | Verdict | In each cell (500 and 2,000 msg/s; Kafka, Redis) |
+|---|---|---|
+| U-a | **confirmed** | the turnaround's 99th percentile grew 5.0-20.3 times under load; at real-time priority it was 0.10-0.22 of its value at normal priority |
+| U-b | **confirmed** | `W_so`'s 99th percentile grew 1.9-8.6 times under load |
+| U-c | **confirmed** | the turnaround removed 0.91 (0.83-1.00) and 0.82 (0.70-1.03) of the rise at 500, and 1.00 (0.99-1.10) and 1.18 (0.95-1.55) at 2,000, each with its 95% interval. At 2,000 on both brokers the interval's lower end clears 0.9, so the decision is that the consumer's turnaround is the only path there |
+| U-d | **not confirmed** | real-time priority left `W_so`'s 99th percentile at 0.23, 0.39 and 0.16 of its value at normal priority at 500 (Kafka, Redis) and 2,000 (Kafka), and at 0.68 on Redis at 2,000 (at most 0.5 asked), as the pilot's 0.58 foreshadowed |
+
+**The decisions:**
+- **U-e** (the rise of what remains in the tail, under load at normal priority):
+  - 183 µs on Kafka at 500 and 178 µs on Redis at 500, each named the wait stored at the broker
+    (193 and 208 µs);
+  - 154 µs on Redis at 2,000, named the same (298 µs, with the acknowledgment wait 135 µs lower);
+  - 2,958 µs on Kafka at 2,000, named the broker's handling (3,040 µs).
+- **U-f** (within the 50-a-second runs, load on against load off):
+  - on Redis, `G` did not rise (−14 µs, the receive processing 13 µs lower);
+  - on Kafka it rose 2,558 µs, named the broker's handling (2,563 µs).
+
+**Described, and read after the verdicts.** Each of the two namings of the broker's handling rests
+on one run:
+- **Kafka at 2,000, loaded, run 4.** Its consumer stopped once, for about a second, 46.7 s into the
+  run, and 2,298 messages waited up to 999 ms.
+  - The thread's own counters show it blocked for 997 ms: neither waiting for a core nor running.
+  - The broker's log shows no rebalance then.
+  - The batch it then fetched left the broker slowly, which is what the handling term holds.
+  - The turnaround correction removes the stop from U-c's reading: that run's `F` tail mean is
+    5.1 ms against `W_so`'s 759 ms.
+  - Without the run, the tail's rise is −593 µs and no term is named.
+- **Kafka at 50, run 4.** The broker held 29 messages for up to 613 ms, 29.05 s into the run, during
+  an on-block. This was a stall of the broker's own handling, on a machine the load does not touch.
+  Without the run, `G` fell 10.5 µs with the load on, and no term is named.
+
+**Described, the mechanism.** Under load at normal priority, the consumer thread's own counters
+show it waiting for a core for 32-49% of its turnaround time (the medians of the setups at 500 and
+2,000), and 39-46% in the 50-a-second blocks. At real-time priority it was 0.03-0.12%. Real-time
+priority took 1.6-11.1 ms from the turnaround's 99th percentile (normal less real-time), and left
+42-662 µs over idle (real-time less idle).

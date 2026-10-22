@@ -60,15 +60,19 @@ and [`u50_design.json`](u50_design.json); the pilot's from `up2000`, `up500` and
 python scripts/under_load.py read --runs runs/azure/collected/matched-b/u2000/runs \
     --runs runs/azure/collected/matched-b/u500/runs --runs runs/azure/collected/matched-b/u50/runs \
     --driver 10.2.1.10 --broker 10.2.1.21 --receiver 10.2.1.11 \
-    --out-runs docs/results/under_load/u_runs.csv --out-tails docs/results/under_load/u_tails.csv
+    --out-runs docs/results/under_load/u_runs.csv --out-tails docs/results/under_load/u_tails.csv \
+    --out-attempts docs/results/under_load/u_attempts.csv
 python scripts/under_load.py judge --runs-table docs/results/under_load/u_runs.csv \
-    --tails-table docs/results/under_load/u_tails.csv --out docs/results/under_load/u_verdicts.json
+    --tails-table docs/results/under_load/u_tails.csv \
+    --attempts-table docs/results/under_load/u_attempts.csv \
+    --ladder-table docs/results/order_scope/l_runs.csv --out docs/results/under_load/u_verdicts.json
 ```
 
 ## Where it stands
 
-Registered on 22 October 2026 (pushed at 01:53 UTC). The pilot, its reading and the block's runs are
-recorded here as they happen.
+Registered on 22 October 2026 (pushed at 01:53 UTC), and amended by plan version 46 before any
+judged run ([`DESIGN46.md`](DESIGN46.md), freeze 43; see the last section). The pilot, its reading
+and the block's runs are recorded here as they happen.
 
 ## The pilot
 
@@ -114,3 +118,30 @@ clients running. So every load setup at 500 and 2,000 messages a second runs at 
 `load_recorrect` (`u2000_design.json`, `u500_design.json`, their ids `-l70` and `-l70-rt`). The 50
 messages a second campaign keeps its 88% and its instruments, which held in the first round. The
 predictions, their margins and the table's run counts do not change.
+
+## Version 46: the block amended before any judged run
+
+After the pilot and before any judged run, the design was checked against the pilot's own runs.
+The check found that several quantities the predictions read would not mean what their names say.
+Plan version 46 (freeze 43, [`DESIGN46.md`](DESIGN46.md), fingerprinted before its own pilot round)
+amends the block and changes no margin. In brief:
+
+| Found in the pilot | What changes |
+|---|---|
+| Under load, Redis's producer at 2,000 a second sent a median of 24 ms late (272 ms at the 99th percentile), in runs the integrity rule passed | the producer at real-time priority in every setup, so only the consumer's priority varies; a lateness rule in the integrity check |
+| The clients paused 17-84 ms at about 24, 34, 46 and 60 s into every run, as CPython's full collections would | the collectors off once the clients connect, and logged; two runs keep them on, to check the cause |
+| The first run after a broker start was the one in which Kafka created its offsets topic, and it alone moved U-c's Kafka-2,000 share from 0.83 to 1.00 | a priming run on each broker before each campaign |
+| The real-time setups ran stress-ng 4-5 points harder, set by a correction that assumes a gain it does not have | each loaded setup's duty frozen from the pilot, and the runs open-loop |
+| Redis's acknowledgment batches fell outside the turnaround, and their messages filled 85-95% of `F`'s tail | the turnaround from the previous request for messages, less the connection's other requests; their wait a term of its own |
+| Each TCP connection keeps its own network delay, about 330, 500, 590 or 655 µs | each connection pair's floor taken out of the split; U-f compared within runs whose load runs in 5-s blocks |
+| `s_min` leaves the request's and the acknowledgment's crossings in, and U-c's share was a difference of percentiles | the broker's tighter bound in U-e's split; U-c's share from tail means, with a run-level interval |
+
+**Words in this part.**
+- **Lateness**: a message's send time less its planned time.
+- **Floor**: the fixed delay of a pair of connections.
+- **Duty**: the share of time stress-ng is asked to compute.
+
+**Pilot round d** (`up2000d`, `up500d`, `up50d`, and the collector runs `ug2000`) runs next. It finds
+each loaded setup's duty and gives the rounds by the same rule. Before any judged run, the record
+here states the duties, the rounds, the pilot's values of U-a's real-time clause and of U-d, and
+whether the pauses were the collector's.

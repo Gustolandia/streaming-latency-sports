@@ -389,9 +389,10 @@ def test_every_run_keeps_the_brokers_hold_its_tcp_counters_and_the_brokers_log()
     places = [code.index(step) for step in order]
     assert places == sorted(places)
     # The paper's batched acknowledgement reaches the Redis consumer, M0's own batch after it
-    # where the setup names one (D29-1), and A9's thread record in the runs that ask (D28-1).
+    # where the setup names one (D29-1), and A9's thread record in the runs that ask (D28-1);
+    # freeze 43's client flags last, empty unless a row asks.
     assert ('-CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA${ACK_BATCH:+ --ack-batch $ACK_BATCH}'
-            ' $record_args $so_cons"') in code
+            ' $record_args $so_cons$cons_flags"') in code
     helper = (KIT / "campaign.sh").read_text(encoding="utf-8").split("tcp_counters () {", 1)[1]
     for side in ('"$RUN_DIR/tcp_$1.txt"', "sudo ip netns exec sblrecv grep",
                  '"$RUN_DIR/broker_tcp_$1.txt"'):
@@ -2401,15 +2402,17 @@ def test_the_helper_blocks_runs_record_every_event_and_name_their_threads():
     assert 'sudo bpftrace "$EVENTS_BT" > "$RUN_DIR/waits.txt"' in run
     assert 'sudo bpftrace "$TRACE_BT" > "$RUN_DIR/runqlat.txt"' in run, "A1 and A3 as they were"
     assert 'record_args="--thread-record"' in run
-    # Freeze 40 (14 Oct 2026) appends each client's socket file, empty unless a row asks.
-    assert '-PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA $record_args $so_prod"' in run
-    assert '-CONSUMER_EXTRA "$record_args $read_args $so_cons"' in run
+    # Freeze 40 (14 Oct 2026) appends each client's socket file, empty unless a row asks; freeze
+    # 43 (22 Oct 2026) the clients' collector and schedstat flags after them, empty unless a row
+    # asks (test_freeze_43s_client_flags_reach_the_clients_that_take_them).
+    assert '-PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA $record_args $so_prod$prod_flags"' in run
+    assert '-CONSUMER_EXTRA "$record_args $read_args $so_cons$cons_flags"' in run
     # Freeze 41 (15 Oct 2026): and the Redis producer's send workers after them, where a row names
     # a count (test_freeze_41s_one_worker_setups_reach_the_redis_producer_and_no_other).
-    assert '-PRODUCER_EXTRA "$record_args $so_prod${SEND_WORKERS:+ --send-workers $SEND_WORKERS}"' \
-        in run
+    assert ('-PRODUCER_EXTRA "$record_args $so_prod${SEND_WORKERS:+ --send-workers $SEND_WORKERS}'
+            '$prod_flags"') in run
     assert ('-CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA${ACK_BATCH:+ --ack-batch $ACK_BATCH}'
-            ' $record_args $so_cons"') in run
+            ' $record_args $so_cons$cons_flags"') in run
     assert run.index('local record_args=""') < run.index('record_args="--thread-record"')
 
 
@@ -2519,6 +2522,16 @@ def test_freeze_40s_clients_each_write_their_own_socket_file(tmp_path):
     assert _socket_files(tmp_path, "") == {"producer": "", "consumer": ""}
 
 
+def _run_script(path, script, env, **kw):
+    """`bash PATH`, the script written to PATH first, with `env` over the shell's environment.
+
+    Git's bash on Windows drops, without a word, whatever follows the first 8,200 or so characters
+    of a script handed to it with -c: a longer block runs cut short, and fails, or passes, on the
+    part that is left. On 22 October 2026 freeze 43's comments took the R1 lines past it, so a
+    block that long is run from a file of its own."""
+    return bash([_write(path, script).as_posix()], extra_env=env, **kw)
+
+
 def _r1_runner(tmp_path, name, **switches):
     """A run's R1 lines, from the wraps it hands the trial runner to the stop of its capture, in
     bash, with every command that needs a machine stood in for by one that writes down how it
@@ -2534,6 +2547,9 @@ def _r1_runner(tmp_path, name, **switches):
         stop += head + run.split(head, 1)[1].split("\n  fi\n", 1)[0] + "\n  fi\n"
     run_dir, calls = tmp_path / name, tmp_path / (name + "_calls.txt")
     run_dir.mkdir()
+    # Freeze 43 (22 Oct 2026): the card's device is the SLAVE carrying eth0's own address, which
+    # the runner reads from ETH0_ADDRESS; here eth0's address in LINKS, unless a test names another.
+    address = _write(tmp_path / (name + "_eth0_address"), "60:45:bd:e9:60:ba\n")
     script = "\n".join([
         # ethtool, run through sudo, answers with the card's clock where FAKE_PHC names one, and
         # ip with the links FAKE_LINK lists. What the broker is asked over ssh is written down too.
@@ -2547,9 +2563,11 @@ def _r1_runner(tmp_path, name, **switches):
            "DRIVER_PRIV": "10.8.8.8", "RECEIVER_IP": "10.7.7.7", "ME": "tester", "PRIORITY": "",
            "CONSUMER_PRIORITY": "", "RECV_CAPTURE": "", "SEND_CAPTURE": "", "HW_CAPTURE": "",
            "SEND_CAPTURE_BOTH": "", "CAPTURE_BUFFER": "", "BROKER_CAPTURE": "",
-           "BACKEND": "kafka", "KAFKA_BOOTSTRAP": "10.9.9.9:19092", "REDIS_PORT": "6379"}
+           "BACKEND": "kafka", "KAFKA_BOOTSTRAP": "10.9.9.9:19092", "REDIS_PORT": "6379",
+           "ETH0_ADDRESS": address.as_posix()}
     env.update(switches)
-    said = bash(["-c", script], extra_env=env, capture_output=True, text=True, check=True).stdout
+    said = _run_script(tmp_path / (name + "_r1.sh"), script, env, capture_output=True, text=True,
+                       check=True).stdout
     handed = dict(line.split("=", 1) for line in said.splitlines())
     return handed, (calls.read_text(encoding="utf-8").splitlines() if calls.exists() else [])
 
@@ -2644,7 +2662,7 @@ def test_freeze_39s_card_capture_is_on_the_device_that_carries_the_packets_with_
     assert (tmp_path / "plain" / "hw_device.txt").read_text().split() == ["none", "none"]
 
 
-def _load_lines(tmp_path, load):
+def _load_lines(tmp_path, load, **setting):
     """A run's load lines, from starting stress-ng to the duty's correction, in bash, with stress-ng,
     the sampler and the correction's Python stood in for by commands that write down how they
     were called. (The calls.) They run as the runner runs them: with an unset variable an error,
@@ -2662,6 +2680,7 @@ def _load_lines(tmp_path, load):
         "builtin wait", ""])
     env = {"CALLS": calls.as_posix(), "RUN_DIR": tmp_path.as_posix(), "LOAD": str(load),
            "want_cpus": "8"}
+    env.update(setting)
     bash(["-c", script], extra_env=env, capture_output=True, text=True, check=True)
     return calls.read_text(encoding="utf-8").splitlines() if calls.exists() else []
 
@@ -3163,7 +3182,9 @@ def _trial_handed(tmp_path, backend, send_workers=""):
            "REDIS_HOST": "10.9.9.9", "REDIS_PORT": "6379",
            "REDIS_CONSUMER_EXTRA": "--ack-batch 200", "ACK_BATCH": "", "record_args": "",
            "read_args": "", "so_prod": so, "so_cons": so.replace("producer", "consumer"),
-           "consumer_wrap": "sudo ip netns exec sblrecv sudo -u tester", "wrap_sched": ""}
+           "consumer_wrap": "sudo ip netns exec sblrecv sudo -u tester", "wrap_sched": "",
+           # Freeze 43 (22 Oct 2026): the producer's own wrap and the clients' flags, none asked.
+           "producer_wrap": "", "prod_flags": "", "cons_flags": ""}
     bash(["-c", script], extra_env=env, capture_output=True, text=True, check=True)
     return calls.read_text(encoding="utf-8").splitlines(), so
 
@@ -3531,3 +3552,650 @@ def test_freeze_42s_second_correction_runs_only_where_asked_and_never_outlives_t
     assert run.index("ended=$(date -u +%s)") < stop, "stopped once the trial has ended"
     assert "pkill -9 -x stress-ng" in run[stop:], "and before the run's own load is stopped"
     assert 'sleep "${RECORRECT_AFTER_S:-10}"' in code, "ten seconds, inside a 20 s warm-up"
+
+
+# --- Freeze 43 (22 Oct 2026, plan version 46): what block U's pilot found, answered in the kit
+# before any judged run (docs/results/under_load/README.md). The producer runs at real-time
+# priority in every setup, the clients' collector is off or logged and the consumer samples its
+# schedstat, each setup's duty is frozen from the pilot, the 50-a-second load runs in on and off
+# blocks within each run, each run keeps its interrupt and scheduler facts, the brokers are primed
+# before a campaign's first run, and the card's capture is pinned to eth0's own address.
+
+#: The runner's seven new variables, in the order the row reader sets them.
+FREEZE_43 = ("PRODUCER_PRIORITY", "GC_OFF", "GC_LOG", "SCHEDSTAT", "DUTY", "LOAD_BLOCKS",
+             "RUN_FACTS")
+
+
+def _campaign():
+    return (KIT / "campaign.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
+
+
+def _function(name):
+    """One of campaign.sh's functions, as the runner defines it."""
+    head = "%s () {" % name
+    return head + _campaign().split("\n" + head, 1)[1].split("\n}\n", 1)[0] + "\n}\n"
+
+
+def _lines_from(first, last):
+    """run_one's lines from `first` up to `last`."""
+    run = _campaign().split("run_one () {", 1)[1]
+    return first + run.split(first, 1)[1].split(last, 1)[0]
+
+
+def _lines(path):
+    return path.read_text(encoding="utf-8").splitlines() if path.exists() else None
+
+
+def test_freeze_43s_switches_reach_the_runner_and_a_row_without_them_sets_none():
+    """A row's seven new settings become the runner's seven variables; a row of any earlier block
+    names none of them and leaves all seven empty, so its run is launched exactly as before. The
+    lateness limit is no variable of the runner's: run_integrity.py reads it from the queue row.
+    And a frozen duty, or a load in blocks, is never corrected a second time."""
+    asked = _row_reader_says({"producer_priority": True, "gc_off": True, "gc_log": True,
+                              "schedstat": True, "duty_pct": 72, "load_blocks_s": 5,
+                              "run_facts": True, "lateness_p99_ms": 10})
+    assert [asked[name] for name in FREEZE_43] == ["1", "1", "1", "1", "72", "5", "1"]
+    assert not [name for name in asked if "LATE" in name]
+    for param, name in (("producer_priority", "PRODUCER_PRIORITY"), ("gc_off", "GC_OFF"),
+                        ("gc_log", "GC_LOG"), ("schedstat", "SCHEDSTAT"),
+                        ("run_facts", "RUN_FACTS")):
+        alone = _row_reader_says({param: True})
+        assert [found for found in FREEZE_43 if alone[found]] == [name], \
+            "%s sets its own variable and no other" % param
+    earlier = _row_reader_says({"broker_capture": True, "load_recorrect": True,
+                                "so_timestamps": "sched", "so_journal": True})
+    assert [earlier[name] for name in FREEZE_43] == [""] * 7
+    assert earlier["LOAD_RECORRECT"] == "1", "freeze 42's second correction, as it was"
+    for frozen in ({"duty_pct": 72}, {"load_blocks_s": 5}):
+        assert _row_reader_says(dict(frozen, load_recorrect=True))["LOAD_RECORRECT"] == ""
+    none = _row_reader_says({"duty_pct": 0, "load_blocks_s": 0})
+    assert (none["DUTY"], none["LOAD_BLOCKS"]) == ("0", "0"), \
+        "a value of none is handed on for the runner to refuse, not dropped for the default"
+
+
+def _freeze_43_setup_says(tmp_path, **setting):
+    """The REASON freeze 43's checks of a setup give, from their lines in run_one, run as the
+    runner runs them, with an unset variable an error; empty when the setup can run as written."""
+    block = _lines_from("  # Freeze 43 (22 Oct 2026): so does a setup that names one",
+                        "  # Freeze 41 (15 Oct 2026): a setup that asks")
+    script = "\n".join(["set -uo pipefail", "checks () {", block, "}", 'REASON=""', "checks",
+                        'echo "REASON=$REASON"', ""])
+    env = dict({"DUTY": "", "LOAD_BLOCKS": "", "LOAD": "70", "GC_OFF": "", "GC_LOG": "",
+                "SCHEDSTAT": "", "CLIENT": ""}, **setting)
+    path = Path(tempfile.mkdtemp(dir=str(tmp_path))) / "checks.sh"
+    said = _run_script(path, script, env, capture_output=True, text=True, check=True).stdout
+    return said.strip().rsplit("REASON=", 1)[1]
+
+
+@needs_bash
+@pytest.mark.parametrize("setting,said", [
+    ({"DUTY": "0"}, 'duty_pct is a whole percentage from 1 to 100, not "0"'),
+    ({"DUTY": "101"}, 'duty_pct is a whole percentage from 1 to 100, not "101"'),
+    ({"DUTY": "1000"}, 'duty_pct is a whole percentage from 1 to 100, not "1000"'),
+    ({"DUTY": "72.5"}, 'duty_pct is a whole percentage from 1 to 100, not "72.5"'),
+    ({"DUTY": "072"}, 'duty_pct is a whole percentage from 1 to 100, not "072"'),
+    ({"DUTY": "-5"}, 'duty_pct is a whole percentage from 1 to 100, not "-5"'),
+    ({"LOAD_BLOCKS": "0"}, 'load_blocks_s is a whole number of seconds of at least one, not "0"'),
+    ({"LOAD_BLOCKS": "5.0"},
+     'load_blocks_s is a whole number of seconds of at least one, not "5.0"'),
+    ({"LOAD_BLOCKS": "05"}, 'load_blocks_s is a whole number of seconds of at least one, not "05"'),
+    ({"DUTY": "72", "LOAD": "0"},
+     "duty_pct and load_blocks_s set how a load runs, and a load of 0 starts none"),
+    ({"LOAD_BLOCKS": "5", "LOAD": "0"},
+     "duty_pct and load_blocks_s set how a load runs, and a load of 0 starts none"),
+    ({"GC_OFF": "1", "CLIENT": "java"},
+     "gc_off, gc_log and schedstat are the Python clients' settings, and this run's client is java"),
+    ({"GC_LOG": "1", "CLIENT": "java"},
+     "gc_off, gc_log and schedstat are the Python clients' settings, and this run's client is java"),
+    ({"SCHEDSTAT": "1", "CLIENT": "java"},
+     "gc_off, gc_log and schedstat are the Python clients' settings, and this run's client is java")])
+def test_a_freeze_43_setup_the_runner_cannot_give_fails_before_the_machine_is_touched(
+        tmp_path, setting, said):
+    """stress-ng takes a whole percentage and the blocks a whole number of seconds, so 72.5 or
+    5.0 would be read by neither as the setup wrote it; a load of 0 starts no stress-ng for a duty
+    or for blocks to apply to; and Kafka's Java client has no collector switch or schedstat."""
+    assert _freeze_43_setup_says(tmp_path, **setting) == said
+
+
+@needs_bash
+@pytest.mark.parametrize("setting", [
+    {}, {"DUTY": "1"}, {"DUTY": "9"}, {"DUTY": "10"}, {"DUTY": "77"}, {"DUTY": "100"},
+    {"LOAD_BLOCKS": "5"}, {"LOAD_BLOCKS": "10"}, {"DUTY": "88", "LOAD_BLOCKS": "5"},
+    {"GC_OFF": "1", "GC_LOG": "1", "SCHEDSTAT": "1"},
+    {"GC_OFF": "1", "SCHEDSTAT": "1", "CLIENT": "python"}, {"LOAD": "0"}])
+def test_and_a_freeze_43_setup_it_can_give_passes_those_checks(tmp_path, setting):
+    assert _freeze_43_setup_says(tmp_path, **setting) == ""
+
+
+@needs_bash
+def test_freeze_43s_frozen_duty_is_not_corrected_and_blocks_start_no_load_before_the_clients(
+        tmp_path):
+    """A setup with a frozen duty starts stress-ng at that duty, makes no correction before the
+    clients, and says so beside the run; a setup whose load runs in blocks starts none before the
+    clients, whatever duty its blocks will run at; and every other setup starts its load at the
+    design and corrects it as before."""
+    runs = {name: tmp_path / name for name in ("frozen", "blocks", "blocks_at_load", "before")}
+    for run in runs.values():
+        run.mkdir()
+    calls = _load_lines(runs["frozen"], 70, DUTY="77")
+    assert [c for c in calls if c.startswith("stress-ng")] == [
+        "stress-ng --cpu 8 --cpu-load 77 --timeout 3600s"]
+    assert "python3 -c" not in calls, "no correction before the clients"
+    assert json.loads((runs["frozen"] / "load_correction.json").read_text(encoding="utf-8")) == {
+        "designed_pct": 70, "duty_frozen_pct": 77}
+    calls = _load_lines(runs["blocks"], 88, DUTY="88", LOAD_BLOCKS="5")
+    assert not [c for c in calls if c.startswith("stress-ng")] and "python3 -c" not in calls
+    assert "python3 scripts/util_sampler.py" in calls, "the load is measured all the same"
+    assert json.loads((runs["blocks"] / "load_correction.json").read_text(encoding="utf-8")) == {
+        "designed_pct": 88, "duty_frozen_pct": 88}
+    calls = _load_lines(runs["blocks_at_load"], 88, LOAD_BLOCKS="5")
+    assert not [c for c in calls if c.startswith("stress-ng")]
+    assert not (runs["blocks_at_load"] / "load_correction.json").exists()
+    calls = _load_lines(runs["before"], 70)
+    assert [c for c in calls if c.startswith("stress-ng")] == [
+        "stress-ng --cpu 8 --cpu-load 70 --timeout 3600s"]
+    assert "python3 -c" in calls, "and the correction is made as before"
+
+
+def _load_blocks(tmp_path, looks, **given):
+    """load_blocks as the runner defines it, run in the foreground, with stress-ng, sleep, pkill,
+    kill and date stood in for by commands that write down how they were called, the clock a
+    second further on at each reading, and the campaign that started the blocks alive for `looks`
+    looks. (load_blocks.csv's lines, the calls, stress-ng's calls.)"""
+    run = tmp_path / "run"
+    run.mkdir(parents=True)
+    calls, stress, clock = tmp_path / "calls.txt", tmp_path / "stress.txt", tmp_path / "clock"
+    script = "\n".join([
+        "set -uo pipefail", "looks=0",
+        'kill () { if [ "$1" = -0 ]; then looks=$((looks + 1)); [ "$looks" -le "$LOOKS" ];'
+        ' return; fi; echo "kill $1" >> "$CALLS"; }',
+        'date () { local t; t=$(( $(cat "$CLOCK" 2>/dev/null || echo 0) + 1 ));'
+        ' echo "$t" > "$CLOCK"; echo "${t}000000000"; }',
+        'sleep () { echo "sleep $*" >> "$CALLS"; }', 'pkill () { echo "pkill $*" >> "$CALLS"; }',
+        'stress-ng () { echo "stress-ng $*" >> "$STRESS"; }', _function("load_blocks"),
+        'load_blocks "$RUN" "$DUTY" "$CPUS" "$BLOCK_S"', "builtin wait", ""])
+    env = dict({"CALLS": calls.as_posix(), "STRESS": stress.as_posix(),
+                "CLOCK": clock.as_posix(), "RUN": run.as_posix(), "LOOKS": str(looks),
+                "DUTY": "88", "CPUS": "8", "BLOCK_S": "5"}, **given)
+    _run_script(tmp_path / "blocks.sh", script, env, capture_output=True, text=True, check=True)
+    return (_lines(run / "load_blocks.csv"), _lines(calls) or [], _lines(stress) or [])
+
+
+@needs_bash
+def test_freeze_43s_load_runs_in_blocks_on_then_off_and_writes_each_switch(tmp_path):
+    """From the trial's start stress-ng runs for a block and stops for a block, beginning on, at
+    the setup's duty on every online CPU, each switch written with the time it was made; each
+    block's stress-ng is stopped by a signal it cannot decline, and would stop by itself at twice
+    the block's length; and no block starts once the campaign that started them is gone."""
+    blocks, calls, stress = _load_blocks(tmp_path / "two", 2)
+    assert blocks == ["t_ns,state", "1000000000,on", "2000000000,off", "3000000000,on",
+                      "4000000000,off"]
+    assert stress == ["stress-ng --cpu 8 --cpu-load 88 --timeout 10s"] * 2
+    assert calls == ["sleep 5", "kill -9", "pkill -9 -x stress-ng", "sleep 5"] * 2
+    assert _load_blocks(tmp_path / "gone", 0) == (["t_ns,state"], [], [])
+
+
+@needs_bash
+def test_freeze_43s_blocks_are_stopped_by_a_signal_they_cannot_decline_then_their_load(tmp_path):
+    """The blocks' own process first, so that it starts no stress-ng after the one stopped next,
+    and then every stress-ng; with no blocks running, nothing is touched."""
+    calls = tmp_path / "calls.txt"
+    script = "\n".join([
+        "set -uo pipefail", 'pkill () { echo "pkill $*" >> "$CALLS"; }',
+        _function("stop_load_blocks"), 'BLOCKS_PID=""', "stop_load_blocks", 'echo "idle=$?"',
+        "sleep 60 &", "BLOCKS_PID=$!", "blocks=$BLOCKS_PID", "stop_load_blocks",
+        'if kill -0 "$blocks" 2>/dev/null; then echo "blocks=alive"; else echo "blocks=gone"; fi',
+        'echo "left=[$BLOCKS_PID]"', ""])
+    said = _run_script(tmp_path / "stop.sh", script, {"CALLS": calls.as_posix()},
+                       capture_output=True, text=True, check=True, stdin=subprocess.DEVNULL)
+    assert said.stdout.split() == ["idle=0", "blocks=gone", "left=[]"]
+    assert _lines(calls) == ["pkill -9 -x stress-ng"]
+
+
+def test_freeze_43s_blocks_start_with_the_trial_and_never_outlive_it():
+    """They start once the trial has started, and stop as soon as it ends, early or not, before
+    the counters after the run are read; reap stops them before anything else, so that a run or
+    a campaign stopped in the middle of such a run leaves none to start a stress-ng after its own
+    is stopped; and the process id that lets it is declared before any function that reads it."""
+    code = _campaign()
+    run = code.split("run_one () {", 1)[1].split("\n}\n", 1)[0]
+    start = run.index('load_blocks "$RUN_DIR" "${DUTY:-$LOAD}" "$want_cpus" "$LOAD_BLOCKS" &')
+    assert run.index("began=$(date -u +%s)") < start < run.index("run_kafka_trial.sh")
+    stop = run.index("\n  stop_load_blocks\n")
+    assert run.index("ended=$(date -u +%s)") < stop \
+        < run.index('head -n 1 /proc/stat > "$RUN_DIR/stat_after.txt"')
+    reap = _function("reap")
+    assert reap.index("stop_load_blocks") < reap.index("pkill -9 -x stress-ng")
+    assert "reap\n" in _function("finish_campaign"), "a campaign stopped mid-run stops them too"
+    assert 'BLOCKS_PID=""' in code.split("\nlog () {", 1)[0]
+
+
+def _trial_starts(tmp_path, **setting):
+    """What run_one starts and stops around the trial, from the trial's start to the counters
+    after it, run as the runner runs it with an unset variable an error: the trial, the load's
+    blocks, the clients' facts, the second correction and kill stood in for by commands that write
+    down how they were called, each into a file of its own, the background ones with their own
+    process ids. (Each file's lines, None where nothing was called.)"""
+    rec = tmp_path / "rec"
+    rec.mkdir(parents=True)
+    block = _lines_from("  began=$(date -u +%s)",
+                        '  head -n 1 /proc/stat > "$RUN_DIR/stat_after.txt"')
+    script = "\n".join([
+        "set -uo pipefail",
+        'timeout () { printf "%s\\n" "$@" > "$REC/trial"; printf "%s\\n"'
+        ' "consumer=$SBL_CONSUMER_WRAP" "sched=$SBL_SCHED_WRAP" "producer=$SBL_PRODUCER_WRAP"'
+        ' > "$REC/wraps"; }',
+        'load_blocks () { echo "$BASHPID $*" > "$REC/blocks"; }',
+        'run_facts_later () { echo "$BASHPID $*" > "$REC/facts"; }',
+        'recorrect_load () { echo "$BASHPID $*" > "$REC/recorrect"; }',
+        'stop_load_blocks () { echo "BLOCKS_PID=$BLOCKS_PID" >> "$REC/stops"; BLOCKS_PID=""; }',
+        'kill () { echo "kill $*" >> "$REC/kills"; }',
+        "trial () {", '  local rc began ended stress_pid="" adjusted=""', block, "}",
+        'BLOCKS_PID=""', "trial", "builtin wait", ""])
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    so = "--so-timestamps %s/%%s_so.csv --so-transmit sched" % run_dir.as_posix()
+    env = dict({"REC": rec.as_posix(), "RUN_DIR": run_dir.as_posix(), "RUN_ID": "law_u50_r001",
+                "BACKEND": "kafka", "LOAD": "70", "want_cpus": "8", "DUTY": "", "LOAD_BLOCKS": "",
+                "RUN_FACTS": "", "LOAD_RECORRECT": "", "CLIENT": "", "ACK_STAMP": "",
+                "DURATION": "70", "run_plan": "plan.csv", "run_speedup": "1", "run_maxt": "70",
+                "KAFKA_BOOTSTRAP": "10.9.9.9:19092", "KAFKA_PRODUCER_EXTRA": "--max-inflight 64",
+                "REDIS_HOST": "10.9.9.9", "REDIS_PORT": "6379",
+                "REDIS_CONSUMER_EXTRA": "--ack-batch 200", "ACK_BATCH": "", "SEND_WORKERS": "",
+                "record_args": "", "read_args": "", "so_prod": so % "producer",
+                "so_cons": so % "consumer",
+                "consumer_wrap": "sudo ip netns exec sblrecv sudo -u tester", "wrap_sched": "",
+                "producer_wrap": "", "prod_flags": "", "cons_flags": ""}, **setting)
+    _run_script(tmp_path / "trial.sh", script, env, capture_output=True, text=True, check=True)
+    found = {name: _lines(rec / name)
+             for name in ("trial", "wraps", "blocks", "facts", "recorrect", "stops", "kills")}
+    found["run_dir"], found["so"] = run_dir.as_posix(), so
+    return found
+
+
+@needs_bash
+def test_freeze_43s_producer_wrap_and_client_flags_reach_the_trial_runner(tmp_path):
+    """The producer's own wrap is handed to the trial runner beside the other two, and the
+    clients' flags follow everything each client was handed before, on either broker. A setup
+    that asks for none hands the runner an empty wrap and exactly what freeze 42 did."""
+    prod = " --gc-off --gc-log runs/law_u50_r001/producer_gc.json"
+    cons = (" --gc-off --gc-log runs/law_u50_r001/consumer_gc.json"
+            " --schedstat runs/law_u50_r001/consumer_schedstat.csv")
+    for backend in ("kafka", "redis"):
+        found = _trial_starts(tmp_path / backend, BACKEND=backend,
+                              producer_wrap="sudo chrt -f 80", prod_flags=prod, cons_flags=cons)
+        trial, so = found["trial"], found["so"]
+        assert "scripts/run_%s_trial.sh" % backend in trial
+        assert found["wraps"] == ["consumer=sudo ip netns exec sblrecv sudo -u tester", "sched=",
+                                  "producer=sudo chrt -f 80"]
+        assert trial[trial.index("-PRODUCER_EXTRA") + 1].endswith(" " + so % "producer" + prod)
+        assert trial[trial.index("-CONSUMER_EXTRA") + 1].endswith(" " + so % "consumer" + cons)
+    plain = _trial_starts(tmp_path / "plain")
+    assert plain["wraps"][2] == "producer="
+    trial = plain["trial"]
+    assert trial[trial.index("-PRODUCER_EXTRA") + 1] == "--max-inflight 64  " + plain["so"] % (
+        "producer")
+    assert trial[trial.index("-CONSUMER_EXTRA") + 1] == "  " + plain["so"] % "consumer"
+
+
+@needs_bash
+def test_freeze_43s_blocks_and_facts_start_with_the_trial_and_are_stopped_when_it_ends(tmp_path):
+    """The blocks run at the frozen duty where the setup names one and at the design otherwise,
+    on every online CPU, for the setup's block; the clients' facts are read in the background,
+    and that reading is stopped once the trial ends; a setup that asks for neither starts
+    neither, and the stop finds nothing to stop."""
+    found = _trial_starts(tmp_path / "u50", LOAD="88", DUTY="91", LOAD_BLOCKS="5", RUN_FACTS="1")
+    blocks_pid, blocks = found["blocks"][0].split(" ", 1)
+    assert blocks == "%s 91 8 5" % found["run_dir"]
+    facts_pid, facts = found["facts"][0].split(" ", 1)
+    assert facts == found["run_dir"] and blocks_pid != facts_pid
+    assert found["stops"] == ["BLOCKS_PID=%s" % blocks_pid], "the blocks' own process is stopped"
+    assert found["kills"] == ["kill %s" % facts_pid], "the facts' reading, and nothing else"
+    assert found["recorrect"] is None
+    at_load = _trial_starts(tmp_path / "at_load", LOAD="88", LOAD_BLOCKS="5")
+    assert at_load["blocks"][0].split(" ", 1)[1] == "%s 88 8 5" % at_load["run_dir"]
+    assert at_load["facts"] is None and at_load["kills"] is None
+    neither = _trial_starts(tmp_path / "neither")
+    assert (neither["blocks"], neither["facts"], neither["kills"]) == (None, None, None)
+    assert neither["stops"] == ["BLOCKS_PID="], "asked to stop, with nothing to stop"
+
+
+def _producer_wrap(tmp_path, **setting):
+    block = _lines_from("  # Freeze 43 (22 Oct 2026): the producer alone at real-time priority",
+                        "  # Freeze 41 (15 Oct 2026): a 32 MiB capture buffer")
+    script = "\n".join(["set -uo pipefail", "wraps () {", block,
+                        '  echo "producer=$producer_wrap"', "}", "wraps", ""])
+    env = dict({"PRIORITY": "", "PRODUCER_PRIORITY": ""}, **setting)
+    path = Path(tempfile.mkdtemp(dir=str(tmp_path))) / "wraps.sh"
+    said = _run_script(path, script, env, capture_output=True, text=True, check=True).stdout
+    return said.strip().split("=", 1)[1]
+
+
+@needs_bash
+def test_freeze_43s_producer_alone_goes_first_where_asked_and_go_first_already_raises_both(
+        tmp_path):
+    """With the producer at real-time priority in every setup of the block, only the consumer's
+    priority varies between them. Where go-first already raises both clients, the producer's own
+    wrap stays empty, so the producer is not raised twice."""
+    assert _producer_wrap(tmp_path, PRODUCER_PRIORITY="1") == "sudo chrt -f 80"
+    assert _producer_wrap(tmp_path, PRODUCER_PRIORITY="1", PRIORITY="1") == ""
+    assert _producer_wrap(tmp_path) == ""
+    assert _producer_wrap(tmp_path, PRIORITY="1") == ""
+
+
+def _client_flags(tmp_path, **setting):
+    block = _lines_from("  # Freeze 43 (22 Oct 2026): the clients' own garbage collector",
+                        "  began=$(date -u +%s)")
+    script = "\n".join(["set -uo pipefail", "flags () {", block, '  echo "producer=$prod_flags"',
+                        '  echo "consumer=$cons_flags"', "}", "flags", ""])
+    env = dict({"RUN_DIR": "runs/law_u50_r001"}, **setting)
+    path = Path(tempfile.mkdtemp(dir=str(tmp_path))) / "flags.sh"
+    said = _run_script(path, script, env, capture_output=True, text=True, check=True).stdout
+    return dict(line.split("=", 1) for line in said.splitlines())
+
+
+@needs_bash
+def test_freeze_43s_client_flags_reach_the_clients_that_take_them(tmp_path):
+    """gc_off turns both clients' collector off and logs what still runs, each into its own file;
+    gc_log logs without turning it off; schedstat is the consumer's alone; a setup that asks for
+    none hands the clients nothing new."""
+    gc = " --gc-log runs/law_u50_r001/%s_gc.json"
+    sched = " --schedstat runs/law_u50_r001/consumer_schedstat.csv"
+    assert _client_flags(tmp_path) == {"producer": "", "consumer": ""}
+    off = {"producer": " --gc-off" + gc % "producer", "consumer": " --gc-off" + gc % "consumer"}
+    assert _client_flags(tmp_path, GC_OFF="1") == off
+    assert _client_flags(tmp_path, GC_OFF="1", GC_LOG="1") == off
+    assert _client_flags(tmp_path, GC_LOG="1") == {"producer": gc % "producer",
+                                                   "consumer": gc % "consumer"}
+    assert _client_flags(tmp_path, SCHEDSTAT="1") == {"producer": "", "consumer": sched}
+    assert _client_flags(tmp_path, GC_OFF="1", SCHEDSTAT="1") == {
+        "producer": off["producer"], "consumer": off["consumer"] + sched}
+
+
+#: A driver with a second accelerated device, listed first and carrying an address of its own,
+#: beside the one that carries eth0's address.
+TWO_CARDS = ("eth0             UP             60:45:bd:e9:60:ba <BROADCAST,MULTICAST,UP,LOWER_UP> \n"
+             "enP11111s1       UP             00:22:48:aa:bb:cc "
+             "<BROADCAST,MULTICAST,SLAVE,UP,LOWER_UP> \n"
+             "enP58460s1       UP             60:45:bd:e9:60:ba "
+             "<BROADCAST,MULTICAST,SLAVE,UP,LOWER_UP> ")
+
+
+@needs_bash
+def test_freeze_43s_card_capture_is_pinned_to_eth0s_own_address(tmp_path):
+    """Until freeze 43 the first SLAVE `ip -br link` listed was taken. Now it is the SLAVE that
+    carries eth0's address as the kernel gives it, in whatever case; where none carries it, or
+    eth0's address cannot be read, nothing is captured, as on a machine with no card."""
+    _, calls = _r1_runner(tmp_path, "pinned", HW_CAPTURE="1", FAKE_LINK=TWO_CARDS, FAKE_PHC="1")
+    started = [c for c in calls if "pkill" not in c]
+    assert started[0] == "sudo ethtool -T enP58460s1"
+    assert started[1].startswith("sudo tcpdump -i enP58460s1 -j adapter_unsynced ")
+    shown = (tmp_path / "pinned" / "hw_device.txt").read_text(encoding="utf-8").split()
+    assert shown == ["enP58460s1", "/dev/ptp1"]
+    upper = _write(tmp_path / "upper_address", "60:45:BD:E9:60:BA\n")
+    _r1_runner(tmp_path, "upper", HW_CAPTURE="1", FAKE_LINK=TWO_CARDS, FAKE_PHC="1",
+               ETH0_ADDRESS=upper.as_posix())
+    shown = (tmp_path / "upper" / "hw_device.txt").read_text(encoding="utf-8").split()
+    assert shown == ["enP58460s1", "/dev/ptp1"]
+    another = TWO_CARDS.rsplit("\n", 1)[0]
+    for name, links, given in (("another", another, {}),
+                               ("unread", TWO_CARDS,
+                                {"ETH0_ADDRESS": (tmp_path / "no_address").as_posix()})):
+        _, calls = _r1_runner(tmp_path, name, HW_CAPTURE="1", FAKE_LINK=links, FAKE_PHC="1",
+                              **given)
+        assert not [c for c in calls if "tcpdump" in c or "ethtool" in c], name
+        shown = (tmp_path / name / "hw_device.txt").read_text(encoding="utf-8").split()
+        assert shown == ["none", "none"], name
+
+
+def _trial_runner_calls(tmp_path, runner, producer_wrap, sched_wrap=""):
+    """scripts/RUNNER run in a scratch folder: its Python stands in for each client by writing
+    down how it was called, except where it runs the runner's own record of the run from stdin,
+    and SBL_SCHED_WRAP and SBL_PRODUCER_WRAP name wraps that write down how they were called and
+    then run what they wrap. (The calls, the env meta.json records.)"""
+    work = tmp_path / runner
+    stubs, calls = work / "bin", work / "calls.txt"
+    python = Path(sys.executable).as_posix()
+    for name, body in (
+            ("py", 'if [ "$1" = - ]; then exec "%s" "$@"; fi\necho "python $*" >> "$CALLS"\n'
+             % python),
+            ("schedwrap", 'echo "schedwrap $*" >> "$CALLS"\nexec "$@"\n'),
+            ("prodwrap", 'echo "prodwrap $*" >> "$CALLS"\nexec "$@"\n'),
+            ("sleep", ":\n"), ("redis-cli", ":\n")):
+        os.chmod(_write(stubs / name, "#!/bin/sh\n" + body), 0o755)
+    done = bash([(REPO / "scripts" / runner).as_posix(), "r001", "plan.csv", "1", "10"],
+                cwd=work, path_first=[stubs],
+                extra_env={"PYTHON": (stubs / "py").as_posix(), "CALLS": calls.as_posix(),
+                           "SBL_SCHED_WRAP": sched_wrap, "SBL_PRODUCER_WRAP": producer_wrap,
+                           "SBL_CONSUMER_WRAP": ""},
+                capture_output=True, text=True, stdin=subprocess.DEVNULL)
+    assert done.returncode == 0, done.stdout + done.stderr
+    meta = json.loads((work / "runs" / "r001" / "meta.json").read_text(encoding="utf-8"))
+    return _lines(calls), meta["env"]
+
+
+@needs_bash
+@pytest.mark.parametrize("runner,producer,consumer", [
+    ("run_kafka_trial.sh", "scripts/kafka_producer.py", "scripts/kafka_consumer.py"),
+    ("run_redis_trial.sh", "scripts/redis_producer.py", "scripts/redis_consumer.py")])
+def test_freeze_43s_producer_wrap_prefixes_the_producer_alone_after_the_sched_wrap(
+        tmp_path, runner, producer, consumer):
+    """SBL_PRODUCER_WRAP prefixes the producer's command and nothing else, after SBL_SCHED_WRAP,
+    and meta.json's env records it, so that a run's own files say which arm it belonged to.
+    Empty, it adds nothing, and the producer starts exactly as before."""
+    calls, env = _trial_runner_calls(tmp_path / "alone", runner, "prodwrap")
+    wrapped = [c for c in calls if c.startswith("prodwrap ")]
+    assert len(wrapped) == 1 and producer in wrapped[0], calls
+    assert [c for c in calls if c.startswith("python " + consumer)], "the consumer, unwrapped"
+    assert [c for c in calls if c.startswith("python scripts/compute_tti.py")]
+    assert env["SBL_PRODUCER_WRAP"] == "prodwrap"
+    calls, env = _trial_runner_calls(tmp_path / "both", runner, "prodwrap", "schedwrap")
+    sched = [c for c in calls if c.startswith("schedwrap ")]
+    assert [c.split()[1] for c in sched if producer in c] == ["prodwrap"], \
+        "the producer's own wrap comes after the one both clients share"
+    assert [c for c in sched if consumer in c and "prodwrap" not in c]
+    assert [c for c in calls if c.startswith("prodwrap ")] and not [
+        c for c in calls if c.startswith("prodwrap ") and producer not in c]
+    assert (env["SBL_SCHED_WRAP"], env["SBL_PRODUCER_WRAP"]) == ("schedwrap", "prodwrap")
+    calls, env = _trial_runner_calls(tmp_path / "plain", runner, "")
+    assert not [c for c in calls if "prodwrap" in c] and env["SBL_PRODUCER_WRAP"] == ""
+    assert [c for c in calls if c.startswith("python " + producer)]
+
+
+def test_freeze_43s_producer_wrap_reaches_the_java_producer_too_and_no_consumer():
+    """A8's Java producer is wrapped as the Python one is, and no line that starts a consumer
+    carries the producer's wrap, in either runner."""
+    for runner in ("run_kafka_trial.sh", "run_redis_trial.sh"):
+        text = (REPO / "scripts" / runner).read_text(encoding="utf-8")
+        assert 'PRODUCER_WRAP="${SBL_PRODUCER_WRAP:-}"' in text
+        assert '"SBL_PRODUCER_WRAP": os.environ.get("SBL_PRODUCER_WRAP", "")' in text
+        wrapped = [line.strip() for line in text.splitlines()
+                   if "$PRODUCER_WRAP" in line and not line.lstrip().startswith("#")]
+        assert wrapped and all(line.startswith("$SCHED_WRAP $PRODUCER_WRAP ") for line in wrapped)
+        assert not [line for line in wrapped if "onsumer" in line]
+    kafka = (REPO / "scripts" / "run_kafka_trial.sh").read_text(encoding="utf-8")
+    assert '  $SCHED_WRAP $PRODUCER_WRAP "$JAVA_BIN" -cp "$JAVA_CP" LawProducer \\' in kafka
+
+
+@needs_bash
+def test_freeze_43s_clients_facts_are_read_once_while_the_clients_run(tmp_path):
+    """RUN_FACTS_AFTER_S into the trial, 15 s unless set, inside block U's 20 s warm-up."""
+    run = tmp_path / "run"
+    run.mkdir()
+    for after, slept in (("", "15"), ("3", "3")):
+        calls = tmp_path / ("calls_%s.txt" % slept)
+        script = "\n".join(['sleep () { echo "sleep $*" >> "$CALLS"; }',
+                            'python3 () { echo "python3 $*" >> "$CALLS"; }',
+                            _function("run_facts_later"), 'run_facts_later "$RUN"', ""])
+        env = {"CALLS": calls.as_posix(), "RUN": run.as_posix()}
+        if after:
+            env["RUN_FACTS_AFTER_S"] = after
+        _run_script(tmp_path / ("facts_%s.sh" % slept), script, env, capture_output=True,
+                    text=True, check=True)
+        assert _lines(calls) == ["sleep " + slept, "python3 scripts/run_facts.py clients --out "
+                                 "%s/run_facts_clients.json" % run.as_posix()]
+
+
+@needs_bash
+def test_freeze_43s_interrupt_counters_are_the_kernels_own_before_and_after(tmp_path):
+    """/proc/interrupts, /proc/softirqs and /proc/net/softnet_stat, copied as they are, before
+    and after; a file that cannot be read leaves the reason in its place and stops nothing."""
+    proc, run = tmp_path / "proc", tmp_path / "run"
+    run.mkdir()
+    texts = {"interrupts": "           CPU0       CPU1\n 24:   5   7   mlx5_comp0@pci\n",
+             "softirqs": "                    CPU0       CPU1\n      NET_RX:     11     13\n",
+             "net/softnet_stat": "0000abcd 00000000 00000001\n0000beef 00000000 00000000\n"}
+    for name, text in texts.items():
+        _write(proc / name, text)
+    script = "\n".join(["set -uo pipefail", _function("interrupt_counters"),
+                        "interrupt_counters before", 'rm "$PROC_DIR/softirqs"',
+                        "interrupt_counters after", 'echo "carried on"', ""])
+    said = _run_script(tmp_path / "counters.sh", script,
+                       {"PROC_DIR": proc.as_posix(), "RUN_DIR": run.as_posix()},
+                       capture_output=True, text=True, check=True).stdout
+    assert said == "carried on\n"
+    for name, saved in (("interrupts", "interrupts"), ("softirqs", "softirqs"),
+                        ("net/softnet_stat", "softnet")):
+        assert (run / ("%s_before.txt" % saved)).read_text(encoding="utf-8") == texts[name]
+    assert (run / "interrupts_after.txt").read_text(encoding="utf-8") == texts["interrupts"]
+    assert "softirqs" in (run / "softirqs_after.txt").read_text(encoding="utf-8")
+
+
+def test_freeze_43s_run_facts_are_taken_before_the_clients_while_they_run_and_after():
+    """The machine's facts and the interrupt counters once every capture has started and before
+    the clients do; the clients' facts in the background once the trial has started; and the
+    counters again once it has ended. A setup that asks for none of it takes none."""
+    run = _campaign().split("run_one () {", 1)[1].split("\n}\n", 1)[0]
+    order = ['remote_broker "sudo sh -c \'kill -INT \\$(cat /tmp/sbl_bfull.pid',
+             "tcp_counters before", "interrupt_counters before",
+             'python3 scripts/run_facts.py host --out "$RUN_DIR/run_facts.json"',
+             "began=$(date -u +%s)", 'run_facts_later "$RUN_DIR" &', "run_kafka_trial.sh",
+             "ended=$(date -u +%s)", 'if [ -n "$facts_pid" ]; then kill "$facts_pid"',
+             "tcp_counters after", '[ -z "${RUN_FACTS:-}" ] || interrupt_counters after']
+    places = [run.index(step) for step in order]
+    assert places == sorted(places)
+    assert 'if [ -n "${RUN_FACTS:-}" ]; then\n    interrupt_counters before' in run
+    assert 'if [ -n "${RUN_FACTS:-}" ]; then\n    run_facts_later "$RUN_DIR" &' in run
+
+
+def _prime(tmp_path, rc_kafka="0", rc_redis="0"):
+    """prime_brokers as the runner defines it, run in a scratch folder, with reap, log, date and
+    the trials stood in for by commands that write down how they were called, the n-th trial's
+    arguments and wraps into files of their own. (The calls, the trials' arguments, their wraps,
+    the folder they ran in.)"""
+    work, rec = tmp_path / "work", tmp_path / "rec"
+    work.mkdir()
+    rec.mkdir()
+    script = "\n".join([
+        "set -uo pipefail", "trials=0",
+        'reap () { echo reap >> "$REC/calls"; }', 'log () { echo "LOG $*" >> "$REC/calls"; }',
+        "date () { echo 20261023T010203Z; }",
+        'timeout () { trials=$((trials + 1)); printf "%s\\n" "$@" > "$REC/trial_$trials";'
+        ' printf "%s\\n" "consumer=${SBL_CONSUMER_WRAP:-}" "sched=${SBL_SCHED_WRAP:-}"'
+        ' "producer=${SBL_PRODUCER_WRAP:-}" > "$REC/wraps_$trials"; echo "trial $trials";'
+        ' [ "$trials" = 1 ] && return "$RC_KAFKA"; return "$RC_REDIS"; }',
+        _function("prime_brokers"), "prime_brokers", ""])
+    env = {"REC": rec.as_posix(), "RC_KAFKA": rc_kafka, "RC_REDIS": rc_redis,
+           "QUEUE_NAME": "u50", "ME": "tester", "PRIME_S": "60",
+           "SYN_PLAN": "data/synthetic/constant_r50_d70/replay_plan.csv", "SPEEDUP": "1.000000",
+           "KAFKA_BOOTSTRAP": "10.9.9.9:19092", "KAFKA_PRODUCER_EXTRA": "--max-inflight 64",
+           "REDIS_HOST": "10.9.9.9", "REDIS_PORT": "6379",
+           "REDIS_CONSUMER_EXTRA": "--ack-batch 200"}
+    _run_script(tmp_path / "prime.sh", script, env, cwd=work, capture_output=True, text=True,
+                check=True)
+    return (_lines(rec / "calls"), [_lines(rec / ("trial_%d" % n)) for n in (1, 2)],
+            [_lines(rec / ("wraps_%d" % n)) for n in (1, 2)], work)
+
+
+@needs_bash
+def test_freeze_43s_brokers_are_primed_kafka_then_redis_idle_into_folders_nothing_reads(
+        tmp_path):
+    """One trial on each broker, Kafka first, on the campaign's plan at its speed for PRIME_S
+    seconds, with the consumer behind the receiver's address and the clients' standing settings,
+    no other wrap and no capture; each into a folder of its own named for the queue, the broker
+    and the time, its log beside it; and the campaign carries on whatever a trial exits with."""
+    calls, trials, wraps, work = _prime(tmp_path, rc_redis="3")
+    kafka, redis = ("law_u50_prime_%s_20261023T010203Z" % b for b in ("kafka", "redis"))
+    assert calls == ["reap", "LOG PRIME kafka: runs/%s exit 0" % kafka,
+                     "reap", "LOG PRIME redis: runs/%s exit 3" % redis]
+    plan = "data/synthetic/constant_r50_d70/replay_plan.csv"
+    assert trials[0] == ["-k", "30", "360", "bash", "scripts/run_kafka_trial.sh", kafka, plan,
+                         "1.000000", "60", "-BOOTSTRAP", "10.9.9.9:19092", "-PRODUCER_EXTRA",
+                         "--max-inflight 64", "-IDLE_SECONDS", "15"]
+    assert trials[1] == ["-k", "30", "360", "bash", "scripts/run_redis_trial.sh", redis, plan,
+                         "1.000000", "60", "-RedisHost", "10.9.9.9", "-PORT", "6379",
+                         "-CONSUMER_EXTRA", "--ack-batch 200", "-IDLE_SECONDS", "15"]
+    assert wraps == [["consumer=sudo ip netns exec sblrecv sudo -u tester", "sched=",
+                      "producer="]] * 2
+    for n, run_id in enumerate((kafka, redis), start=1):
+        assert _lines(work / "runs" / run_id / "trial.log") == ["trial %d" % n]
+
+
+def _prime_s_says(prime_s, duration="70"):
+    code = _campaign()
+    first = "# Freeze 43 (22 Oct 2026): the priming trials replay"
+    block = first + code.split(first, 1)[1].split("\nesac\n", 1)[0] + "\nesac\n"
+    script = "\n".join(["set -uo pipefail", 'log () { echo "$*"; }', block, 'echo "carried on"',
+                        ""])
+    return bash(["-c", script], extra_env={"PRIME_S": prime_s, "DURATION": duration},
+                capture_output=True, text=True)
+
+
+@needs_bash
+@pytest.mark.parametrize("prime_s,said", [
+    ("", None), ("1", None), ("60", None), ("70", None),
+    ("71", "FATAL: PRIME_S is at most the plan's 70 s, not 71"),
+    ("0", 'FATAL: PRIME_S is a whole number of seconds of at least one, not "0"'),
+    ("060", 'FATAL: PRIME_S is a whole number of seconds of at least one, not "060"'),
+    ("6O", 'FATAL: PRIME_S is a whole number of seconds of at least one, not "6O"'),
+    ("1.5", 'FATAL: PRIME_S is a whole number of seconds of at least one, not "1.5"'),
+    ("-1", 'FATAL: PRIME_S is a whole number of seconds of at least one, not "-1"')])
+def test_freeze_43s_priming_is_a_whole_number_of_seconds_the_plan_holds(prime_s, said):
+    """The priming trials replay the campaign's own plan, DURATION seconds of it, so a priming
+    longer than that, or one in no whole number of seconds, stops the campaign before its first
+    run rather than priming for some other time."""
+    done = _prime_s_says(prime_s)
+    if said is None:
+        assert done.returncode == 0 and done.stdout == "carried on\n"
+    else:
+        assert done.returncode == 1 and done.stdout == said + "\n"
+
+
+def test_freeze_43s_brokers_are_primed_once_before_the_queues_first_run_and_only_when_asked():
+    """After the campaign's settings are checked and its line is logged, before the queue is
+    first read; and a campaign without PRIME_S primes nothing and logs the line it always did."""
+    code = _campaign()
+    assert 'PRIME_S="${PRIME_S:-}"' in code
+    queue = code.split("# --- the queue ", 1)[1]
+    order = ['case "$GOTIT_BRAKE" in', 'case "$PRIME_S" in', 'log "campaign: ',
+             '[ -z "$PRIME_S" ] || prime_brokers', 'RECOVER="--recover"', "\nwhile true; do"]
+    places = [queue.index(step) for step in order]
+    assert places == sorted(places)
+    assert queue.count("prime_brokers") == 1, "called once, and nowhere in the loop"
+    assert "${PRIME_S:+; each broker primed for $PRIME_S s first}" in code
+
+
+@needs_bash
+def test_freeze_43s_run_line_names_each_new_switch_and_an_earlier_row_none(tmp_path):
+    """The line every run logs names each of freeze 43's switches where the row sets it, in the
+    style of the earlier ones, and a row that sets none logs the line it always did."""
+    line = next(text.strip() for text in _campaign().splitlines()
+                if text.strip().startswith('log "run $KEY: '))
+    names = ("KEY", "BACKEND", "LOAD", "SLICE_NS", "DELAY_MS", "PRIORITY", "CONSUMER_PRIORITY",
+             "RECV_CAPTURE", "SEND_CAPTURE", "HW_CAPTURE", "SO_STAMPS", "SO_JOURNAL",
+             "SEND_CAPTURE_BOTH", "SEND_WORKERS", "SCHED_FEATURES", "IDLE_POLL", "BROKER_CAPTURE",
+             "LOAD_RECORRECT", "CPUS") + FREEZE_43
+    row = dict({name: "" for name in names}, KEY="r001-U50-redis-l88-blocks-a1",
+               BACKEND="redis", LOAD="88", DELAY_MS="0")
+    script = "\n".join(["set -uo pipefail", 'log () { echo "$*"; }', line, ""])
+    plain = _run_script(tmp_path / "plain.sh", script, row, capture_output=True, text=True,
+                        check=True).stdout.strip()
+    assert plain == ("run r001-U50-redis-l88-blocks-a1: redis, load 88%, slice kernel default, "
+                     "delay 0 ms")
+    asked = dict(row, PRODUCER_PRIORITY="1", GC_OFF="1", GC_LOG="1", SCHEDSTAT="1", DUTY="88",
+                 LOAD_BLOCKS="5", RUN_FACTS="1", CPUS="8")
+    asked = _run_script(tmp_path / "asked.sh", script, asked, capture_output=True, text=True,
+                        check=True).stdout.strip()
+    assert asked == plain + (", go-first producer, collectors off, collections logged, consumer "
+                             "schedstat, duty frozen at 88%, load in 5 s blocks, run facts, "
+                             "8 CPUs online")

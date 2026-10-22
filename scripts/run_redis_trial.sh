@@ -73,7 +73,8 @@ meta = {
             "REDIS_CONSUMER_OPTS": os.environ.get("REDIS_CONSUMER_OPTS", ""),
             # Which arm a run belonged to must be readable from the run itself.
             "SBL_SCHED_WRAP": os.environ.get("SBL_SCHED_WRAP", ""),
-            "SBL_CONSUMER_WRAP": os.environ.get("SBL_CONSUMER_WRAP", "")},
+            "SBL_CONSUMER_WRAP": os.environ.get("SBL_CONSUMER_WRAP", ""),
+            "SBL_PRODUCER_WRAP": os.environ.get("SBL_PRODUCER_WRAP", "")},
     "git": {"head": cmd(["git","rev-parse","HEAD"]),
             "status_short": cmd(["git","status","--porcelain"])},
     "code_sha256": {f"scripts/{f}": sha256(f"scripts/{f}") for f in
@@ -91,6 +92,9 @@ SCHED_WRAP="${SBL_SCHED_WRAP:-}"
 # See run_kafka_trial.sh: SBL_CONSUMER_WRAP starts the consumer alone behind the receiver's own
 # address, so a receiver-only delay cannot reach the producer's reply. Empty by default.
 CONSUMER_WRAP="${SBL_CONSUMER_WRAP:-}"
+# See run_kafka_trial.sh: SBL_PRODUCER_WRAP prefixes the producer alone, after SBL_SCHED_WRAP, so
+# a campaign can run it at real-time priority in every setup (freeze 43). Empty by default.
+PRODUCER_WRAP="${SBL_PRODUCER_WRAP:-}"
 
 CLUSTER_FLAG=""
 [ "$CLUSTER_MODE" = "1" ] && CLUSTER_FLAG="--cluster-mode"
@@ -108,7 +112,7 @@ CONS_PID=$!
 sleep 1
 echo "[2/4] $(date +%H:%M:%S) running producer..."
 # shellcheck disable=SC2086
-$SCHED_WRAP "$PY" scripts/redis_producer.py ${REDIS_PRODUCER_OPTS:-} \
+$SCHED_WRAP $PRODUCER_WRAP "$PY" scripts/redis_producer.py ${REDIS_PRODUCER_OPTS:-} \
   --run-id "$RUN_ID" --plan-csv "$PLAN_CSV" --out "runs/$RUN_ID/producer.csv" \
   --host "$HOST" --port "$PORT" --stream "$STREAM" \
   --speedup "$SPEEDUP" --max-t-sim "$MAX_T_SIM" --node-count "$NODE_COUNT" $CLUSTER_FLAG \

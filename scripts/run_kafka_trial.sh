@@ -55,6 +55,12 @@ SCHED_WRAP="${SBL_SCHED_WRAP:-}"
 # A campaign sets it to "sudo ip netns exec sblrecv sudo -u $USER". Empty by default, so every
 # existing campaign behaves exactly as before.
 CONSUMER_WRAP="${SBL_CONSUMER_WRAP:-}"
+# SBL_PRODUCER_WRAP prefixes the producer alone, after SBL_SCHED_WRAP. Freeze 43 (22 Oct 2026): a
+# campaign sets it to "sudo chrt -f 80" so that the producer runs at real-time priority in every
+# setup and only the consumer's priority varies: under block U's 70% load at 2,000 messages a
+# second, Redis's producer at normal priority sent its messages a median of 24 ms after their
+# planned times. Empty by default, so every existing campaign behaves exactly as before.
+PRODUCER_WRAP="${SBL_PRODUCER_WRAP:-}"
 mkdir -p "runs/$RUN_ID"
 
 "$PY" - "$RUN_ID" "$PLAN_CSV" "$SPEEDUP" "$MAX_T_SIM" "$BOOTSTRAP" "$TOPIC" <<'PY'
@@ -85,7 +91,8 @@ meta = {
             "KAFKA_CONSUMER_OPTS": os.environ.get("KAFKA_CONSUMER_OPTS", ""),
             # Which arm a run belonged to must be readable from the run itself.
             "SBL_SCHED_WRAP": os.environ.get("SBL_SCHED_WRAP", ""),
-            "SBL_CONSUMER_WRAP": os.environ.get("SBL_CONSUMER_WRAP", "")},
+            "SBL_CONSUMER_WRAP": os.environ.get("SBL_CONSUMER_WRAP", ""),
+            "SBL_PRODUCER_WRAP": os.environ.get("SBL_PRODUCER_WRAP", "")},
     "git": {"head": cmd(["git","rev-parse","HEAD"]),
             "status_short": cmd(["git","status","--porcelain"])},
     "code_sha256": {f"scripts/{f}": sha256(f"scripts/{f}") for f in
@@ -139,13 +146,13 @@ echo "[2/4] $(date +%H:%M:%S) running producer..."
 KAFKA_PRODUCER_SCRIPT="${KAFKA_PRODUCER_SCRIPT:-scripts/kafka_producer.py}"
 # shellcheck disable=SC2086
 if [ "$CLIENT" = java ]; then
-  $SCHED_WRAP "$JAVA_BIN" -cp "$JAVA_CP" LawProducer \
+  $SCHED_WRAP $PRODUCER_WRAP "$JAVA_BIN" -cp "$JAVA_CP" LawProducer \
     --run-id "$RUN_ID" --plan-csv "$PLAN_CSV" --out "runs/$RUN_ID/producer.csv" \
     --bootstrap "$BOOTSTRAP" --topic "$TOPIC" \
     --speedup "$SPEEDUP" --max-t-sim "$MAX_T_SIM" \
     $PRODUCER_EXTRA > "runs/$RUN_ID/producer.log" 2>&1
 else
-  $SCHED_WRAP "$PY" "$KAFKA_PRODUCER_SCRIPT" ${KAFKA_PRODUCER_OPTS:-} \
+  $SCHED_WRAP $PRODUCER_WRAP "$PY" "$KAFKA_PRODUCER_SCRIPT" ${KAFKA_PRODUCER_OPTS:-} \
     --run-id "$RUN_ID" --plan-csv "$PLAN_CSV" --out "runs/$RUN_ID/producer.csv" \
     --bootstrap "$BOOTSTRAP" --topic "$TOPIC" \
     --speedup "$SPEEDUP" --max-t-sim "$MAX_T_SIM" --broker-count "$BROKER_COUNT" \

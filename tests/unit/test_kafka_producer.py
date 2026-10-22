@@ -10,6 +10,7 @@ import pytest
 import pandas as pd
 import sys
 import os
+import gc
 import time
 import json
 import threading
@@ -973,3 +974,85 @@ class TestPayloadPadding:
 
     def test_zero_is_the_same_as_omitting(self, temp_dir):
         assert "pad" not in self._run(temp_dir, ["--pad-bytes", "0"])[0]
+
+
+@pytest.fixture
+def collector_restored():
+    """--gc-off switches this process's collector off and freezes every object in it, and the rest
+    of the suite runs here too: whatever a test does, the collector is put back as it was."""
+    enabled, callbacks = gc.isenabled(), list(gc.callbacks)
+    try:
+        yield
+    finally:
+        gc.callbacks[:] = callbacks
+        gc.unfreeze()
+        if enabled:
+            gc.enable()
+
+
+@pytest.mark.usefixtures("collector_restored")
+class TestFreeze43KeepsTheCollectorOutOfTheSendingLoop:
+    """Freeze 43 (22 Oct 2026): in freeze 42's pilot the clients paused 17-84 ms at about 24, 34,
+    46 and 60 s into each 70-s run, CPython's full collections over the objects kept for every
+    message. --gc-off switches the collector off once the producer exists and before any message
+    is sent, its one collection coming before t0, the schedule's origin."""
+
+    @staticmethod
+    def _run(temp_dir, monkeypatch, extra, n=3):
+        """The collector's state as the producer is made and at each send, and the order of the
+        collections and of the producer's clock reads, the first of which is t0."""
+        import kafka_producer
+        TestPathsThatNeedARealFuture._plan(temp_dir, n)
+        producer, _ = TestPathsThatNeedARealFuture._producer()
+        seen = {"made": [], "sent": []}
+        order = []
+        make_future = producer.send.side_effect
+
+        def send(*a, **k):
+            seen["sent"].append(gc.isenabled())
+            return make_future(*a, **k)
+
+        def made(**_):
+            seen["made"].append(gc.isenabled())
+            return producer
+
+        producer.send.side_effect = send
+        collect, clock = gc.collect, kafka_producer.now_ns
+        monkeypatch.setattr(gc, "collect", lambda *a: order.append("collect") or collect(*a))
+        monkeypatch.setattr(kafka_producer, "now_ns", lambda: order.append("clock") or clock())
+        gc.enable()
+        with patch('kafka_producer.KafkaProducer', side_effect=made):
+            old_argv, old_cwd = sys.argv, os.getcwd()
+            try:
+                os.chdir(temp_dir)
+                sys.argv = ["kp", "--run-id", "tr", "--plan-csv", "plan.csv",
+                            "--out", "prod.csv"] + extra
+                kp_main()
+            finally:
+                os.chdir(old_cwd)
+                sys.argv = old_argv
+        return seen, order
+
+    def test_the_collector_goes_off_after_the_producer_is_made_and_before_t0(self, temp_dir,
+                                                                            monkeypatch):
+        seen, order = self._run(temp_dir, monkeypatch, ["--gc-off", "--gc-log", "prod_gc.json"])
+        assert seen == {"made": [True], "sent": [False, False, False]}
+        assert order[:2] == ["collect", "clock"], "the collection delays no message's schedule"
+        record = json.loads((temp_dir / "prod_gc.json").read_text(encoding="utf-8"))
+        assert record["gc_off"] is True and record["frozen"] > 0
+        assert record["collections"] == []
+        assert pd.read_csv(temp_dir / "prod.csv").shape[0] == 3
+
+    def test_with_the_collector_on_its_collections_are_logged(self, temp_dir, monkeypatch):
+        seen, order = self._run(temp_dir, monkeypatch, ["--gc-log", "prod_gc.json"])
+        assert seen["sent"] == [True, True, True] and "collect" not in order
+        record = json.loads((temp_dir / "prod_gc.json").read_text(encoding="utf-8"))
+        assert record["gc_off"] is False
+
+    def test_with_no_switch_the_run_is_the_run_it_was(self, temp_dir, monkeypatch, capsys):
+        seen, order = self._run(temp_dir, monkeypatch, [])
+        assert seen == {"made": [True], "sent": [True, True, True]}
+        assert "collect" not in order
+        assert sorted(p.name for p in temp_dir.iterdir()) == ["plan.csv", "prod.csv"]
+        out = capsys.readouterr().out
+        assert "OK collector" not in out and "OK schedstat" not in out

@@ -1,10 +1,28 @@
 {
-  "about": "Freeze 42, block U, at 2,000 messages a second: idle, at 70% load, and at 70% load with the producer and the consumer at real-time priority, on each broker. The design's 80% is replaced by 70% as D45-7 provides: the pilot held 80% at 69.1-76.3% at 2,000 a second, and 70%, with the duty corrected a second time once the clients run (load_recorrect), at 67.5-70.4% in every loaded setup at both rates (docs/results/under_load/README.md). Run with RATE=2000 DURATION=70 WARMUP_S=20. Every run takes the socket timestamps at the device queue, both clients' journals, the receiver's capture and both directions of the sender's, the card's receive capture and the broker's own capture (docs/results/under_load/DESIGN.md). Queue: python3 scripts/run_queue.py make --design docs/results/under_load/u2000_design.json --out runs/azure/queues/u2000.csv",
+  "about": "Freeze 42, block U, as plan version 46 amends it before any judged run, at 2,000 messages a second: idle, at 70% load with the consumer at normal priority, and at 70% load with the consumer at real-time priority, on each broker. Each loaded setup runs at the duty pilot round d finds for it, written here as duty_pct before any judged run (plan version 46). Run with RATE=2000 DURATION=70 WARMUP_S=20 PRIME_S=60. Every run takes the socket timestamps at the device queue, both clients' journals, the receiver's capture and both directions of the sender's, the card's receive capture and the broker's own capture; runs the producer at real-time priority and both clients with their collector off; samples the consumer thread's own counters; records its facts; and is held to the lateness rule (docs/results/under_load/DESIGN46.md). Queue: python3 scripts/run_queue.py make --design docs/results/under_load/u2000_design.json --out runs/azure/queues/u2000.csv",
   "rounds": 4,
   "seed": 20261101,
   "setups": [
     {
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "recv_capture": true,
+      "send_capture": true,
+      "send_capture_both": true,
+      "hw_capture": true,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "broker_capture": true,
       "id": "U2000-kafka-l0",
+      "backend": "kafka",
+      "load_pct": 0,
+      "producer_priority": true,
+      "gc_off": true,
+      "schedstat": true,
+      "run_facts": true,
+      "lateness_p99_ms": 10
+    },
+    {
       "slice_ns": 3000000,
       "delay_ms": 0,
       "recv_capture": true,
@@ -14,11 +32,16 @@
       "so_timestamps": "sched",
       "so_journal": true,
       "broker_capture": true,
-      "backend": "kafka",
-      "load_pct": 0
-    },
-    {
       "id": "U2000-kafka-l70",
+      "backend": "kafka",
+      "load_pct": 70,
+      "producer_priority": true,
+      "gc_off": true,
+      "schedstat": true,
+      "run_facts": true,
+      "lateness_p99_ms": 10
+    },
+    {
       "slice_ns": 3000000,
       "delay_ms": 0,
       "recv_capture": true,
@@ -28,28 +51,36 @@
       "so_timestamps": "sched",
       "so_journal": true,
       "broker_capture": true,
-      "backend": "kafka",
-      "load_pct": 70,
-      "load_recorrect": true
-    },
-    {
       "id": "U2000-kafka-l70-rt",
-      "slice_ns": 3000000,
-      "delay_ms": 0,
-      "recv_capture": true,
-      "send_capture": true,
-      "send_capture_both": true,
-      "hw_capture": true,
-      "so_timestamps": "sched",
-      "so_journal": true,
-      "broker_capture": true,
       "backend": "kafka",
       "load_pct": 70,
-      "priority": true,
-      "load_recorrect": true
+      "producer_priority": true,
+      "gc_off": true,
+      "schedstat": true,
+      "run_facts": true,
+      "lateness_p99_ms": 10,
+      "priority": true
     },
     {
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "recv_capture": true,
+      "send_capture": true,
+      "send_capture_both": true,
+      "hw_capture": true,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "broker_capture": true,
       "id": "U2000-redis-l0",
+      "backend": "redis",
+      "load_pct": 0,
+      "producer_priority": true,
+      "gc_off": true,
+      "schedstat": true,
+      "run_facts": true,
+      "lateness_p99_ms": 10
+    },
+    {
       "slice_ns": 3000000,
       "delay_ms": 0,
       "recv_capture": true,
@@ -59,26 +90,16 @@
       "so_timestamps": "sched",
       "so_journal": true,
       "broker_capture": true,
-      "backend": "redis",
-      "load_pct": 0
-    },
-    {
       "id": "U2000-redis-l70",
-      "slice_ns": 3000000,
-      "delay_ms": 0,
-      "recv_capture": true,
-      "send_capture": true,
-      "send_capture_both": true,
-      "hw_capture": true,
-      "so_timestamps": "sched",
-      "so_journal": true,
-      "broker_capture": true,
       "backend": "redis",
       "load_pct": 70,
-      "load_recorrect": true
+      "producer_priority": true,
+      "gc_off": true,
+      "schedstat": true,
+      "run_facts": true,
+      "lateness_p99_ms": 10
     },
     {
-      "id": "U2000-redis-l70-rt",
       "slice_ns": 3000000,
       "delay_ms": 0,
       "recv_capture": true,
@@ -88,10 +109,15 @@
       "so_timestamps": "sched",
       "so_journal": true,
       "broker_capture": true,
+      "id": "U2000-redis-l70-rt",
       "backend": "redis",
       "load_pct": 70,
-      "priority": true,
-      "load_recorrect": true
+      "producer_priority": true,
+      "gc_off": true,
+      "schedstat": true,
+      "run_facts": true,
+      "lateness_p99_ms": 10,
+      "priority": true
     }
   ]
 }

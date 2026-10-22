@@ -16,6 +16,7 @@ except Exception:
 import law_clock
 import thread_record
 import so_timestamps
+import client_quiet
 
 
 def now_ns() -> int:
@@ -49,6 +50,7 @@ def main():
                     help="write each poll's start, duration and message count beside the CSV")
 
     so_timestamps.add_arguments(ap)
+    client_quiet.add_arguments(ap)
     args = ap.parse_args()
     record = thread_record.ThreadRecord() if args.thread_record else None
     polls = [] if args.read_trace else None
@@ -88,6 +90,11 @@ def main():
         value_deserializer=lambda b: json.loads(b.decode("utf-8")),
         consumer_timeout_ms=args.consumer_timeout_ms,
     )
+    # Freeze 43 (22 Oct 2026): in freeze 42's pilot the clients paused 17-84 ms at about 24, 34,
+    # 46 and 60 s into each 70-s run, longer each time, at gaps each about 1.2 times the last:
+    # CPython's full collections. Asked for, the collector goes off here, once the client has its
+    # connection and before any message is received (it joins its group in the first poll).
+    quiet = client_quiet.start(args)
 
     last_msg = time.monotonic()
     n = 0
@@ -139,6 +146,12 @@ def main():
             if args.max_poll_records is not None:
                 poll_kwargs["max_records"] = args.max_poll_records
 
+            # Freeze 43: this thread's scheduler counters, just before the request. kafka-python
+            # 2.3.2 builds the fetch on the thread that calls poll() and writes it in the client
+            # poll this thread makes at once; only its heartbeat thread, which polls the same
+            # client every few seconds, could write it first. Taken before the read trace's
+            # start, so that a traced poll's duration stays the poll's alone.
+            client_quiet.sample(quiet)
             t_poll_ns = now_ns() if polls is not None else None
             records = consumer.poll(**poll_kwargs)
             if polls is not None:
@@ -207,6 +220,7 @@ def main():
 
     consumer.close()
     so_timestamps.finish(so, args)
+    client_quiet.finish(quiet, args)
     if polls is not None:
         with out_path.with_name(out_path.stem + "_readtrace.csv").open(
                 "w", newline="", encoding="utf-8") as fh:

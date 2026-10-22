@@ -24,6 +24,8 @@
 #                held the receiver's replies (delay_hold.json: to the microsecond, where ping
 #                prints 0.1 ms above 10 ms);
 #   3. load      stress-ng on every online CPU at the setup's duty, measured by util_sampler;
+#                freeze 43: at a duty frozen from the pilot where the setup names one, or
+#                switched on and off in blocks from the trial's start where it asks;
 #   4. trace     A1 and A3 runs whose queue key hashes even record the timestamping processes'
 #                run-queue delays with bpftrace (A6);
 #   5. run       one trial of one backend on a constant-rate plan, the consumer behind the
@@ -33,6 +35,9 @@
 #                and the TCP counters of the driver, the receiver's namespace and the broker are
 #                logged just before and just after it, and the broker's log for the run is kept;
 #                freeze 42: where the setup asks, the broker captures its own port meanwhile;
+#                freeze 43: where the setup asks, the producer alone runs at real-time priority,
+#                the clients' collector is off or logged, the consumer samples its own waits,
+#                and the run's interrupt and scheduler facts are kept before, during and after;
 #   6. checks    scripts/run_integrity.py, on this machine, as soon as the trial ends: the run
 #                counts, is repeated, or stops the campaign, and integrity.json says why;
 #   7. record    everything lands in the run's own directory, runs/law_<queue>_<key>, with
@@ -52,6 +57,9 @@
 # RATE and DURATION set the plan. The default, 50 messages a second for 130 s, keeps 5,000
 # messages after the 30 s warm-up. The effect is strongest at sparse rates, so the spread pilot
 # is where to learn whether the plateau is still measurable at this one.
+#
+# Freeze 43 (22 Oct 2026): PRIME_S=S on the campaign's job line runs one unjudged trial of S
+# seconds on each broker, Kafka then Redis, before the queue's first run (prime_brokers).
 . "$(dirname "${BASH_SOURCE[0]}")/../campaigns/common.sh"
 set +e
 
@@ -62,6 +70,9 @@ QUEUE_NAME="$(basename "$QUEUE" .csv)"
 RATE="${RATE:-50}"
 DURATION="${DURATION:-130}"
 WARMUP_S="${WARMUP_S:-30}"
+#: Freeze 43 (22 Oct 2026): the seconds of one unjudged trial on each broker before the queue's
+#: first run (prime_brokers). Empty primes nothing, as every campaign before it.
+PRIME_S="${PRIME_S:-}"
 STOP_FILE="${STOP_FILE:-runs/azure/STOP}"
 CALIBRATION="${CALIBRATION:-}"
 #: Until version 32 empty was the rule, and the got-it brake stopped the campaign; "record" was
@@ -79,6 +90,14 @@ ME=$(id -un)
 #: Freeze 41 (15 Oct 2026): the running boot's own command line, which a setup that names a boot
 #: is held to (block I: idle=poll or not).
 BOOT_CMDLINE="/proc/cmdline"
+#: Freeze 43 (22 Oct 2026): eth0's own address, which the card's capture is pinned to, and the
+#: kernel's process files, where a run that asks reads its interrupt counters. The tests point
+#: both at files of their own.
+ETH0_ADDRESS="/sys/class/net/eth0/address"
+PROC_DIR="/proc"
+#: Freeze 43 (22 Oct 2026): the process that switches a run's load on and off in blocks, while
+#: such a run's trial runs, so that whatever ends the run or the campaign can stop it.
+BLOCKS_PID=""
 
 log () { echo "$(date -u +%FT%TZ) $*"; }
 broker_delay () {
@@ -86,6 +105,9 @@ broker_delay () {
     --dst $RECEIVER_IP --delay-ms $1 --apply" >/dev/null 2>&1
 }
 reap () {
+  # Freeze 43 (22 Oct 2026): the load's blocks first, so that none starts a stress-ng after the
+  # one below is stopped; a campaign stopped in the middle of such a run stops them here.
+  stop_load_blocks
   pkill -f "kafka_producer.py|redis_producer.py|kafka_consumer.py|redis_consumer.py" 2>/dev/null
   # A8 runs Kafka's Java client too, and a leftover one would send into the next run's topic.
   pkill -f "LawProducer|LawConsumer" 2>/dev/null
@@ -134,6 +156,48 @@ print("%d" % round(min(100.0, max(1.0, duty - (shown - want)))))' "$want" "$show
     pkill -9 -x stress-ng 2>/dev/null
     stress-ng --cpu "$cpus" --cpu-load "$adjusted" --timeout 3600s >/dev/null 2>&1 &
   fi
+}
+#: Freeze 43 (22 Oct 2026): the load switched on and off in blocks within one run, where the setup
+#: asks (load_blocks_s). Each TCP connection on these pairs keeps its own fixed delay for its whole
+#: life, so two runs differ by their draws of the network as well as by their loads: in block L,
+#: Redis's kernel-timed latency at 50 messages a second had run medians of 445, 473, 456 and
+#: 854 us idle and 706, 443, 462 and 848 us at 88% load. Within one run the loaded and the
+#: unloaded blocks share the same connections. From the trial's start stress-ng runs for a block
+#: and stops for a block, beginning on, until the run stops this, and each switch is written to
+#: load_blocks.csv with the time it was made, to the nanosecond. A block's stress-ng stops by
+#: itself at twice the block's length should anything leave it behind, and no block starts once
+#: the campaign that started them is gone.
+load_blocks () {
+  local run_dir="$1" duty="$2" cpus="$3" block_s="$4" campaign="$$" stress=""
+  echo "t_ns,state" > "$run_dir/load_blocks.csv"
+  while kill -0 "$campaign" 2>/dev/null; do
+    echo "$(date +%s%N),on" >> "$run_dir/load_blocks.csv"
+    stress-ng --cpu "$cpus" --cpu-load "$duty" --timeout "$(( 2 * block_s ))s" >/dev/null 2>&1 &
+    stress=$!
+    sleep "$block_s"
+    echo "$(date +%s%N),off" >> "$run_dir/load_blocks.csv"
+    kill -9 "$stress" 2>/dev/null; wait "$stress" 2>/dev/null
+    pkill -9 -x stress-ng 2>/dev/null
+    sleep "$block_s"
+  done
+}
+#: Freeze 43 (22 Oct 2026): the blocks stopped by a signal they cannot decline, then every
+#: stress-ng they started, as the end of a run stops its load. A trial that has ended, early or
+#: not, leaves no block to start under the next run's setup.
+stop_load_blocks () {
+  [ -n "$BLOCKS_PID" ] || return 0
+  kill -9 "$BLOCKS_PID" 2>/dev/null; wait "$BLOCKS_PID" 2>/dev/null
+  pkill -9 -x stress-ng 2>/dev/null
+  BLOCKS_PID=""
+}
+#: Freeze 43 (22 Oct 2026): how the kernel schedules the clients' threads and the load's, read
+#: once while the clients run, where the setup asks (run_facts): RUN_FACTS_AFTER_S seconds after
+#: the trial starts, 15 unless set, inside block U's 20 s warm-up. Run in the background by the run
+#: that asks for it, which stops it if the trial ends first.
+run_facts_later () {
+  sleep "${RUN_FACTS_AFTER_S:-15}"
+  python3 scripts/run_facts.py clients --out "$1/run_facts_clients.json" \
+    > "$1/run_facts_clients.err" 2>&1
 }
 finish_campaign () {
   reap
@@ -270,6 +334,14 @@ tcp_counters () {  # before|after: the Tcp lines of /proc/net/snmp on every side
   sudo ip netns exec sblrecv grep '^Tcp:' /proc/net/snmp > "$RUN_DIR/receiver_tcp_$1.txt" 2>&1
   remote_broker "grep '^Tcp:' /proc/net/snmp" > "$RUN_DIR/broker_tcp_$1.txt" 2>&1
 }
+#: Freeze 43 (22 Oct 2026): before|after, where the interrupts and softirqs fell and what the
+#: network's receive queues held, as the kernel counts them, in a run whose setup asks
+#: (run_facts). Block U's pilot did not record where the network's interrupts ran.
+interrupt_counters () {
+  cat "$PROC_DIR/interrupts" > "$RUN_DIR/interrupts_$1.txt" 2>&1
+  cat "$PROC_DIR/softirqs" > "$RUN_DIR/softirqs_$1.txt" 2>&1
+  cat "$PROC_DIR/net/softnet_stat" > "$RUN_DIR/softnet_$1.txt" 2>&1
+}
 
 # --- one run ---------------------------------------------------------------------------------
 run_one () {
@@ -289,6 +361,23 @@ run_one () {
     REASON="the driver cannot reach the broker at $BROKER_PRIV"; return; }
   if sudo fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock >/dev/null 2>&1; then
     REASON="a package manager is running on the driver"; return
+  fi
+  # Freeze 43 (22 Oct 2026): so does a setup that names one of freeze 43's settings in a form
+  # this runner cannot give. stress-ng takes a whole percentage, the blocks a whole number of
+  # seconds; a load of 0 starts no stress-ng, so neither a frozen duty nor the blocks can apply
+  # to it; and the collector's two switches and the schedstat are the Python clients' own.
+  case "${DUTY:-}" in
+    ""|[1-9]|[1-9][0-9]|100) ;;
+    *) REASON="duty_pct is a whole percentage from 1 to 100, not \"$DUTY\""; return ;;
+  esac
+  case "${LOAD_BLOCKS:-}" in
+    *[!0-9]*|0*) REASON="load_blocks_s is a whole number of seconds of at least one, not \"$LOAD_BLOCKS\""; return ;;
+  esac
+  if [ -n "${DUTY:-}${LOAD_BLOCKS:-}" ] && [ "$LOAD" = 0 ]; then
+    REASON="duty_pct and load_blocks_s set how a load runs, and a load of 0 starts none"; return
+  fi
+  if [ -n "${GC_OFF:-}${GC_LOG:-}${SCHEDSTAT:-}" ] && [ "${CLIENT:-python}" != python ]; then
+    REASON="gc_off, gc_log and schedstat are the Python clients' settings, and this run's client is $CLIENT"; return
   fi
   # Freeze 41 (15 Oct 2026): a setup that asks for what this runner cannot give as written fails
   # here, before it changes anything on the machine. The journal is kept by the socket
@@ -382,8 +471,10 @@ run_one () {
   # holds the measured load to zero within its points. stress_pid is set empty first: the runner
   # treats an unset variable as an error, and an idle run starts nothing to set it.
   stress_pid=""
-  if [ "$LOAD" != 0 ]; then
-    stress-ng --cpu "$want_cpus" --cpu-load "$LOAD" --timeout 3600s >/dev/null 2>&1 &
+  # Freeze 43 (22 Oct 2026): at the setup's frozen duty where it names one (duty_pct), and not
+  # before the clients at all where the load runs in blocks within the trial (load_blocks_s).
+  if [ "$LOAD" != 0 ] && [ -z "${LOAD_BLOCKS:-}" ]; then
+    stress-ng --cpu "$want_cpus" --cpu-load "${DUTY:-$LOAD}" --timeout 3600s >/dev/null 2>&1 &
     stress_pid=$!
   fi
   sleep 3
@@ -403,7 +494,15 @@ run_one () {
   #: corrected to is written beside the run.
   sleep 4
   local shown="" adjusted
-  [ -n "$stress_pid" ] && shown=$(python3 -c 'import csv, statistics, sys
+  # Freeze 43 (22 Oct 2026): a duty frozen from the pilot is used as it stands, with no
+  # correction here and none once the clients run. Block U's pilot corrected the duty against
+  # what the machine showed, and the real-time setups ended at a heavier stress-ng than the
+  # normal ones: 76-77 against 72 at 2,000 messages a second. Each setup's duty is now frozen
+  # from the pilot and the load runs open-loop; the integrity rule still holds the background
+  # the machine shows to the design within its points.
+  [ -n "${DUTY:-}" ] && printf '{"designed_pct": %s, "duty_frozen_pct": %s}\n' "$LOAD" "$DUTY" \
+    > "$RUN_DIR/load_correction.json"
+  [ -n "$stress_pid" ] && [ -z "${DUTY:-}" ] && shown=$(python3 -c 'import csv, statistics, sys
 rows = list(csv.DictReader(open(sys.argv[1], newline="", encoding="utf-8")))
 rho = [float(r["rho"]) for r in rows[-6:] if r.get("rho")]
 print("%.2f" % (100 * statistics.fmean(rho)) if rho else "")' "$RUN_DIR/utilisation.csv" 2>/dev/null)
@@ -468,6 +567,14 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   # full length, so that each message's receipt can be timed from the kernel's own timestamp.
   local consumer_wrap="sudo ip netns exec sblrecv sudo -u $ME" recv_full=""
   [ -n "$CONSUMER_PRIORITY" ] && consumer_wrap="sudo chrt -f 80 $consumer_wrap"
+  # Freeze 43 (22 Oct 2026): the producer alone at real-time priority where the setup asks
+  # (producer_priority), so that only the consumer's priority varies between setups. Under block
+  # U's 70% load at 2,000 messages a second, Redis's producer at normal priority sent its messages
+  # a median of 24 ms and a 99th percentile of 272 ms after their planned times, so the load
+  # changed what the broker was sent as well as how the consumer ran. Left empty where go-first
+  # already raises both clients.
+  local producer_wrap=""
+  [ -n "${PRODUCER_PRIORITY:-}" ] && [ -z "$PRIORITY" ] && producer_wrap="sudo chrt -f 80"
   # Freeze 41 (15 Oct 2026): a 32 MiB capture buffer (tcpdump -B, in KiB) where a setup captures
   # both directions of the sender, or asks for it, so that the kernel drops none of the packets the
   # journal is checked against. It goes after the file name, so each capture's own command line
@@ -509,7 +616,14 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   # a second, and a packet dropped from a capture leaves every later byte of its stream unread.
   local hw_full="" hw_clock="" hw_dev=""
   if [ -n "$HW_CAPTURE" ]; then
-    hw_dev=$(ip -br link | awk '$4 ~ /SLAVE/ {print $1; exit}')
+    # Freeze 43 (22 Oct 2026): the device is the SLAVE that carries eth0's own address, no longer
+    # the first SLAVE `ip -br link` lists, so that a second device, or the kernel listing them in
+    # another order, cannot put the capture on a card that does not carry the receiver's packets.
+    # Where none carries eth0's address, nothing is captured, as on a machine with no card.
+    local eth0_mac
+    eth0_mac=$(cat "$ETH0_ADDRESS" 2>/dev/null)
+    hw_dev=$(ip -br link | awk -v mac="$eth0_mac" \
+      'mac != "" && $4 ~ /SLAVE/ && tolower($3) == tolower(mac) {print $1; exit}')
     [ -n "$hw_dev" ] && hw_clock=$(sudo ethtool -T "$hw_dev" 2>/dev/null \
       | awk '/PTP Hardware Clock:/ && $4 ~ /^[0-9]+$/ {print "/dev/ptp" $4}')
     echo "${hw_dev:-none} ${hw_clock:-none}" > "$RUN_DIR/hw_device.txt"
@@ -538,6 +652,14 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   chronyc -c tracking > "$RUN_DIR/clock_before.txt" 2>/dev/null
   head -n 1 /proc/stat > "$RUN_DIR/stat_before.txt"
   tcp_counters before
+  # Freeze 43 (22 Oct 2026): where the setup asks (run_facts), the interrupt counters and the
+  # machine's own facts before the clients start: which CPUs the card's interrupts may and do run
+  # on, the kernel's preemption and accounting options and real-time throttle, and stress-ng's
+  # version and command lines (scripts/run_facts.py).
+  if [ -n "${RUN_FACTS:-}" ]; then
+    interrupt_counters before
+    python3 scripts/run_facts.py host --out "$RUN_DIR/run_facts.json" > "$RUN_DIR/run_facts.err" 2>&1
+  fi
   # Freeze 40 (14 Oct 2026): the clients read the kernel's own timestamps on their connections to
   # the broker through SO_TIMESTAMPING, each into its own file beside the run (so_timestamps.py),
   # with the transmit timestamp taken where the row says.
@@ -551,31 +673,61 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     [ "$SO_JOURNAL" = 1 ] && so_prod="$so_prod --so-journal $RUN_DIR/producer_journal"
     [ -n "$SO_JOURNAL" ] && so_cons="$so_cons --so-journal $RUN_DIR/consumer_journal"
   fi
+  # Freeze 43 (22 Oct 2026): the clients' own garbage collector, and the consumer's waits for a
+  # core. In block U's pilot, leaving out the 0.25-0.53% of messages delivered after a consumer
+  # turnaround of more than 10 ms lowered the kernel-timed latency's 99th percentile by 4-16%.
+  # Where the setup asks, each client freezes what it holds once it has connected and turns its
+  # collector off (gc_off), or keeps it on and logs every collection (gc_log), each into its own
+  # file beside the run, which tells whether CPython's collections make those long turnarounds;
+  # and the consumer samples its main thread's schedstat before each request (schedstat), so that
+  # each turnaround splits into the time it ran and the time it waited for a core. A setup that
+  # asks for none hands the clients exactly what freeze 42 did.
+  local prod_flags="" cons_flags=""
+  if [ -n "${GC_OFF:-}" ]; then
+    prod_flags=" --gc-off --gc-log $RUN_DIR/producer_gc.json"
+    cons_flags=" --gc-off --gc-log $RUN_DIR/consumer_gc.json"
+  elif [ -n "${GC_LOG:-}" ]; then
+    prod_flags=" --gc-log $RUN_DIR/producer_gc.json"
+    cons_flags=" --gc-log $RUN_DIR/consumer_gc.json"
+  fi
+  [ -n "${SCHEDSTAT:-}" ] && cons_flags="$cons_flags --schedstat $RUN_DIR/consumer_schedstat.csv"
   began=$(date -u +%s)
   local recorrect_pid=""
   if [ -n "${LOAD_RECORRECT:-}" ] && [ -n "${stress_pid:-}" ]; then
     recorrect_load "$RUN_DIR" "$LOAD" "${adjusted:-$LOAD}" "$want_cpus" &
     recorrect_pid=$!
   fi
+  # Freeze 43 (22 Oct 2026): the load's blocks from the trial's start, at the frozen duty where
+  # the setup names one, and the clients' facts once they run; each in the background, and each
+  # stopped once the trial ends.
+  if [ -n "${LOAD_BLOCKS:-}" ]; then
+    load_blocks "$RUN_DIR" "${DUTY:-$LOAD}" "$want_cpus" "$LOAD_BLOCKS" &
+    BLOCKS_PID=$!
+  fi
+  local facts_pid=""
+  if [ -n "${RUN_FACTS:-}" ]; then
+    run_facts_later "$RUN_DIR" &
+    facts_pid=$!
+  fi
   if [ "$BACKEND" = kafka ]; then
     client_args=()
     [ -n "${CLIENT:-}" ] && client_args+=(-CLIENT "$CLIENT")
     [ -n "${ACK_STAMP:-}" ] && client_args+=(-ACK_STAMP "$ACK_STAMP")
-    SBL_CONSUMER_WRAP="$consumer_wrap" SBL_SCHED_WRAP="$wrap_sched" \
+    SBL_CONSUMER_WRAP="$consumer_wrap" SBL_SCHED_WRAP="$wrap_sched" SBL_PRODUCER_WRAP="$producer_wrap" \
       timeout -k 30 $(( DURATION + 300 )) bash scripts/run_kafka_trial.sh "$RUN_ID" "$run_plan" \
       "$run_speedup" "$run_maxt" -BOOTSTRAP "$KAFKA_BOOTSTRAP" \
-      -PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA $record_args $so_prod" \
-      -CONSUMER_EXTRA "$record_args $read_args $so_cons" \
+      -PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA $record_args $so_prod$prod_flags" \
+      -CONSUMER_EXTRA "$record_args $read_args $so_cons$cons_flags" \
       -IDLE_SECONDS 15 "${client_args[@]}" > "$RUN_DIR/trial.log" 2>&1
     rc=$?
   else
     # Freeze 41 (15 Oct 2026): block K's two one-worker setups send through one XADD worker instead
     # of the producer's sixteen; a setup that names no count keeps the producer's own.
-    SBL_CONSUMER_WRAP="$consumer_wrap" SBL_SCHED_WRAP="$wrap_sched" \
+    SBL_CONSUMER_WRAP="$consumer_wrap" SBL_SCHED_WRAP="$wrap_sched" SBL_PRODUCER_WRAP="$producer_wrap" \
       timeout -k 30 $(( DURATION + 300 )) bash scripts/run_redis_trial.sh "$RUN_ID" "$run_plan" \
       "$run_speedup" "$run_maxt" -RedisHost "$REDIS_HOST" -PORT "$REDIS_PORT" \
-      -PRODUCER_EXTRA "$record_args $so_prod${SEND_WORKERS:+ --send-workers $SEND_WORKERS}" \
-      -CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA${ACK_BATCH:+ --ack-batch $ACK_BATCH} $record_args $so_cons" \
+      -PRODUCER_EXTRA "$record_args $so_prod${SEND_WORKERS:+ --send-workers $SEND_WORKERS}$prod_flags" \
+      -CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA${ACK_BATCH:+ --ack-batch $ACK_BATCH} $record_args $so_cons$cons_flags" \
       -IDLE_SECONDS 15 > "$RUN_DIR/trial.log" 2>&1
     rc=$?
   fi
@@ -583,9 +735,14 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   # A trial that ended before the second correction came due must not have stress-ng restarted
   # after it, under the next run's setup.
   if [ -n "$recorrect_pid" ]; then kill "$recorrect_pid" 2>/dev/null; wait "$recorrect_pid" 2>/dev/null; fi
+  # Freeze 43 (22 Oct 2026): nor may a block of load start after it, and the clients' facts are
+  # read while the clients run or not at all.
+  stop_load_blocks
+  if [ -n "$facts_pid" ]; then kill "$facts_pid" 2>/dev/null; wait "$facts_pid" 2>/dev/null; fi
   head -n 1 /proc/stat > "$RUN_DIR/stat_after.txt"
   chronyc -c tracking > "$RUN_DIR/clock_after.txt" 2>/dev/null
   tcp_counters after
+  [ -z "${RUN_FACTS:-}" ] || interrupt_counters after
   container=redis
   [ "$BACKEND" = kafka ] && container=broker
   remote_broker "docker logs --timestamps --since $began --until $(( ended + 1 )) $container" \
@@ -667,12 +824,51 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   esac
 }
 
+#: Freeze 43 (22 Oct 2026): one unjudged trial on each broker, Kafka then Redis, before the
+#: queue's first run, where the campaign's job line asks (PRIME_S). Every session starts both
+#: brokers afresh, and block U's pilot found its first run after a broker start contaminated:
+#: Kafka made its __consumer_offsets topic during it, and the broker's log for that run ran to
+#: 314 lines against 11 for a later one. Each trial runs the campaign's plan at its rate for
+#: PRIME_S seconds, idle and with no capture, the consumer behind the receiver's address as in
+#: every run and each client with the campaign's own settings, into a folder of its own that
+#: nothing reads. Whatever a trial exits with, the campaign carries on.
+prime_brokers () {
+  local backend prime_id rc
+  for backend in kafka redis; do
+    reap
+    prime_id="law_${QUEUE_NAME}_prime_${backend}_$(date -u +%Y%m%dT%H%M%SZ)"
+    mkdir -p "runs/$prime_id"
+    if [ "$backend" = kafka ]; then
+      SBL_CONSUMER_WRAP="sudo ip netns exec sblrecv sudo -u $ME" \
+        timeout -k 30 $(( PRIME_S + 300 )) bash scripts/run_kafka_trial.sh "$prime_id" \
+        "$SYN_PLAN" "$SPEEDUP" "$PRIME_S" -BOOTSTRAP "$KAFKA_BOOTSTRAP" \
+        -PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA" -IDLE_SECONDS 15 > "runs/$prime_id/trial.log" 2>&1
+    else
+      SBL_CONSUMER_WRAP="sudo ip netns exec sblrecv sudo -u $ME" \
+        timeout -k 30 $(( PRIME_S + 300 )) bash scripts/run_redis_trial.sh "$prime_id" \
+        "$SYN_PLAN" "$SPEEDUP" "$PRIME_S" -RedisHost "$REDIS_HOST" -PORT "$REDIS_PORT" \
+        -CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA" -IDLE_SECONDS 15 > "runs/$prime_id/trial.log" 2>&1
+    fi
+    rc=$?
+    log "PRIME $backend: runs/$prime_id exit $rc"
+  done
+}
+
 # --- the queue -------------------------------------------------------------------------------
 case "$GOTIT_BRAKE" in
   ""|stop|record) ;;
   *) log "FATAL: the got-it brake either stops or records, not \"$GOTIT_BRAKE\""; exit 1 ;;
 esac
-log "campaign: $QUEUE on lane $LANE; plan $SYN_PLAN at speedup $SPEEDUP; warm-up ${WARMUP_S} s; $ALL_CPUS CPUs${CALIBRATION:+; calibration $CALIBRATION}${GOTIT_BRAKE:+; the got-it brake: $GOTIT_BRAKE (D26-1, D32-1)}"
+# Freeze 43 (22 Oct 2026): the priming trials replay the campaign's own plan, which runs for
+# DURATION seconds, so PRIME_S is a whole number of seconds within it.
+case "$PRIME_S" in
+  "") ;;
+  *[!0-9]*|0*) log "FATAL: PRIME_S is a whole number of seconds of at least one, not \"$PRIME_S\""; exit 1 ;;
+  *) [ "$PRIME_S" -le "$DURATION" ] || {
+       log "FATAL: PRIME_S is at most the plan's $DURATION s, not $PRIME_S"; exit 1; } ;;
+esac
+log "campaign: $QUEUE on lane $LANE; plan $SYN_PLAN at speedup $SPEEDUP; warm-up ${WARMUP_S} s; $ALL_CPUS CPUs${CALIBRATION:+; calibration $CALIBRATION}${GOTIT_BRAKE:+; the got-it brake: $GOTIT_BRAKE (D26-1, D32-1)}${PRIME_S:+; each broker primed for $PRIME_S s first}"
+[ -z "$PRIME_S" ] || prime_brokers
 RECOVER="--recover"
 while true; do
   if [ -f "$STOP_FILE" ]; then
@@ -725,7 +921,21 @@ values = {
     # Freeze 42 (22 Oct 2026): the broker's own capture of its port, and the duty corrected a
     # second time with the clients running, where the setup asks for either.
     "BROKER_CAPTURE": "1" if p.get("broker_capture") else "",
-    "LOAD_RECORRECT": "1" if p.get("load_recorrect") else "",
+    # Freeze 43 (22 Oct 2026): never where the duty is frozen or the load runs in blocks, so that
+    # a row naming either with it runs, and is logged, without the second correction.
+    "LOAD_RECORRECT": "1" if (p.get("load_recorrect") and p.get("duty_pct") is None
+                              and p.get("load_blocks_s") is None) else "",
+    # Freeze 43 (22 Oct 2026): the producer alone at real-time priority; the clients' collector
+    # off, or on and logged; the consumer's schedstat; the duty frozen from the pilot; the load in
+    # on and off blocks of this many seconds; and the run's interrupt and scheduler facts. A row
+    # that names none of them leaves all seven empty, and its run is launched exactly as before.
+    "PRODUCER_PRIORITY": "1" if p.get("producer_priority") else "",
+    "GC_OFF": "1" if p.get("gc_off") else "",
+    "GC_LOG": "1" if p.get("gc_log") else "",
+    "SCHEDSTAT": "1" if p.get("schedstat") else "",
+    "DUTY": "" if p.get("duty_pct") is None else str(p["duty_pct"]),
+    "LOAD_BLOCKS": "" if p.get("load_blocks_s") is None else str(p["load_blocks_s"]),
+    "RUN_FACTS": "1" if p.get("run_facts") else "",
     "TRACE": 1 if int(hashlib.sha256(row["key"].encode()).hexdigest(), 16) % 2 == 0 else 0,
     "HZ": round(1000 / tick) if tick else "",
 }
@@ -744,7 +954,7 @@ PY
   echo "$ROW" > "$RUN_DIR/queue_row.json"
   printf '{"lane": "%s", "profile": "%s", "driver": "%s", "commit": "%s"}\n' "$LANE" \
     "${AZ_PROFILE:-unknown}" "$(hostname)" "$(git rev-parse HEAD 2>/dev/null)" > "$RUN_DIR/lane.json"
-  log "run $KEY: $BACKEND, load $LOAD%, slice ${SLICE_NS:-kernel default}, delay $DELAY_MS ms${PRIORITY:+, go-first}${CONSUMER_PRIORITY:+, go-first consumer}${RECV_CAPTURE:+, receiver capture}${SEND_CAPTURE:+, sender capture}${HW_CAPTURE:+, card capture}${SO_STAMPS:+, socket timestamps ($SO_STAMPS)}${SO_JOURNAL:+, journal=$SO_JOURNAL}${SEND_CAPTURE_BOTH:+, both directions of the sender}${SEND_WORKERS:+, $SEND_WORKERS send workers}${SCHED_FEATURES:+, $SCHED_FEATURES}${IDLE_POLL:+, idle_poll=$IDLE_POLL}${BROKER_CAPTURE:+, broker capture}${LOAD_RECORRECT:+, the load corrected again with the clients running}${CPUS:+, $CPUS CPUs online}"
+  log "run $KEY: $BACKEND, load $LOAD%, slice ${SLICE_NS:-kernel default}, delay $DELAY_MS ms${PRIORITY:+, go-first}${CONSUMER_PRIORITY:+, go-first consumer}${RECV_CAPTURE:+, receiver capture}${SEND_CAPTURE:+, sender capture}${HW_CAPTURE:+, card capture}${SO_STAMPS:+, socket timestamps ($SO_STAMPS)}${SO_JOURNAL:+, journal=$SO_JOURNAL}${SEND_CAPTURE_BOTH:+, both directions of the sender}${SEND_WORKERS:+, $SEND_WORKERS send workers}${SCHED_FEATURES:+, $SCHED_FEATURES}${IDLE_POLL:+, idle_poll=$IDLE_POLL}${BROKER_CAPTURE:+, broker capture}${LOAD_RECORRECT:+, the load corrected again with the clients running}${PRODUCER_PRIORITY:+, go-first producer}${GC_OFF:+, collectors off}${GC_LOG:+, collections logged}${SCHEDSTAT:+, consumer schedstat}${DUTY:+, duty frozen at $DUTY%}${LOAD_BLOCKS:+, load in $LOAD_BLOCKS s blocks}${RUN_FACTS:+, run facts}${CPUS:+, $CPUS CPUs online}"
   REASON=""
   STOP_REASON=""
   run_one

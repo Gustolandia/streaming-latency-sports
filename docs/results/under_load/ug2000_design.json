@@ -1,0 +1,47 @@
+{
+  "about": "Plan version 46's check of the clients' pauses (never judged, and not read by the block's reader): one run on each broker at 2,000 messages a second idle, as pilot round d's idle setups but with the collector left on and every collection logged. Run with RATE=2000 DURATION=70 WARMUP_S=20 PRIME_S=60. Queue: python3 scripts/run_queue.py make --design docs/results/under_load/ug2000_design.json --out runs/azure/queues/ug2000.csv",
+  "rounds": 1,
+  "seed": 20261114,
+  "setups": [
+    {
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "recv_capture": true,
+      "send_capture": true,
+      "send_capture_both": true,
+      "hw_capture": true,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "broker_capture": true,
+      "id": "UG2000-kafka-l0",
+      "backend": "kafka",
+      "load_pct": 0,
+      "producer_priority": true,
+      "gc_off": false,
+      "schedstat": true,
+      "run_facts": true,
+      "lateness_p99_ms": 10,
+      "gc_log": true
+    },
+    {
+      "slice_ns": 3000000,
+      "delay_ms": 0,
+      "recv_capture": true,
+      "send_capture": true,
+      "send_capture_both": true,
+      "hw_capture": true,
+      "so_timestamps": "sched",
+      "so_journal": true,
+      "broker_capture": true,
+      "id": "UG2000-redis-l0",
+      "backend": "redis",
+      "load_pct": 0,
+      "producer_priority": true,
+      "gc_off": false,
+      "schedstat": true,
+      "run_facts": true,
+      "lateness_p99_ms": 10,
+      "gc_log": true
+    }
+  ]
+}

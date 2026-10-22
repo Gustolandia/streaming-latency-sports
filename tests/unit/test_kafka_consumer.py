@@ -3,6 +3,7 @@ import pytest
 import sys
 import os
 import csv
+import gc
 import subprocess
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
@@ -514,3 +515,130 @@ class TestWhatAConsumerRecordsForTheMechanism:
         summary = json.loads(written.with_name(written.stem + "_summary.json").read_text(
             encoding="utf-8"))
         assert summary["transmit"] == "sched"
+
+
+@pytest.fixture
+def collector_restored():
+    """--gc-off switches this process's collector off and freezes every object in it, and the rest
+    of the suite runs here too: whatever a test does, the collector is put back as it was."""
+    enabled, callbacks = gc.isenabled(), list(gc.callbacks)
+    try:
+        yield
+    finally:
+        gc.callbacks[:] = callbacks
+        gc.unfreeze()
+        if enabled:
+            gc.enable()
+
+
+def _seek_and_read(fd, size, offset):
+    """os.pread where the system has none (Windows): a seek and a read do the same here."""
+    os.lseek(fd, offset, os.SEEK_SET)
+    return os.read(fd, size)
+
+
+@pytest.mark.usefixtures("collector_restored")
+class TestFreeze43KeepsTheCollectorOutOfTheReceivingLoop:
+    """Freeze 43 (22 Oct 2026): in freeze 42's pilot the clients paused 17-84 ms at about 24, 34,
+    46 and 60 s into each 70-s run, CPython's full collections. --gc-off switches the collector off
+    once the consumer exists and before any message is received, --gc-log logs any collection that
+    still happens, and --schedstat samples this thread's counters just before each poll."""
+
+    @staticmethod
+    def _run(temp_dir, tmp_path, monkeypatch, extra, order=None):
+        """Two polls, one message: the collector's state as the consumer is made and at each poll,
+        and the order of the counters' reads and the polls."""
+        import client_quiet
+        seen = {"made": [], "polled": []}
+        order = [] if order is None else order
+        counters = tmp_path / "schedstat"
+        counters.write_bytes(b"1000 200 3\n")
+        monkeypatch.setattr(client_quiet, "SCHEDSTAT", str(counters))
+        pread = getattr(os, "pread", _seek_and_read)
+        monkeypatch.setattr(os, "pread", lambda *a: order.append("sample") or pread(*a),
+                            raising=False)
+        msg = MagicMock()
+        msg.value = {"run_id": "r43", "event_id": "e1", "match_id": 1, "t_sim_seconds": 1}
+        batches = iter([{"t0": [msg]}, {}])
+        consumer = MagicMock()
+
+        def poll(**_):
+            order.append("poll")
+            seen["polled"].append(gc.isenabled())
+            return next(batches)
+
+        def made(*_, **__):
+            seen["made"].append(gc.isenabled())
+            return consumer
+
+        consumer.poll.side_effect = poll
+        gc.enable()
+        old_argv = sys.argv
+        try:
+            sys.argv = ["kc", "--run-id", "r43", "--out", str(temp_dir / "consumer.csv"),
+                        "--idle-seconds", "0"] + extra
+            with patch('kafka_consumer.KafkaConsumer', side_effect=made):
+                with patch('kafka_consumer.time.monotonic', side_effect=lambda: 100.0):
+                    kc_main()
+        finally:
+            sys.argv = old_argv
+        return seen, order
+
+    def test_the_collector_goes_off_after_the_consumer_is_made_and_before_the_first_poll(
+            self, temp_dir, tmp_path, monkeypatch):
+        import json
+        seen, _ = self._run(temp_dir, tmp_path, monkeypatch,
+                            ["--gc-off", "--gc-log", str(temp_dir / "consumer_gc.json")])
+        assert seen == {"made": [True], "polled": [False, False]}
+        record = json.loads((temp_dir / "consumer_gc.json").read_text(encoding="utf-8"))
+        assert record["gc_off"] is True and record["frozen"] > 0
+        assert record["collections"] == []
+
+    def test_with_the_collector_on_its_collections_are_logged(self, temp_dir, tmp_path,
+                                                              monkeypatch):
+        import json
+        seen, _ = self._run(temp_dir, tmp_path, monkeypatch,
+                            ["--gc-log", str(temp_dir / "consumer_gc.json")])
+        assert seen["polled"] == [True, True]
+        record = json.loads((temp_dir / "consumer_gc.json").read_text(encoding="utf-8"))
+        assert record["gc_off"] is False
+
+    def test_the_counters_are_sampled_just_before_each_poll(self, temp_dir, tmp_path,
+                                                            monkeypatch):
+        _, order = self._run(temp_dir, tmp_path, monkeypatch,
+                             ["--schedstat", str(temp_dir / "consumer_schedstat.csv")])
+        assert order == ["sample", "poll", "sample", "poll"]
+        with open(temp_dir / "consumer_schedstat.csv", newline="", encoding="utf-8") as fh:
+            rows = list(csv.DictReader(fh))
+        assert [(r["exec_ns"], r["delay_ns"], r["slices"]) for r in rows] \
+            == [("1000", "200", "3")] * 2
+
+    def test_the_sample_falls_before_the_traced_poll_not_inside_it(self, temp_dir, tmp_path,
+                                                                   monkeypatch):
+        """The read trace's durations stay the polls' alone: the counters are read, then the
+        trace's start is stamped, then the poll is made. Read as an order of events, because a
+        wall clock that steps in a millisecond, as Windows' does, cannot tell the two apart."""
+        import kafka_consumer
+        order, clock = [], kafka_consumer.now_ns
+        monkeypatch.setattr(kafka_consumer, "now_ns", lambda: order.append("clock") or clock())
+        self._run(temp_dir, tmp_path, monkeypatch,
+                  ["--schedstat", str(temp_dir / "consumer_schedstat.csv"), "--read-trace"],
+                  order)
+        before = [order[i - 2:i] for i, event in enumerate(order) if event == "poll"]
+        assert before == [["sample", "clock"]] * 2
+        with open(temp_dir / "consumer_schedstat.csv", newline="", encoding="utf-8") as fh:
+            sampled = [int(r["t_ns"]) for r in csv.DictReader(fh)]
+        with open(temp_dir / "consumer_readtrace.csv", newline="", encoding="utf-8") as fh:
+            began = [int(r["t_read_start_ns"]) for r in csv.DictReader(fh)]
+        assert len(sampled) == len(began) == 2
+        assert all(s <= b for s, b in zip(sampled, began))
+
+    def test_with_no_switch_the_run_is_the_run_it_was(self, temp_dir, tmp_path, monkeypatch,
+                                                      capsys):
+        seen, order = self._run(temp_dir, tmp_path, monkeypatch, [])
+        assert seen == {"made": [True], "polled": [True, True]}
+        assert order == ["poll", "poll"]
+        assert sorted(p.name for p in temp_dir.iterdir()) == ["consumer.csv",
+                                                              "consumer_events.csv"]
+        out = capsys.readouterr().out
+        assert "OK collector" not in out and "OK schedstat" not in out

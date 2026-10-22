@@ -16,6 +16,7 @@ except Exception:
 import law_clock
 import thread_record
 import so_timestamps
+import client_quiet
 
 
 def now_ns() -> int:
@@ -98,6 +99,7 @@ def main():
                     help="write which threads stamped what, and both clocks, beside the CSV")
 
     so_timestamps.add_arguments(ap)
+    client_quiet.add_arguments(ap)
     args = ap.parse_args()
     record = thread_record.ThreadRecord() if args.thread_record else None
 
@@ -139,6 +141,12 @@ def main():
     # F2 (freeze 40): the kernel's own timestamps on the broker's connections, if asked for.
     so = so_timestamps.start(args, so_timestamps.port_of(bootstrap_servers, 9092))
     producer = KafkaProducer(**producer_kwargs)
+    # Freeze 43 (22 Oct 2026): in freeze 42's pilot the clients paused 17-84 ms at about 24, 34,
+    # 46 and 60 s into each 70-s run, longer each time, at gaps each about 1.2 times the last:
+    # CPython's full collections, over the rows kept below for every message. Asked for, the
+    # collector goes off here, once the client has its connection and before any message is
+    # sent; the one collection it runs comes before t0, so it delays no message's schedule.
+    quiet = client_quiet.start(args)
     # Measured before the run, not assumed: a clock too coarse to see the effect stops here, and
     # the figure it reported goes in the run's own record either way. The Java client A8 compares
     # this one with holds the same bar, in harness/java/src/LawClock.java.
@@ -406,6 +414,7 @@ def main():
     if record is not None:
         record.write(thread_record.beside(out_path))
     so_timestamps.finish(so, args)
+    client_quiet.finish(quiet, args)
     print(f"OK kafka producer: wrote {len(rows)} rows -> {out_path}")
 
 

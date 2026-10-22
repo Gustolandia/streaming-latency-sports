@@ -917,3 +917,203 @@ class TestTheFloorIsAboveTheDriftAWorkingCampaignShows:
     def test_a_long_delay_is_still_judged_against_its_own_share(self):
         assert self._judged(0.40, added_ms=2.0)["gotit_steady"]["ok"] is True
         assert self._judged(0.60, added_ms=2.0)["gotit_steady"]["ok"] is False
+
+
+# --- Freeze 43 (22 Oct 2026, plan version 46): the producer's lateness, and the load in blocks.
+
+#: A setup that holds its producer's lateness to 10 ms, as plan version 46's rows can.
+LATE = {"backend": "kafka", "load_pct": 75, "delay_ms": 2.0, "lateness_p99_ms": 10}
+
+
+def with_planned_times(run, late_ms):
+    """The run's producer.csv with each message's planned send time beside its send time, message
+    i sent `late_ms(i)` ms after its plan; None leaves that message's planned time empty."""
+    path = os.path.join(run, "producer.csv")
+    with open(path, newline="", encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
+    for i, row in enumerate(rows):
+        late = late_ms(i)
+        row["t_prod_sched_ns"] = ("" if late is None
+                                  else int(row["t_prod_send_ns"]) - int(round(late * 1e6)))
+    write_csv(path, ["event_id", "t_prod_sched_ns", "t_prod_send_ns", "t_broker_ack_ns"],
+              [[r["event_id"], r["t_prod_sched_ns"], r["t_prod_send_ns"], r["t_broker_ack_ns"]]
+               for r in rows])
+    return run
+
+
+class TestTheProducersLateness:
+    """Under block U's 70% load at 2,000 messages a second, Redis's producer at normal priority
+    sent its messages a median of 24 ms after their planned times and 272 ms at the 99th
+    percentile, and those runs passed, because the send-rate check reads the mean rate alone.
+    Plan version 46 holds the spread of the lateness, its 99th percentile less its 1st, to a limit
+    the setup names. The fixture sends after a 10 s warm-up from message 100 on."""
+
+    def test_a_run_whose_setup_names_no_limit_is_not_asked(self, tmp_path):
+        found = evaluate(with_planned_times(make_run(tmp_path), lambda i: 900.0))
+        assert found["verdict"] == "count"
+        assert "lateness" not in found["checks"] and "lateness_ms" not in found["recorded"]
+
+    def test_the_lateness_is_read_after_the_warm_up_to_known_percentiles(self, tmp_path):
+        """Messages 100 to 399 are 0.0 to 9.9 ms late, each value three times; the first 100,
+        sent in the warm-up, are 500 ms late and are not read."""
+        run = with_planned_times(make_run(tmp_path, params=LATE),
+                                 lambda i: 500.0 if i < 100 else (i % 100) * 0.1)
+        found = evaluate(run)
+        assert found["verdict"] == "count", found["reasons"]
+        late = found["recorded"]["lateness_ms"]
+        assert late == pytest.approx({"p1": 0.099, "p50": 4.95, "p99": 9.801, "spread": 9.702})
+        check = found["checks"]["lateness"]
+        assert check["ok"] and check["value"] == pytest.approx(9.702)
+        assert check["limit"] == "the 99th percentile less the 1st, at most 10 ms"
+
+    def test_a_spread_beyond_the_limit_is_a_repeat_and_never_a_stop(self, tmp_path):
+        params = dict(LATE, lateness_p99_ms=5)
+        run = with_planned_times(make_run(tmp_path, params=params), lambda i: (i % 100) * 0.1)
+        found = evaluate(run)
+        assert found["verdict"] == "repeat"
+        assert found["reasons"] == ["the producer's lateness spread 9.70 ms from its 1st to its "
+                                    "99th percentile, more than 5 ms"]
+        assert found["recorded"]["lateness_ms"]["p99"] == pytest.approx(9.801)
+
+    def test_a_lateness_every_message_shares_is_no_spread(self, tmp_path):
+        run = with_planned_times(make_run(tmp_path, params=dict(LATE, lateness_p99_ms=1)),
+                                 lambda i: 50.0)
+        found = evaluate(run)
+        assert found["verdict"] == "count"
+        assert found["recorded"]["lateness_ms"] == pytest.approx(
+            {"p1": 50.0, "p50": 50.0, "p99": 50.0, "spread": 0.0})
+
+    @pytest.mark.parametrize("late_ms,count", [(None, 0), (lambda i: None, 0),
+                                               (lambda i: 1.0 if i == 399 else None, 1)])
+    def test_a_producer_that_writes_no_planned_times_cannot_pass(self, tmp_path, late_ms, count):
+        """A client that writes no planned time, or a file without the column, is a run whose
+        lateness cannot be held to its limit: repeated, with the lateness recorded as unknown."""
+        run = make_run(tmp_path, params=LATE)
+        if late_ms is not None:
+            with_planned_times(run, late_ms)
+        found = evaluate(run)
+        assert found["verdict"] == "repeat" and found["recorded"]["lateness_ms"] is None
+        assert found["reasons"] == ["%d message(s) sent after the warm-up carry a planned send "
+                                    "time, and the lateness needs two" % count]
+
+    def test_sends_without_a_time_are_left_out(self, tmp_path):
+        run = with_planned_times(make_run(tmp_path, params=LATE), lambda i: 2.0)
+        with open(os.path.join(run, "producer.csv"), "a", newline="", encoding="utf-8") as fh:
+            fh.write("e400,%d,None,None\n" % START)
+        assert evaluate(run)["recorded"]["lateness_ms"]["spread"] == pytest.approx(0.0)
+
+    @pytest.mark.parametrize("params,planned", [(LATE, "soon"),
+                                                (dict(LATE, lateness_p99_ms="ten"), None)])
+    def test_what_cannot_be_read_is_a_repeat_that_says_so(self, tmp_path, params, planned):
+        run = with_planned_times(make_run(tmp_path, params=params), lambda i: 1.0)
+        if planned is not None:
+            with open(os.path.join(run, "producer.csv"), "a", newline="",
+                      encoding="utf-8") as fh:
+                fh.write("e400,%s,%d,None\n" % (planned, START + 39_950_000_000))
+        found = evaluate(run)
+        assert found["verdict"] == "repeat" and found["recorded"]["lateness_ms"] is None
+        assert found["checks"]["lateness"]["why"].startswith("the lateness could not be checked")
+
+    def test_the_command_repeats_a_late_run(self, tmp_path):
+        run = with_planned_times(make_run(tmp_path, params=dict(LATE, lateness_p99_ms=5)),
+                                 lambda i: (i % 100) * 0.1)
+        code, text = TestMain.run(["check", run, "--rate", "10", "--duration", "40",
+                                   "--warmup-s", "10"])
+        assert code == 1 and text.startswith("repeat: the producer's lateness spread 9.70 ms")
+
+
+#: Where the load runs in blocks: 88% designed, switched every five seconds from the first send.
+BLOCKS = {"backend": "kafka", "load_pct": 88, "delay_ms": 2.0, "load_blocks_s": 5}
+BLOCK_S = 5.0
+
+
+def with_load_blocks(run, on=0.88, off=0.01, settling=0.5, every=0.5, clients=None,
+                     switches=None):
+    """The run's load switched on and off every BLOCK_S seconds from its first send, beginning
+    on: load_blocks.csv as campaign.sh writes it, and the sampler's rows a quarter of a second off
+    the half seconds, so that no sample's interval ends on a switch. A sample reads `on` or `off`
+    once its block has settled, and `settling` in the block's first 1.5 s, where its interval
+    begins under a second after the switch and so must not count. `clients` adds the clients'
+    own share to every row."""
+    states = ["on" if k % 2 == 0 else "off" for k in range(9)]
+    switches = [[START + int(k * BLOCK_S * 1e9), state] for k, state in enumerate(states)] \
+        if switches is None else switches
+    write_csv(os.path.join(run, "load_blocks.csv"), ["t_ns", "state"], switches)
+    rows, at = [], 0.25
+    while at < 41.0:
+        k, into = divmod(at, BLOCK_S)
+        rho = settling if into < 1.5 else (on if int(k) % 2 == 0 else off)
+        rows.append([START / 1e9 + at, rho + (clients or 0.0), 3.0]
+                    + ([] if clients is None else [clients]))
+        at += every
+    header = ["t_wall", "rho", "loadavg"] + ([] if clients is None else ["rho_clients"])
+    write_csv(os.path.join(run, "utilisation.csv"), header, rows)
+    return run
+
+
+class TestTheLoadInBlocks:
+    """Each TCP connection on these pairs keeps its own fixed delay, so two runs differ by their
+    draws of the network as well as by their loads. Plan version 46 runs the 50-a-second load in
+    on and off blocks within each run, and the load check holds each kind of block to its own
+    level: the on blocks to the design, the off blocks to none."""
+
+    def test_a_run_whose_blocks_held_counts_with_each_kind_read_on_its_own(self, tmp_path):
+        """Inside the window of counted sends (10 to 39.9 s) lie three settled on blocks and three
+        off ones, seven samples each; the settling samples, at 50%, are not read, and neither is
+        anything sent in the warm-up."""
+        found = evaluate(with_load_blocks(make_run(tmp_path, params=BLOCKS)))
+        assert found["verdict"] == "count", found["reasons"]
+        load = found["checks"]["load"]
+        assert load["value"] == pytest.approx(88.0), "the on blocks' mean, as a plain run's"
+        assert load["limit"] == ("88% in the on blocks and 0% in the off blocks, each within 3 "
+                                 "points, from at least 10 samples 1 s or more after a switch")
+        assert found["recorded"]["load_blocks"] == pytest.approx(
+            {"on_pct": 88.0, "off_pct": 1.0, "on_samples": 21, "off_samples": 21})
+
+    @pytest.mark.parametrize("change,why", [
+        ({"on": 0.80}, "the measured load was 80.0% in the on blocks against 88%"),
+        ({"off": 0.05}, "the measured load was 5.0% in the off blocks against 0%")])
+    def test_a_kind_of_block_off_its_level_is_a_repeat(self, tmp_path, change, why):
+        found = evaluate(with_load_blocks(make_run(tmp_path, params=BLOCKS), **change))
+        assert found["verdict"] == "repeat" and found["reasons"] == [why]
+
+    def test_too_few_settled_samples_of_either_kind_cannot_say_what_the_load_was(self, tmp_path):
+        """A sample every 2 s leaves two settled samples in each on block and one in each off
+        block of the window: six and three."""
+        found = evaluate(with_load_blocks(make_run(tmp_path, params=BLOCKS), every=2.0))
+        assert found["verdict"] == "repeat" and found["checks"]["load"]["value"] is None
+        assert found["reasons"] == [
+            "only 6 load samples fell in the on blocks while messages were sent; only 3 load "
+            "samples fell in the off blocks while messages were sent"]
+        assert found["recorded"]["load_blocks"] == {"on_pct": None, "off_pct": None,
+                                                    "on_samples": 6, "off_samples": 3}
+
+    def test_the_clients_own_share_is_taken_off_in_the_blocks_too(self, tmp_path):
+        found = evaluate(with_load_blocks(make_run(tmp_path, params=BLOCKS), clients=0.04))
+        assert found["verdict"] == "count"
+        assert found["checks"]["load"]["limit"].endswith(", less the clients' own")
+        assert found["recorded"]["load_blocks"]["off_pct"] == pytest.approx(1.0)
+
+    def test_a_run_without_blocks_reads_its_load_whole_even_beside_a_blocks_file(self, tmp_path):
+        """The block-aware check is the setup's to ask for: a row without load_blocks_s is held to
+        one mean, as every run before it was."""
+        run = with_load_blocks(make_run(tmp_path, params=dict(BLOCKS, load_blocks_s=None)))
+        found = evaluate(run)
+        assert found["verdict"] == "repeat" and "load_blocks" not in found["recorded"]
+        assert found["reasons"][0].startswith("the measured load was") \
+            and "against 88%" in found["reasons"][0]
+
+    @pytest.mark.parametrize("switches,fragment", [
+        (None, "No such file"),
+        ([], "load_blocks.csv holds no switch"),
+        ([[START, "half"]], "load_blocks.csv switches the load to 'half', not on or off"),
+        ([["", "on"]], "invalid literal")])
+    def test_a_blocks_file_that_cannot_be_read_is_a_repeat_that_says_so(self, tmp_path,
+                                                                       switches, fragment):
+        run = with_load_blocks(make_run(tmp_path, params=BLOCKS), switches=switches or [])
+        if switches is None:
+            os.remove(os.path.join(run, "load_blocks.csv"))
+        found = evaluate(run)
+        why = found["checks"]["load"]["why"]
+        assert found["verdict"] == "repeat" and found["recorded"]["load_blocks"] is None
+        assert why.startswith("the load could not be checked: ") and fragment in why, why

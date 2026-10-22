@@ -1,4 +1,5 @@
 """Complete tests for redis_producer.py - 100% branch coverage."""
+import gc
 import json
 import pytest
 import pandas as pd
@@ -794,3 +795,91 @@ class TestThreadRecord:
     def test_no_record_unless_asked(self, temp_dir):
         self._run(temp_dir, [])
         assert not (temp_dir / "prod_threads.json").exists()
+
+
+@pytest.fixture
+def collector_restored():
+    """--gc-off switches this process's collector off and freezes every object in it, and the rest
+    of the suite runs here too: whatever a test does, the collector is put back as it was."""
+    enabled, callbacks = gc.isenabled(), list(gc.callbacks)
+    try:
+        yield
+    finally:
+        gc.callbacks[:] = callbacks
+        gc.unfreeze()
+        if enabled:
+            gc.enable()
+
+
+@pytest.mark.usefixtures("collector_restored")
+class TestFreeze43KeepsTheCollectorOutOfTheSendingLoop:
+    """Freeze 43 (22 Oct 2026): in freeze 42's pilot the clients paused 17-84 ms at about 24, 34,
+    46 and 60 s into each 70-s run, CPython's full collections over the objects kept for every
+    message. --gc-off switches the collector off once the client exists and before any message is
+    sent, its one collection coming before t0, the schedule's origin."""
+
+    @staticmethod
+    def _run(temp_dir, monkeypatch, extra, n=3):
+        """The collector's state as the client is made and at each XADD, which the send pool's
+        threads make, and the order of the collections and of the producer's clock reads, the
+        first of which is t0."""
+        import redis_producer
+        pd.DataFrame({
+            "event_id": [f"e{i}" for i in range(n)],
+            "match_id": [1] * n,
+            "t_sim_seconds": [0] * n,
+            "t_emit_offset_s": [0.0] * n,
+            "row_idx": list(range(n)),
+        }).to_csv(temp_dir / "plan.csv", index=False)
+        seen = {"made": [], "sent": []}
+        order = []
+        mock_redis = MagicMock()
+
+        def xadd(*_, **__):
+            seen["sent"].append(gc.isenabled())
+            return "rid1"
+
+        def made(*_, **__):
+            seen["made"].append(gc.isenabled())
+            return mock_redis
+
+        mock_redis.xadd = MagicMock(side_effect=xadd)
+        collect, clock = gc.collect, redis_producer.now_ns
+        monkeypatch.setattr(gc, "collect", lambda *a: order.append("collect") or collect(*a))
+        monkeypatch.setattr(redis_producer, "now_ns", lambda: order.append("clock") or clock())
+        gc.enable()
+        with patch('redis.Redis', side_effect=made):
+            old_argv, old_cwd = sys.argv, os.getcwd()
+            try:
+                os.chdir(temp_dir)
+                sys.argv = ["rp", "--run-id", "tr", "--plan-csv", "plan.csv",
+                            "--out", "prod.csv"] + extra
+                rp_main()
+            finally:
+                os.chdir(old_cwd)
+                sys.argv = old_argv
+        return seen, order
+
+    def test_the_collector_goes_off_after_the_client_is_made_and_before_t0(self, temp_dir,
+                                                                          monkeypatch):
+        seen, order = self._run(temp_dir, monkeypatch, ["--gc-off", "--gc-log", "prod_gc.json"])
+        assert seen == {"made": [True], "sent": [False, False, False]}
+        assert order[:2] == ["collect", "clock"], "the collection delays no message's schedule"
+        record = json.loads((temp_dir / "prod_gc.json").read_text(encoding="utf-8"))
+        assert record["gc_off"] is True and record["frozen"] > 0
+        assert record["collections"] == []
+        assert pd.read_csv(temp_dir / "prod.csv").shape[0] == 3
+
+    def test_with_the_collector_on_its_collections_are_logged(self, temp_dir, monkeypatch):
+        seen, order = self._run(temp_dir, monkeypatch, ["--gc-log", "prod_gc.json"])
+        assert seen["sent"] == [True, True, True] and "collect" not in order
+        record = json.loads((temp_dir / "prod_gc.json").read_text(encoding="utf-8"))
+        assert record["gc_off"] is False
+
+    def test_with_no_switch_the_run_is_the_run_it_was(self, temp_dir, monkeypatch, capsys):
+        seen, order = self._run(temp_dir, monkeypatch, [])
+        assert seen == {"made": [True], "sent": [True, True, True]}
+        assert "collect" not in order
+        assert sorted(p.name for p in temp_dir.iterdir()) == ["plan.csv", "prod.csv"]
+        out = capsys.readouterr().out
+        assert "OK collector" not in out and "OK schedstat" not in out

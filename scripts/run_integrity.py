@@ -7,7 +7,9 @@ run as it ends, on the machine that ran it, so they hold when nobody is watching
 
   count    every check passed. The run enters the analysis.
   repeat   a condition the run was meant to have did not take: too few messages sent, or too few
-           of them arrived; the send rate or the load off target; the settings changed during the
+           of them arrived; the send rate or the load off target (in each of its on and off
+           blocks, where the load runs in blocks); the producer's lateness wider than its setup
+           allows; the settings changed during the
            run; the delay the broker held not the delay set, or its capture missing; the clock
            not logged; the client not set as every
            campaign sets it (Kafka's producer with 64 requests in flight, Redis's consumer
@@ -62,6 +64,15 @@ RATE_TOLERANCE = 0.02
 LOAD_POINTS = 3.0
 #: Fewer utilisation samples than this inside the run cannot say what its load was.
 MIN_LOAD_SAMPLES = 10
+#: Freeze 43 (22 Oct 2026): where the load runs in on and off blocks within the run, a utilisation
+#: sample counts for a block only where its whole interval lies inside the block and starts at
+#: least this long after the block's switch, once stress-ng has started or stopped.
+BLOCK_SETTLE_S = 1.0
+#: The utilisation sampler's interval, as campaign.sh runs it (util_sampler.py --interval 0.5): a
+#: sample stamped at t_wall covers the half second before it.
+SAMPLE_INTERVAL_S = 0.5
+#: The two states a switch in load_blocks.csv can turn the load to.
+BLOCK_STATES = ("on", "off")
 #: The delay the broker's own capture shows it held may differ from the one set by this much
 #: (plan v7). It is read where the delay is added, and on three machine pairs it came within
 #: 0.022 ms. Ping is kept as a record: on 17 September it read 0.4 to 0.5 ms above the round trip
@@ -158,13 +169,14 @@ def rate_check(sent_after, rate):
                    "messages were sent at %.2f a second against %g" % (achieved, rate))
 
 
-def load_check(run_dir, load_pct, first_ns, last_ns):
-    """The mean measured load while messages were being sent, against the setting.
+def background_samples(run_dir):
+    """([(t_wall in s, load in per cent)] from utilisation.csv, whether the clients' share was
+    taken off). Rows that are not samples are skipped.
 
     Freeze 41 (15 Oct 2026): where the sampler wrote the clients' own share of the machine, the
-    load checked is the machine's less theirs, the background load the run set. At 50 messages a
-    second the clients used under a point and nothing changes; at 500 and 5,000 they use several,
-    and an idle run would otherwise fail for the clients' work alone."""
+    load is the machine's less theirs, the background load the run set. At 50 messages a second
+    the clients used under a point and nothing changes; at 500 and 5,000 they use several, and an
+    idle run would otherwise fail for the clients' work alone."""
     samples, less = [], False
     with open(os.path.join(run_dir, "utilisation.csv"), newline="", encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
@@ -177,8 +189,15 @@ def load_check(run_dir, load_pct, first_ns, last_ns):
                 less = True
             except (TypeError, ValueError):
                 pass
-            if first_ns <= at * 1e9 <= last_ns:
-                samples.append(100.0 * rho)
+            samples.append((at, 100.0 * rho))
+    return samples, less
+
+
+def load_check(run_dir, load_pct, first_ns, last_ns):
+    """The mean measured load while messages were being sent, against the setting, less the
+    clients' own share where the sampler wrote it (background_samples)."""
+    found, less = background_samples(run_dir)
+    samples = [pct for at, pct in found if first_ns <= at * 1e9 <= last_ns]
     limit = "%g%% within %g points, from at least %d samples%s" % (
         load_pct, LOAD_POINTS, MIN_LOAD_SAMPLES, ", less the clients' own" if less else "")
     if len(samples) < MIN_LOAD_SAMPLES:
@@ -187,6 +206,96 @@ def load_check(run_dir, load_pct, first_ns, last_ns):
     mean = statistics.mean(samples)
     return outcome(abs(mean - load_pct) <= LOAD_POINTS, mean, limit,
                    "the measured load was %.1f%% against %g%%" % (mean, load_pct))
+
+
+def load_switches(run_dir):
+    """[(t_ns, "on" or "off")] from load_blocks.csv, in time order. A file with no switch, or a
+    switch to anything but on or off, is a ValueError that says so."""
+    switches = []
+    with open(os.path.join(run_dir, "load_blocks.csv"), newline="", encoding="utf-8") as fh:
+        for row in csv.DictReader(fh):
+            if row.get("state") not in BLOCK_STATES:
+                raise ValueError("load_blocks.csv switches the load to %r, not on or off"
+                                 % (row.get("state"),))
+            switches.append((int(row["t_ns"]), row["state"]))
+    if not switches:
+        raise ValueError("load_blocks.csv holds no switch")
+    return sorted(switches)
+
+
+def block_load_check(run_dir, load_pct, first_ns, last_ns):
+    """(the check, what the on and off blocks measured) for a run whose load ran in blocks.
+
+    Freeze 43 (22 Oct 2026). Each TCP connection on these pairs keeps its own fixed delay, so two
+    runs differ by their draws of the network as well as by their loads: in block L, Redis's
+    kernel-timed latency at 50 messages a second had run medians of 445, 473, 456 and 854 us
+    idle and 706, 443, 462 and 848 us at 88% load. A setup that names load_blocks_s therefore
+    switches its load on and off within the run, from the trial's start, and the loaded and
+    unloaded blocks share the same connections. Its switches are read from load_blocks.csv, and
+    a sample counts for a block only where its whole interval lies inside the block,
+    BLOCK_SETTLE_S or more after the block's switch, while messages were being sent: the on
+    blocks' mean is held to the setup's load and the off blocks' to none, each within LOAD_POINTS
+    and from at least MIN_LOAD_SAMPLES samples. The check's value is the on blocks' mean, the
+    number a run without blocks gives."""
+    switches = load_switches(run_dir)
+    found, less = background_samples(run_dir)
+    inside = {"on": [], "off": []}
+    for at, pct in found:
+        stop_ns = at * 1e9
+        if not first_ns <= stop_ns <= last_ns:
+            continue
+        start_ns = stop_ns - SAMPLE_INTERVAL_S * 1e9
+        for k, (switch_ns, state) in enumerate(switches):
+            end_ns = switches[k + 1][0] if k + 1 < len(switches) else float("inf")
+            if switch_ns + BLOCK_SETTLE_S * 1e9 <= start_ns and stop_ns <= end_ns:
+                inside[state].append(pct)
+                break
+    means = {state: statistics.mean(pcts) if len(pcts) >= MIN_LOAD_SAMPLES else None
+             for state, pcts in inside.items()}
+    limit = ("%g%% in the on blocks and 0%% in the off blocks, each within %g points, from at "
+             "least %d samples %g s or more after a switch%s"
+             % (load_pct, LOAD_POINTS, MIN_LOAD_SAMPLES, BLOCK_SETTLE_S,
+                ", less the clients' own" if less else ""))
+    why = []
+    for state, wanted in (("on", load_pct), ("off", 0.0)):
+        if means[state] is None:
+            why.append("only %d load samples fell in the %s blocks while messages were sent"
+                       % (len(inside[state]), state))
+        elif abs(means[state] - wanted) > LOAD_POINTS:
+            why.append("the measured load was %.1f%% in the %s blocks against %g%%"
+                       % (means[state], state, wanted))
+    record = {"on_pct": means["on"], "off_pct": means["off"],
+              "on_samples": len(inside["on"]), "off_samples": len(inside["off"])}
+    return outcome(not why, means["on"], limit, "; ".join(why)), record
+
+
+def lateness_check(run_dir, cutoff_ns, limit_ms):
+    """(the check, the producer's lateness in ms: its 1st, 50th and 99th percentiles and the
+    spread from the first to the last of them, or None where it cannot be measured).
+
+    Freeze 43 (22 Oct 2026). A message's lateness is how long after its planned time the producer
+    sent it, t_prod_send_ns less t_prod_sched_ns in producer.csv, over the messages sent after the
+    warm-up. Under block U's 70% load at 2,000 messages a second, Redis's producer at normal
+    priority sent its messages a median of 24 ms late and 272 ms late at the 99th percentile, and
+    the runs passed: the send-rate check reads the mean rate alone. The spread, the 99th
+    percentile less the 1st, is held to the setup's own lateness_p99_ms. A producer that fell
+    behind is a condition that did not take, so the run is repeated, never stopped."""
+    late = []
+    with open(os.path.join(run_dir, "producer.csv"), newline="", encoding="utf-8") as fh:
+        for row in csv.DictReader(fh):
+            sent, planned = _ns(row.get("t_prod_send_ns")), _ns(row.get("t_prod_sched_ns"))
+            if sent is not None and planned is not None and sent >= cutoff_ns:
+                late.append((sent - planned) / 1e6)
+    limit = "the 99th percentile less the 1st, at most %g ms" % limit_ms
+    if len(late) < 2:
+        return outcome(False, None, limit,
+                       "%d message(s) sent after the warm-up carry a planned send time, and the "
+                       "lateness needs two" % len(late)), None
+    cuts = statistics.quantiles(late, n=100, method="inclusive")
+    found = {"p1": cuts[0], "p50": cuts[49], "p99": cuts[98], "spread": cuts[98] - cuts[0]}
+    return outcome(found["spread"] <= limit_ms, found["spread"], limit,
+                   "the producer's lateness spread %.2f ms from its 1st to its 99th percentile, "
+                   "more than %g ms" % (found["spread"], limit_ms)), found
 
 
 def settings_check(run_dir):
@@ -616,8 +725,26 @@ def evaluate(run_dir, rate, duration, warmup_s, calibration=None,
     checks.update(message_checks(sent_after, summary["messages"], rate, duration, warmup_s,
                                  planned))
     checks["send_rate"] = rate_check(sent_after, rate)
+    # Freeze 43 (22 Oct 2026): the producer's lateness, where the setup sets a limit for it.
+    if params.get("lateness_p99_ms") is not None:
+        late = None
+        try:
+            checks["lateness"], late = lateness_check(run_dir, cutoff,
+                                                      float(params["lateness_p99_ms"]))
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            checks["lateness"] = outcome(False, None, None,
+                                         "the lateness could not be checked: %s" % exc)
+        recorded["lateness_ms"] = late
     window = (sent_after[0], sent_after[-1]) if sent_after else (cutoff, cutoff)
-    guarded(checks, "load", lambda: load_check(run_dir, float(params["load_pct"]), *window))
+    if params.get("load_blocks_s") is not None:
+        blocks = None
+        try:
+            checks["load"], blocks = block_load_check(run_dir, float(params["load_pct"]), *window)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            checks["load"] = outcome(False, None, None, "the load could not be checked: %s" % exc)
+        recorded["load_blocks"] = blocks
+    else:
+        guarded(checks, "load", lambda: load_check(run_dir, float(params["load_pct"]), *window))
     guarded(checks, "settings", lambda: settings_check(run_dir))
     guarded(checks, "client",
             lambda: client_check(run_dir, params["backend"], params.get("ack_stamp"),

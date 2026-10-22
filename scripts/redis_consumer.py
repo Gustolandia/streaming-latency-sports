@@ -16,6 +16,7 @@ except Exception:
 import law_clock
 import thread_record
 import so_timestamps
+import client_quiet
 
 
 def now_ns() -> int:
@@ -58,6 +59,7 @@ def main():
                     help="write which thread stamped the arrivals, and both clocks, beside the CSV")
 
     so_timestamps.add_arguments(ap)
+    client_quiet.add_arguments(ap)
     args = ap.parse_args()
     record = thread_record.ThreadRecord() if args.thread_record else None
     # F2 (freeze 40): the kernel's own timestamps on the broker's connections, if asked
@@ -101,6 +103,13 @@ def main():
         r.xgroup_create(args.stream, group_id, id="0-0", mkstream=True)
     except Exception:
         pass  # group likely exists
+
+    # Freeze 43 (22 Oct 2026): in freeze 42's pilot the clients paused 17-84 ms at about 24, 34,
+    # 46 and 60 s into each 70-s run, longer each time, at gaps each about 1.2 times the last:
+    # CPython's full collections. Asked for, the collector goes off here, once the client has its
+    # connection (opened by the group's creation, its first command) and its group, and before
+    # any message is read.
+    quiet = client_quiet.start(args)
 
     last_msg = time.monotonic()
     n = 0
@@ -166,6 +175,10 @@ def main():
         # and the time spent inside the call distinguishes them from the run artifacts alone.
         read_trace = []
         while True:
+            # Freeze 43: this thread's scheduler counters just before the request, which redis-py
+            # sends and waits for on this same thread. Taken before the read trace's start, so
+            # that each traced duration stays the call's alone.
+            client_quiet.sample(quiet)
             _t_read0 = now_ns()
             resp = r.xreadgroup(
                 groupname=group_id,
@@ -258,6 +271,7 @@ def main():
     if record is not None:
         record.write(thread_record.beside(out_path))
     so_timestamps.finish(so, args)
+    client_quiet.finish(quiet, args)
     print(f"OK redis consumer: wrote {n} rows -> {out_path}")
     print(f"OK redis consumer: wrote {events_n} rows -> {events_path}")
 

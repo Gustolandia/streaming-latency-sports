@@ -28,10 +28,20 @@ the median over its rounds, and judges the three clauses as the design states th
 four cells at once, as the judge confirms a prediction. The load's excess over idle can be scaled,
 to ask how the rule fares if the block's effect is smaller than the pilots'.
 
+Plan version 46 (docs/results/under_load/DESIGN46.md) restates the rule from its own pilot, read
+by scripts/under_load.py, before any judged run. With --pilot-table the inputs are that pilot's
+runs; U-c is the share version 46 judges, from the means over each run's own top 1% of W_so, a
+setup's value the mean over its rounds; U-a's real-time clause and U-d are simulated beside the
+rest; and U-c is counted as the judge counts it, over the cells where U-b holds. A clause whose
+pilot effect does not clear its margin in every cell cannot be brought to the bar by more rounds,
+and is reported at the rounds the others need.
+
 CLI:
     python scripts/under_load_power.py [--rounds 4] [--blocks 20000] [--seed 20261022]
+    python scripts/under_load_power.py --pilot-table CSV [--rounds 4] [--most 12] [--blocks N]
 """
 import argparse
+import csv
 import math
 import random
 import statistics
@@ -140,12 +150,156 @@ def joint_power(rounds, blocks, scale, seed):
     return dict(zip(("U-a", "U-b", "U-c"), (c / float(blocks) for c in counts)))
 
 
+# --- plan version 46 --------------------------------------------------------------------------
+
+#: The clauses version 46 simulates, in the order the design lists them.
+CLAUSES = ("U-a growth", "U-a real-time", "U-b", "U-c", "U-d")
+
+#: The rates whose cells the predictions judge.
+UPPER_RATES = (500, 2000)
+
+
+def _number(value):
+    return None if value in (None, "", "None") else float(value)
+
+
+def pilot_inputs(rows):
+    """{(broker, rate): {statistic: per-run values}} from a pilot's runs table: the turnaround's and
+    W_so's 99th percentiles idle, loaded and loaded at real-time priority ("Tc", "W"), and the
+    means over each run's top 1% of W_so of W_so and of F idle and loaded ("Wt", "Ft"). A cell
+    missing any of them is left out."""
+    out = {}
+    for broker in ("kafka", "redis"):
+        for rate in UPPER_RATES:
+            def runs(loaded, realtime):
+                return [r for r in rows if r["backend"] == broker
+                        and int(float(r["rate"])) == rate
+                        and (int(float(r["load_pct"])) > 0) == loaded
+                        and str(r["priority"]) == str(realtime)]
+            sets = (runs(False, False), runs(True, False), runs(True, True))
+            cell = {}
+            for name, field, picked in (("Tc", "Tc_p99", sets), ("W", "W_p99", sets),
+                                        ("Wt", "W_tail", sets[:2]), ("Ft", "F_tail", sets[:2])):
+                cell[name] = tuple(tuple(v for v in (_number(r.get(field)) for r in chosen)
+                                         if v is not None) for chosen in picked)
+            if all(all(values) for values in cell.values()):
+                out[(broker, rate)] = cell
+    return out
+
+
+def parameters46(cell, scale):
+    """{statistic: [(mean, cv) idle, then each loaded setup's]}, each loaded setup's excess over
+    idle multiplied by `scale`."""
+    out = {}
+    for name, sets in cell.items():
+        mi, ci = mean_and_cv(sets[0], IDLE_CV)
+        rest = []
+        for values in sets[1:]:
+            m, c = mean_and_cv(values, LOAD_CV)
+            rest.append((mi + scale * (m - mi), c))
+        out[name] = [(mi, ci)] + rest
+    return out
+
+
+def one_cell46(rng, par, rounds):
+    """(U-a's growth clause, U-a's real-time clause, U-b, U-c, U-d) for one made-up block of one
+    broker at one rate, U-c's share read whatever U-b says."""
+    def median(p):
+        return statistics.median(draw(rng, p[0], p[1]) for _ in range(rounds))
+
+    def mean(p):
+        return statistics.fmean(draw(rng, p[0], p[1]) for _ in range(rounds))
+    tc = [median(p) for p in par["Tc"]]
+    w = [median(p) for p in par["W"]]
+    wt = [mean(p) for p in par["Wt"]]
+    ft = [mean(p) for p in par["Ft"]]
+    rise = wt[1] - wt[0]
+    return (tc[1] >= GROWTH * tc[0], tc[2] <= HALF * tc[1], w[1] >= GROWTH * w[0],
+            rise > 0 and 1.0 - (ft[1] - ft[0]) / rise >= HALF, w[2] <= HALF * w[1])
+
+
+def verdicts46(outcomes):
+    """{clause: confirmed} over the cells of one made-up block, as scripts/under_load.py judges:
+    every cell for each clause, and U-c over the cells where U-b holds, if there are any."""
+    out = {c: all(o[i] for o in outcomes) for i, c in enumerate(CLAUSES)}
+    judged = [o for o in outcomes if o[2]]
+    out["U-c"] = bool(judged) and all(o[3] for o in judged)
+    return out
+
+
+def joint_power46(inputs, rounds, blocks, scale, seed):
+    """{clause: share of `blocks` made-up blocks that confirm it in every cell}."""
+    rng = random.Random(seed)
+    cells = [parameters46(inputs[key], scale) for key in sorted(inputs)]
+    counts = dict.fromkeys(CLAUSES, 0)
+    for _ in range(blocks):
+        for clause, held in verdicts46([one_cell46(rng, par, rounds) for par in cells]).items():
+            counts[clause] += held
+    return {c: counts[c] / float(blocks) for c in CLAUSES}
+
+
+def clears(inputs):
+    """{clause: whether its pilot means clear its margin in every cell}."""
+    out = dict.fromkeys(CLAUSES, bool(inputs))
+    for cell in inputs.values():
+        tc, w = ([statistics.fmean(v) for v in cell[k]] for k in ("Tc", "W"))
+        wt, ft = ([statistics.fmean(v) for v in cell[k]] for k in ("Wt", "Ft"))
+        rise = wt[1] - wt[0]
+        found = (tc[1] >= GROWTH * tc[0], tc[2] <= HALF * tc[1], w[1] >= GROWTH * w[0],
+                 rise > 0 and 1.0 - (ft[1] - ft[0]) / rise >= HALF, w[2] <= HALF * w[1])
+        for clause, ok in zip(CLAUSES, found):
+            out[clause] = out[clause] and ok
+    return out
+
+
+def rounds_needed(inputs, blocks, seed, start=4, most=12):
+    """(rounds, {clause: power} there): the least rounds from `start` at which every clause whose
+    pilot effect clears its margin is confirmed in at least POWER of made-up blocks at the pilot's
+    effects; (None, the powers at `most`) where no number up to `most` does."""
+    wanted = [c for c, ok in clears(inputs).items() if ok]
+    p = {}
+    for rounds in range(start, most + 1):
+        p = joint_power46(inputs, rounds, blocks, 1.0, seed)
+        if all(p[c] >= POWER for c in wanted):
+            return rounds, p
+    return None, p
+
+
+def read_rows(path):
+    with open(path, encoding="utf-8", newline="") as fh:
+        return list(csv.DictReader(fh))
+
+
+def main46(args):
+    inputs = pilot_inputs(read_rows(args.pilot_table))
+    print("cells with every input: %s" % ", ".join("%s %d" % k for k in sorted(inputs)))
+    clear = clears(inputs)
+    print("clears its margin at the pilot's means in every cell: %s" % ", ".join(
+        "%s %s" % (c, "yes" if clear[c] else "no") for c in CLAUSES))
+    for scale in (1.0, 0.5):
+        p = joint_power46(inputs, args.rounds, args.blocks, scale, args.seed)
+        print("%d rounds, excess %.2f: %s" % (args.rounds, scale, "  ".join(
+            "%s %.3f" % (c, p[c]) for c in CLAUSES)))
+    rounds, p = rounds_needed(inputs, args.blocks, args.seed, args.rounds, args.most)
+    if rounds is None:
+        print("no number of rounds up to %d brings every clause that clears its margin to %.2f"
+              % (args.most, POWER))
+    else:
+        print("the rule asks %d rounds: %s" % (rounds, "  ".join(
+            "%s %.3f" % (c, p[c]) for c in CLAUSES)))
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--rounds", type=int, default=4)
     ap.add_argument("--blocks", type=int, default=20000)
     ap.add_argument("--seed", type=int, default=20261022)
+    ap.add_argument("--pilot-table", default=None)
+    ap.add_argument("--most", type=int, default=12)
     args = ap.parse_args(argv)
+    if args.pilot_table:
+        return main46(args)
     rows = table(args.rounds, args.blocks, args.seed)
     print("excess  broker  rate   U-a    U-b    U-c")
     for scale, broker, rate, p in rows:

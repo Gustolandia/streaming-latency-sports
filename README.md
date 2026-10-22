@@ -1153,6 +1153,41 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 
 ## 16. Changelog
 
+### 22 Oct 2026 — freeze 43 registered: block U amended before any judged run (not yet deposited)
+**What prompted it.** Freeze 42's pilot passed its instrument checks. A check of the design against
+the pilot's own runs, after the pilot and before any judged run, then found that several quantities
+the predictions read would not mean what their names say:
+- under load Redis's producer, not only the consumer, fell behind (24 ms late at the median, in
+  runs that passed);
+- the clients paused 17-84 ms for their own garbage collector;
+- the first run after a broker start was unlike the rest;
+- the real-time setups ran a heavier load;
+- Redis's acknowledgments fell outside the turnaround;
+- each TCP connection kept its own network delay;
+- U-c's share was a difference of percentiles.
+
+**What it registers.** Plan version 46 in `freezes/43-experiment-plan`
+([`docs/results/under_load/DESIGN46.md`](docs/results/under_load/DESIGN46.md), fingerprinted before
+its pilot round):
+- the producer at real-time priority in every setup, and a lateness rule;
+- the collectors off;
+- a priming run before each campaign;
+- frozen duties;
+- the turnaround and the split as they mean, each connection pair's floor taken out;
+- U-c's share from tail means, with a run-level interval;
+- U-f within runs whose load runs in 5-s blocks.
+
+No margin changes. Pilot round d sets each duty and the rounds before any judged run.
+
+**The pipeline first:**
+- `scripts/under_load.py` and `scripts/under_load_power.py` read, judge and set the rounds as
+  amended, both at 100% branch coverage, and the reader was run on all 25 of freeze 42's passing
+  pilot runs;
+- the kit gains `producer_priority`, `duty_pct`, `load_blocks_s`, `run_facts`, the lateness check
+  and the priming step, and the card is pinned by its MAC address;
+- the clients gain `--gc-off`, `--gc-log` and `--schedstat` (`scripts/client_quiet.py`);
+- each change comes with its tests.
+
 ### 22 Oct 2026 — freeze 42 registered: the consumer's turnaround, where load and rate bite together (not yet deposited)
 **What prompted it.** Read after freeze 41's verdicts, block L's runs showed how a pull consumer
 lets its own thread's time back into the kernel-timed latency: a message the broker holds while no

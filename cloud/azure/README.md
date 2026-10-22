@@ -372,7 +372,7 @@ python scripts/spend.py billed --since 2026-09-01
 | `scripts/rounds_rule.py` | how many rounds a campaign runs, by simulating its own prediction and decision rule (the plan's D4-2) |
 | `scripts/delay_calibration.py` | measures, from a calibration queue, how far the trip moves per millisecond of receiver-only delay, checks the gate, and gives the delay each planned trip needs |
 | `cloud/azure/chain.sh` | waits on the driver for this session's calibration to pass and then starts a campaign from it, so a pair does not sit billing between the two; it can simulate the rounds from the pair's own spread pilot first, and starts nothing if the calibration failed its gate. Runs on the driver under `nohup`, so it survives whatever started it |
-| `cloud/azure/campaign.sh` | the law campaign's runner: sets each run's CPUs, slice, delay and load, runs one trial, checks it, records it, and stops itself on a stop rule |
+| `cloud/azure/campaign.sh` | the law campaign's runner: sets each run's CPUs, slice, delay and load, runs one trial, checks it, records it, and stops itself on a stop rule. Since freeze 43, where a setup asks, it also: runs the producer alone at real-time priority (`producer_priority`); runs stress-ng at a duty frozen from a pilot (`duty_pct`), or in on and off blocks within the run (`load_blocks_s`); turns the clients' collector off, or keeps it on and logs each collection (`gc_off`, `gc_log`); has the consumer sample its own scheduler counters (`schedstat`); and keeps the run's interrupt and scheduler facts (`run_facts`). `PRIME_S` on the job line runs one unjudged trial on each broker before the first run |
 | `cloud/azure/machine_facts.sh` | what a machine is, as far as its network and timing go; the pilot keeps it for both machines |
 | `cloud/azure/stage0.sh` | the plan's first stage on one pair, unattended: the pilot and its shakedown, the calibration in one or two stages and its fit, the baseline trips, the spread pilot |
 | `cloud/azure/tools.sh` | the tools block: puts up the servers the ten tools speak to (`brokers`), installs the tools at the versions the audit read and fingerprints what actually landed, then runs T1 (the delay staircase, in random order), T2 (forced negatives, by moving the clock the tool reads), T3 (idle against 88% load, with and without go-first) and T4 (what each tool can report at all) |
@@ -386,14 +386,17 @@ python scripts/spend.py billed --since 2026-09-01
 | `cloud/azure/a2_session.sh` | one of A2's tick sessions end to end, from a deallocated pair to a chained campaign: start the pair, boot and check the kernel, rebuild the session the reboot took with it, measure the calibration on that boot and chain A2 behind its gate. The reboot is why this runs from the machine holding the hosts file rather than on the driver |
 | `cloud/azure/queue.sh` | a pair's own list of work, which it keeps going through across its own reboots: the job list, the phase it is in and an `@reboot` line live on the driver, so nothing outside the pair has to stay awake. `a2_session.sh` does one session from outside; this does a list of them from inside, which is what a session driven from a laptop could never do |
 | `cloud/azure/stage1.sh` | one campaign of a main block, in a sitting of its own, placed from a stage 0 that passed, with the rounds it is given written into its log before it runs |
-| `scripts/run_integrity.py` | judges each run as it ends (it counts, is repeated, or stops its campaign), and stops a campaign whose attempts keep failing |
+| `scripts/run_integrity.py` | judges each run as it ends (it counts, is repeated, or stops its campaign), and stops a campaign whose attempts keep failing. Where a setup asks, it also holds the spread of the producer's lateness to a limit (`lateness_p99_ms`), and checks a load run in blocks block by block |
+| `scripts/run_facts.py` | a run's machine facts: where the network's interrupts may and do run, irqbalance, the kernel's preemption, timer and accounting options, the real-time throttle, stress-ng's version and command lines and the clients' libraries (`host`); and, while the clients run, each client thread's and the load's scheduling policy, cgroup and autogroup (`clients`) |
+| `scripts/client_quiet.py` | the Python clients' three switches: the collector off once connected (`--gc-off`), every collection logged (`--gc-log`), and the consumer thread's scheduler counters sampled just before each request (`--schedstat`) |
 | `scripts/quality_report.py` | what a campaign's runs say about the instrument, once copied: verdicts, conditions, pauses, and repeats that sit far from their fellows |
 | `scripts/collect_runs.py` | copies a finished campaign, or whole folders, home and checks a fingerprint for every file |
 | `scripts/spend.py` | what the machines have cost so far, counted look by look, and what Azure has actually billed |
 
-The two trial runners, `scripts/run_kafka_trial.sh` and `scripts/run_redis_trial.sh`, gained one
-hook, `SBL_CONSUMER_WRAP`. It is empty unless a campaign sets it, and each run's `meta.json` now
-records it.
+The two trial runners, `scripts/run_kafka_trial.sh` and `scripts/run_redis_trial.sh`, gained two
+hooks: `SBL_CONSUMER_WRAP`, which prefixes the consumer alone, and, since freeze 43,
+`SBL_PRODUCER_WRAP`, which prefixes the producer alone. Each is empty unless a campaign sets it,
+and each run's `meta.json` records both.
 
 ## How the receiver-only delay works
 

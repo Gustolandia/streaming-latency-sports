@@ -19,6 +19,7 @@ except Exception:
 import law_clock
 import thread_record
 import so_timestamps
+import client_quiet
 
 
 def now_ns() -> int:
@@ -97,6 +98,7 @@ def main():
                     help="write which threads stamped what, and both clocks, beside the CSV")
 
     so_timestamps.add_arguments(ap)
+    client_quiet.add_arguments(ap)
     args = ap.parse_args()
     record = thread_record.ThreadRecord() if args.thread_record else None
     # F2 (freeze 40): the kernel's own timestamps on the broker's connections, if asked
@@ -134,6 +136,15 @@ def main():
     else:
         # Single node mode
         r = redis.Redis(host=args.host, port=args.port, decode_responses=True)
+
+    # Freeze 43 (22 Oct 2026): in freeze 42's pilot the clients paused 17-84 ms at about 24, 34,
+    # 46 and 60 s into each 70-s run, longer each time, at gaps each about 1.2 times the last:
+    # CPython's full collections, over the rows kept below for every message. Asked for, the
+    # collector goes off here, with the client made and before t0, so that the one collection it
+    # runs (3.7-7.1 ms with pandas and a 140,000-row plan loaded, Python 3.12 on Windows) delays
+    # no message's schedule. No message is sent before the loop: the send pool below starts its
+    # threads only at its first submit.
+    quiet = client_quiet.start(args)
 
     # Producer time origins:
     # - t0_mono: time.monotonic() reference used for sleep scheduling
@@ -413,6 +424,7 @@ def main():
     if record is not None:
         record.write(thread_record.beside(out_path))
     so_timestamps.finish(so, args)
+    client_quiet.finish(quiet, args)
     print(f"OK redis producer: wrote {sent} base rows -> {out_path}")
     if corr_enabled:
         print(f"OK redis producer: wrote {len(corr_rows)} correction rows -> {out_path}")

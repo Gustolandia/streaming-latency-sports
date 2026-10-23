@@ -73,7 +73,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import client_wire as cw  # noqa: E402
 import full_fix as ff  # noqa: E402
-import kafka_wire as kw  # noqa: E402
 import order_scope as osc  # noqa: E402
 import recv_wait as rw  # noqa: E402
 import so_journal as sj  # noqa: E402
@@ -94,8 +93,10 @@ RESOLUTION_US = 50.0
 #: How many values each of the triangle's least values needs: the path floors' own rule.
 TRIANGLE_MIN = ul.FLOOR_MIN
 
-#: The requests that ask for messages, by the name client_wire gives each kind.
-ASKING = frozenset(cw.ASKS) | frozenset([kw.api_name(sj.FETCH)])
+#: The requests that ask for messages, by the name client_wire gives each kind: Redis's XREAD and
+#: XREADGROUP and Kafka's fetch, and, for the brokers block U did not run, a JetStream pull
+#: request and an AMQP consumer's acknowledgment, which frees a credit.
+ASKING = cw.WAITING_KINDS
 
 #: The check's three readings: the certain one, which needs nothing but causality, and the
 #: estimate with C_hat before and after the allowance.
@@ -236,13 +237,17 @@ def _check_fields(prefix, parts, raw, true, cut):
     return row
 
 
-def capture_check(messages, exchanges, at_broker, cut_ns, cut=None):
-    """The check again from the client host's captures alone, as client_wire reads them: per
-    packet, each message named by the broker's own id, its delivering request's departure
-    against its acknowledgment's arrival, and C_hat from the captures' own round trips.
-    `messages` and `exchanges` are client_wire's rows, `at_broker` the broker's times by event
-    id, against which alone the event id is read, and `cut_ns` the end of the warm-up. The
-    fields are named cap_."""
+def _by_event_id(m):
+    return m["eid_got"]
+
+
+def capture_parts(messages, exchanges, at_broker, cut_ns, key=_by_event_id):
+    """(one part per message the captures time, {consumer connection: the least round trip of its
+    requests that cannot have waited}), as capture_check reads them: each message after the
+    warm-up (`cut_ns`) with its three times and its delivering request's departure, its part
+    holding W, the slack, its acknowledgment's round trip, what the broker's record says it found
+    and its wait there, and the client_wire row itself (`message`). `at_broker` holds the broker's
+    times by key(row): by the event id its delivery carried, unless another key is given."""
     by_exchange = dict(((r["consumer_port"], r["exchange"]), r) for r in exchanges)
     parts = []
     for m in messages:
@@ -251,11 +256,11 @@ def capture_check(messages, exchanges, at_broker, cut_ns, cut=None):
             continue
         if m["t_depart"] < cut_ns:
             continue
-        b = at_broker.get(m["eid_got"])
+        b = at_broker.get(key(m))
         p = {"W": (m["t_arrive"] - m["t_depart"]) / 1e3, "slack": (ex["t_req"] - m["t_ack"]) / 1e3,
              "ack_rtt": (m["t_ack"] - m["t_depart"]) / 1e3, "found": found(b),
              "pair": (m["producer_port"], m["consumer_port"]),
-             "request": (m["consumer_port"], m["exchange"])}
+             "request": (m["consumer_port"], m["exchange"]), "message": m}
         p["stored"] = None if p["found"] is None else max(0, b[2] - b[1]) / 1e3
         p["C"] = None if p["found"] is None else (b[2] - b[1]) / 1e3 - p["slack"]
         parts.append(p)
@@ -265,6 +270,17 @@ def capture_check(messages, exchanges, at_broker, cut_ns, cut=None):
                          and (r["kind"] not in ASKING
                               or (r["consumer_port"], r["exchange"]) in stored_first)),
                         TRIANGLE_MIN)
+    return parts, fetch_min
+
+
+def capture_check(messages, exchanges, at_broker, cut_ns, cut=None):
+    """The check again from the client host's captures alone, as client_wire reads them: per
+    packet, each message named by the broker's own id, its delivering request's departure
+    against its acknowledgment's arrival, and C_hat from the captures' own round trips.
+    `messages` and `exchanges` are client_wire's rows, `at_broker` the broker's times by event
+    id, against which alone the event id is read, and `cut_ns` the end of the warm-up. The
+    fields are named cap_."""
+    parts, fetch_min = capture_parts(messages, exchanges, at_broker, cut_ns)
     raw, true = crossing_floors(parts, fetch_min)
     row = {"cap_timed": len(parts)}
     row.update(_check_fields("cap_", parts, raw, true, cut))

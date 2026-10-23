@@ -21,6 +21,9 @@ kafka_producer.py:
     t_broker_ack_ns  stamped inside the delivery callback
 
 and the output CSV schema is byte-compatible, so every downstream analysis works unchanged.
+Plan version 47 (23 Oct 2026) adds two columns after those, as kafka_producer.py does: the
+partition and offset the broker gave each message, from the delivered Message, so that a message
+can be matched by the broker's own ids.
 
 One design note. confluent-kafka serves delivery callbacks from poll(), whereas kafka-python
 runs a background sender thread. To keep acknowledgement timestamps comparable rather than
@@ -111,6 +114,7 @@ def main(argv=None):
     producer = Producer(build_config(args))
 
     ack_ns = {}
+    placed = {}
     ack_lock = threading.Lock()
     errors = []
 
@@ -119,7 +123,9 @@ def main(argv=None):
             errors.append(repr(err))
             return
         with ack_lock:
-            ack_ns[msg.key().decode("utf-8")] = now_ns()
+            event_id = msg.key().decode("utf-8")
+            ack_ns[event_id] = now_ns()
+            placed[event_id] = (msg.partition(), msg.offset())
 
     # Serve delivery callbacks promptly so ack timestamps mean what they say.
     stop = threading.Event()
@@ -174,7 +180,7 @@ def main(argv=None):
             "event_id": event_id, "match_id": int(r["match_id"]),
             "t_sim_seconds": int(r["t_sim_seconds"]), "t_emit_offset_s": t_emit_offset_s,
             "t_prod_sched_ns": t_prod_sched_ns, "t_prod_send_ns": t_prod_send_ns,
-            "t_broker_ack_ns": None,
+            "t_broker_ack_ns": None, "partition": None, "offset": None,
         })
         if args.trace_loop:
             trace.append({
@@ -195,11 +201,13 @@ def main(argv=None):
     with ack_lock:
         for row in rows:
             row["t_broker_ack_ns"] = ack_ns.get(row["event_id"])
+            row["partition"], row["offset"] = placed.get(row["event_id"], (None, None))
 
     with out_path.open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=[
             "run_id", "backend", "topic", "event_id", "match_id", "t_sim_seconds",
-            "t_emit_offset_s", "t_prod_sched_ns", "t_prod_send_ns", "t_broker_ack_ns"])
+            "t_emit_offset_s", "t_prod_sched_ns", "t_prod_send_ns", "t_broker_ack_ns",
+            "partition", "offset"])
         w.writeheader()
         w.writerows(rows)
 

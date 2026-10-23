@@ -509,10 +509,14 @@ def test_the_runner_can_swap_the_client_and_nothing_else():
     assert 'CLIENT="python"' in code, "the client defaults to the one every other block uses"
     assert '-CLIENT) CLIENT="$2"' in code and '-ACK_STAMP) ACK_STAMP="$2"' in code
     # One plan, one topic, one wrapping, one metadata block, one TTI computation: the only thing
-    # the dispatch changes is which program sends and which receives.
-    assert code.count('if [ "$CLIENT" = java ]; then') == 2, \
-        "the consumer and the producer, and nothing else forks on the client"
-    assert 'if [ "$CLIENT" = java ] && [ ! -d harness/java/out ]; then' in code, \
+    # the dispatch changes is which program sends and which receives. Plan version 47 (23 Oct
+    # 2026): the consumer forks once, on the consumer that receives (-CONSUMER, or the client's
+    # own), and the producer once, on the client, so that -CONSUMER swaps the consumer alone.
+    assert code.count('if [ "$CLIENT" = java ]; then') == 1, \
+        "the producer, and nothing else forks on the client"
+    assert code.count('case "$RECEIVER" in') == 1, "and the consumer on the consumer"
+    assert 'RECEIVER="${CONSUMER:-kafka-python}"\n[ "$CLIENT" = java ] && RECEIVER=java' in code
+    assert 'if [ "$RECEIVER" = java ] && [ ! -d harness/java/out ]; then' in code, \
         "and one guard, which is a refusal before the run rather than a fork inside it"
     assert code.count('"$PY" scripts/compute_tti.py') == 1, \
         "the trips are computed once, by the same code, whichever client produced them"
@@ -1981,7 +1985,8 @@ class TestTheLoadIsCorrectedToWhatTheMachineShows:
         code = self.code()
         assert "load_correction.json" in code, "and what it was corrected to is written down"
         block = code.split("sampler_pid=$!", 1)[1].split("if [ -n \"$TRACE_HALF\"", 1)[0]
-        assert "stress-ng --cpu \"$want_cpus\" --cpu-load \"$adjusted\"" in block
+        # Plan version 47 (23 Oct 2026): through load_start, which starts every load the runner runs.
+        assert 'load_start "$adjusted" "$want_cpus" 3600s' in block
         assert 'kill -9 "$stress_pid"' in block, "the first one is stopped before the second starts"
 
     def test_the_first_one_is_stopped_with_a_signal_it_cannot_decline(self):
@@ -2429,7 +2434,7 @@ def test_m0_replays_its_own_plan_and_records_what_its_hypotheses_are_judged_by()
     run = code.split("run_one () {", 1)[1]
     assert 'local run_plan="$SYN_PLAN" run_speedup="$SPEEDUP" run_maxt="$DURATION"' in run
     assert 'plan_args=(--planned "$FOOT_PLANNED")' in run
-    assert run.count('"$RUN_ID" "$run_plan"') == 2, "both backends replay the run's own plan"
+    assert run.count('"$RUN_ID" "$run_plan"') == 4, "every backend replays the run's own plan"
     assert '--rate "$run_rate"' in run and '"${plan_args[@]}"' in run
     assert 'read_args="--read-trace"' in run
     assert 'sudo ip netns exec sblrecv tcpdump -i any -s 200 -w "$RUN_DIR/receiver.pcap"' in run
@@ -2675,7 +2680,7 @@ def _load_lines(tmp_path, load, **setting):
         "set -uo pipefail",
         'stress-ng () { echo "stress-ng $*" >> "$CALLS"; }',
         'python3 () { echo "python3 $1" >> "$CALLS"; }', "sleep () { :; }",
-        "kill () { :; }", "wait () { :; }", "pkill () { :; }",
+        "kill () { :; }", "wait () { :; }", "pkill () { :; }", _function("load_start"),
         "lines () {", "  local stress_pid sampler_pid", block, "}", "lines",
         "builtin wait", ""])
     env = {"CALLS": calls.as_posix(), "RUN_DIR": tmp_path.as_posix(), "LOAD": str(load),
@@ -3184,7 +3189,10 @@ def _trial_handed(tmp_path, backend, send_workers=""):
            "read_args": "", "so_prod": so, "so_cons": so.replace("producer", "consumer"),
            "consumer_wrap": "sudo ip netns exec sblrecv sudo -u tester", "wrap_sched": "",
            # Freeze 43 (22 Oct 2026): the producer's own wrap and the clients' flags, none asked.
-           "producer_wrap": "", "prod_flags": "", "cons_flags": ""}
+           "producer_wrap": "", "prod_flags": "", "cons_flags": "",
+           # Plan version 47 (23 Oct 2026): the plan's arrivals and the values set in one place.
+           "run_arrival": "constant", "run_seed": "", "THREADS_WAIT_S": "60",
+           "FETCH_RT_PRIORITY": "80"}
     bash(["-c", script], extra_env=env, capture_output=True, text=True, check=True)
     return calls.read_text(encoding="utf-8").splitlines(), so
 
@@ -3502,7 +3510,7 @@ def _recorrect(tmp_path, name, rows, want="70", duty="70"):
     script = "\n".join([
         'python3 () { "$PYTHON" "$@"; }', 'sleep () { echo "sleep $*" >> "$CALLS"; }',
         'pkill () { echo "pkill $*" >> "$CALLS"; }',
-        'stress-ng () { echo "stress-ng $*" >> "$CALLS"; }', function,
+        'stress-ng () { echo "stress-ng $*" >> "$CALLS"; }', _function("load_start"), function,
         'recorrect_load "$RUN" %s %s 8' % (want, duty), "builtin wait", ""])
     env = {"CALLS": calls.as_posix(), "RUN": run.as_posix(),
            "PYTHON": Path(sys.executable).as_posix()}
@@ -3712,7 +3720,8 @@ def _load_blocks(tmp_path, looks, **given):
         'date () { local t; t=$(( $(cat "$CLOCK" 2>/dev/null || echo 0) + 1 ));'
         ' echo "$t" > "$CLOCK"; echo "${t}000000000"; }',
         'sleep () { echo "sleep $*" >> "$CALLS"; }', 'pkill () { echo "pkill $*" >> "$CALLS"; }',
-        'stress-ng () { echo "stress-ng $*" >> "$STRESS"; }', _function("load_blocks"),
+        'stress-ng () { echo "stress-ng $*" >> "$STRESS"; }', _function("load_start"),
+        _function("load_blocks"),
         'load_blocks "$RUN" "$DUTY" "$CPUS" "$BLOCK_S"', "builtin wait", ""])
     env = dict({"CALLS": calls.as_posix(), "STRESS": stress.as_posix(),
                 "CLOCK": clock.as_posix(), "RUN": run.as_posix(), "LOOKS": str(looks),
@@ -3784,7 +3793,8 @@ def _trial_starts(tmp_path, **setting):
         "set -uo pipefail",
         'timeout () { printf "%s\\n" "$@" > "$REC/trial"; printf "%s\\n"'
         ' "consumer=$SBL_CONSUMER_WRAP" "sched=$SBL_SCHED_WRAP" "producer=$SBL_PRODUCER_WRAP"'
-        ' > "$REC/wraps"; }',
+        ' > "$REC/wraps"; printf "%s\\n" "arrival=${SBL_PLAN_ARRIVAL:-}" "seed=${SBL_PLAN_SEED:-}"'
+        ' "wait=${SBL_THREADS_WAIT_S:-}" "priority=${SBL_FETCH_RT_PRIORITY:-}" > "$REC/plan"; }',
         'load_blocks () { echo "$BASHPID $*" > "$REC/blocks"; }',
         'run_facts_later () { echo "$BASHPID $*" > "$REC/facts"; }',
         'recorrect_load () { echo "$BASHPID $*" > "$REC/recorrect"; }',
@@ -3805,10 +3815,17 @@ def _trial_starts(tmp_path, **setting):
                 "record_args": "", "read_args": "", "so_prod": so % "producer",
                 "so_cons": so % "consumer",
                 "consumer_wrap": "sudo ip netns exec sblrecv sudo -u tester", "wrap_sched": "",
-                "producer_wrap": "", "prod_flags": "", "cons_flags": ""}, **setting)
+                "producer_wrap": "", "prod_flags": "", "cons_flags": "",
+                # Plan version 47 (23 Oct 2026): the plan's arrivals, the values set in one
+                # place, and the new brokers' addresses.
+                "run_arrival": "constant", "run_seed": "", "THREADS_WAIT_S": "60",
+                "FETCH_RT_PRIORITY": "80", "NATS_HOST": "10.9.9.9", "NATS_PORT": "4222",
+                "NATS_STORAGE": "memory", "RABBITMQ_URI": "amqp://guest:guest@10.9.9.9:5672"},
+               **setting)
     _run_script(tmp_path / "trial.sh", script, env, capture_output=True, text=True, check=True)
     found = {name: _lines(rec / name)
-             for name in ("trial", "wraps", "blocks", "facts", "recorrect", "stops", "kills")}
+             for name in ("trial", "wraps", "blocks", "facts", "recorrect", "stops", "kills",
+                          "plan")}
     found["run_dir"], found["so"] = run_dir.as_posix(), so
     return found
 
@@ -4075,7 +4092,7 @@ def test_freeze_43s_run_facts_are_taken_before_the_clients_while_they_run_and_af
     places = [run.index(step) for step in order]
     assert places == sorted(places)
     assert 'if [ -n "${RUN_FACTS:-}" ]; then\n    interrupt_counters before' in run
-    assert 'if [ -n "${RUN_FACTS:-}" ]; then\n    run_facts_later "$RUN_DIR" &' in run
+    assert 'if [ -n "${RUN_FACTS:-}${WHOLE_CORE:-}" ]; then\n    run_facts_later "$RUN_DIR" &' in run
 
 
 def _prime(tmp_path, rc_kafka="0", rc_redis="0"):
@@ -4199,3 +4216,1066 @@ def test_freeze_43s_run_line_names_each_new_switch_and_an_earlier_row_none(tmp_p
     assert asked == plain + (", go-first producer, collectors off, collections logged, consumer "
                              "schedstat, duty frozen at 88%, load in 5 s blocks, run facts, "
                              "8 CPUs online")
+
+
+# --- Plan version 47 (23 Oct 2026): the general method's blocks (V, N, P, K, C, A, S). What they
+# ask of the kit beyond freeze 43's: two more brokers, a consumer of each block's own, the fetch
+# threads at real-time priority, Poisson arrivals, a core kept for the consumer, the card's
+# interrupts and receive steering placed, and two loads heavy in softirq work.
+
+#: The runner's twelve new variables, in the order the row reader sets them.
+V47 = ("CONSUMER", "DEPTH", "ONE_REPLY", "PREFETCH", "FETCH_RT", "ARRIVAL", "WHOLE_CORE",
+       "SIBLING_LOAD", "IRQ_CPUS", "IRQBALANCE_OFF", "RPS_OFF", "LOAD_KIND")
+
+
+def test_v47s_fields_reach_the_runner_and_a_row_without_them_sets_none():
+    """A row's twelve new settings become the runner's twelve variables; a row of any earlier
+    block names none of them and leaves all twelve empty, so its run is launched exactly as before;
+    and a value of none is handed on for the runner to refuse, not dropped for a default."""
+    asked = _row_reader_says({"backend": "kafka", "consumer": "confluent", "depth": 256,
+                              "one_reply_reads": True, "prefetch": 1000, "fetch_rt": True,
+                              "arrival": "poisson", "whole_core": True, "sibling_load": True,
+                              "irq_cpus": "core", "irqbalance_off": True, "rps_off": True,
+                              "load_kind": "udp"})
+    assert [asked[name] for name in V47] == ["confluent", "256", "1", "1000", "1", "poisson", "1",
+                                             "1", "core", "1", "1", "udp"]
+    earlier = _row_reader_says({"broker_capture": True, "duty_pct": 72, "load_blocks_s": 5,
+                                "producer_priority": True, "ack_batch": 200})
+    assert [earlier[name] for name in V47] == [""] * 12
+    assert earlier["ACK_BATCH"] == "200", "M0's batch, as it was"
+    none = _row_reader_says({"depth": 0, "prefetch": 0, "ack_batch": 0, "irq_cpus": 3})
+    assert (none["DEPTH"], none["PREFETCH"], none["ACK_BATCH"], none["IRQ_CPUS"]) == (
+        "0", "0", "0", "3")
+
+
+def test_v47s_setup_ids_are_queue_keys_the_runner_and_its_rules_read():
+    """Setup ids such as V2000-redis-d256 and C2000-kafka-core-sib-pilot make keys whose round,
+    setup and attempt the integrity rule reads back, and a failed attempt's copy keeps its setup."""
+    sys.path.insert(0, str(REPO / "scripts"))
+    import run_integrity
+    import run_queue
+    ids = ["V2000-redis-d256", "K2000-kafka-rdk-rt", "C2000-kafka-core-sib",
+           "C2000-kafka-core-sib-pilot", "N2000-nats-d256-pilot"]
+    design = {"seed": 20261023, "rounds": 2, "setups": [
+        {"id": i, "backend": "redis", "load_pct": 70, "delay_ms": 0} for i in ids]}
+    rows = run_queue.make_rows(design)
+    for row in rows:
+        assert run_integrity.setup_of(row["key"]) == (int(row["round"]), row["setup"], 1)
+    copy = run_queue.fail(rows, rows[0]["key"], "a reason", clock=lambda: "2026-10-23T00:00:00Z")
+    assert run_integrity.setup_of(copy["key"]) == (1, rows[0]["setup"], 2)
+
+
+def _v47_setup_says(tmp_path, **setting):
+    """The REASON plan version 47's checks of a setup give, from their lines in run_one, run as
+    the runner runs them, from the checkout, with an unset variable an error; empty when the
+    setup can run as written."""
+    block = _lines_from("  # Plan version 47 (23 Oct 2026): so does a setup that names one of",
+                        "  # Freeze 43 (22 Oct 2026): so does a setup that names one")
+    script = "\n".join(["set -uo pipefail", "checks () {", block, "}", 'REASON=""', "checks",
+                        'echo "REASON=$REASON"', ""])
+    env = dict({"BACKEND": "kafka", "LOAD": "70", "PLAN_KIND": ""}, **setting)
+    path = Path(tempfile.mkdtemp(dir=str(tmp_path))) / "checks.sh"
+    said = _run_script(path, script, env, capture_output=True, text=True, check=True,
+                       cwd=str(REPO)).stdout
+    return said.strip().rsplit("REASON=", 1)[1]
+
+
+@needs_bash
+@pytest.mark.parametrize("setting,said", [
+    ({"BACKEND": "pulsar"}, 'backend is kafka, redis, nats or rabbitmq, not "pulsar"'),
+    ({"BACKEND": "redis", "CONSUMER": "confluent"},
+     "consumer confluent is one of Kafka's consumers, and this run is redis"),
+    ({"CONSUMER": "waiting"}, "consumer waiting is one of Redis's consumers, and this run is kafka"),
+    ({"BACKEND": "rabbitmq", "CONSUMER": "nats-go"},
+     "consumer nats-go is one of NATS's consumers, and this run is rabbitmq"),
+    ({"CONSUMER": "librdkafka"}, "consumer is kafka-python, confluent, java or franz for Kafka"),
+    ({"CONSUMER": "java", "CLIENT": "java"},
+     "consumer swaps Kafka's consumer alone and language both clients"),
+    ({"BACKEND": "redis", "DEPTH": "256"}, "depth is the waiting consumers' setting"),
+    ({"BACKEND": "nats", "CONSUMER": "nats-go", "DEPTH": "256"},
+     "depth is the waiting consumers' setting"),
+    ({"BACKEND": "nats", "DEPTH": "0"}, 'depth is a whole number of requests of at least one, not "0"'),
+    ({"BACKEND": "nats", "DEPTH": "064"}, 'depth is a whole number of requests of at least one'),
+    ({"BACKEND": "redis", "ONE_REPLY": "1"}, "one_reply_reads is the waiting consumers' setting"),
+    ({"BACKEND": "nats", "CONSUMER": "nats-go", "ONE_REPLY": "1"},
+     "one_reply_reads is the waiting consumers' setting"),
+    ({"PREFETCH": "1000"}, "prefetch is RabbitMQ's consumer's setting, and this run is kafka"),
+    ({"BACKEND": "rabbitmq", "PREFETCH": "01"}, 'prefetch is a whole number of messages, 0 for no'),
+    ({"BACKEND": "rabbitmq", "PREFETCH": "-1"}, 'prefetch is a whole number of messages'),
+    ({"ACK_BATCH": "200"}, "ack_batch is the Redis and RabbitMQ consumers' setting, and this run is kafka"),
+    ({"BACKEND": "nats", "ACK_BATCH": "200"}, "ack_batch is the Redis and RabbitMQ consumers'"),
+    ({"BACKEND": "redis", "ACK_BATCH": "0"}, 'ack_batch is a whole number of at least one, not "0"'),
+    ({"BACKEND": "rabbitmq", "ACK_BATCH": "10"},
+     "ack_batch 10 is more than the 1 messages the prefetch lets the broker send unacknowledged"),
+    ({"BACKEND": "rabbitmq", "ACK_BATCH": "10", "PREFETCH": "5"}, "ack_batch 10 is more than the 5"),
+    ({"FETCH_RT": "1", "CONSUMER": "franz"},
+     "fetch_rt raises the thread that sends the fetches, and franz-go sends them from none"),
+    ({"FETCH_RT": "1"}, "fetch_rt raises the fetch threads a consumer names in its thread list"),
+    ({"FETCH_RT": "1", "BACKEND": "nats", "CONSUMER": "nats-go"},
+     "fetch_rt raises the fetch threads a consumer names"),
+    ({"SCHEDSTAT": "1", "CONSUMER": "franz"},
+     "schedstat samples the Python consumer's own thread, and this run's consumer is franz"),
+    ({"SCHEDSTAT": "1", "BACKEND": "nats", "CONSUMER": "nats-go"}, "schedstat samples"),
+    ({"ARRIVAL": "bursty"}, 'arrival is constant or poisson, not "bursty"'),
+    ({"ARRIVAL": "poisson", "PLAN_KIND": "football"},
+     "arrival sets the steady plan's arrivals, and this run replays the football plan"),
+    ({"LOAD_KIND": "disk"}, 'load_kind is cpu, sock or udp, not "disk"'),
+    ({"LOAD_KIND": "udp", "LOAD": "0"}, "load_kind sets what the load runs, and a load of 0"),
+    ({"SIBLING_LOAD": "1"}, "sibling_load loads the other threads of the core whole_core keeps"),
+    ({"SIBLING_LOAD": "1", "WHOLE_CORE": "1", "LOAD": "0"}, "sibling_load runs the load on the"),
+    ({"SIBLING_LOAD": "1", "WHOLE_CORE": "1", "LOAD_KIND": "udp"},
+     "sibling_load runs the load on the core's other threads, and a udp load runs where"),
+    ({"IRQ_CPUS": "3-1"}, 'irq_cpus is core, or a list of CPUs as the kernel writes one'),
+    ({"IRQ_CPUS": "cores"}, 'irq_cpus is core, or a list of CPUs')])
+def test_a_v47_setup_the_runner_cannot_give_fails_before_the_machine_is_touched(
+        tmp_path, setting, said):
+    """Each would otherwise run, and be filed, under a setting it did not have."""
+    assert _v47_setup_says(tmp_path, **setting).startswith(said)
+
+
+@needs_bash
+@pytest.mark.parametrize("setting", [
+    {}, {"CONSUMER": "kafka-python"}, {"CONSUMER": "confluent", "FETCH_RT": "1"},
+    {"CONSUMER": "java", "FETCH_RT": "1"}, {"CONSUMER": "franz"},
+    {"BACKEND": "redis", "CONSUMER": "waiting", "DEPTH": "256", "ONE_REPLY": "1",
+     "ACK_BATCH": "200"},
+    {"BACKEND": "redis", "ACK_BATCH": "1"},
+    {"BACKEND": "nats", "DEPTH": "256", "ONE_REPLY": "1"},
+    {"BACKEND": "nats", "CONSUMER": "python", "DEPTH": "1"},
+    {"BACKEND": "nats", "CONSUMER": "nats-go"},
+    {"BACKEND": "rabbitmq", "PREFETCH": "1000", "ACK_BATCH": "200"},
+    {"BACKEND": "rabbitmq", "PREFETCH": "0", "ACK_BATCH": "5000"}, {"BACKEND": "rabbitmq", "PREFETCH": "1"},
+    {"ARRIVAL": "poisson"}, {"ARRIVAL": "constant"}, {"LOAD_KIND": "sock"}, {"LOAD_KIND": "udp"},
+    {"LOAD_KIND": "cpu", "LOAD": "0"}, {"WHOLE_CORE": "1", "SIBLING_LOAD": "1"},
+    {"IRQ_CPUS": "core"}, {"IRQ_CPUS": "3"}, {"IRQ_CPUS": "1-2,4-5"},
+    {"SCHEDSTAT": "1", "CONSUMER": "confluent"}])
+def test_and_a_v47_setup_it_can_give_passes_those_checks(tmp_path, setting):
+    assert _v47_setup_says(tmp_path, **setting) == ""
+
+
+def _load_start(tmp_path, *args, **setting):
+    """load_start as the runner defines it, with stress-ng and python3 stood in for by commands
+    that write down how they were called. (The calls.)"""
+    work = Path(tempfile.mkdtemp(dir=str(tmp_path)))
+    calls = work / "calls.txt"
+    script = "\n".join([
+        "set -uo pipefail", 'stress-ng () { echo "stress-ng $*" >> "$CALLS"; }',
+        'python3 () { echo "python3 $*" >> "$CALLS"; }', _function("load_start"),
+        'load_start %s' % " ".join(args), "builtin wait", ""])
+    env = dict({"CALLS": calls.as_posix(), "DUTY_PERIOD_MS": "100", "UDP_WORKERS_PER_CPU": "1"},
+               **setting)
+    _run_script(work / "load.sh", script, env, capture_output=True, text=True, check=True)
+    return _lines(calls)
+
+
+@needs_bash
+def test_v47s_load_is_the_cpu_stressor_unless_the_setup_names_another(tmp_path):
+    """Every earlier block's load, as it was; a load kept off the consumer's core on the CPUs the
+    run leaves it, one worker each; the socket and UDP loads held at the duty by the duty cycle,
+    the UDP one with its workers for each CPU it is given."""
+    assert _load_start(tmp_path, "88", "8", "3600s") == [
+        "stress-ng --cpu 8 --cpu-load 88 --timeout 3600s"]
+    assert _load_start(tmp_path, "75", "8", "10s", LOAD_TASKSET="0-5", LOAD_CPUS="6") == [
+        "stress-ng --cpu 6 --cpu-load 75 --taskset 0-5 --timeout 10s"]
+    assert _load_start(tmp_path, "75", "8", "10s", LOAD_KIND="sock") == [
+        "python3 scripts/duty_cycle.py --duty 75 --period-ms 100 -- stress-ng --sock 8 "
+        "--timeout 10s"]
+    assert _load_start(tmp_path, "75", "8", "3600s", LOAD_KIND="udp", LOAD_TASKSET="3",
+                       LOAD_CPUS="1", UDP_WORKERS_PER_CPU="2") == [
+        "python3 scripts/duty_cycle.py --duty 75 --period-ms 100 -- stress-ng --udp 2 "
+        "--taskset 3 --timeout 3600s"]
+
+
+def test_v47s_load_is_started_by_one_function_wherever_the_runner_starts_one():
+    """The run's own load, its correction, the second correction and every block of a load in
+    blocks: no stress-ng is started anywhere else."""
+    code = _campaign()
+    starts = [line.strip() for line in code.splitlines() if re.match(r"\s*stress-ng --", line)]
+    assert [line.split()[1] for line in starts] == ["--sock", "--udp", "--cpu"]
+    body = _function("load_start")
+    assert all(line in body for line in starts), "every one of them in load_start"
+    for caller in ("recorrect_load", "load_blocks"):
+        assert "load_start " in _function(caller), caller
+    run = code.split("run_one () {", 1)[1]
+    assert run.count('load_start "${DUTY:-$LOAD}" "$want_cpus" 3600s') == 1
+    assert run.count('load_start "$adjusted" "$want_cpus" 3600s') == 1
+
+
+def _placement(tmp_path, cores="6 7 0-5 0-5 6", irqbalance=True, udp="3 1", links=None,
+               **setting):
+    """Plan version 47's placement lines in run_one, run as the runner runs them with an unset
+    variable an error, with python3, sudo, systemctl, taskset and ip stood in for by commands that
+    write down how they were called: cpu_placement.py's core and irq-cpus answer `cores` and
+    `udp`, and irqbalance runs until a sudo stops it. (The calls, what the runner then holds.)"""
+    run_dir, calls = tmp_path / "run", tmp_path / "calls.txt"
+    run_dir.mkdir(parents=True)
+    active = tmp_path / "irqbalance_active"
+    if irqbalance:
+        active.write_text("", encoding="utf-8")
+    block = _lines_from("  # Plan version 47 (23 Oct 2026): where the setup places the run",
+                        "  # The two ping paths can differ with no delay at all")
+    script = "\n".join([
+        "set -uo pipefail",
+        'python3 () { echo "python3 $*" >> "$CALLS"; case "$*" in *" core "*) echo "$CORES";; '
+        '*" irq-cpus "*) echo "$UDP";; esac; }',
+        'sudo () { echo "sudo $*" >> "$CALLS"; [ "$*" != "systemctl stop irqbalance" ] || '
+        'rm -f "$ACTIVE"; }',
+        'systemctl () { echo "systemctl $*" >> "$CALLS"; [ -f "$ACTIVE" ] || return 3; '
+        '[ "$1 $2" = "is-active --quiet" ] || echo active; }',
+        'taskset () { echo "taskset $*" >> "$CALLS"; echo "pid 99\'s current affinity list: 0-7"; }',
+        'ip () { printf "%s\\n" "$FAKE_LINK"; }',
+        "placing () {", block, "}",
+        'REASON=""; CORE_CPU=""; LOAD_TASKSET=""; LOAD_CPUS=""; KIT_MASK_BEFORE=""; IRQS_MOVED=""',
+        'RPS_MOVED=""; IRQBALANCE_STOPPED=""', "placing",
+        'printf "%s\\n" "REASON=$REASON" "CORE_CPU=$CORE_CPU" "LOAD_TASKSET=$LOAD_TASKSET" '
+        '"LOAD_CPUS=$LOAD_CPUS" "KIT_MASK_BEFORE=$KIT_MASK_BEFORE" "IRQS_MOVED=$IRQS_MOVED" '
+        '"RPS_MOVED=$RPS_MOVED" "RPS_DEVICES=${RPS_DEVICES:-}" '
+        '"IRQBALANCE_STOPPED=$IRQBALANCE_STOPPED"', ""])
+    address = _write(tmp_path / "eth0_address", "60:45:bd:e9:60:ba\n")
+    env = dict({"CALLS": calls.as_posix(), "RUN_DIR": run_dir.as_posix(), "CORES": cores,
+                "UDP": udp, "ACTIVE": active.as_posix(), "FAKE_LINK": LINKS if links is None
+                else links, "ETH0_ADDRESS": address.as_posix(), "LOAD": "70", "ALL_CPUS": "8",
+                "RECEIVER_LINK": "sblrecv0"}, **setting)
+    said = _run_script(tmp_path / "placing.sh", script, env, capture_output=True, text=True,
+                       check=True).stdout
+    held = dict(line.split("=", 1) for line in said.splitlines() if "=" in line)
+    return _lines(calls) or [], held
+
+
+@needs_bash
+def test_v47s_placement_moves_nothing_a_setup_does_not_name(tmp_path):
+    calls, held = _placement(tmp_path)
+    assert calls == [] and held["REASON"] == ""
+    assert [held[name] for name in ("CORE_CPU", "LOAD_TASKSET", "KIT_MASK_BEFORE", "IRQS_MOVED",
+                                    "RPS_MOVED", "IRQBALANCE_STOPPED")] == [""] * 6
+
+
+@needs_bash
+def test_v47s_whole_core_keeps_the_core_for_the_consumer_and_the_run_off_it(tmp_path):
+    """The core is chosen, the load placed on the other CPUs, and the campaign's own CPUs
+    narrowed so that every process it starts runs off the core; what was there before is kept
+    for placement_back; nothing else is moved."""
+    calls, held = _placement(tmp_path, WHOLE_CORE="1")
+    run = (tmp_path / "run").as_posix()
+    assert calls[0] == "python3 scripts/cpu_placement.py core --out %s/core_choice.json" % run
+    assert (held["CORE_CPU"], held["LOAD_TASKSET"], held["LOAD_CPUS"]) == ("6", "0-5", "6")
+    assert calls[1] == "python3 scripts/cpu_placement.py irqs --out %s/irq_affinity_before.json" % run
+    assert "systemctl is-active irqbalance" in calls
+    assert [c for c in calls if c.startswith("taskset ")][1].startswith("taskset -pc 0-5 ")
+    assert held["KIT_MASK_BEFORE"] == "0-7"
+    assert not [c for c in calls if c.startswith("sudo ")], "no interrupt, queue or service moved"
+    assert held["IRQS_MOVED"] == held["RPS_MOVED"] == held["IRQBALANCE_STOPPED"] == ""
+
+
+@needs_bash
+def test_v47s_sibling_load_asks_the_core_with_the_load_on_its_sibling(tmp_path):
+    calls, held = _placement(tmp_path, cores="6 7 0-5 0-5,7 7", WHOLE_CORE="1", SIBLING_LOAD="1")
+    assert calls[0].startswith("python3 scripts/cpu_placement.py core --sibling-load --out ")
+    assert (held["LOAD_TASKSET"], held["LOAD_CPUS"]) == ("0-5,7", "7")
+    assert [c for c in calls if c.startswith("taskset ")][1].startswith("taskset -pc 0-5 "), \
+        "the run's own processes stay off both of the core's threads"
+
+
+@needs_bash
+@pytest.mark.parametrize("cores,said", [
+    ("0 1 - - 0", "whole_core keeps the only core for the consumer, and leaves no CPU for the load"),
+    ("0 - - 1 1", "whole_core keeps the only core for the consumer, and leaves no CPU for the "
+                  "run's other processes")])
+def test_v47s_a_core_that_leaves_nothing_for_the_rest_fails_the_run(tmp_path, cores, said):
+    _, held = _placement(tmp_path, cores=cores, WHOLE_CORE="1")
+    assert held["REASON"] == said
+
+
+@needs_bash
+def test_v47s_card_interrupts_go_to_the_cores_first_thread_with_irqbalance_stopped(tmp_path):
+    """irq_cpus core, block C's baseline arm: the core is chosen but the consumer is not pinned
+    to it nor the run kept off it; irqbalance is stopped first and the interrupts moved after."""
+    calls, held = _placement(tmp_path, IRQ_CPUS="core", IRQBALANCE_OFF="1")
+    run = (tmp_path / "run").as_posix()
+    assert held["REASON"] == "" and held["CORE_CPU"] == "" and held["LOAD_TASKSET"] == ""
+    order = [calls.index("sudo systemctl stop irqbalance"),
+             calls.index("sudo python3 scripts/cpu_placement.py irqs --set 6 --out "
+                         "%s/irq_affinity_set.json" % run)]
+    assert order == sorted(order)
+    assert held["IRQS_MOVED"] == "%s/irq_affinity_before.json" % run
+    assert held["IRQBALANCE_STOPPED"] == "1" and held["KIT_MASK_BEFORE"] == ""
+    _, given = _placement(tmp_path / "list", IRQ_CPUS="3", IRQBALANCE_OFF="1")
+    assert given["IRQS_MOVED"].endswith("/irq_affinity_before.json")
+
+
+@needs_bash
+def test_v47s_interrupts_moved_while_irqbalance_runs_fail_the_run(tmp_path):
+    _, held = _placement(tmp_path, IRQ_CPUS="3")
+    assert held["REASON"].startswith("irq_cpus moves the receiver card's interrupts, and "
+                                     "irqbalance is running")
+    assert held["IRQS_MOVED"] == ""
+    calls, held = _placement(tmp_path / "idle", irqbalance=False, IRQ_CPUS="3")
+    assert held["REASON"] == "" and held["IRQBALANCE_STOPPED"] == ""
+    assert "sudo systemctl stop irqbalance" not in calls
+
+
+@needs_bash
+def test_v47s_udp_load_runs_where_the_card_takes_its_interrupts(tmp_path):
+    """On the CPUs the run gives the interrupts where it gives them; otherwise where they were
+    found running; and away from a core kept for the consumer."""
+    calls, held = _placement(tmp_path, LOAD_KIND="udp", udp="2 1")
+    run = (tmp_path / "run").as_posix()
+    assert ("python3 scripts/cpu_placement.py irq-cpus --irqs %s/irq_affinity_before.json"
+            % run) in calls
+    assert (held["LOAD_TASKSET"], held["LOAD_CPUS"]) == ("2", "1")
+    calls, held = _placement(tmp_path / "given", LOAD_KIND="udp", IRQ_CPUS="3",
+                             IRQBALANCE_OFF="1", WHOLE_CORE="1")
+    assert ("python3 scripts/cpu_placement.py irq-cpus --irqs %s/irq_affinity_before.json "
+            "--given 3 --avoid 6,7" % (tmp_path / "given" / "run").as_posix()) in calls
+    _, held = _placement(tmp_path / "none", LOAD_KIND="udp", udp="ERROR: no CPU")
+    assert held["REASON"] == "" or held["REASON"].startswith("the udp load")
+
+
+@needs_bash
+def test_v47s_receive_steering_is_turned_off_on_the_cards_queues_and_the_receivers(tmp_path):
+    calls, held = _placement(tmp_path, RPS_OFF="1", links=TWO_CARDS)
+    run = (tmp_path / "run").as_posix()
+    assert held["RPS_DEVICES"] == "--dev eth0 --dev enP58460s1", "the device carrying eth0's address"
+    assert ("python3 scripts/cpu_placement.py rps --dev eth0 --dev enP58460s1 --out "
+            "%s/rps_before.json" % run) in calls
+    assert ("sudo ip netns exec sblrecv python3 scripts/cpu_placement.py rps --dev sblrecv0 "
+            "--out %s/rps_receiver_before.json" % run) in calls
+    sets = [c for c in calls if "--set 0" in c]
+    assert sets == ["sudo python3 scripts/cpu_placement.py rps --dev eth0 --dev enP58460s1 "
+                    "--set 0 --out %s/rps_set.json" % run,
+                    "sudo ip netns exec sblrecv python3 scripts/cpu_placement.py rps --dev "
+                    "sblrecv0 --set 0 --out %s/rps_receiver_set.json" % run]
+    assert held["RPS_MOVED"] == run
+
+
+def _placement_back(tmp_path, **held):
+    """placement_back as the runner defines it, run with what a run placed, its commands stood in
+    for. (The calls, what is left held.)"""
+    calls = tmp_path / "calls.txt"
+    script = "\n".join([
+        "set -uo pipefail", 'log () { echo "LOG $*" >> "$CALLS"; }',
+        'sudo () { echo "sudo $*" >> "$CALLS"; }', 'systemctl () { echo "systemctl $*" >> "$CALLS"; }',
+        'taskset () { echo "taskset $1 $2" >> "$CALLS"; }', _function("placement_back"),
+        'placement_back "$RUN"',
+        'echo "left=[$KIT_MASK_BEFORE$RPS_MOVED$IRQS_MOVED$IRQBALANCE_STOPPED]"', ""])
+    env = dict({"CALLS": calls.as_posix(), "RUN": tmp_path.as_posix(), "KIT_MASK_BEFORE": "",
+                "RPS_MOVED": "", "IRQS_MOVED": "", "IRQBALANCE_STOPPED": ""}, **held)
+    said = _run_script(tmp_path / "back.sh", script, env, capture_output=True, text=True,
+                       check=True).stdout
+    return _lines(calls) or [], said.strip()
+
+
+@needs_bash
+def test_v47s_placement_is_put_back_in_order_and_nothing_is_left_held(tmp_path):
+    """The campaign's own CPUs, the receive queues, the interrupts, and irqbalance last, which
+    would otherwise move the interrupts again as it started; a run that placed nothing changes
+    nothing."""
+    calls, left = _placement_back(tmp_path, KIT_MASK_BEFORE="0-7", RPS_MOVED="runs/x",
+                                  IRQS_MOVED="runs/x/irq_affinity_before.json",
+                                  IRQBALANCE_STOPPED="1")
+    run = tmp_path.as_posix()
+    assert calls == [
+        "taskset -pc 0-7",
+        "sudo python3 scripts/cpu_placement.py rps --restore runs/x/rps_before.json --out "
+        "%s/rps_restored.json" % run,
+        "sudo ip netns exec sblrecv python3 scripts/cpu_placement.py rps --restore "
+        "runs/x/rps_receiver_before.json --out %s/rps_receiver_restored.json" % run,
+        "sudo python3 scripts/cpu_placement.py irqs --restore runs/x/irq_affinity_before.json "
+        "--out %s/irq_affinity_restored.json" % run,
+        "sudo systemctl start irqbalance", "systemctl is-active irqbalance"]
+    assert left == "left=[]"
+    assert _placement_back(tmp_path / "none") == ([], "left=[]")
+
+
+def test_v47s_placement_is_put_back_after_every_run_and_when_the_campaign_stops():
+    code = _campaign()
+    loop = code.split("\nwhile true; do", 1)[1]
+    assert loop.index("  run_one\n") < loop.index('  placement_back "$RUN_DIR"') \
+        < loop.index("python3 scripts/run_queue.py finish")
+    assert 'placement_back "${RUN_DIR:-runs/azure}"' in _function("finish_campaign")
+    assert "irqs_back" not in code
+
+
+@needs_bash
+def test_v47s_consumer_is_pinned_to_the_kept_core_ahead_of_its_wrap(tmp_path):
+    """taskset first, so that every process of the consumer's wrap and the consumer's own threads
+    take the core; a run that keeps none starts it as before."""
+    pinned, _ = _r1_runner(tmp_path, "pinned", CORE_CPU="6", CONSUMER_PRIORITY="1")
+    assert pinned["consumer"] == ("taskset -c 6 sudo chrt -f 80 sudo ip netns exec sblrecv sudo "
+                                  "-u tester")
+    plain, _ = _r1_runner(tmp_path, "plain", CORE_CPU="")
+    assert plain["consumer"] == "sudo ip netns exec sblrecv sudo -u tester"
+
+
+@needs_bash
+@pytest.mark.parametrize("backend,port", [("nats", "4222"), ("rabbitmq", "5672")])
+def test_v47s_broker_capture_is_the_new_brokers_own_port(tmp_path, backend, port):
+    _, calls = _r1_runner(tmp_path, backend, BROKER_CAPTURE="1", BACKEND=backend,
+                          NATS_PORT="4222", RABBITMQ_PORT="5672")
+    assert "tcp port %s >" % port in [c for c in calls if c.startswith("remote_broker ")][0]
+
+
+@needs_bash
+@pytest.mark.parametrize("backend,asked", [
+    ("kafka", "docker logs --timestamps --since 100 --until 171 broker"),
+    ("redis", "docker logs --timestamps --since 100 --until 171 redis"),
+    ("rabbitmq", "docker logs --timestamps --since 100 --until 171 rabbitmq"),
+    ("nats", "sudo journalctl -u sbl-nats-js -o short-iso-precise --since @100 --until @171")])
+def test_v47s_broker_log_is_each_brokers_own(tmp_path, backend, asked):
+    block = _lines_from("  container=redis\n", '  if [ -n "$recv_full" ]; then')
+    calls = tmp_path / "calls.txt"
+    script = "\n".join(["set -uo pipefail",
+                        'remote_broker () { echo "$*" >> "$CALLS"; echo "a log line"; }',
+                        "logs () {", "  container=redis", block, "}", "logs", ""])
+    env = {"CALLS": calls.as_posix(), "RUN_DIR": tmp_path.as_posix(), "BACKEND": backend,
+           "began": "100", "ended": "170"}
+    _run_script(tmp_path / "logs.sh", script, env, capture_output=True, text=True, check=True)
+    assert _lines(calls) == [asked]
+    assert (tmp_path / "broker_log.txt").read_text(encoding="utf-8") == "a log line\n"
+
+
+@needs_bash
+@pytest.mark.parametrize("backend,setting,runner,flags", [
+    ("kafka", {"CONSUMER": "confluent", "FETCH_RT": "1"}, "scripts/run_kafka_trial.sh",
+     ["-CONSUMER", "confluent", "-FETCH_RT"]),
+    ("redis", {"CONSUMER": "waiting", "DEPTH": "256", "ONE_REPLY": "1", "ACK_BATCH": "200"},
+     "scripts/run_redis_trial.sh", ["-CONSUMER", "waiting", "-DEPTH", "256", "-ONE_REPLY_READS"]),
+    ("nats", {"DEPTH": "256", "ONE_REPLY": "1"}, "scripts/run_nats_trial.sh",
+     ["-DEPTH", "256", "-ONE_REPLY_READS"]),
+    ("nats", {"CONSUMER": "nats-go"}, "scripts/run_nats_trial.sh", ["-CONSUMER", "nats-go"]),
+    ("rabbitmq", {"PREFETCH": "1000", "ACK_BATCH": "200"}, "scripts/run_rabbitmq_trial.sh",
+     ["-PREFETCH", "1000"])])
+def test_v47s_each_backend_has_its_runner_with_the_setups_own_flags(tmp_path, backend, setting,
+                                                                   runner, flags):
+    found = _trial_starts(tmp_path / backend, BACKEND=backend, **setting)
+    trial = found["trial"]
+    assert trial[trial.index("bash") + 1] == runner
+    assert trial[-len(flags):] == flags, "after -IDLE_SECONDS, the setup's own flags"
+    consumer_extra = trial[trial.index("-CONSUMER_EXTRA") + 1]
+    if backend == "rabbitmq":
+        assert trial[trial.index("-URI") + 1] == "amqp://guest:guest@10.9.9.9:5672"
+        assert consumer_extra.endswith(" --ack-batch 200"), "the batch where the client takes it"
+        assert trial[trial.index("-PRODUCER_EXTRA") + 1] == " " + found["so"] % "producer", \
+            "and none of Kafka's producer settings, nor Redis's send workers"
+    if backend == "nats":
+        assert trial[trial.index("-NatsHost") + 1:trial.index("-NatsHost") + 7] == [
+            "10.9.9.9", "-PORT", "4222", "-STORAGE", "memory", "-DELETE_STREAM"]
+        assert "--read-trace" not in consumer_extra
+    if backend == "redis":
+        assert consumer_extra.startswith("--ack-batch 200 --ack-batch 200 ")
+
+
+@needs_bash
+def test_v47s_runners_are_told_the_plans_arrivals_and_the_values_set_in_one_place(tmp_path):
+    found = _trial_starts(tmp_path / "k", BACKEND="kafka", run_arrival="poisson",
+                          run_seed="12345")
+    assert found["plan"] == ["arrival=poisson", "seed=12345", "wait=60", "priority=80"]
+    found = _trial_starts(tmp_path / "n", BACKEND="nats", THREADS_WAIT_S="90")
+    assert found["plan"] == ["arrival=constant", "seed=", "wait=90", "priority="]
+
+
+@needs_bash
+def test_v47s_poisson_runs_replay_the_campaigns_poisson_plan(tmp_path):
+    block = _lines_from("  local run_plan=", "  local record_args=")
+    script = "\n".join(["set -uo pipefail", "plans () {", block,
+                        '  echo "$run_plan $run_speedup $run_arrival ${run_seed:-none}"', "}",
+                        "plans", ""])
+    env = {"SYN_PLAN": "constant.csv", "SPEEDUP": "1.01", "DURATION": "70", "RATE": "2000",
+           "POISSON_PLAN": "poisson.csv", "POISSON_SPEEDUP": "1.02", "PLAN_SEED": "7",
+           "PLAN_KIND": "", "ARRIVAL": ""}
+    said = _run_script(tmp_path / "plain.sh", script, env, capture_output=True, text=True,
+                       check=True).stdout.strip()
+    assert said == "constant.csv 1.01 constant none"
+    said = _run_script(tmp_path / "poisson.sh", script, dict(env, ARRIVAL="poisson"),
+                       capture_output=True, text=True, check=True).stdout.strip()
+    assert said == "poisson.csv 1.02 poisson 7"
+
+
+def test_v47s_poisson_plan_is_drawn_once_before_the_first_run_from_one_seed():
+    code = _campaign()
+    assert 'PLAN_SEED="${PLAN_SEED:-12345}"' in code
+    assert ('POISSON_PLAN="data/synthetic/poisson_r${RATE}_d${DURATION}_s${PLAN_SEED}/'
+            'replay_plan.csv"') in code
+    first = code.split("# --- the queue ", 1)[0]
+    assert ("python3 scripts/make_synthetic_plan.py --arrival poisson \\\n      --rate \"$RATE\" "
+            "--duration \"$DURATION\" --seed \"$PLAN_SEED\" --out \"$POISSON_PLAN\"") in first
+    assert 'POISSON_SPEEDUP=$(assert_plan_rate "$POISSON_PLAN" 1)' in first
+
+
+@needs_bash
+def test_v47s_queue_says_which_backends_consumers_and_arrivals_its_runs_need(tmp_path):
+    sys.path.insert(0, str(REPO / "scripts"))
+    import run_queue
+    design = {"seed": 1, "rounds": 1, "setups": [
+        {"id": "a", "backend": "nats", "consumer": "nats-go", "arrival": "poisson"},
+        {"id": "b", "backend": "kafka", "consumer": "confluent", "fetch_rt": False},
+        {"id": "c", "backend": "rabbitmq"}]}
+    queue = tmp_path / "q.csv"
+    run_queue.write_queue(str(queue), run_queue.make_rows(design))
+    head = "queue_says () {"
+    function = head + _campaign().split(head, 1)[1].split("\n}\n", 1)[0] + "\n}\n"
+    script = "\n".join([function, 'queue_says backend', 'queue_says consumer',
+                        'queue_says arrival', 'queue_says fetch_rt', ""])
+    said = _run_script(tmp_path / "says.sh", script, {"QUEUE": queue.as_posix()},
+                       capture_output=True, text=True, check=True).stdout.splitlines()
+    assert said == ["kafka nats rabbitmq", "confluent nats-go", "poisson", ""]
+
+
+def _nats_check(port):
+    code = _campaign()
+    snippet = code.split('NATS_SAYS=$(python3 - "$NATS_HOST" "$NATS_PORT" <<\'PY\'\n', 1)[1]
+    snippet = snippet.split("\nPY\n", 1)[0]
+    return subprocess.run([sys.executable, "-", "127.0.0.1", str(port)], input=snippet,
+                          text=True, capture_output=True)
+
+
+@pytest.mark.parametrize("info,ok,said", [
+    (b'INFO {"version":"2.15.1","jetstream":true}\r\n', True, "nats-server 2.15.1, JetStream on"),
+    (b'INFO {"version":"2.15.1"}\r\n', False, "nats-server 2.15.1, JetStream off"),
+    (b"-ERR 'nope'\r\n", False, "nats-server None, JetStream off")])
+def test_v47s_nats_is_asked_as_its_clients_ask_it_whether_jetstream_is_on(info, ok, said):
+    """The tools block's NATS listens on the same port with JetStream off, and every client of
+    block N needs JetStream, so the campaign reads the server's INFO before the first run."""
+    import socket
+    import threading
+    server = socket.socket()
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+
+    def greet():
+        conn, _ = server.accept()
+        conn.sendall(info)
+        conn.close()
+    threading.Thread(target=greet, daemon=True).start()
+    done = _nats_check(server.getsockname()[1])
+    server.close()
+    assert (done.returncode == 0) is ok and done.stdout.strip() == said
+
+
+def test_v47s_nats_that_does_not_answer_is_said_so():
+    import socket
+    probe = socket.socket()
+    probe.bind(("127.0.0.1", 0))
+    port = probe.getsockname()[1]
+    probe.close()
+    done = _nats_check(port)
+    assert done.returncode == 1 and done.stdout.startswith("no answer: ")
+
+
+def test_v47s_campaign_refuses_a_queue_whose_brokers_or_consumers_are_not_there():
+    first = _campaign().split("# --- the queue ", 1)[0]
+    for needed in ('grep -q "^rabbitmq:running"', "import pika", "import confluent_kafka",
+                   '"$SBL_JAVA" -cp harness/java/out LawSelfTest',
+                   "[ -x harness/go/out/franz-consumer ]",
+                   "[ -x harness/go-nats/out/natsgo-consumer ]", '"jetstream"'):
+        assert needed in first, needed
+    assert 'export SBL_JAVA="${SBL_JAVA:-$JAVA17_BIN}"' in first
+    assert ('JAVA17_BIN="/usr/lib/jvm/java-17-openjdk-$(dpkg --print-architecture 2>/dev/null)'
+            '/bin/java"') in _campaign(), "the Arm pair's own Java"
+
+
+def test_v47s_every_new_client_is_reaped_by_a_word_of_its_own():
+    reap = _function("reap")
+    for client in ("kafka_consumer_confluent.py", "kafka_producer_confluent.py",
+                   "franz-consumer", "natsgo-consumer", "redis_consumer_waiting.py",
+                   "nats_producer.py", "nats_consumer.py", "rabbitmq_producer.py",
+                   "rabbitmq_consumer.py", "consumer_threads.py", "duty_cycle.py"):
+        assert re.search(r'pkill -f "[^"]*\b%s\b' % re.escape(client), reap), client
+    occupancy = (REPO / "cloud" / "campaigns" / "occupancy_measured.sh").read_text(
+        encoding="utf-8")
+    body = occupancy.split("reap () {", 1)[1].split("\n}\n", 1)[0]
+    assert 'pkill -f "$OTHER_CLIENTS"' in body and 'pkill -f "$STAMPERS"' in body
+    assert '--pattern "$STAMPERS"' in occupancy, "what it samples is what it always sampled"
+    for client in ("kafka_consumer_confluent.py", "natsgo-consumer", "rabbitmq_consumer.py"):
+        assert client in occupancy.split('OTHER_CLIENTS="', 1)[1].split("\n\nreap", 1)[0]
+
+
+@needs_bash
+def test_v47s_brokers_are_primed_where_the_queue_runs_them(tmp_path):
+    def prime(backends):
+        calls, trials, _, _ = _prime_more(tmp_path / backends.replace(" ", "_"), backends)
+        return calls, trials
+    calls, trials = prime("kafka nats rabbitmq redis")
+    assert [c.split(":")[0] for c in calls if c.startswith("LOG")] == [
+        "LOG PRIME kafka", "LOG PRIME redis", "LOG PRIME nats", "LOG PRIME rabbitmq"]
+    assert trials[2][4:6] == ["scripts/run_nats_trial.sh", trials[2][5]]
+    assert trials[2][-7:] == ["-PORT", "4222", "-STORAGE", "memory", "-DELETE_STREAM",
+                              "-IDLE_SECONDS", "15"]
+    assert trials[3][4] == "scripts/run_rabbitmq_trial.sh"
+    assert trials[3][-4:] == ["-URI", "amqp://guest:guest@10.9.9.9:5672", "-IDLE_SECONDS", "15"]
+    calls, _ = prime("kafka redis")
+    assert len([c for c in calls if c.startswith("LOG")]) == 2, "as it always was"
+
+
+def _prime_more(tmp_path, backends):
+    """prime_brokers with QUEUE_BACKENDS set, its trials written down. (Calls, trials, -, -.)"""
+    work, rec = tmp_path / "work", tmp_path / "rec"
+    work.mkdir(parents=True)
+    rec.mkdir()
+    script = "\n".join([
+        "set -uo pipefail", "trials=0",
+        'reap () { :; }', 'log () { echo "LOG $*" >> "$REC/calls"; }',
+        "date () { echo 20261023T010203Z; }",
+        'timeout () { trials=$((trials + 1)); printf "%s\\n" "$@" > "$REC/trial_$trials"; }',
+        _function("prime_brokers"), "prime_brokers", ""])
+    env = {"REC": rec.as_posix(), "QUEUE_NAME": "v2000", "ME": "tester", "PRIME_S": "60",
+           "SYN_PLAN": "plan.csv", "SPEEDUP": "1.000000", "KAFKA_BOOTSTRAP": "10.9.9.9:19092",
+           "KAFKA_PRODUCER_EXTRA": "--max-inflight 64", "REDIS_HOST": "10.9.9.9",
+           "REDIS_PORT": "6379", "REDIS_CONSUMER_EXTRA": "--ack-batch 200",
+           "NATS_HOST": "10.9.9.9", "NATS_PORT": "4222", "NATS_STORAGE": "memory",
+           "RABBITMQ_URI": "amqp://guest:guest@10.9.9.9:5672", "QUEUE_BACKENDS": backends}
+    _run_script(tmp_path / "prime.sh", script, env, cwd=work, capture_output=True, text=True,
+                check=True)
+    trials = [_lines(rec / ("trial_%d" % n)) for n in range(1, 5)]
+    return _lines(rec / "calls"), trials, None, work
+
+
+@needs_bash
+def test_v47s_a_runner_that_refuses_says_why_in_the_ledger(tmp_path):
+    block = _lines_from('  # Plan version 47 (23 Oct 2026): a runner that refused the run says why',
+                        '  if [ ! -f "$RUN_DIR/producer.csv" ]')
+    script = "\n".join(["set -uo pipefail", "after () {", block, "}", 'REASON=""', "after",
+                        'echo "REASON=$REASON"', ""])
+    _write(tmp_path / "trial.log", "[1/4] starting consumer (franz)...\nFATAL: the consumer's "
+                                   "threads were not settled before the producer; see x\n")
+    said = _run_script(tmp_path / "after.sh", script, {"RUN_DIR": tmp_path.as_posix(), "rc": "3"},
+                       capture_output=True, text=True, check=True).stdout.strip()
+    assert said == ("REASON=the trial exited with 3: the consumer's threads were not settled "
+                    "before the producer; see x; see %s/trial.log" % tmp_path.as_posix())
+    _write(tmp_path / "trial.log", "Traceback\n")
+    said = _run_script(tmp_path / "after2.sh", script, {"RUN_DIR": tmp_path.as_posix(), "rc": "1"},
+                       capture_output=True, text=True, check=True).stdout.strip()
+    assert said == "REASON=the trial exited with 1; see %s/trial.log" % tmp_path.as_posix()
+
+
+def test_v47s_every_run_keeps_its_brokers_facts_and_a_softirq_load_its_counters():
+    run = _campaign().split("run_one () {", 1)[1].split("\n}\n", 1)[0]
+    order = ["tcp_counters before", 'case "${RUN_FACTS:-}:${LOAD_KIND:-}" in :sock|:udp) '
+             "interrupt_counters before ;; esac",
+             'remote_broker "cd sbl && python3 scripts/run_facts.py broker --out -"',
+             "began=$(date -u +%s)", "ended=$(date -u +%s)",
+             'case "${RUN_FACTS:-}:${LOAD_KIND:-}" in :sock|:udp) interrupt_counters after ;; esac',
+             'python3 scripts/cpu_placement.py irqs --out "$RUN_DIR/irq_affinity_after.json"',
+             'taskset -pc $$ > "$RUN_DIR/kit_mask_after.txt"']
+    places = [run.index(step) for step in order]
+    assert places == sorted(places)
+    assert '> "$RUN_DIR/broker_facts.json"' in run
+    assert 'if [ -n "${RUN_FACTS:-}${WHOLE_CORE:-}" ]; then\n    run_facts_later "$RUN_DIR" &' \
+        in run, "a run that keeps a core reads where its processes ran"
+
+
+@needs_bash
+def test_v47s_interrupt_counters_read_time_squeeze_and_ksoftirqds_time(tmp_path):
+    proc, run = tmp_path / "proc", tmp_path / "run"
+    run.mkdir()
+    _write(proc / "net" / "softnet_stat", "0000abcd 00000000 00000005\n")
+    _write(proc / "interrupts", "")
+    _write(proc / "softirqs", "")
+    _write(proc / "15" / "comm", "ksoftirqd/0\n")
+    _write(proc / "15" / "schedstat", "1500 300 7\n")
+    script = "\n".join(["set -uo pipefail", _function("interrupt_counters"),
+                        "interrupt_counters before", ""])
+    _run_script(tmp_path / "softirq.sh", script, {"PROC_DIR": proc.as_posix(),
+                                                  "RUN_DIR": run.as_posix()},
+                capture_output=True, text=True, check=True, cwd=str(REPO))
+    facts = json.loads((run / "softirq_before.json").read_text(encoding="utf-8"))
+    assert facts["softnet"] == [{"line": 0, "processed": 0xabcd, "dropped": 0, "time_squeeze": 5}]
+    assert facts["ksoftirqd"][0]["run_ns"] == 1500 and facts["ksoftirqd"][0]["comm"] == "ksoftirqd/0"
+
+
+@needs_bash
+def test_v47s_run_line_names_each_new_setting_and_an_earlier_row_none(tmp_path):
+    line = next(text.strip() for text in _campaign().splitlines()
+                if text.strip().startswith('log "run $KEY: '))
+    row = {"KEY": "r001-C2000-kafka-core-sib-a1", "BACKEND": "kafka", "LOAD": "70",
+           "DELAY_MS": "0"}
+    script = "\n".join(["set -uo pipefail", 'log () { echo "$*"; }', line, ""])
+    plain = _run_script(tmp_path / "plain.sh", script, row, capture_output=True, text=True,
+                        check=True).stdout.strip()
+    assert plain == "run r001-C2000-kafka-core-sib-a1: kafka, load 70%, slice kernel default, delay 0 ms"
+    asked = dict(row, CONSUMER="confluent", DEPTH="256", ONE_REPLY="1", PREFETCH="1000",
+                 FETCH_RT="1", ARRIVAL="poisson", WHOLE_CORE="1", SIBLING_LOAD="1",
+                 IRQ_CPUS="core", IRQBALANCE_OFF="1", RPS_OFF="1", LOAD_KIND="udp")
+    asked = _run_script(tmp_path / "asked.sh", script, asked, capture_output=True, text=True,
+                        check=True).stdout.strip()
+    assert asked == plain + (", consumer confluent, depth 256, one-reply reads, prefetch 1000, "
+                             "fetch threads at real-time priority, poisson arrivals, the consumer "
+                             "alone on a core, its sibling loaded, card interrupts on core, "
+                             "irqbalance off, receive steering off, udp load")
+
+
+def test_v47s_values_are_set_in_one_place():
+    """Each value the new settings run with is named once, near the top, for the pilot to change."""
+    code = _campaign()
+    top = code.split("\nlog () {", 1)[0]
+    for line in ('THREADS_WAIT_S="${THREADS_WAIT_S:-60}"',
+                 'FETCH_RT_PRIORITY="${FETCH_RT_PRIORITY:-80}"',
+                 'DUTY_PERIOD_MS="${DUTY_PERIOD_MS:-100}"',
+                 'UDP_WORKERS_PER_CPU="${UDP_WORKERS_PER_CPU:-1}"', 'RECEIVER_LINK="sblrecv0"'):
+        assert line in top, line
+        name = line.split("=", 1)[0]
+        assert len(re.findall(r"(?m)^%s=" % name, code)) == 1, "%s is set once" % name
+    common = (REPO / "cloud" / "campaigns" / "common.sh").read_text(encoding="utf-8")
+    for line in ('NATS_PORT="${NATS_PORT:-4222}"', 'NATS_STORAGE="${NATS_STORAGE:-memory}"',
+                 'RABBITMQ_PORT="${RABBITMQ_PORT:-5672}"',
+                 'RABBITMQ_URI="${RABBITMQ_URI:-amqp://guest:guest@$BROKER_PRIV:$RABBITMQ_PORT}"'):
+        assert line in common, line
+    sys.path.insert(0, str(REPO / "scripts"))
+    import run_integrity
+    assert run_integrity.MAX_WAITING_PER_REQUEST == 2,         "NATS's consumer is held to room for twice its depth, whatever rule it is made by"
+
+
+# --- Plan version 47 (23 Oct 2026): the trial runners
+
+def _runner_calls(tmp_path, runner, *flags, fail_threads=False, **env):
+    """scripts/RUNNER run in a scratch folder, as _trial_runner_calls runs it, with the Java, Go
+    and NATS Go consumers stood in for by programs that write down how they were called, and
+    consumer_threads.py answering as `fail_threads` says. (The calls, meta.json, what it printed,
+    its exit code.)"""
+    work = tmp_path / runner
+    stubs, calls = work / "bin", work / "calls.txt"
+    python = Path(sys.executable).as_posix()
+    py = ('if [ "$1" = - ]; then exec "%s" "$@"; fi\necho "python $*" >> "$CALLS"\n'
+          'case "$*" in *consumer_threads.py*) [ -z "$FAIL_THREADS" ] || exit 1;; esac\n' % python)
+    for name, body in (("py", py), ("java17", 'echo "java $*" >> "$CALLS"\n'),
+                       ("sleep", ":\n"), ("redis-cli", ":\n")):
+        os.chmod(_write(stubs / name, "#!/bin/sh\n" + body), 0o755)
+    for binary in ("harness/go/out/franz-consumer", "harness/go-nats/out/natsgo-consumer"):
+        os.chmod(_write(work / binary, '#!/bin/sh\necho "%s $*" >> "$CALLS"\n' % binary), 0o755)
+    (work / "harness" / "java" / "out").mkdir(parents=True)
+    given = {"PYTHON": (stubs / "py").as_posix(), "CALLS": calls.as_posix(),
+             "SBL_JAVA": (stubs / "java17").as_posix(), "FAIL_THREADS": "1" if fail_threads
+             else "", "SBL_SCHED_WRAP": "", "SBL_PRODUCER_WRAP": "", "SBL_CONSUMER_WRAP": ""}
+    given.update(env)
+    done = bash([(REPO / "scripts" / runner).as_posix(), "r001", "plan.csv", "1", "10"] +
+                list(flags), cwd=work, path_first=[stubs], extra_env=given, capture_output=True,
+                text=True, stdin=subprocess.DEVNULL)
+    meta_path = work / "runs" / "r001" / "meta.json"
+    meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else None
+    return _lines(calls) or [], meta, done.stdout + done.stderr, done.returncode
+
+
+def _one(calls, start):
+    found = [c for c in calls if c.startswith(start)]
+    assert len(found) == 1, calls
+    return found[0]
+
+
+@needs_bash
+@pytest.mark.parametrize("consumer,start", [
+    ("confluent", "python scripts/kafka_consumer_confluent.py --run-id r001 "),
+    ("java", "java -cp harness/java/out:harness/java/lib/kafka-clients.jar:harness/java/lib/"
+             "slf4j-api.jar LawConsumer --run-id r001 "),
+    ("franz", "harness/go/out/franz-consumer --run-id r001 ")])
+def test_v47s_kafka_runner_swaps_the_consumer_alone_and_waits_for_its_thread_list(
+        tmp_path, consumer, start):
+    """kafka_producer.py sends in every run; the consumer writes its threads, and the producer is
+    started only once consumer_threads.py has found them; the Java and Go consumers are handed none
+    of the Python clients' flags, and meta.json says which."""
+    calls, meta, said, code = _runner_calls(
+        tmp_path, "run_kafka_trial.sh", "-CONSUMER", consumer, "-CONSUMER_EXTRA",
+        " --gc-off --so-timestamps x.csv", KAFKA_CONSUMER_OPTS="--max-poll-records 5")
+    assert code == 0, said
+    line = _one(calls, start)
+    assert "--threads-out runs/r001/consumer_tids.csv" in line
+    assert "--max-poll-records" not in line, "kafka-python's knobs are refused by the others"
+    assert _one(calls, "python scripts/kafka_producer.py ").startswith(
+        "python scripts/kafka_producer.py --run-id r001 ")
+    waited = _one(calls, "python scripts/consumer_threads.py ")
+    assert waited.startswith("python scripts/consumer_threads.py --threads runs/r001/"
+                             "consumer_tids.csv --pid ")
+    assert waited.endswith(" --timeout-s 60 --out runs/r001/consumer_threads.json")
+    assert calls.index(waited) < calls.index(_one(calls, "python scripts/kafka_producer.py "))
+    assert meta["consumer"] == {"client": consumer, "threads_out": "runs/r001/consumer_tids.csv",
+                                "fetch_rt": False, "extra_not_handed": (
+                                    None if consumer == "confluent" else
+                                    "--gc-off --so-timestamps x.csv")}
+    assert ("--gc-off" in line) is (consumer == "confluent")
+    assert ("NOTE: the %s consumer takes none of the Python clients' flags" % consumer in said) \
+        is (consumer != "confluent")
+
+
+@needs_bash
+def test_v47s_kafka_runner_raises_the_fetch_threads_where_asked(tmp_path):
+    calls, meta, said, code = _runner_calls(tmp_path, "run_kafka_trial.sh", "-CONSUMER",
+                                            "confluent", "-FETCH_RT",
+                                            SBL_FETCH_RT_PRIORITY="70", SBL_THREADS_WAIT_S="30")
+    assert code == 0, said
+    assert _one(calls, "python scripts/consumer_threads.py ").endswith(
+        " --timeout-s 30 --out runs/r001/consumer_threads.json --priority 70")
+    assert meta["consumer"]["fetch_rt"] is True
+
+
+@needs_bash
+def test_v47s_kafka_runner_stops_a_trial_whose_threads_were_not_settled(tmp_path):
+    calls, _, said, code = _runner_calls(tmp_path, "run_kafka_trial.sh", "-CONSUMER", "franz",
+                                         "-FETCH_RT", fail_threads=True)
+    assert code == 3 and "FATAL: the consumer's threads were not settled before the producer" in said
+    assert not [c for c in calls if "kafka_producer.py" in c], "no message is sent"
+
+
+@needs_bash
+@pytest.mark.parametrize("flags,said", [
+    (["-CONSUMER", "rdkafka"], "FATAL: -CONSUMER is kafka-python, confluent, java or franz"),
+    (["-CONSUMER", "confluent", "-CLIENT", "java"], "FATAL: -CLIENT java swaps both clients"),
+    (["-FETCH_RT"], "FATAL: -FETCH_RT raises the fetch threads a consumer names"),
+    (["-CONSUMER", "kafka-python", "-FETCH_RT"], "FATAL: -FETCH_RT raises the fetch threads")])
+def test_v47s_kafka_runner_refuses_what_it_cannot_run(tmp_path, flags, said):
+    calls, _, printed, code = _runner_calls(tmp_path, "run_kafka_trial.sh", *flags)
+    assert code == 2 and said in printed and calls == []
+
+
+@needs_bash
+def test_v47s_kafka_runner_records_the_plan_and_the_code_that_ran(tmp_path):
+    calls, meta, said, code = _runner_calls(tmp_path, "run_kafka_trial.sh",
+                                            SBL_PLAN_ARRIVAL="poisson", SBL_PLAN_SEED="12345")
+    assert code == 0, said
+    assert meta["plan"] == {"path": "plan.csv", "sha256": None, "arrival": "poisson",
+                            "seed": 12345}
+    assert meta["consumer"] == {"client": "kafka-python", "threads_out": None, "fetch_rt": False,
+                                "extra_not_handed": None}
+    assert {"scripts/kafka_consumer_confluent.py", "scripts/consumer_threads.py",
+            "harness/java/src/LawConsumer.java", "harness/go/main.go",
+            "harness/go/out/franz-consumer"} <= set(meta["code_sha256"])
+    assert not [c for c in calls if "consumer_threads.py" in c], "kafka-python names no threads"
+    _, meta, _, _ = _runner_calls(tmp_path / "steady", "run_kafka_trial.sh")
+    assert meta["plan"]["arrival"] is None and meta["plan"]["seed"] is None
+
+
+@needs_bash
+def test_v47s_redis_runner_swaps_in_the_waiting_consumer(tmp_path):
+    calls, meta, said, code = _runner_calls(tmp_path, "run_redis_trial.sh", "-CONSUMER", "waiting",
+                                            "-DEPTH", "256", "-ONE_REPLY_READS",
+                                            "-CONSUMER_EXTRA", "--ack-batch 200")
+    assert code == 0, said
+    line = _one(calls, "python scripts/redis_consumer_waiting.py ")
+    assert line.endswith("--node-count 1 --depth 256 --one-reply-reads --ack-batch 200")
+    assert not [c for c in calls if "scripts/redis_consumer.py" in c]
+    assert (meta["redis"]["consumer"], meta["redis"]["depth"], meta["redis"]["one_reply_reads"]) \
+        == ("waiting", 256, True)
+    assert {"scripts/redis_consumer_waiting.py", "scripts/resp_wire.py"} <= set(meta["code_sha256"])
+    calls, meta, _, _ = _runner_calls(tmp_path / "plain", "run_redis_trial.sh")
+    assert _one(calls, "python scripts/redis_consumer.py ")
+    assert (meta["redis"]["consumer"], meta["redis"]["depth"]) == ("redis-py", None)
+
+
+@needs_bash
+@pytest.mark.parametrize("flags,said", [
+    (["-CONSUMER", "fast"], "FATAL: -CONSUMER is redis-py or waiting"),
+    (["-DEPTH", "64"], "FATAL: -DEPTH and -ONE_REPLY_READS are the waiting consumer's"),
+    (["-CONSUMER", "redis-py", "-ONE_REPLY_READS"], "FATAL: -DEPTH and -ONE_REPLY_READS")])
+def test_v47s_redis_runner_refuses_what_its_consumer_does_not_take(tmp_path, flags, said):
+    calls, _, printed, code = _runner_calls(tmp_path, "run_redis_trial.sh", *flags)
+    assert code == 2 and said in printed and calls == []
+
+
+def _free_port():
+    import socket
+    probe = socket.socket()
+    probe.bind(("127.0.0.1", 0))
+    port = probe.getsockname()[1]
+    probe.close()
+    return str(port)
+
+
+@needs_bash
+def test_v47s_nats_runner_runs_natsgo_with_its_own_flags_and_waits_for_its_threads(tmp_path):
+    """nats.go's consumer is handed the run's names, its storage, its idle time and its thread
+    list, and none of the python consumer's flags; it deletes no stream, so the runner deletes it
+    once the consumer is done, and says so where the server cannot be reached."""
+    port = _free_port()
+    calls, meta, said, code = _runner_calls(tmp_path, "run_nats_trial.sh", "-CONSUMER", "nats-go",
+                                            "-NatsHost", "127.0.0.1", "-PORT", port,
+                                            "-STORAGE", "memory", "-DELETE_STREAM",
+                                            "-CONSUMER_EXTRA", "--gc-off",
+                                            NATS_CONSUMER_OPTS="--thread-record")
+    assert code == 0, said
+    line = _one(calls, "harness/go-nats/out/natsgo-consumer ")
+    stream, subject = meta["nats"]["stream"], meta["nats"]["subject"]
+    assert line == ("harness/go-nats/out/natsgo-consumer --run-id r001 --out runs/r001/consumer.csv "
+                    "--host 127.0.0.1 --port %s --stream %s --subject %s --durable sbl-r001 "
+                    "--storage memory --idle-seconds 30 --threads-out runs/r001/consumer_tids.csv"
+                    % (port, stream, subject))
+    assert "NOTE: the stream %s could not be deleted; it stays on the server" % stream in said
+    _, _, kept, _ = _runner_calls(tmp_path / "kept", "run_nats_trial.sh", "-CONSUMER", "nats-go",
+                                  "-NatsHost", "127.0.0.1", "-PORT", port)
+    assert "could not be deleted" not in kept, "nothing deleted that the run did not ask"
+    _, _, python, _ = _runner_calls(tmp_path / "python", "run_nats_trial.sh", "-DELETE_STREAM",
+                                    "-NatsHost", "127.0.0.1", "-PORT", port)
+    assert "could not be deleted" not in python, "the python consumer deletes its own"
+    waited = _one(calls, "python scripts/consumer_threads.py ")
+    assert calls.index(waited) < calls.index(_one(calls, "python scripts/nats_producer.py "))
+    assert meta["consumer"] == {"client": "nats-go", "threads_out": "runs/r001/consumer_tids.csv",
+                                "extra_not_handed": "--thread-record --gc-off"}
+    assert meta["nats"]["depth"] is None and meta["nats"]["storage"] == "memory"
+    assert meta["nats"]["delete_stream"] is True
+    assert {"harness/go-nats/main.go", "harness/go-nats/out/natsgo-consumer"} <= set(
+        meta["code_sha256"])
+    assert "NOTE: the nats-go consumer takes none of the python consumer's flags" in said
+
+
+def test_v47s_runner_deletes_natsgos_stream_as_the_python_consumer_deletes_its_own(
+        monkeypatch, capsys):
+    """The runner's own deletion, run in this process against the scripted NATS server the
+    NATS clients' tests use: the stream asked for is gone, and the runner says so."""
+    import socket
+    sys.path.insert(0, str(Path(__file__).parent))
+    import test_nats_wire
+    text = (REPO / "scripts" / "run_nats_trial.sh").read_text(encoding="utf-8")
+    snippet = text.split("<<'PY' || echo \"NOTE: the stream $STREAM could not be deleted", 1)[1]
+    snippet = snippet.split("\n", 1)[1].split("\nPY\n", 1)[0]
+    server = test_nats_wire.FakeServer()
+    server.create_stream("SBL_r001_1", {"subjects": ["sbl.r001.1"], "storage": "memory",
+                                        "num_replicas": 1})
+    monkeypatch.setattr(socket, "create_connection", server.connect)
+    monkeypatch.setattr(sys, "argv", ["-", "127.0.0.1", "4222", "SBL_r001_1"])
+    monkeypatch.chdir(REPO)
+    exec(compile(snippet, "run_nats_trial.sh", "exec"), {"__name__": "__main__"})
+    assert "SBL_r001_1" not in server.streams
+    assert capsys.readouterr().out == "OK stream deleted: SBL_r001_1\n"
+
+
+@needs_bash
+@pytest.mark.parametrize("flags,said,status", [
+    (["-CONSUMER", "nats-js"], "FATAL: -CONSUMER is python or nats-go", 2),
+    (["-CONSUMER", "nats-go", "-DEPTH", "256"], "FATAL: -DEPTH and -ONE_REPLY_READS are the python", 2)])
+def test_v47s_nats_runner_refuses_what_its_consumer_does_not_take(tmp_path, flags, said, status):
+    calls, _, printed, code = _runner_calls(tmp_path, "run_nats_trial.sh", *flags)
+    assert code == status and said in printed and calls == []
+
+
+@needs_bash
+def test_v47s_nats_runner_stops_a_trial_whose_go_consumer_listed_no_threads(tmp_path):
+    calls, _, said, code = _runner_calls(tmp_path, "run_nats_trial.sh", "-CONSUMER", "nats-go",
+                                         fail_threads=True)
+    assert code == 3 and "FATAL: the consumer's threads were not listed before the producer" in said
+    assert not [c for c in calls if "nats_producer.py" in c]
+
+
+@needs_bash
+def test_v47s_runners_record_the_plan_they_replay(tmp_path):
+    for runner in ("run_redis_trial.sh", "run_nats_trial.sh", "run_rabbitmq_trial.sh"):
+        _, meta, said, code = _runner_calls(tmp_path / runner, runner, SBL_PLAN_ARRIVAL="poisson",
+                                            SBL_PLAN_SEED="7")
+        assert code == 0, said
+        assert meta["plan"] == {"path": "plan.csv", "sha256": None, "arrival": "poisson",
+                                "seed": 7}, runner
+
+
+# --- Plan version 47 (23 Oct 2026): the brokers and the driver's clients
+
+BROKERS = REPO / "cloud" / "brokers.sh"
+
+
+def _brokers():
+    return BROKERS.read_text(encoding="utf-8")
+
+
+def test_v47s_broker_images_are_pinned_in_one_place_by_digest_where_given():
+    text = _brokers()
+    assert b"\r" not in BROKERS.read_bytes() and bash(["-n", BROKERS.as_posix()]).returncode == 0
+    pins = {"KAFKA_IMAGE": "apache/kafka:4.1.1",
+            "REDIS_IMAGE": "redis:7.4.11@sha256:44960b3100c48159a66d28c18b0588c193492e25f7551d60"
+                           "e51dd464fc3eca5b",
+            "RABBITMQ_IMAGE": "rabbitmq:4.3.7@sha256:ddb072727ae2209a054515e806b0daa875cf611a7bb8"
+                              "592345c7ddceaa8ef63c",
+            "NATS_VERSION": "v2.15.1",
+            "NATS_SHA256_AMD64": "bf5edc7b1ce98e885c368cb43a886eb148dc5d0551d99f3cf6141fb5e1954c70",
+            "NATS_SHA256_ARM64": "e2fbab4cad7d3c76e3052eb959570393c9d73ba756b70bf8e9eea61e9ae6d49c"}
+    for name, value in pins.items():
+        assert text.count('%s="' % name) == 1 and '%s="%s"' % (name, value) in text, name
+    for use in ('"$REDIS_IMAGE"', '"$KAFKA_IMAGE"', '"$RABBITMQ_IMAGE"'):
+        assert use in text, use
+    assert "redis:7 " not in text and "apache/kafka:4.1.1 >" not in text, "no tag outside the pins"
+
+
+def test_v47s_nats_runs_with_jetstream_on_its_own_port_with_the_tools_blocks_server_stopped():
+    text = _brokers()
+    nats = text.split("# --- NATS with JetStream", 1)[1].split("# --- RabbitMQ", 1)[0]
+    order = ["nats_install\n", "systemctl disable --now sbl-nats ", "port_free 4222",
+             'rm -rf "$NATS_STORE"', "/etc/systemd/system/sbl-nats-js.service",
+             "systemctl start sbl-nats-js", '"jetstream":true']
+    places = [nats.index(step, nats.index("if wanted nats")) for step in order]
+    assert places == sorted(places)
+    assert "ExecStart=%s -p 4222 -js -sd %s" in nats
+    assert "Restart=" not in nats, "a broker that died stops the runs that need it, loudly"
+    rabbit = text.split("# --- RabbitMQ", 1)[1]
+    order = ["systemctl disable --now rabbitmq-server", "port_free 5672",
+             "loopback_users = none", "docker run -d --name rabbitmq -p 5672:5672",
+             "rabbitmq-diagnostics -q check_port_listener 5672"]
+    places = [rabbit.index(step) for step in order]
+    assert places == sorted(places)
+    assert '-v "$RABBITMQ_CONF:/etc/rabbitmq/conf.d/20-sbl.conf:ro"' in rabbit
+
+
+def _nats_install(tmp_path, pin=None, sums=None):
+    """brokers.sh's nats_install, run against a release folder of our own: a real archive holding
+    a nats-server, its SHA256SUMS, and curl copying from the folder. (Exit code, what it said,
+    the install folder.)"""
+    import hashlib
+    import tarfile
+    release, work = tmp_path / "release", tmp_path / "install"
+    release.mkdir(parents=True)
+    asset = "nats-server-v2.15.1-linux-amd64.tar.gz"
+    inner = tmp_path / "nats-server-v2.15.1-linux-amd64"
+    inner.mkdir(parents=True)
+    _write(inner / "nats-server", "#!/bin/sh\necho nats-server: v2.15.1\n")
+    with tarfile.open(release / asset, "w:gz") as tar:
+        tar.add(str(inner), arcname="nats-server-v2.15.1-linux-amd64")
+    digest = hashlib.sha256((release / asset).read_bytes()).hexdigest()
+    _write(release / "SHA256SUMS", (sums or "%s  %s\n") % (digest, asset)
+           if sums is None else sums)
+    head = "nats_install () {"
+    function = head + _brokers().split(head, 1)[1].split("\n}\n", 1)[0] + "\n}\n"
+    script = "\n".join([
+        "set -euo pipefail", 'fatal () { echo "FATAL: $*"; exit 1; }',
+        'uname () { echo x86_64; }',
+        'curl () { local out="$3" url="$4"; cp "$RELEASE/${url##*/}" "$out"; }',
+        'install () { mkdir -p "$(dirname "$5")"; cp "$4" "$5"; }',
+        function, "nats_install", 'echo "installed"', ""])
+    env = {"RELEASE": release.as_posix(), "NATS_VERSION": "v2.15.1",
+           "NATS_SHA256_AMD64": pin or digest, "NATS_SHA256_ARM64": "0" * 64,
+           "NATS_DIR": work.as_posix()}
+    done = _run_script(tmp_path / "install.sh", script, env, capture_output=True, text=True)
+    return done.returncode, done.stdout + done.stderr, work, digest
+
+
+@needs_bash
+def test_v47s_nats_is_installed_only_after_both_checks_and_checked_again_each_session(tmp_path):
+    code, said, work, digest = _nats_install(tmp_path / "good")
+    assert code == 0 and said.strip().endswith("installed"), said
+    assert (work / "nats-server").exists() and (work / "nats-server-v2.15.1-linux-amd64.tar.gz").exists()
+    code, said, _, _ = _nats_install(tmp_path / "pin", pin="0" * 64)
+    assert code == 1 and "does not match the hash pinned in cloud/brokers.sh" in said
+    code, said, work, _ = _nats_install(tmp_path / "sums", sums="%s  other.tar.gz\n" % ("1" * 64))
+    assert code == 1 and "does not match the release's own SHA256SUMS" in said
+    assert not (work / "nats-server").exists(), "nothing installed from an archive that failed"
+
+
+def test_v47s_brokers_runs_the_brokers_it_is_asked_for_and_says_what_ran():
+    text = _brokers()
+    assert 'ALL="kafka redis nats rabbitmq"' in text and 'WANTED="${*:-$ALL}"' in text
+    for broker in ("redis", "kafka", "nats", "rabbitmq"):
+        assert "if wanted %s; then" % broker in text, broker
+    assert "docker rm -f broker redis rabbitmq" in text
+    assert 'docker inspect --format "$name {{.Config.Image}} {{.Image}}"' in text
+    assert '"$NATS_DIR/nats-server" --version' in text
+
+
+def test_v47s_the_driver_installs_each_client_at_its_version_on_its_own_architecture():
+    tools = (KIT / "tools.sh").read_text(encoding="utf-8")
+    body = tools.split("\nclients () {", 1)[1].split("\n}\n", 1)[0]
+    assert 'CONFLUENT_KAFKA_VERSION="2.15.1"' in tools and 'PIKA_VERSION="1.3.2"' in tools
+    order = ['sudo pip3 install -q "confluent-kafka==$CONFLUENT_KAFKA_VERSION"',
+             'sudo pip3 install -q "pika==$PIKA_VERSION"', "openjdk-17-jdk-headless",
+             'sudo update-alternatives --set "$t" "$java11/bin/$t"',
+             'PATH="$java17/bin:$PATH" bash harness/java/build.sh', "get_go ||",
+             "bash harness/go/build.sh", "bash harness/go-nats/build.sh",
+             '"$dir/clients_installed.json"']
+    places = [body.index(step) for step in order]
+    assert places == sorted(places)
+    assert 'java17="/usr/lib/jvm/java-17-openjdk-$arch"' in body and "dpkg --print-architecture" in body
+    assert "confluent_kafka.version()[0] != '$CONFLUENT_KAFKA_VERSION'" in body, "left as it is"
+    for record in ("harness/go/out/BUILD_INFO.txt", "harness/go-nats/out/BUILD_INFO.txt"):
+        assert record in body, "each Go consumer's compiler and modules are written down"
+    assert "clients) clients ;;" in tools

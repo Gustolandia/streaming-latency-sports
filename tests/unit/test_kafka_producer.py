@@ -1056,3 +1056,76 @@ class TestFreeze43KeepsTheCollectorOutOfTheSendingLoop:
         assert sorted(p.name for p in temp_dir.iterdir()) == ["plan.csv", "prod.csv"]
         out = capsys.readouterr().out
         assert "OK collector" not in out and "OK schedstat" not in out
+
+
+class TestTheBrokersIdsAreRecorded:
+    """Plan version 47 (23 Oct 2026): each message's partition and offset, as the acknowledgment's
+    RecordMetadata gives them, written after the original columns, so that a message's departure
+    is matched to its arrival by the broker's own ids and never by the payload."""
+
+    @staticmethod
+    def _run(temp_dir, extra, n=3, meta=True):
+        pd.DataFrame({"event_id": ["e%d" % i for i in range(n)], "match_id": [1] * n,
+                      "t_sim_seconds": [0] * n, "t_emit_offset_s": [0.0] * n,
+                      "row_idx": list(range(n))}).to_csv(temp_dir / "plan.csv", index=False)
+        sent = []
+
+        class Meta:
+            def __init__(self, k):
+                self.partition, self.offset = 0, 100 + k
+
+        class Fut:
+            def __init__(self):
+                self.k = len(sent)
+                sent.append(self)
+                self._cbs = []
+
+            def add_callback(self, cb):
+                self._cbs.append(cb)
+
+            def add_errback(self, cb):
+                pass
+
+            def get(self, timeout=None):
+                for cb in self._cbs:
+                    cb(Meta(self.k) if meta else None)
+                return Meta(self.k) if meta else None
+
+        producer = MagicMock()
+        producer.send = MagicMock(side_effect=lambda *a, **k: Fut())
+        with patch('kafka_producer.KafkaProducer', return_value=producer):
+            old_argv, old_cwd = sys.argv, os.getcwd()
+            try:
+                os.chdir(temp_dir)
+                sys.argv = ["kp", "--run-id", "tr", "--plan-csv", "plan.csv",
+                            "--out", "prod.csv"] + extra
+                kp_main()
+            finally:
+                os.chdir(old_cwd)
+                sys.argv = old_argv
+        return pd.read_csv(temp_dir / "prod.csv", dtype=str, keep_default_na=False)
+
+    def test_the_callbacks_metadata_places_each_message(self, temp_dir):
+        df = self._run(temp_dir, [])
+        assert list(df.columns)[-3:] == ["t_broker_ack_ns", "partition", "offset"]
+        assert list(zip(df["event_id"], df["partition"], df["offset"])) == [
+            ("e0", "0", "100"), ("e1", "0", "101"), ("e2", "0", "102")]
+
+    def test_inline_the_resolved_futures_metadata_places_it(self, temp_dir):
+        df = self._run(temp_dir, ["--ack-stamp", "inline", "--max-inflight", "1"])
+        assert list(df["offset"]) == ["100", "101", "102"]
+
+    def test_with_many_in_flight_each_is_placed_once_its_future_resolves(self, temp_dir):
+        df = self._run(temp_dir, ["--max-inflight", "64"], n=5)
+        assert list(df["offset"]) == ["100", "101", "102", "103", "104"]
+
+    def test_the_corrections_are_placed_too(self, temp_dir):
+        df = self._run(temp_dir, ["--s3-mode", "corrections", "--corrections-every-k", "1",
+                                  "--ack-stamp", "inline", "--max-inflight", "1"], n=2)
+        corrections = df[df["event_id"].str.endswith("__rev2")]
+        assert len(corrections) == 2 and set(corrections["offset"]) <= {"101", "102", "103"}
+        assert all(corrections["partition"] == "0")
+
+    def test_a_message_the_broker_gave_no_place_has_none(self, temp_dir):
+        df = self._run(temp_dir, [], meta=False)
+        assert list(df["partition"]) == ["", "", ""] and list(df["offset"]) == ["", "", ""]

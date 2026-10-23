@@ -103,11 +103,22 @@ def machine():
         "proc/sys/kernel/sched_autogroup_enabled": "1\n",
         "proc/cmdline": "BOOT_IMAGE=/boot/vmlinuz-%s root=PARTUUID=0b1c ro console=ttyS0\n" % RELEASE,
         "sys/class/net/eth0/address": "60:45:bd:e9:60:ba\n",
+        # Plan version 47 (23 Oct 2026): four CPUs online, two cores of two threads each, the last
+        # CPU's topology not written, and an entry of the folder that is no CPU.
+        "sys/devices/system/cpu/online": "0-3\n",
+        "sys/devices/system/cpu/cpu0/topology/thread_siblings_list": "0-1\n",
+        "sys/devices/system/cpu/cpu1/topology/thread_siblings_list": "0-1\n",
+        "sys/devices/system/cpu/cpu2/topology/thread_siblings_list": "2-3\n",
+        "sys/devices/system/cpu/cpu3/online": "1\n",
+        "sys/devices/system/cpu/cpufreq/boost": "1\n",
         # The consumer, behind its namespace's sudo, at real-time priority: its main thread, one
-        # whose name holds spaces and brackets, and one whose stat line is not one.
+        # whose name holds spaces and brackets, and one whose stat line is not one. Plan version
+        # 47: the CPUs each may run on, one status file without the line, and one missing.
         "proc/100/cmdline": argv("python3", "scripts/kafka_consumer.py", "--run-id", "r1"),
         "proc/100/comm": "python3\n",
         "proc/100/task/100/stat": FIFO_80.format(tid=100, comm="python3"),
+        "proc/100/task/100/status": "Name:\tpython3\nCpus_allowed:\t8\nCpus_allowed_list:\t3\n",
+        "proc/100/task/101/status": "Name:\tmy (odd) name\n",
         "proc/100/task/101/stat": OTHER.format(tid=101, comm="my (odd) name"),
         "proc/100/task/102/stat": "102 python3 S\n",
         "proc/100/task/notes": "",
@@ -139,6 +150,12 @@ def machine():
         "proc/140/comm": "kworker/0:1\n",
         "proc/150/comm": "python3\n",
         "proc/self/cmdline": argv("python3"),
+        # Plan version 47 (23 Oct 2026): two of the run's own working processes, a capture behind
+        # its sudo and the utilisation sampler.
+        "proc/160/cmdline": argv("sudo", "tcpdump", "-i", "eth0", "-w", "x.pcap"),
+        "proc/160/task/160/stat": OTHER.format(tid=160, comm="sudo"),
+        "proc/161/cmdline": argv("python3", "scripts/util_sampler.py", "--out", "u.csv"),
+        "proc/161/task/161/stat": OTHER.format(tid=161, comm="python3"),
     }
     return files
 
@@ -196,6 +213,8 @@ class TestTheHost:
                                   "sched_autogroup_enabled": "1"}
         assert facts["cmdline"].startswith("BOOT_IMAGE=/boot/vmlinuz-6.8.0-1064-azure")
         assert facts["eth0_address"] == "60:45:bd:e9:60:ba"
+        assert facts["cpu_topology"] == {"online": "0-3", "thread_siblings_list": {
+            "0": "0-1", "1": "0-1", "2": "2-3", "3": None}}
         assert list(facts["unread"]) == ["sched.sched_schedstats"]
         assert facts["unread"]["sched.sched_schedstats"].startswith("cannot be read: ")
 
@@ -250,10 +269,10 @@ class TestTheClients:
         facts = rf.client_facts(tree(tmp_path))
         assert facts["kind"] == "clients" and facts["unread"] == {}
         found = {p["pid"]: p for p in facts["processes"]}
-        assert sorted(found) == [100, 110, 120, 121, 122]
+        assert sorted(found) == [100, 110, 120, 121, 122, 160, 161]
         assert {pid: p["names"] for pid, p in found.items()} == {
             100: "kafka_consumer.py", 110: "redis_producer.py", 120: "stress-ng",
-            121: "stress-ng", 122: "stress-ng"}
+            121: "stress-ng", 122: "stress-ng", 160: "tcpdump", 161: "util_sampler.py"}
         consumer = found[100]
         assert consumer["cmdline"] == "python3 scripts/kafka_consumer.py --run-id r1"
         assert consumer["cgroup"] == ["0::/user.slice/user-1000.slice/session-3.scope"]
@@ -261,11 +280,13 @@ class TestTheClients:
         assert consumer["unread"] == {}
         main, odd, broken = consumer["threads"]
         assert main == {"tid": 100, "comm": "python3", "policy": 1, "policy_name": "SCHED_FIFO",
-                        "rt_priority": 80, "unread": {}}
+                        "rt_priority": 80, "cpus_allowed_list": "3", "unread": {}}
         assert odd == {"tid": 101, "comm": "my (odd) name", "policy": 0,
-                       "policy_name": "SCHED_OTHER", "rt_priority": 0, "unread": {}}
+                       "policy_name": "SCHED_OTHER", "rt_priority": 0, "cpus_allowed_list": None,
+                       "unread": {"status": "it has no Cpus_allowed_list: line"}}
         assert broken["tid"] == 102 and broken["policy"] is None
         assert broken["unread"]["stat"].startswith("the line cannot be read: ")
+        assert broken["unread"]["status"].startswith("cannot be read: ")
         assert found[120]["threads"][0]["comm"] == "stress-ng"
 
     def test_what_a_vanished_process_leaves_unread_is_null_with_the_reason(self, tmp_path):
@@ -356,7 +377,7 @@ class TestMain:
         code = rf.main(["--root", tree(tmp_path), "clients", "--out", str(out)], out=printed)
         assert code == 0 and printed.getvalue().endswith(", 0 unread\n")
         facts = json.loads(out.read_text(encoding="utf-8"))
-        assert [p["pid"] for p in facts["processes"]] == [100, 110, 120, 121, 122]
+        assert [p["pid"] for p in facts["processes"]] == [100, 110, 120, 121, 122, 160, 161]
 
     def test_a_file_that_cannot_be_written_is_the_one_error(self, tmp_path):
         printed = io.StringIO()
@@ -417,4 +438,176 @@ rm -rf "$work"
         assert why, name
     assert set(host) == {"kind", "t_ns", "stress_ng_version", "stress_ng", "irqbalance",
                          "network_irqs", "kernel_config", "sched", "cmdline", "uname",
-                         "client_libraries", "eth0_address", "unread"}
+                         "client_libraries", "eth0_address", "cpu_topology", "unread"}
+    assert host["cpu_topology"]["online"] and host["cpu_topology"]["thread_siblings_list"]
+
+
+# --- Plan version 47 (23 Oct 2026): the topology, the softirq's own counters and the brokers'
+# images and versions.
+
+class TestTheTopology:
+
+    def test_a_machine_whose_online_cpus_cannot_be_read_says_so(self, tmp_path):
+        facts = rf.host_facts(tree(tmp_path, drop=("sys/devices/system/cpu/online",)), fake_run())
+        assert facts["cpu_topology"] is None
+        assert facts["unread"]["cpu_topology"].startswith("the online CPUs cannot be read: ")
+
+    def test_the_cpus_a_thread_may_run_on_are_its_status_files_line(self):
+        assert rf.cpus_allowed("Name:\tx\nCpus_allowed_list:\t0-5,7\n") == "0-5,7"
+        assert rf.cpus_allowed("Name:\tx\n") is None
+
+
+SOFTNET = "0000abcd 00000001 00000005 00000000\n00000010 00000000 00000000 00000000\n"
+#: A ksoftirqd thread's stat line: utime (field 14) 7 and stime (field 15) 9.
+KSOFTIRQD_STAT = OTHER.format(tid=15, comm="ksoftirqd/0").replace(" 3 1 0 0 20 ", " 7 9 0 0 20 ")
+
+
+def softirq_tree(tmp_path, softnet=SOFTNET, schedstat="1500 300 7\n"):
+    files = {"proc/net/softnet_stat": softnet, "proc/15/comm": "ksoftirqd/0\n",
+             "proc/15/stat": KSOFTIRQD_STAT, "proc/16/comm": "ksoftirqd/1\n",
+             "proc/16/schedstat": "garbled\n", "proc/17/comm": "python3\n"}
+    if schedstat is not None:
+        files["proc/15/schedstat"] = schedstat
+    return tree(tmp_path, files)
+
+
+class TestTheSoftirq:
+
+    def test_each_cpus_time_squeeze_and_each_ksoftirqds_time(self, tmp_path):
+        facts = rf.softirq_facts(softirq_tree(tmp_path))
+        assert facts["kind"] == "softirq" and facts["unread"] == {}
+        assert facts["softnet"] == [
+            {"line": 0, "processed": 0xabcd, "dropped": 1, "time_squeeze": 5},
+            {"line": 1, "processed": 0x10, "dropped": 0, "time_squeeze": 0}]
+        first, second = facts["ksoftirqd"]
+        assert (first["pid"], first["comm"], first["run_ns"], first["wait_ns"], first["slices"],
+                first["utime"], first["stime"], first["unread"]) == (
+            15, "ksoftirqd/0", 1500, 300, 7, 7, 9, {})
+        assert second["run_ns"] is None and second["unread"]["schedstat"].startswith(
+            "it is not a schedstat line")
+        assert second["unread"]["stat"].startswith("cannot be read: ")
+
+    def test_a_thread_whose_schedstat_is_gone_says_why(self, tmp_path):
+        first = rf.softirq_facts(softirq_tree(tmp_path, schedstat=None))["ksoftirqd"][0]
+        assert first["unread"]["schedstat"].startswith("cannot be read: ")
+
+    @pytest.mark.parametrize("softnet,why", [(None, "cannot be read: "),
+                                             ("zz 0 0\n", "line 0 is not a softnet_stat line")])
+    def test_a_softnet_that_cannot_be_read_says_why(self, tmp_path, softnet, why):
+        files = {"proc/15/comm": "ksoftirqd/0\n"}
+        if softnet is not None:
+            files["proc/net/softnet_stat"] = softnet
+        facts = rf.softirq_facts(tree(tmp_path, files))
+        assert facts["softnet"] is None and facts["unread"]["softnet"].startswith(why)
+
+    def test_a_machine_whose_processes_cannot_be_listed_says_so(self, tmp_path):
+        facts = rf.softirq_facts(str(tmp_path / "nothing"))
+        assert facts["ksoftirqd"] is None
+        assert facts["unread"]["ksoftirqd"].startswith("the processes cannot be listed: ")
+
+
+#: What the broker's commands print, for each broker running.
+BROKER_COMMANDS = {
+    ("docker", "inspect", "--format", "{{.Config.Image}} {{.Image}}", "broker"):
+        ("apache/kafka:4.1.1 sha256:aaa", None),
+    ("docker", "inspect", "--format", "{{.Config.Image}} {{.Image}}", "redis"):
+        ("redis:7.4.11@sha256:449 sha256:bbb", None),
+    ("docker", "inspect", "--format", "{{.Config.Image}} {{.Image}}", "rabbitmq"):
+        ("rabbitmq:4.3.7@sha256:ddb sha256:ccc", None),
+    ("docker", "image", "inspect", "--format", "{{json .RepoDigests}}", "sha256:aaa"):
+        ('["apache/kafka@sha256:111"]', None),
+    ("docker", "image", "inspect", "--format", "{{json .RepoDigests}}", "sha256:bbb"):
+        ('["redis@sha256:449"]', None),
+    ("docker", "image", "inspect", "--format", "{{json .RepoDigests}}", "sha256:ccc"):
+        ("not json", None),
+    rf.KAFKA_LIBS: ("connect-api-4.1.1.jar\nkafka-clients-4.1.1.jar\nkafka_2.13-4.1.1-test.jar\n"
+                    "kafka_2.13-4.1.1.jar\nkafka-server-4.1.1.jar\n", None),
+    rf.REDIS_INFO: ("# Server\r\nredis_version:7.4.11\r\nredis_mode:standalone", None),
+    rf.RABBITMQ_VERSION: ("Asking node rabbit@x for its RabbitMQ version...\n4.3.7", None)}
+
+
+class FakeSocket:
+    def __init__(self, greeting):
+        self.greeting = greeting
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc):
+        return False
+
+    def settimeout(self, _seconds):
+        pass
+
+    def makefile(self, _mode):
+        return io.BytesIO(self.greeting)
+
+
+def greeting(line):
+    def connect(address, timeout):
+        assert (address, timeout) == (rf.NATS_ADDRESS, 5)
+        if line is None:
+            raise ConnectionRefusedError("refused")
+        return FakeSocket(line)
+    return connect
+
+
+class TestTheBrokers:
+
+    def test_each_brokers_image_its_digest_and_its_servers_version(self):
+        facts = rf.broker_facts(fake_run(BROKER_COMMANDS), greeting(
+            b'INFO {"server_id":"N1","version":"2.15.1","jetstream":true}\r\n'))
+        assert facts["kind"] == "broker"
+        assert facts["kafka"] == {"container": "broker", "image": {
+            "image": "apache/kafka:4.1.1", "image_id": "sha256:aaa",
+            "repo_digests": ["apache/kafka@sha256:111"]}, "version": "4.1.1"}
+        assert facts["redis"]["version"] == "7.4.11"
+        assert facts["redis"]["image"]["repo_digests"] == ["redis@sha256:449"]
+        assert facts["rabbitmq"]["version"] == "4.3.7"
+        assert facts["rabbitmq"]["image"]["repo_digests"] is None
+        assert facts["unread"] == {"rabbitmq.image": "its digests are not JSON: 'not json'"}
+        assert facts["nats"] == {"version": "2.15.1", "jetstream": True, "server_id": "N1"}
+
+    def test_a_broker_that_is_not_running_is_null_with_the_reason(self):
+        answers = {key: (None, "docker printed nothing and exited 1") for key in BROKER_COMMANDS}
+        answers[rf.REDIS_INFO] = ("# Server\r\nredis_mode:standalone", None)
+        facts = rf.broker_facts(fake_run(answers), greeting(None))
+        assert facts["kafka"]["image"] is None and facts["redis"]["version"] is None
+        assert facts["rabbitmq"]["version"] is None and facts["nats"] is None
+        assert facts["unread"]["redis.version"] == "INFO server names no redis_version"
+        assert facts["unread"]["nats"].startswith("no NATS server answers at 127.0.0.1:4222")
+        assert facts["unread"]["kafka.image"] == "docker printed nothing and exited 1"
+        assert facts["kafka"]["version"] is None
+        assert facts["unread"]["kafka.version"] == "docker printed nothing and exited 1"
+
+    def test_a_kafka_whose_libraries_hold_no_server_jar_says_so(self):
+        answers = dict(BROKER_COMMANDS)
+        answers[rf.KAFKA_LIBS] = ("kafka-clients-4.1.1.jar\nkafka_2.13-4.1.1-test.jar\n", None)
+        facts = rf.broker_facts(fake_run(answers), greeting(None))
+        assert facts["kafka"]["version"] is None
+        assert facts["unread"]["kafka.version"] == (
+            "/opt/kafka/libs holds no kafka_<scala>-<version>.jar")
+
+    @pytest.mark.parametrize("line,why", [(b"-ERR 'x'\r\n", "the server's first line is not"),
+                                          (b"INFO {nope\r\n", "its INFO is not JSON")])
+    def test_a_nats_server_that_greets_otherwise_says_why(self, line, why):
+        value, said = rf.nats_info(rf.NATS_ADDRESS, greeting(line))
+        assert value is None and said.startswith(why)
+
+
+class TestPlanVersion47sMain:
+
+    def test_softirq_writes_its_facts_where_it_is_told(self, tmp_path):
+        out, printed = tmp_path / "softirq.json", io.StringIO()
+        code = rf.main(["--root", softirq_tree(tmp_path), "softirq", "--out", str(out)],
+                       out=printed)
+        assert code == 0 and printed.getvalue().endswith(", 0 unread\n")
+        assert json.loads(out.read_text(encoding="utf-8"))["kind"] == "softirq"
+
+    def test_broker_writes_its_facts_to_standard_output_and_says_so_on_its_error_stream(
+            self, capsys):
+        printed = io.StringIO()
+        code = rf.main(["broker", "--out", "-"], out=printed, run=fake_run(BROKER_COMMANDS),
+                       connect=greeting(b'INFO {"version":"2.15.1","jetstream":true}\r\n'))
+        assert code == 0 and json.loads(printed.getvalue())["kind"] == "broker"
+        assert capsys.readouterr().err.startswith("broker facts -> -, 1 unread")

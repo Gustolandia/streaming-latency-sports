@@ -60,6 +60,33 @@
 #
 # Freeze 43 (22 Oct 2026): PRIME_S=S on the campaign's job line runs one unjudged trial of S
 # seconds on each broker, Kafka then Redis, before the queue's first run (prime_brokers).
+#
+# Plan version 47 (23 Oct 2026): a setup may also name
+#   backend          nats or rabbitmq, beside kafka and redis (scripts/run_nats_trial.sh and
+#                    scripts/run_rabbitmq_trial.sh), each primed too where the queue holds one;
+#   consumer         Kafka's consumer alone, kafka_producer.py sending in every run: kafka-python
+#                    (the default), confluent, java or franz; Redis's: redis-py (the default) or
+#                    waiting; NATS's: python (the default) or nats-go;
+#   depth, one_reply_reads   the requests the waiting consumers keep at the broker, and whether
+#                    each read takes one reply (NATS's python consumer, and Redis's waiting one);
+#                    prefetch, RabbitMQ's; ack_batch, the Redis and RabbitMQ consumers';
+#   fetch_rt         each thread the consumer names as sending its fetches at real-time
+#                    priority, once it has written its thread list and before any message is sent;
+#   arrival          constant (the default) or poisson, the plan drawn from PLAN_SEED, set on the
+#                    job line as RATE and DURATION are (12345 unless set);
+#   whole_core       the consumer alone on the first thread of one core, every other process the
+#                    run starts kept off both of the core's threads, and the load on every other
+#                    CPU; sibling_load, the load on the core's other threads as well;
+#   irq_cpus         the CPUs the receiver card's interrupts are given for the run: a list, or
+#                    "core", the first thread of the core whole_core would keep, with or without
+#                    it; irqbalance_off, irqbalance stopped for the run; rps_off, no receive
+#                    packet steering on the receiver's queues for the run. What each moves is
+#                    recorded before, as set and after, and put back once the run ends;
+#   load_kind        cpu (the default, stress-ng's CPU stressor), sock (its socket stressor over
+#                    loopback) or udp (its UDP stressor over loopback, on the CPUs that take the
+#                    card's interrupts), the last two heavy in softirq work and held at the duty.
+# A row that names none of them is launched exactly as before. The values the settings run with
+# are set in one place, below (NATS_STORAGE ... RECEIVER_LINK).
 . "$(dirname "${BASH_SOURCE[0]}")/../campaigns/common.sh"
 set +e
 
@@ -98,6 +125,46 @@ PROC_DIR="/proc"
 #: Freeze 43 (22 Oct 2026): the process that switches a run's load on and off in blocks, while
 #: such a run's trial runs, so that whatever ends the run or the campaign can stop it.
 BLOCKS_PID=""
+#: Plan version 47 (23 Oct 2026): the seed a Poisson plan is drawn from, for every run of the
+#: campaign that asks for one (arrival poisson), so that its setups replay one draw of arrivals and
+#: differ in nothing else; make_synthetic_plan.py's own default unless the job line sets it.
+PLAN_SEED="${PLAN_SEED:-12345}"
+POISSON_PLAN="data/synthetic/poisson_r${RATE}_d${DURATION}_s${PLAN_SEED}/replay_plan.csv"
+POISSON_SPEEDUP=""
+#: Plan version 47 (23 Oct 2026): the values its settings run with, each set here and nowhere
+#: else, so that one the pilot finds wrong is changed in one place. The job line may set any of
+#: them, as it sets RATE and DURATION.
+#:   NATS_STORAGE         where block N's streams keep their messages: memory, or file
+#:                        (cloud/campaigns/common.sh, beside NATS's address)
+#:   THREADS_WAIT_S       how long a consumer that names its threads has to write its list
+#:   FETCH_RT_PRIORITY    the SCHED_FIFO priority each fetch thread is raised to (fetch_rt)
+#:   DUTY_PERIOD_MS       the period a socket load's duty is a share of (scripts/duty_cycle.py)
+#:   UDP_WORKERS_PER_CPU  stress-ng --udp workers on each CPU that takes the card's interrupts
+#:   RECEIVER_LINK        the receiver's own interface in its namespace (receiver_delay.py)
+#: NATS's durable consumer is made with room for at least twice its depth; that rule is the
+#: client's own (scripts/nats_consumer.py), and the integrity rule holds each run to it.
+THREADS_WAIT_S="${THREADS_WAIT_S:-60}"
+FETCH_RT_PRIORITY="${FETCH_RT_PRIORITY:-80}"
+DUTY_PERIOD_MS="${DUTY_PERIOD_MS:-100}"
+UDP_WORKERS_PER_CPU="${UDP_WORKERS_PER_CPU:-1}"
+RECEIVER_LINK="sblrecv0"
+#: Plan version 47 (23 Oct 2026): what a run has placed, each set by the run that places it and
+#: put back by placement_back once the run ends, however it ended: the consumer's CPU and the
+#: load's (whole_core); the campaign's own CPUs before the run kept every process it starts off
+#: the consumer's core; the record of where the card's interrupts were before they were moved
+#: (irq_cpus), and of the receive queues' steering before it was turned off (rps_off); and
+#: whether irqbalance was stopped (irqbalance_off).
+CORE_CPU=""
+LOAD_TASKSET=""
+LOAD_CPUS=""
+KIT_MASK_BEFORE=""
+IRQS_MOVED=""
+RPS_MOVED=""
+IRQBALANCE_STOPPED=""
+#: Plan version 47 (23 Oct 2026): Java 17, which the java consumer's classes are built for (bash
+#: cloud/azure/tools.sh clients). Java 11 stays the driver's default for the tools block, so a run
+#: whose consumer is java is handed this one by SBL_JAVA, unless the job line names its own.
+JAVA17_BIN="/usr/lib/jvm/java-17-openjdk-$(dpkg --print-architecture 2>/dev/null)/bin/java"
 
 log () { echo "$(date -u +%FT%TZ) $*"; }
 broker_delay () {
@@ -111,6 +178,12 @@ reap () {
   pkill -f "kafka_producer.py|redis_producer.py|kafka_consumer.py|redis_consumer.py" 2>/dev/null
   # A8 runs Kafka's Java client too, and a leftover one would send into the next run's topic.
   pkill -f "LawProducer|LawConsumer" 2>/dev/null
+  # Plan version 47 (23 Oct 2026): its clients, each by a word of its own command line (none is
+  # found by the patterns above), the wait on the consumer's thread list, and the socket load's
+  # duty cycle, which would otherwise go on stopping and starting a stress-ng the next run starts.
+  pkill -f "kafka_consumer_confluent.py|kafka_producer_confluent.py|franz-consumer|natsgo-consumer" 2>/dev/null
+  pkill -f "redis_consumer_waiting.py|nats_producer.py|nats_consumer.py" 2>/dev/null
+  pkill -f "rabbitmq_producer.py|rabbitmq_consumer.py|consumer_threads.py|duty_cycle.py" 2>/dev/null
   pkill -f "util_sampler.py" 2>/dev/null
   sudo pkill -INT -x bpftrace 2>/dev/null
   pkill -9 -x stress-ng 2>/dev/null
@@ -124,6 +197,61 @@ features_back () {
   [ -n "${SCHED_FEATURES:-}" ] || return 0
   sudo python3 scripts/sched_settings.py set-feature RUN_TO_PARITY > "$1" 2>&1 \
     || log "RUN_TO_PARITY could not be put back on; the next run's settings check will say so"
+}
+#: Plan version 47 (23 Oct 2026): what a run placed, put back once it has ended, however it ended,
+#: each from the record taken before it was moved, into the run's folder ($1): the campaign's own
+#: CPUs, the receive queues' steering, the card's interrupts, and then irqbalance, which would
+#: otherwise move the interrupts again as it started. A run that placed nothing changed nothing,
+#: and nothing is done for it.
+placement_back () {
+  if [ -n "${KIT_MASK_BEFORE:-}" ]; then
+    taskset -pc "$KIT_MASK_BEFORE" $$ > "$1/kit_mask_restored.txt" 2>&1 \
+      || log "the campaign's own CPUs could not be put back to $KIT_MASK_BEFORE"
+    KIT_MASK_BEFORE=""
+  fi
+  if [ -n "${RPS_MOVED:-}" ]; then
+    { sudo python3 scripts/cpu_placement.py rps --restore "$RPS_MOVED/rps_before.json" \
+        --out "$1/rps_restored.json" \
+      && sudo ip netns exec sblrecv python3 scripts/cpu_placement.py rps \
+        --restore "$RPS_MOVED/rps_receiver_before.json" --out "$1/rps_receiver_restored.json"; } \
+      > /dev/null 2>&1 || log "the receive queues' steering could not be put back as $RPS_MOVED recorded it"
+    RPS_MOVED=""
+  fi
+  if [ -n "${IRQS_MOVED:-}" ]; then
+    sudo python3 scripts/cpu_placement.py irqs --restore "$IRQS_MOVED" \
+      --out "$1/irq_affinity_restored.json" > /dev/null 2>&1 \
+      || log "the receiver card's interrupts could not be put back as $IRQS_MOVED recorded them"
+    IRQS_MOVED=""
+  fi
+  if [ -n "${IRQBALANCE_STOPPED:-}" ]; then
+    sudo systemctl start irqbalance > /dev/null 2>&1 || log "irqbalance could not be started again"
+    systemctl is-active irqbalance > "$1/irqbalance_restored.txt" 2>&1
+    IRQBALANCE_STOPPED=""
+  fi
+}
+#: Plan version 47 (23 Oct 2026): the load, in the background, at a duty, on a number of CPUs,
+#: stopping by itself after a time; `$!` is then its process. stress-ng's CPU stressor, as every
+#: block before has run it (load_kind cpu); or, held at the duty by scripts/duty_cycle.py since
+#: only the CPU stressor takes a duty of its own (--cpu-load), its socket stressor over loopback
+#: (sock) or its UDP stressor over loopback (udp), each heavy in the kernel's network softirq.
+#: One CPU stressor or socket pair a CPU, and UDP_WORKERS_PER_CPU UDP pairs. On every CPU it is
+#: given, or on LOAD_CPUS of them, LOAD_TASKSET, where the run places its load: away from the
+#: consumer's core (whole_core), or on the CPUs that take the card's interrupts (udp).
+load_start () {
+  local duty="$1" cpus="${LOAD_CPUS:-$2}" timeout="$3" taskset=()
+  [ -n "${LOAD_TASKSET:-}" ] && taskset=(--taskset "$LOAD_TASKSET")
+  case "${LOAD_KIND:-}" in
+    sock)
+      python3 scripts/duty_cycle.py --duty "$duty" --period-ms "$DUTY_PERIOD_MS" -- \
+        stress-ng --sock "$cpus" "${taskset[@]}" --timeout "$timeout" >/dev/null 2>&1 & ;;
+    udp)
+      python3 scripts/duty_cycle.py --duty "$duty" --period-ms "$DUTY_PERIOD_MS" -- \
+        stress-ng --udp "$(( cpus * UDP_WORKERS_PER_CPU ))" "${taskset[@]}" --timeout "$timeout" \
+        >/dev/null 2>&1 & ;;
+    *)
+      stress-ng --cpu "$cpus" --cpu-load "$duty" "${taskset[@]}" --timeout "$timeout" \
+        >/dev/null 2>&1 & ;;
+  esac
 }
 #: Freeze 42 (22 Oct 2026): the duty corrected a second time, once, with the clients running.
 #: The first correction is made before the clients start. Block U's pilot found that clients
@@ -154,7 +282,7 @@ print("%d" % round(min(100.0, max(1.0, duty - (shown - want)))))' "$want" "$show
     "$want" "$shown" "$duty" "$adjusted" > "$run_dir/load_recorrection.json"
   if [ "$adjusted" != "$duty" ]; then
     pkill -9 -x stress-ng 2>/dev/null
-    stress-ng --cpu "$cpus" --cpu-load "$adjusted" --timeout 3600s >/dev/null 2>&1 &
+    load_start "$adjusted" "$cpus" 3600s
   fi
 }
 #: Freeze 43 (22 Oct 2026): the load switched on and off in blocks within one run, where the setup
@@ -172,7 +300,7 @@ load_blocks () {
   echo "t_ns,state" > "$run_dir/load_blocks.csv"
   while kill -0 "$campaign" 2>/dev/null; do
     echo "$(date +%s%N),on" >> "$run_dir/load_blocks.csv"
-    stress-ng --cpu "$cpus" --cpu-load "$duty" --timeout "$(( 2 * block_s ))s" >/dev/null 2>&1 &
+    load_start "$duty" "$cpus" "$(( 2 * block_s ))s"
     stress=$!
     sleep "$block_s"
     echo "$(date +%s%N),off" >> "$run_dir/load_blocks.csv"
@@ -203,6 +331,7 @@ finish_campaign () {
   reap
   # A campaign stopped in the middle of such a run is put back here, into no run's folder.
   features_back /dev/null
+  placement_back "${RUN_DIR:-runs/azure}"
   sudo python3 scripts/sched_settings.py set-cpus "$ALL_CPUS" >/dev/null 2>&1
   remote_broker "cd sbl && sudo python3 scripts/receiver_delay.py broker-clear --apply" \
     >/dev/null 2>&1
@@ -228,6 +357,80 @@ done
   --rate "$RATE" --duration "$DURATION" --out "$SYN_PLAN" || {
   log "FATAL: could not make the plan $SYN_PLAN"; exit 1; }
 SPEEDUP=$(assert_plan_rate "$SYN_PLAN" 1) || { log "FATAL: no speedup for $SYN_PLAN"; exit 1; }
+
+# Plan version 47 (23 Oct 2026): what the queue's runs need beyond Kafka and Redis, asked of the
+# machines before the first run: each broker it names answering as its runs will reach it, each
+# consumer it names installed, and its Poisson plan drawn. A run that found one missing would
+# fail, and so would every attempt after it, until the guard stopped the campaign.
+queue_says () {  # the values one parameter takes over the queue's rows, as words
+  python3 -c 'import csv, json, sys
+rows = csv.DictReader(open(sys.argv[1], encoding="utf-8"))
+said = {json.loads(r["params"]).get(sys.argv[2]) for r in rows}
+print(" ".join(sorted(str(v) for v in said if v not in (None, "", False))))' "$QUEUE" "$1"
+}
+QUEUE_BACKENDS=$(queue_says backend)
+QUEUE_CONSUMERS=$(queue_says consumer)
+QUEUE_ARRIVALS=$(queue_says arrival)
+case " $QUEUE_BACKENDS " in
+  *" rabbitmq "*)
+    echo "$CONTAINERS" | grep -q "^rabbitmq:running" || {
+      log "FATAL: rabbitmq is not running on the broker; run sudo bash cloud/brokers.sh there"; exit 1; }
+    python3 -c 'import pika' 2>/dev/null || {
+      log "FATAL: pika is not installed; run bash cloud/azure/tools.sh clients"; exit 1; } ;;
+esac
+case " $QUEUE_BACKENDS " in
+  *" nats "*)
+    # Asked as the clients ask it: the server's first line, its INFO, read from here. The tools
+    # block's own NATS listens on the same port with JetStream off, and every client of block N
+    # needs JetStream.
+    NATS_SAYS=$(python3 - "$NATS_HOST" "$NATS_PORT" <<'PY'
+import json, socket, sys
+try:
+    with socket.create_connection((sys.argv[1], int(sys.argv[2])), 5) as sock:
+        sock.settimeout(5)
+        line = sock.makefile("rb").readline().decode("utf-8", "replace")
+except OSError as exc:
+    print("no answer: %s" % exc)
+    sys.exit(1)
+info = json.loads(line.split(" ", 1)[1]) if line.startswith("INFO ") else {}
+print("nats-server %s, JetStream %s" % (info.get("version"), "on" if info.get("jetstream") else "off"))
+sys.exit(0 if info.get("jetstream") is True else 1)
+PY
+) || { log "FATAL: no NATS server with JetStream answers at $NATS_HOST:$NATS_PORT ($NATS_SAYS); run sudo bash cloud/brokers.sh there"; exit 1; }
+    log "nats: $NATS_SAYS at $NATS_HOST:$NATS_PORT" ;;
+esac
+for consumer in $QUEUE_CONSUMERS; do
+  case "$consumer" in
+    confluent)
+      python3 -c 'import confluent_kafka' 2>/dev/null || {
+        log "FATAL: confluent-kafka is not installed; run bash cloud/azure/tools.sh clients"; exit 1; } ;;
+    java)
+      # The consumer's classes are built by Java 17, and run by the Java that runs this self test,
+      # which needs no broker.
+      export SBL_JAVA="${SBL_JAVA:-$JAVA17_BIN}"
+      "$SBL_JAVA" -cp harness/java/out LawSelfTest > runs/azure/java_selftest.txt 2>&1 || {
+        log "FATAL: $SBL_JAVA cannot run harness/java/out (runs/azure/java_selftest.txt); run bash cloud/azure/tools.sh clients"
+        exit 1; } ;;
+    franz)
+      [ -x harness/go/out/franz-consumer ] || {
+        log "FATAL: harness/go/out/franz-consumer is not built; run bash cloud/azure/tools.sh clients"; exit 1; } ;;
+    nats-go)
+      [ -x harness/go-nats/out/natsgo-consumer ] || {
+        log "FATAL: harness/go-nats/out/natsgo-consumer is not built; run bash cloud/azure/tools.sh clients"; exit 1; } ;;
+  esac
+done
+case " $QUEUE_ARRIVALS " in
+  *" poisson "*)
+    case "$PLAN_SEED" in
+      *[!0-9]*|0?*) log "FATAL: PLAN_SEED is a whole number, not \"$PLAN_SEED\""; exit 1 ;;
+    esac
+    [ -f "$POISSON_PLAN" ] || python3 scripts/make_synthetic_plan.py --arrival poisson \
+      --rate "$RATE" --duration "$DURATION" --seed "$PLAN_SEED" --out "$POISSON_PLAN" || {
+      log "FATAL: could not make the plan $POISSON_PLAN"; exit 1; }
+    POISSON_SPEEDUP=$(assert_plan_rate "$POISSON_PLAN" 1) || {
+      log "FATAL: no speedup for $POISSON_PLAN"; exit 1; }
+    log "poisson plan: $POISSON_PLAN, drawn from seed $PLAN_SEED, at speedup $POISSON_SPEEDUP" ;;
+esac
 
 if python3 -c 'import csv, json, sys
 rows = csv.DictReader(open(sys.argv[1], encoding="utf-8"))
@@ -341,6 +544,10 @@ interrupt_counters () {
   cat "$PROC_DIR/interrupts" > "$RUN_DIR/interrupts_$1.txt" 2>&1
   cat "$PROC_DIR/softirqs" > "$RUN_DIR/softirqs_$1.txt" 2>&1
   cat "$PROC_DIR/net/softnet_stat" > "$RUN_DIR/softnet_$1.txt" 2>&1
+  # Plan version 47 (23 Oct 2026): and read: each CPU's time_squeeze, softnet_stat's third column,
+  # and each ksoftirqd thread's own time, which no counter above keeps (scripts/run_facts.py).
+  python3 scripts/run_facts.py --root "${PROC_DIR%/proc}/" softirq \
+    --out "$RUN_DIR/softirq_$1.json" > /dev/null 2>&1
 }
 
 # --- one run ---------------------------------------------------------------------------------
@@ -361,6 +568,105 @@ run_one () {
     REASON="the driver cannot reach the broker at $BROKER_PRIV"; return; }
   if sudo fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock >/dev/null 2>&1; then
     REASON="a package manager is running on the driver"; return
+  fi
+  # Plan version 47 (23 Oct 2026): so does a setup that names one of version 47's settings in a
+  # form this runner cannot give, or for a broker or a consumer that does not take it. Each would
+  # otherwise run, and be filed, under a setting it did not have: a depth no request kept, a
+  # prefetch no consumer was given, or a fetch thread that nothing raised.
+  case "$BACKEND" in
+    kafka|redis|nats|rabbitmq) ;;
+    *) REASON="backend is kafka, redis, nats or rabbitmq, not \"$BACKEND\""; return ;;
+  esac
+  case "${CONSUMER:-}" in
+    "") ;;
+    kafka-python|confluent|java|franz)
+      [ "$BACKEND" = kafka ] || {
+        REASON="consumer $CONSUMER is one of Kafka's consumers, and this run is $BACKEND"; return; } ;;
+    redis-py|waiting)
+      [ "$BACKEND" = redis ] || {
+        REASON="consumer $CONSUMER is one of Redis's consumers, and this run is $BACKEND"; return; } ;;
+    python|nats-go)
+      [ "$BACKEND" = nats ] || {
+        REASON="consumer $CONSUMER is one of NATS's consumers, and this run is $BACKEND"; return; } ;;
+    *) REASON="consumer is kafka-python, confluent, java or franz for Kafka, redis-py or waiting for Redis, or python or nats-go for NATS, not \"$CONSUMER\""; return ;;
+  esac
+  if [ -n "${CONSUMER:-}" ] && [ -n "${CLIENT:-}" ]; then
+    REASON="consumer swaps Kafka's consumer alone and language both clients, so a setup names one of them, not both"; return
+  fi
+  # The two consumers that keep their own requests waiting at the broker take a depth and a way
+  # of reading: NATS's python consumer, and Redis's waiting one. nats.go's Consume() keeps its own
+  # requests, 500 messages refilled at 250.
+  local waiting=""
+  [ "$BACKEND:${CONSUMER:-python}" = nats:python ] && waiting=1
+  [ "$BACKEND:${CONSUMER:-}" = redis:waiting ] && waiting=1
+  if [ -n "${DEPTH:-}" ]; then
+    case "$DEPTH" in
+      *[!0-9]*|0*) REASON="depth is a whole number of requests of at least one, not \"$DEPTH\""; return ;;
+    esac
+    [ -n "$waiting" ] || {
+      REASON="depth is the waiting consumers' setting, NATS's python consumer's and Redis's waiting consumer's, and this run's consumer keeps no requests of its own waiting"; return; }
+  fi
+  if [ -n "${ONE_REPLY:-}" ] && [ -z "$waiting" ]; then
+    REASON="one_reply_reads is the waiting consumers' setting, NATS's python consumer's and Redis's waiting consumer's, and this run's consumer reads as its library does"; return
+  fi
+  if [ -n "${PREFETCH:-}" ]; then
+    case "$PREFETCH" in
+      *[!0-9]*|0?*) REASON="prefetch is a whole number of messages, 0 for no limit, not \"$PREFETCH\""; return ;;
+    esac
+    [ "$BACKEND" = rabbitmq ] || {
+      REASON="prefetch is RabbitMQ's consumer's setting, and this run is $BACKEND"; return; }
+  fi
+  if [ -n "${ACK_BATCH:-}" ]; then
+    case "$ACK_BATCH" in
+      *[!0-9]*|0*) REASON="ack_batch is a whole number of at least one, not \"$ACK_BATCH\""; return ;;
+    esac
+    case "$BACKEND" in
+      redis|rabbitmq) ;;
+      *) REASON="ack_batch is the Redis and RabbitMQ consumers' setting, and this run is $BACKEND"; return ;;
+    esac
+    # RabbitMQ's consumer refuses a batch its prefetch could never fill, 1 unless the setup names it.
+    if [ "$BACKEND" = rabbitmq ] && [ "${PREFETCH:-1}" != 0 ] && [ "$ACK_BATCH" -gt "${PREFETCH:-1}" ]; then
+      REASON="ack_batch $ACK_BATCH is more than the ${PREFETCH:-1} messages the prefetch lets the broker send unacknowledged, so a batch would never fill"; return
+    fi
+  fi
+  if [ -n "${FETCH_RT:-}" ]; then
+    case "${CONSUMER:-}" in
+      confluent|java) ;;
+      franz) REASON="fetch_rt raises the thread that sends the fetches, and franz-go sends them from none of its own: only its whole process can be raised"; return ;;
+      *) REASON="fetch_rt raises the fetch threads a consumer names in its thread list, which only the confluent and java consumers write, and this run's consumer is ${CONSUMER:-the default one}"; return ;;
+    esac
+  fi
+  case "${SCHEDSTAT:-}:${CONSUMER:-}" in
+    1:java|1:franz|1:nats-go)
+      REASON="schedstat samples the Python consumer's own thread, and this run's consumer is $CONSUMER"; return ;;
+  esac
+  case "${ARRIVAL:-}" in
+    ""|constant) ;;
+    poisson)
+      [ "${PLAN_KIND:-}" != football ] || {
+        REASON="arrival sets the steady plan's arrivals, and this run replays the football plan"; return; } ;;
+    *) REASON="arrival is constant or poisson, not \"$ARRIVAL\""; return ;;
+  esac
+  case "${LOAD_KIND:-}" in
+    ""|cpu) ;;
+    sock|udp) [ "$LOAD" != 0 ] || {
+            REASON="load_kind sets what the load runs, and a load of 0 starts none"; return; } ;;
+    *) REASON="load_kind is cpu, sock or udp, not \"$LOAD_KIND\""; return ;;
+  esac
+  if [ -n "${SIBLING_LOAD:-}" ]; then
+    [ -n "${WHOLE_CORE:-}" ] || {
+      REASON="sibling_load loads the other threads of the core whole_core keeps, and this setup keeps none"; return; }
+    [ "$LOAD" != 0 ] || {
+      REASON="sibling_load runs the load on the core's other threads too, and a load of 0 starts none"; return; }
+    [ "${LOAD_KIND:-}" != udp ] || {
+      REASON="sibling_load runs the load on the core's other threads, and a udp load runs where the card's interrupts go"; return; }
+  fi
+  # "core", the first thread of the core whole_core would keep, or a list read by the parser that
+  # later writes it to the kernel (scripts/cpu_placement.py).
+  if [ -n "${IRQ_CPUS:-}" ] && [ "$IRQ_CPUS" != core ] && ! python3 -c 'import sys
+sys.path.insert(0, "scripts"); import cpu_placement; cpu_placement.parse_list(sys.argv[1])' \
+      "$IRQ_CPUS" 2>/dev/null; then
+    REASON="irq_cpus is core, or a list of CPUs as the kernel writes one, 2-3 or 1,3, not \"$IRQ_CPUS\""; return
   fi
   # Freeze 43 (22 Oct 2026): so does a setup that names one of freeze 43's settings in a form
   # this runner cannot give. stress-ng takes a whole percentage, the blocks a whole number of
@@ -443,6 +749,101 @@ run_one () {
   [ -n "$HZ" ] && check_args+=(--hz "$HZ")
   sudo python3 scripts/sched_settings.py check "${check_args[@]}" > "$RUN_DIR/settings_before.json" || {
     REASON="the settings before the run do not match the setup"; return; }
+  # Plan version 47 (23 Oct 2026): where the setup places the run, once the online CPUs are set.
+  # Each thing moved is written down before it is moved, as it was set and again after the run, and
+  # placement_back puts it back once the run ends, however it ends; nothing is moved that the
+  # setup does not name.
+  #   whole_core, or irq_cpus core: the core chosen from the online CPUs' own topology, and the
+  #     choice written beside the run (core_choice.json): the consumer on the core's first thread,
+  #     every other process the run starts off both of its threads, the load on every other CPU
+  #     and, with sibling_load, on the core's other threads as well;
+  #   irqbalance_off: irqbalance stopped, which would otherwise move the card's interrupts back;
+  #   irq_cpus: the card's interrupts given their CPUs, "core" being the core's first thread;
+  #   load_kind udp: the UDP load on the CPUs that take the card's interrupts, as given or as the
+  #     kernel was found running them;
+  #   rps_off: no receive packet steering on the receiver's queues, the card's and its own;
+  #   whole_core: the campaign's own CPUs narrowed to the others, so that every process it starts
+  #     from here on, through sudo or not, runs off the core; the consumer's wrap pins it there.
+  local placed="" core_first="" core_list="" kit_list="" irq_target=""
+  if [ -n "${WHOLE_CORE:-}" ] || [ "${IRQ_CPUS:-}" = core ]; then
+    placed=$(python3 scripts/cpu_placement.py core ${SIBLING_LOAD:+--sibling-load} \
+      --out "$RUN_DIR/core_choice.json" 2> "$RUN_DIR/core_choice.err") || {
+      REASON="no core could be chosen for the consumer: $placed"; return; }
+    local siblings load_list load_count
+    read -r core_first siblings kit_list load_list load_count <<< "$placed"
+    core_list="$core_first"
+    [ "$siblings" = - ] || core_list="$core_first,$siblings"
+    if [ -n "${WHOLE_CORE:-}" ]; then
+      CORE_CPU="$core_first"
+      [ "$load_list" = - ] || { LOAD_TASKSET="$load_list"; LOAD_CPUS="$load_count"; }
+      if [ "$LOAD" != 0 ] && [ -z "$LOAD_TASKSET" ]; then
+        REASON="whole_core keeps the only core for the consumer, and leaves no CPU for the load"; return
+      fi
+      [ "$kit_list" != - ] || {
+        REASON="whole_core keeps the only core for the consumer, and leaves no CPU for the run's other processes"; return; }
+    fi
+  fi
+  [ "${IRQ_CPUS:-}" = core ] && irq_target="$core_first"
+  [ -n "${IRQ_CPUS:-}" ] && [ "$IRQ_CPUS" != core ] && irq_target="$IRQ_CPUS"
+  local placing=""
+  [ -n "${WHOLE_CORE:-}${IRQ_CPUS:-}${IRQBALANCE_OFF:-}${RPS_OFF:-}" ] && placing=1
+  [ "${LOAD_KIND:-}" = udp ] && placing=1
+  if [ -n "$placing" ]; then
+    python3 scripts/cpu_placement.py irqs --out "$RUN_DIR/irq_affinity_before.json" \
+      > "$RUN_DIR/placement.log" 2>&1
+    systemctl is-active irqbalance > "$RUN_DIR/irqbalance_before.txt" 2>&1
+  fi
+  if [ -n "${IRQBALANCE_OFF:-}" ] && systemctl is-active --quiet irqbalance 2>/dev/null; then
+    IRQBALANCE_STOPPED=1
+    sudo systemctl stop irqbalance >> "$RUN_DIR/placement.log" 2>&1 || {
+      REASON="irqbalance could not be stopped for the run"; return; }
+  fi
+  if [ -n "$irq_target" ]; then
+    # irqbalance would move them back while the run went on, so the run stops here instead.
+    if systemctl is-active --quiet irqbalance 2>/dev/null; then
+      REASON="irq_cpus moves the receiver card's interrupts, and irqbalance is running, which moves them back; the setup names irqbalance_off for that"; return
+    fi
+    IRQS_MOVED="$RUN_DIR/irq_affinity_before.json"
+    sudo python3 scripts/cpu_placement.py irqs --set "$irq_target" \
+      --out "$RUN_DIR/irq_affinity_set.json" >> "$RUN_DIR/placement.log" 2>&1 || {
+      REASON="the receiver card's interrupts did not all take $irq_target; see $RUN_DIR/irq_affinity_set.json"; return; }
+  fi
+  if [ "${LOAD_KIND:-}" = udp ]; then
+    local udp_cpus
+    udp_cpus=$(python3 scripts/cpu_placement.py irq-cpus --irqs "$RUN_DIR/irq_affinity_before.json" \
+      ${irq_target:+--given "$irq_target"} ${CORE_CPU:+--avoid "$core_list"} 2>> "$RUN_DIR/placement.log") || {
+      REASON="the udp load has no CPU of its own: $udp_cpus"; return; }
+    read -r LOAD_TASKSET LOAD_CPUS <<< "$udp_cpus"
+  fi
+  if [ -n "${RPS_OFF:-}" ]; then
+    # eth0 and each accelerated device that carries its address, and the receiver's own link,
+    # whose queues only its namespace shows.
+    local eth0_mac dev
+    eth0_mac=$(cat "$ETH0_ADDRESS" 2>/dev/null)
+    RPS_DEVICES="--dev eth0"
+    for dev in $(ip -br link | awk -v mac="$eth0_mac" \
+        'mac != "" && $4 ~ /SLAVE/ && tolower($3) == tolower(mac) {print $1}'); do
+      RPS_DEVICES="$RPS_DEVICES --dev $dev"
+    done
+    # shellcheck disable=SC2086
+    python3 scripts/cpu_placement.py rps $RPS_DEVICES --out "$RUN_DIR/rps_before.json" \
+      >> "$RUN_DIR/placement.log" 2>&1
+    sudo ip netns exec sblrecv python3 scripts/cpu_placement.py rps --dev "$RECEIVER_LINK" \
+      --out "$RUN_DIR/rps_receiver_before.json" >> "$RUN_DIR/placement.log" 2>&1
+    RPS_MOVED="$RUN_DIR"
+    # shellcheck disable=SC2086
+    { sudo python3 scripts/cpu_placement.py rps $RPS_DEVICES --set 0 --out "$RUN_DIR/rps_set.json" \
+      && sudo ip netns exec sblrecv python3 scripts/cpu_placement.py rps --dev "$RECEIVER_LINK" \
+        --set 0 --out "$RUN_DIR/rps_receiver_set.json"; } >> "$RUN_DIR/placement.log" 2>&1 || {
+      REASON="receive steering could not be turned off on the receiver's queues; see $RUN_DIR/rps_set.json"; return; }
+  fi
+  if [ -n "${WHOLE_CORE:-}" ]; then
+    taskset -pc $$ > "$RUN_DIR/kit_mask_before.txt" 2>&1
+    KIT_MASK_BEFORE=$(sed -n 's/.*current affinity list: //p' "$RUN_DIR/kit_mask_before.txt")
+    KIT_MASK_BEFORE="${KIT_MASK_BEFORE:-0-$(( ALL_CPUS - 1 ))}"
+    taskset -pc "$kit_list" $$ > "$RUN_DIR/kit_mask_set.txt" 2>&1 || {
+      REASON="the campaign's own processes could not be kept off the consumer's core: $(cat "$RUN_DIR/kit_mask_set.txt")"; return; }
+  fi
 
   # The two ping paths can differ with no delay at all (by 0.4 ms on the second x86 pair), so the
   # same measurement is taken with no delay first, and run_integrity.py counts what lies beyond it.
@@ -473,8 +874,9 @@ run_one () {
   stress_pid=""
   # Freeze 43 (22 Oct 2026): at the setup's frozen duty where it names one (duty_pct), and not
   # before the clients at all where the load runs in blocks within the trial (load_blocks_s).
+  # Plan version 47 (23 Oct 2026): as the setup names the load (load_start).
   if [ "$LOAD" != 0 ] && [ -z "${LOAD_BLOCKS:-}" ]; then
-    stress-ng --cpu "$want_cpus" --cpu-load "${DUTY:-$LOAD}" --timeout 3600s >/dev/null 2>&1 &
+    load_start "${DUTY:-$LOAD}" "$want_cpus" 3600s
     stress_pid=$!
   fi
   sleep 3
@@ -522,7 +924,7 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
       #: the end of the run already kills this same process with -9 and has never hung.
       kill -9 "$stress_pid" 2>/dev/null; wait "$stress_pid" 2>/dev/null
       pkill -9 -x stress-ng 2>/dev/null
-      stress-ng --cpu "$want_cpus" --cpu-load "$adjusted" --timeout 3600s >/dev/null 2>&1 &
+      load_start "$adjusted" "$want_cpus" 3600s
       stress_pid=$!
       sleep 3
     fi
@@ -535,6 +937,14 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   if [ "$PLAN_KIND" = football ]; then
     run_plan="$FOOT_PLAN"; run_speedup="$FOOT_SPEEDUP"; run_maxt="$FOOT_MAXT"
     run_rate="$FOOT_RATE"; plan_args=(--planned "$FOOT_PLANNED")
+  fi
+  # Plan version 47 (23 Oct 2026): a setup that asks for Poisson arrivals replays the campaign's
+  # one Poisson draw at the same rate, held to the same count and rate as the steady plan. Each
+  # trial runner writes the plan's process and seed into meta.json, beside its path.
+  local run_arrival="${ARRIVAL:-constant}" run_seed=""
+  [ "$PLAN_KIND" = football ] && run_arrival=football
+  if [ "${ARRIVAL:-}" = poisson ]; then
+    run_plan="$POISSON_PLAN"; run_speedup="$POISSON_SPEEDUP"; run_seed="$PLAN_SEED"
   fi
 
   local record_args="" read_args="" receiver_capture=""
@@ -567,6 +977,10 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   # full length, so that each message's receipt can be timed from the kernel's own timestamp.
   local consumer_wrap="sudo ip netns exec sblrecv sudo -u $ME" recv_full=""
   [ -n "$CONSUMER_PRIORITY" ] && consumer_wrap="sudo chrt -f 80 $consumer_wrap"
+  # Plan version 47 (23 Oct 2026): where the run keeps a core for the consumer (whole_core), the
+  # consumer's process, and every thread it starts, on that core's first thread alone: taskset
+  # sets its own mask and runs the rest of the wrap, which inherits it.
+  [ -n "${CORE_CPU:-}" ] && consumer_wrap="taskset -c $CORE_CPU $consumer_wrap"
   # Freeze 43 (22 Oct 2026): the producer alone at real-time priority where the setup asks
   # (producer_priority), so that only the consumer's priority varies between setups. Under block
   # U's 70% load at 2,000 messages a second, Redis's producer at normal priority sent its messages
@@ -644,6 +1058,10 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   # first, so no two write one file; the larger buffer keeps the kernel from dropping packets.
   local broker_full="" broker_port="${KAFKA_BOOTSTRAP##*:}"
   [ "$BACKEND" = redis ] && broker_port="$REDIS_PORT"
+  # Plan version 47 (23 Oct 2026): NATS's port and RabbitMQ's, for their blocks. The client-host
+  # captures above name the broker's address alone, so they take every port already.
+  [ "$BACKEND" = nats ] && broker_port="$NATS_PORT"
+  [ "$BACKEND" = rabbitmq ] && broker_port="$RABBITMQ_PORT"
   if [ -n "$BROKER_CAPTURE" ]; then
     remote_broker "sudo sh -c 'kill -INT \$(cat /tmp/sbl_bfull.pid 2>/dev/null) 2>/dev/null; rm -f /tmp/sbl_bfull.pcap /tmp/sbl_bfull.err; nohup tcpdump -i eth0 -s 0 --time-stamp-precision=nano -B 32768 -w /tmp/sbl_bfull.pcap tcp port $broker_port > /tmp/sbl_bfull.err 2>&1 & echo \$! > /tmp/sbl_bfull.pid'" \
       > /dev/null 2>&1 && broker_full=1
@@ -660,6 +1078,15 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     interrupt_counters before
     python3 scripts/run_facts.py host --out "$RUN_DIR/run_facts.json" > "$RUN_DIR/run_facts.err" 2>&1
   fi
+  # Plan version 47 (23 Oct 2026): a load heavy in softirq work keeps the kernel's own counters
+  # before and after as well, with or without the run's facts: the softirq's time_squeeze, the
+  # times it ran out of budget with packets still waiting, and ksoftirqd's own time among them.
+  case "${RUN_FACTS:-}:${LOAD_KIND:-}" in :sock|:udp) interrupt_counters before ;; esac
+  # Plan version 47 (23 Oct 2026): every broker's image and its digest, and its server's own
+  # version, read on the broker in every run (scripts/run_facts.py broker); the integrity rule
+  # repeats a run whose own broker's were not read.
+  remote_broker "cd sbl && python3 scripts/run_facts.py broker --out -" \
+    > "$RUN_DIR/broker_facts.json" 2> "$RUN_DIR/broker_facts.err"
   # Freeze 40 (14 Oct 2026): the clients read the kernel's own timestamps on their connections to
   # the broker through SO_TIMESTAMPING, each into its own file beside the run (so_timestamps.py),
   # with the transmit timestamp taken where the row says.
@@ -705,14 +1132,24 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     BLOCKS_PID=$!
   fi
   local facts_pid=""
-  if [ -n "${RUN_FACTS:-}" ]; then
+  # Plan version 47 (23 Oct 2026): and where the run keeps a core for its consumer, so that the CPUs
+  # each client thread may run on, as the kernel holds them, show the pin took (whole_core).
+  if [ -n "${RUN_FACTS:-}${WHOLE_CORE:-}" ]; then
     run_facts_later "$RUN_DIR" &
     facts_pid=$!
   fi
+  # Plan version 47 (23 Oct 2026): one trial runner for each backend, each handed the three wraps
+  # and the plan's arrival process and seed, which it writes into meta.json beside the plan's path.
   if [ "$BACKEND" = kafka ]; then
     client_args=()
     [ -n "${CLIENT:-}" ] && client_args+=(-CLIENT "$CLIENT")
     [ -n "${ACK_STAMP:-}" ] && client_args+=(-ACK_STAMP "$ACK_STAMP")
+    # Plan version 47 (23 Oct 2026): the consumer alone, kafka_producer.py sending in every run,
+    # and the threads it names as sending its fetches raised where the setup asks.
+    [ -n "${CONSUMER:-}" ] && client_args+=(-CONSUMER "$CONSUMER")
+    [ -n "${FETCH_RT:-}" ] && client_args+=(-FETCH_RT)
+    SBL_PLAN_ARRIVAL="$run_arrival" SBL_PLAN_SEED="$run_seed" \
+    SBL_THREADS_WAIT_S="$THREADS_WAIT_S" SBL_FETCH_RT_PRIORITY="$FETCH_RT_PRIORITY" \
     SBL_CONSUMER_WRAP="$consumer_wrap" SBL_SCHED_WRAP="$wrap_sched" SBL_PRODUCER_WRAP="$producer_wrap" \
       timeout -k 30 $(( DURATION + 300 )) bash scripts/run_kafka_trial.sh "$RUN_ID" "$run_plan" \
       "$run_speedup" "$run_maxt" -BOOTSTRAP "$KAFKA_BOOTSTRAP" \
@@ -720,15 +1157,55 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
       -CONSUMER_EXTRA "$record_args $read_args $so_cons$cons_flags" \
       -IDLE_SECONDS 15 "${client_args[@]}" > "$RUN_DIR/trial.log" 2>&1
     rc=$?
-  else
+  elif [ "$BACKEND" = redis ]; then
+    # Plan version 47 (23 Oct 2026): the waiting consumer where the setup names it, at its depth
+    # and with its reads; its acknowledgment batch comes as redis-py's does.
+    redis_args=()
+    [ -n "${CONSUMER:-}" ] && redis_args+=(-CONSUMER "$CONSUMER")
+    [ -n "${DEPTH:-}" ] && redis_args+=(-DEPTH "$DEPTH")
+    [ -n "${ONE_REPLY:-}" ] && redis_args+=(-ONE_REPLY_READS)
     # Freeze 41 (15 Oct 2026): block K's two one-worker setups send through one XADD worker instead
     # of the producer's sixteen; a setup that names no count keeps the producer's own.
+    SBL_PLAN_ARRIVAL="$run_arrival" SBL_PLAN_SEED="$run_seed" \
     SBL_CONSUMER_WRAP="$consumer_wrap" SBL_SCHED_WRAP="$wrap_sched" SBL_PRODUCER_WRAP="$producer_wrap" \
       timeout -k 30 $(( DURATION + 300 )) bash scripts/run_redis_trial.sh "$RUN_ID" "$run_plan" \
       "$run_speedup" "$run_maxt" -RedisHost "$REDIS_HOST" -PORT "$REDIS_PORT" \
       -PRODUCER_EXTRA "$record_args $so_prod${SEND_WORKERS:+ --send-workers $SEND_WORKERS}$prod_flags" \
       -CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA${ACK_BATCH:+ --ack-batch $ACK_BATCH} $record_args $so_cons$cons_flags" \
-      -IDLE_SECONDS 15 > "$RUN_DIR/trial.log" 2>&1
+      -IDLE_SECONDS 15 "${redis_args[@]}" > "$RUN_DIR/trial.log" 2>&1
+    rc=$?
+  elif [ "$BACKEND" = nats ]; then
+    # Plan version 47 (23 Oct 2026): block N, its streams kept as NATS_STORAGE says. The runner
+    # names the stream after the run and the moment it began, so a run made again gets a stream of
+    # its own, and the consumer deletes it once it is done, so that the broker does not fill run by
+    # run. Neither NATS client takes M0's read trace; nats.go's consumer takes the runner's own
+    # flags alone, as franz-go's does.
+    nats_args=()
+    [ -n "${CONSUMER:-}" ] && nats_args+=(-CONSUMER "$CONSUMER")
+    [ -n "${DEPTH:-}" ] && nats_args+=(-DEPTH "$DEPTH")
+    [ -n "${ONE_REPLY:-}" ] && nats_args+=(-ONE_REPLY_READS)
+    SBL_PLAN_ARRIVAL="$run_arrival" SBL_PLAN_SEED="$run_seed" SBL_THREADS_WAIT_S="$THREADS_WAIT_S" \
+    SBL_CONSUMER_WRAP="$consumer_wrap" SBL_SCHED_WRAP="$wrap_sched" SBL_PRODUCER_WRAP="$producer_wrap" \
+      timeout -k 30 $(( DURATION + 300 )) bash scripts/run_nats_trial.sh "$RUN_ID" "$run_plan" \
+      "$run_speedup" "$run_maxt" -NatsHost "$NATS_HOST" -PORT "$NATS_PORT" \
+      -STORAGE "$NATS_STORAGE" -DELETE_STREAM \
+      -PRODUCER_EXTRA "$record_args $so_prod$prod_flags" \
+      -CONSUMER_EXTRA "$record_args $so_cons$cons_flags" \
+      -IDLE_SECONDS 15 "${nats_args[@]}" > "$RUN_DIR/trial.log" 2>&1
+    rc=$?
+  else
+    # Plan version 47 (23 Oct 2026): block P, RabbitMQ, at the setup's prefetch, which the runner
+    # hands the consumer last so that it wins; the acknowledgment batch where the setup names one.
+    # Kafka's producer settings and Redis's send workers are neither client's.
+    rabbit_args=()
+    [ -n "${PREFETCH:-}" ] && rabbit_args+=(-PREFETCH "$PREFETCH")
+    SBL_PLAN_ARRIVAL="$run_arrival" SBL_PLAN_SEED="$run_seed" \
+    SBL_CONSUMER_WRAP="$consumer_wrap" SBL_SCHED_WRAP="$wrap_sched" SBL_PRODUCER_WRAP="$producer_wrap" \
+      timeout -k 30 $(( DURATION + 300 )) bash scripts/run_rabbitmq_trial.sh "$RUN_ID" "$run_plan" \
+      "$run_speedup" "$run_maxt" -URI "$RABBITMQ_URI" \
+      -PRODUCER_EXTRA "$record_args $so_prod$prod_flags" \
+      -CONSUMER_EXTRA "$record_args $so_cons$cons_flags${ACK_BATCH:+ --ack-batch $ACK_BATCH}" \
+      -IDLE_SECONDS 15 "${rabbit_args[@]}" > "$RUN_DIR/trial.log" 2>&1
     rc=$?
   fi
   ended=$(date -u +%s)
@@ -743,10 +1220,34 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   chronyc -c tracking > "$RUN_DIR/clock_after.txt" 2>/dev/null
   tcp_counters after
   [ -z "${RUN_FACTS:-}" ] || interrupt_counters after
+  case "${RUN_FACTS:-}:${LOAD_KIND:-}" in :sock|:udp) interrupt_counters after ;; esac
+  # Plan version 47 (23 Oct 2026): what the run placed, as it stands once the run has ended,
+  # beside how it stood before and as it was set; placement_back then puts it back.
+  if [ -n "${placing:-}" ]; then
+    python3 scripts/cpu_placement.py irqs --out "$RUN_DIR/irq_affinity_after.json" \
+      >> "$RUN_DIR/placement.log" 2>&1
+    systemctl is-active irqbalance > "$RUN_DIR/irqbalance_after.txt" 2>&1
+  fi
+  if [ -n "${RPS_MOVED:-}" ]; then
+    # shellcheck disable=SC2086
+    python3 scripts/cpu_placement.py rps $RPS_DEVICES --out "$RUN_DIR/rps_after.json" \
+      >> "$RUN_DIR/placement.log" 2>&1
+    sudo ip netns exec sblrecv python3 scripts/cpu_placement.py rps --dev "$RECEIVER_LINK" \
+      --out "$RUN_DIR/rps_receiver_after.json" >> "$RUN_DIR/placement.log" 2>&1
+  fi
+  [ -z "${KIT_MASK_BEFORE:-}" ] || taskset -pc $$ > "$RUN_DIR/kit_mask_after.txt" 2>&1
   container=redis
   [ "$BACKEND" = kafka ] && container=broker
-  remote_broker "docker logs --timestamps --since $began --until $(( ended + 1 )) $container" \
-    > "$RUN_DIR/broker_log.txt" 2>&1
+  # Plan version 47 (23 Oct 2026): RabbitMQ is a container as Kafka and Redis are; NATS is a unit
+  # of the broker's own (cloud/brokers.sh), whose log is the journal's.
+  [ "$BACKEND" = rabbitmq ] && container=rabbitmq
+  if [ "$BACKEND" = nats ]; then
+    remote_broker "sudo journalctl -u sbl-nats-js -o short-iso-precise --since @$began --until @$(( ended + 1 ))" \
+      > "$RUN_DIR/broker_log.txt" 2>&1
+  else
+    remote_broker "docker logs --timestamps --since $began --until $(( ended + 1 )) $container" \
+      > "$RUN_DIR/broker_log.txt" 2>&1
+  fi
 
   if [ -n "$recv_full" ]; then
     # Stopped by its own command line, as M0's capture below is, for the reasons given there.
@@ -799,7 +1300,14 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   pkill -9 -x stress-ng 2>/dev/null
   sudo chown -R "$(id -u):$(id -g)" "$RUN_DIR" 2>/dev/null
 
-  [ "$rc" = 0 ] || { REASON="the trial exited with $rc; see $RUN_DIR/trial.log"; return; }
+  # Plan version 47 (23 Oct 2026): a runner that refused the run says why on a FATAL line, as
+  # run_kafka_trial.sh does when the consumer's fetch threads could not be raised, and the reason
+  # the ledger keeps is that line.
+  if [ "$rc" != 0 ]; then
+    local fatal
+    fatal=$(grep -m 1 '^FATAL: ' "$RUN_DIR/trial.log" 2>/dev/null)
+    REASON="the trial exited with $rc${fatal:+: ${fatal#FATAL: }}; see $RUN_DIR/trial.log"; return
+  fi
   if [ ! -f "$RUN_DIR/producer.csv" ] || [ ! -f "$RUN_DIR/consumer_events.csv" ]; then
     REASON="the run's producer or consumer file is missing"; return
   fi
@@ -832,9 +1340,13 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
 #: PRIME_S seconds, idle and with no capture, the consumer behind the receiver's address as in
 #: every run and each client with the campaign's own settings, into a folder of its own that
 #: nothing reads. Whatever a trial exits with, the campaign carries on.
+#: Plan version 47 (23 Oct 2026): then NATS and RabbitMQ, each where the queue holds a run of its,
+#: with its own client's default settings; a queue of Kafka and Redis primes as it always did.
 prime_brokers () {
-  local backend prime_id rc
-  for backend in kafka redis; do
+  local backend prime_id rc primed="kafka redis"
+  case " ${QUEUE_BACKENDS:-} " in *" nats "*) primed="$primed nats" ;; esac
+  case " ${QUEUE_BACKENDS:-} " in *" rabbitmq "*) primed="$primed rabbitmq" ;; esac
+  for backend in $primed; do
     reap
     prime_id="law_${QUEUE_NAME}_prime_${backend}_$(date -u +%Y%m%dT%H%M%SZ)"
     mkdir -p "runs/$prime_id"
@@ -843,11 +1355,21 @@ prime_brokers () {
         timeout -k 30 $(( PRIME_S + 300 )) bash scripts/run_kafka_trial.sh "$prime_id" \
         "$SYN_PLAN" "$SPEEDUP" "$PRIME_S" -BOOTSTRAP "$KAFKA_BOOTSTRAP" \
         -PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA" -IDLE_SECONDS 15 > "runs/$prime_id/trial.log" 2>&1
-    else
+    elif [ "$backend" = redis ]; then
       SBL_CONSUMER_WRAP="sudo ip netns exec sblrecv sudo -u $ME" \
         timeout -k 30 $(( PRIME_S + 300 )) bash scripts/run_redis_trial.sh "$prime_id" \
         "$SYN_PLAN" "$SPEEDUP" "$PRIME_S" -RedisHost "$REDIS_HOST" -PORT "$REDIS_PORT" \
         -CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA" -IDLE_SECONDS 15 > "runs/$prime_id/trial.log" 2>&1
+    elif [ "$backend" = nats ]; then
+      SBL_CONSUMER_WRAP="sudo ip netns exec sblrecv sudo -u $ME" \
+        timeout -k 30 $(( PRIME_S + 300 )) bash scripts/run_nats_trial.sh "$prime_id" \
+        "$SYN_PLAN" "$SPEEDUP" "$PRIME_S" -NatsHost "$NATS_HOST" -PORT "$NATS_PORT" \
+        -STORAGE "$NATS_STORAGE" -DELETE_STREAM -IDLE_SECONDS 15 > "runs/$prime_id/trial.log" 2>&1
+    else
+      SBL_CONSUMER_WRAP="sudo ip netns exec sblrecv sudo -u $ME" \
+        timeout -k 30 $(( PRIME_S + 300 )) bash scripts/run_rabbitmq_trial.sh "$prime_id" \
+        "$SYN_PLAN" "$SPEEDUP" "$PRIME_S" -URI "$RABBITMQ_URI" -IDLE_SECONDS 15 \
+        > "runs/$prime_id/trial.log" 2>&1
     fi
     rc=$?
     log "PRIME $backend: runs/$prime_id exit $rc"
@@ -897,7 +1419,10 @@ values = {
     "TRACE_EVENTS": "1" if p.get("trace_events") else "",
     # M0 (D29-1): its plan, the Redis consumer's acknowledgement batch, and whether its recorded
     # half captures packets. Every other block leaves all three unset.
-    "PLAN_KIND": p.get("plan") or "", "ACK_BATCH": p.get("ack_batch") or "",
+    # Plan version 47 (23 Oct 2026): the batch is handed on whatever it is, for the runner to
+    # refuse one it cannot give, where a batch of none used to be dropped for the default.
+    "PLAN_KIND": p.get("plan") or "",
+    "ACK_BATCH": "" if p.get("ack_batch") is None else str(p["ack_batch"]),
     "CAPTURE": "1" if p.get("capture") else "",
     # R1 (3 Oct 2026): go-first for the consumer alone, and the receiver's packets in every run.
     "CONSUMER_PRIORITY": "1" if p.get("consumer_priority") else "",
@@ -936,6 +1461,24 @@ values = {
     "DUTY": "" if p.get("duty_pct") is None else str(p["duty_pct"]),
     "LOAD_BLOCKS": "" if p.get("load_blocks_s") is None else str(p["load_blocks_s"]),
     "RUN_FACTS": "1" if p.get("run_facts") else "",
+    # Plan version 47 (23 Oct 2026): the consumer alone; the waiting consumers' depth and reads;
+    # RabbitMQ's prefetch; the fetch threads at real-time priority; the plan's arrival process;
+    # the consumer alone on a core, and its sibling loaded; the CPUs the card's interrupts are
+    # given, irqbalance off and the receive queues' steering off; and what the load runs. A row
+    # that names none of them leaves all twelve empty, and its run is launched exactly as before;
+    # a value of none is handed on for the runner to refuse.
+    "CONSUMER": str(p.get("consumer") or ""),
+    "DEPTH": "" if p.get("depth") is None else str(p["depth"]),
+    "ONE_REPLY": "1" if p.get("one_reply_reads") else "",
+    "PREFETCH": "" if p.get("prefetch") is None else str(p["prefetch"]),
+    "FETCH_RT": "1" if p.get("fetch_rt") else "",
+    "ARRIVAL": str(p.get("arrival") or ""),
+    "WHOLE_CORE": "1" if p.get("whole_core") else "",
+    "SIBLING_LOAD": "1" if p.get("sibling_load") else "",
+    "IRQ_CPUS": "" if p.get("irq_cpus") is None else str(p["irq_cpus"]),
+    "IRQBALANCE_OFF": "1" if p.get("irqbalance_off") else "",
+    "RPS_OFF": "1" if p.get("rps_off") else "",
+    "LOAD_KIND": str(p.get("load_kind") or ""),
     "TRACE": 1 if int(hashlib.sha256(row["key"].encode()).hexdigest(), 16) % 2 == 0 else 0,
     "HZ": round(1000 / tick) if tick else "",
 }
@@ -954,11 +1497,13 @@ PY
   echo "$ROW" > "$RUN_DIR/queue_row.json"
   printf '{"lane": "%s", "profile": "%s", "driver": "%s", "commit": "%s"}\n' "$LANE" \
     "${AZ_PROFILE:-unknown}" "$(hostname)" "$(git rev-parse HEAD 2>/dev/null)" > "$RUN_DIR/lane.json"
-  log "run $KEY: $BACKEND, load $LOAD%, slice ${SLICE_NS:-kernel default}, delay $DELAY_MS ms${PRIORITY:+, go-first}${CONSUMER_PRIORITY:+, go-first consumer}${RECV_CAPTURE:+, receiver capture}${SEND_CAPTURE:+, sender capture}${HW_CAPTURE:+, card capture}${SO_STAMPS:+, socket timestamps ($SO_STAMPS)}${SO_JOURNAL:+, journal=$SO_JOURNAL}${SEND_CAPTURE_BOTH:+, both directions of the sender}${SEND_WORKERS:+, $SEND_WORKERS send workers}${SCHED_FEATURES:+, $SCHED_FEATURES}${IDLE_POLL:+, idle_poll=$IDLE_POLL}${BROKER_CAPTURE:+, broker capture}${LOAD_RECORRECT:+, the load corrected again with the clients running}${PRODUCER_PRIORITY:+, go-first producer}${GC_OFF:+, collectors off}${GC_LOG:+, collections logged}${SCHEDSTAT:+, consumer schedstat}${DUTY:+, duty frozen at $DUTY%}${LOAD_BLOCKS:+, load in $LOAD_BLOCKS s blocks}${RUN_FACTS:+, run facts}${CPUS:+, $CPUS CPUs online}"
+  log "run $KEY: $BACKEND, load $LOAD%, slice ${SLICE_NS:-kernel default}, delay $DELAY_MS ms${PRIORITY:+, go-first}${CONSUMER_PRIORITY:+, go-first consumer}${RECV_CAPTURE:+, receiver capture}${SEND_CAPTURE:+, sender capture}${HW_CAPTURE:+, card capture}${SO_STAMPS:+, socket timestamps ($SO_STAMPS)}${SO_JOURNAL:+, journal=$SO_JOURNAL}${SEND_CAPTURE_BOTH:+, both directions of the sender}${SEND_WORKERS:+, $SEND_WORKERS send workers}${SCHED_FEATURES:+, $SCHED_FEATURES}${IDLE_POLL:+, idle_poll=$IDLE_POLL}${BROKER_CAPTURE:+, broker capture}${LOAD_RECORRECT:+, the load corrected again with the clients running}${PRODUCER_PRIORITY:+, go-first producer}${GC_OFF:+, collectors off}${GC_LOG:+, collections logged}${SCHEDSTAT:+, consumer schedstat}${DUTY:+, duty frozen at $DUTY%}${LOAD_BLOCKS:+, load in $LOAD_BLOCKS s blocks}${RUN_FACTS:+, run facts}${CONSUMER:+, consumer $CONSUMER}${DEPTH:+, depth $DEPTH}${ONE_REPLY:+, one-reply reads}${PREFETCH:+, prefetch $PREFETCH}${FETCH_RT:+, fetch threads at real-time priority}${ARRIVAL:+, $ARRIVAL arrivals}${WHOLE_CORE:+, the consumer alone on a core}${SIBLING_LOAD:+, its sibling loaded}${IRQ_CPUS:+, card interrupts on $IRQ_CPUS}${IRQBALANCE_OFF:+, irqbalance off}${RPS_OFF:+, receive steering off}${LOAD_KIND:+, $LOAD_KIND load}${CPUS:+, $CPUS CPUs online}"
   REASON=""
   STOP_REASON=""
+  CORE_CPU=""; LOAD_TASKSET=""; LOAD_CPUS=""
   run_one
   features_back "$RUN_DIR/feature_back.txt"
+  placement_back "$RUN_DIR"
   if [ -n "$REASON" ]; then
     echo "  [FAIL] $KEY: $REASON"
     python3 scripts/run_queue.py finish --queue "$QUEUE" --key "$KEY" --status failed \

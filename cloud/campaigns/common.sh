@@ -27,6 +27,16 @@ KAFKA_CLUSTER_BOOTSTRAP="${KAFKA_CLUSTER_BOOTSTRAP:-$BROKER_PRIV:29092}"
 REDIS_HOST="${REDIS_HOST:-$BROKER_PRIV}"
 REDIS_PORT="${REDIS_PORT:-6379}"
 REDIS_CLUSTER_PORT="${REDIS_CLUSTER_PORT:-7000}"
+# Plan version 47 (23 Oct 2026): the two brokers cloud/brokers.sh starts beside Kafka and Redis,
+# NATS with JetStream and RabbitMQ, each on its own port. RabbitMQ's default user, which the
+# broker's own configuration lets in from the driver, as the tools block's RabbitMQ does.
+NATS_HOST="${NATS_HOST:-$BROKER_PRIV}"
+NATS_PORT="${NATS_PORT:-4222}"
+# Block N's streams keep their messages in memory, so that the stream's own disk writes are no
+# part of what a run measures.
+NATS_STORAGE="${NATS_STORAGE:-memory}"
+RABBITMQ_PORT="${RABBITMQ_PORT:-5672}"
+RABBITMQ_URI="${RABBITMQ_URI:-amqp://guest:guest@$BROKER_PRIV:$RABBITMQ_PORT}"
 
 # The Kafka producer must be pipelined or its scheduling lag dominates TTI. This is
 # measurement defect #3 in the manuscript; leaving it out silently reproduces the defect.

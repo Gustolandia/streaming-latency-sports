@@ -1117,3 +1117,340 @@ class TestTheLoadInBlocks:
         why = found["checks"]["load"]["why"]
         assert found["verdict"] == "repeat" and found["recorded"]["load_blocks"] is None
         assert why.startswith("the load could not be checked: ") and fragment in why, why
+
+
+# --- Plan version 47 (23 Oct 2026): the new brokers' settings, the consumer the setup names, the
+# fetch threads it raises and the core it keeps for the consumer.
+
+def log_line(run, name, *lines):
+    with open(os.path.join(run, name), "w", encoding="utf-8") as fh:
+        fh.write("starting\n" + "".join(line + "\n" for line in lines) + "OK wrote 400 rows\n")
+
+
+NATS_LINE = ("CONFIG effective depth=%s expires_ms=30000 one_reply_reads=%s max_waiting=%s "
+             "max_ack_pending=1000000 storage=memory stream=S subject=s durable=d "
+             "server_version=2.15.1 client=python clock_resolution_ns=232")
+RABBIT_LINE = ("CONFIG effective prefetch=%s ack_batch=%s ack_multiple=%s poller=select queue=q "
+               "broker=10.0.0.1:5672 so_connections=1 client=python clock_resolution_ns=232")
+WAITING_LINE = ("CONFIG effective ack_batch=200 count=200 block_ms=1000 cluster=False "
+                "client=python clock_resolution_ns=232 consumer=waiting depth=%s reads=%s "
+                "acks=second-connection measuring_port=40000 ack_port=40001")
+
+
+def params(backend, **more):
+    return dict({"backend": backend, "load_pct": 75, "delay_ms": 2.0}, **more)
+
+
+class TestPlanVersion47sClientSettings:
+
+    @pytest.mark.parametrize("asked,line,ok", [
+        ({}, NATS_LINE % (1, 0, 512), True),
+        ({"depth": 256}, NATS_LINE % (256, 0, 1024), True),
+        ({"depth": 256}, NATS_LINE % (1, 0, 512), False)])
+    def test_nats_is_held_to_its_depth(self, tmp_path, asked, line, ok):
+        run = make_run(tmp_path, params=params("nats", **asked))
+        log_line(run, "consumer.log", line)
+        found = evaluate(run)["checks"]["client"]
+        assert found["ok"] is ok and found["limit"] == "depth=%d in consumer.log" % (
+            asked.get("depth", 1))
+
+    @pytest.mark.parametrize("asked,line,ok", [
+        ({}, RABBIT_LINE % (1, 1, False), True),
+        ({"prefetch": 1000, "ack_batch": 200}, RABBIT_LINE % (1000, 200, True), True),
+        ({"prefetch": 0}, RABBIT_LINE % (0, 1, False), True),
+        ({"prefetch": 1000}, RABBIT_LINE % (1, 1, False), False)])
+    def test_rabbitmq_is_held_to_its_prefetch(self, tmp_path, asked, line, ok):
+        run = make_run(tmp_path, params=params("rabbitmq", **asked))
+        log_line(run, "consumer.log", line)
+        assert evaluate(run)["checks"]["client"]["ok"] is ok
+
+    def test_a_backend_with_no_setting_of_its_own_cannot_be_checked(self, tmp_path):
+        run = make_run(tmp_path, params=params("pulsar"))
+        assert evaluate(run)["checks"]["client"]["why"].startswith("the client could not be")
+
+
+class TestTheConsumerTheSetupNames:
+
+    @pytest.mark.parametrize("consumer,line", [
+        ("confluent", "CONFIG effective client=confluent confluent_kafka=2.15.1 librdkafka=2.15.1 "
+                      "fetch.wait.max.ms=default queued.min.messages=default "
+                      "clock_resolution_ns=232"),
+        ("java", "CONFIG client=java side=consumer clock_resolution_ns=1000"),
+        ("franz", "CONFIG effective client=franz-go franz_go=v1.19.5 go=go1.23.11 "
+                  "clock_resolution_ns=232"),
+        ("kafka-python", "CONFIG effective client=python clock_resolution_ns=232")])
+    def test_each_kafka_consumer_is_known_by_its_own_first_line(self, tmp_path, consumer, line):
+        run = make_run(tmp_path, params=params("kafka", consumer=consumer))
+        log_line(run, "consumer.log", line)
+        found = evaluate(run)["checks"]
+        assert found["consumer"] == {"ok": True, "value": {"consumer": consumer},
+                                     "limit": "consumer=%s in consumer.log" % consumer, "why": ""}
+        assert found["client"]["ok"] is True, "the producer's own setting, as before"
+
+    def test_a_run_whose_consumer_was_another_is_repeated(self, tmp_path):
+        run = make_run(tmp_path, params=params("kafka", consumer="confluent"))
+        log_line(run, "consumer.log", "CONFIG effective client=python clock_resolution_ns=232")
+        found = evaluate(run)
+        assert found["verdict"] == "repeat" and found["reasons"] == [
+            "the consumer ran with consumer=kafka-python, not confluent"]
+        log_line(run, "consumer.log", "nothing configured")
+        assert evaluate(run)["checks"]["consumer"]["why"] == (
+            "the consumer ran with consumer=an unlogged value, not confluent")
+
+    def test_the_waiting_consumer_is_held_to_its_depth_and_its_reads(self, tmp_path):
+        asked = params("redis", consumer="waiting", depth=256, one_reply_reads=True)
+        run = make_run(tmp_path, params=asked,
+                       client_line=WAITING_LINE % (256, "one-reply"))
+        found = evaluate(run)["checks"]
+        assert found["client"]["ok"] and found["consumer"]["ok"], found["consumer"]
+        assert found["consumer"]["value"] == {"consumer": "waiting", "depth": "256",
+                                              "reads": "one-reply"}
+        run = make_run(tmp_path, name="buffered", params=asked,
+                       client_line=WAITING_LINE % (64, "buffered"))
+        assert evaluate(run)["checks"]["consumer"]["why"] == (
+            "the consumer ran with depth=64, not 256; reads=buffered, not one-reply")
+
+    def test_redis_pys_consumer_is_told_from_the_waiting_one(self, tmp_path):
+        run = make_run(tmp_path, params=params("redis", consumer="redis-py"),
+                       client_line="CONFIG effective ack_batch=200 count=200 block_ms=1000 "
+                                   "cluster=False client=python clock_resolution_ns=232")
+        assert evaluate(run)["checks"]["consumer"]["value"] == {"consumer": "redis-py"}
+
+    def test_natss_python_consumer_is_held_to_its_reads_and_its_room(self, tmp_path):
+        run = make_run(tmp_path, params=params("nats", depth=256, one_reply_reads=True))
+        log_line(run, "consumer.log", NATS_LINE % (256, 1, 1024))
+        found = evaluate(run)["checks"]
+        assert found["consumer"]["ok"] and found["consumer"]["value"] == {
+            "one_reply_reads": "1", "max_waiting": "1024"}
+        log_line(run, "consumer.log", NATS_LINE % (256, 0, 256))
+        assert evaluate(run)["checks"]["consumer"]["why"] == (
+            "the consumer ran with one_reply_reads=0, not 1; max_waiting=256, not at least 512")
+        log_line(run, "consumer.log", NATS_LINE % (256, 1, 512) + " probe_ms=100")
+        assert evaluate(run)["checks"]["consumer"]["ok"] is True,             "twice the depth is room enough, and a field the consumer comes to log changes nothing"
+
+    def test_natss_go_consumer_is_known_by_its_line_and_held_to_no_depth(self, tmp_path):
+        run = make_run(tmp_path, params=params("nats", consumer="nats-go"))
+        log_line(run, "consumer.log", "CONFIG effective client=nats.go nats_go=v1.54.0 "
+                                      "go=go1.26.0 clock_resolution_ns=232",
+                 "CONFIG effective max_messages=500 threshold=0 expires_ms=30000 max_waiting=512 "
+                 "max_ack_pending=1000000 storage=memory stream=S subject=s durable=d "
+                 "server_version=2.15.1")
+        found = evaluate(run)["checks"]
+        assert "client" not in found and found["consumer"]["ok"] is True
+        assert found["consumer"]["value"] == {"consumer": "nats-go"}
+        run = make_run(tmp_path, name="python", params=params("nats", consumer="python"))
+        log_line(run, "consumer.log", NATS_LINE % (1, 0, 512))
+        assert evaluate(run)["checks"]["consumer"]["value"]["consumer"] == "python"
+
+    def test_rabbitmqs_consumer_is_held_to_its_batch(self, tmp_path):
+        run = make_run(tmp_path, params=params("rabbitmq", prefetch=1000, ack_batch=200))
+        log_line(run, "consumer.log", RABBIT_LINE % (1000, 1, False))
+        assert evaluate(run)["checks"]["consumer"]["why"] == (
+            "the consumer ran with ack_batch=1, not 200")
+
+    def test_a_setup_that_names_no_consumer_is_held_to_nothing_more(self, tmp_path):
+        assert "consumer" not in evaluate(make_run(tmp_path))["checks"]
+        assert ri.consumer_settings({"backend": "redis"}) == []
+
+    def test_a_missing_consumer_log_is_repeated(self, tmp_path):
+        run = make_run(tmp_path, params=params("kafka", consumer="java"))
+        found = evaluate(run)["checks"]["consumer"]
+        assert found["ok"] is False and found["why"].startswith("the consumer could not be")
+
+
+def threads_record(run, ok=True, raised=None):
+    raised = [{"tid": "4102", "name": "rdk:broker1", "ok": True, "policy_after": "SCHED_FIFO",
+               "rt_priority_after": 80}] if raised is None else raised
+    with open(os.path.join(run, "consumer_threads.json"), "w", encoding="utf-8") as fh:
+        json.dump({"ok": ok, "why": "" if ok else "the list never came", "raised": raised}, fh)
+
+
+class TestTheFetchThreads:
+
+    def test_raised_and_read_back_they_count(self, tmp_path):
+        run = make_run(tmp_path, params=params("kafka", consumer="confluent", fetch_rt=True))
+        log_line(run, "consumer.log", "CONFIG effective client=confluent x clock_resolution_ns=1")
+        threads_record(run)
+        found = evaluate(run)["checks"]["fetch_rt"]
+        assert found["ok"] is True and found["value"] == [
+            {"tid": "4102", "name": "rdk:broker1", "policy": "SCHED_FIFO", "rt_priority": 80}]
+
+    @pytest.mark.parametrize("ok,raised,why", [
+        (False, [], "the fetch threads were not raised: the list never came"),
+        (True, [], "the fetch threads were not raised: 0 of 0 held SCHED_FIFO"),
+        (True, [{"tid": "1", "ok": False, "policy_after": "SCHED_OTHER"}],
+         "the fetch threads were not raised: 0 of 1 held SCHED_FIFO")])
+    def test_not_raised_they_are_repeated(self, tmp_path, ok, raised, why):
+        run = make_run(tmp_path, params=params("kafka", fetch_rt=True))
+        threads_record(run, ok, raised)
+        assert evaluate(run)["checks"]["fetch_rt"]["why"] == why
+
+    def test_without_the_record_the_run_is_repeated(self, tmp_path):
+        found = evaluate(make_run(tmp_path, params=params("kafka", fetch_rt=True)))
+        assert found["checks"]["fetch_rt"]["why"].startswith("the fetch_rt could not be checked")
+
+
+def placement(run, processes, core=(6, 7), consumer=6, load=(0, 1, 2, 3, 4, 5)):
+    with open(os.path.join(run, "core_choice.json"), "w", encoding="utf-8") as fh:
+        json.dump({"core": list(core), "consumer_cpu": consumer, "load_cpus": list(load),
+                   "load_list": "0-5"}, fh)
+    with open(os.path.join(run, "run_facts_clients.json"), "w", encoding="utf-8") as fh:
+        json.dump({"processes": processes}, fh)
+
+
+def process(pid, names, *threads):
+    return {"pid": pid, "names": names,
+            "threads": [{"tid": tid, "comm": comm, "cpus_allowed_list": cpus}
+                        for tid, comm, cpus in threads]}
+
+
+#: A loaded run of block C as run_facts.py reads it: go-first's sudo before the consumer's pin, the
+#: wraps after it, the consumer with its two threads on CPU 6, the producer, a capture and the load.
+PLACED = [process(10, "kafka_consumer_confluent.py", (10, "sudo", "0-5")),
+          process(11, "kafka_consumer_confluent.py", (11, "sudo", "6")),
+          process(12, "kafka_consumer_confluent.py", (12, "python3", "6"), (13, "rdk:broker1", "6")),
+          process(20, "kafka_producer.py", (20, "python3", "0-5"), (21, "python3", "0-5")),
+          process(30, "tcpdump", (30, "tcpdump", "0-5")),
+          process(40, "stress-ng", (40, "stress-ng-cpu", "0-5"))]
+
+
+class TestTheCoreKeptForTheConsumer:
+
+    def test_the_consumer_alone_on_its_cpu_and_every_other_process_off_the_core(self, tmp_path):
+        run = make_run(tmp_path, params=params("kafka", whole_core=True))
+        placement(run, PLACED)
+        found = evaluate(run)["checks"]["placement"]
+        assert found["ok"] is True and found["value"] == {"consumer_cpu": 6, "load_list": "0-5",
+                                                          "misplaced": 0}
+
+    @pytest.mark.parametrize("moved,why", [
+        (process(12, "kafka_consumer_confluent.py", (12, "python3", "6"), (13, "rdk:x", "0-7")),
+         "1 thread(s) ran where the run did not place them: kafka_consumer_confluent.py thread "
+         "13 on 0-7"),
+        (process(20, "kafka_producer.py", (20, "python3", "0-7")),
+         "1 thread(s) ran where the run did not place them: kafka_producer.py thread 20 on 0-7"),
+        (process(30, "tcpdump", (30, "tcpdump", "7")),
+         "1 thread(s) ran where the run did not place them: tcpdump thread 30 on 7"),
+        (process(40, "stress-ng", (40, "stress-ng-cpu", None)),
+         "1 thread(s) ran where the run did not place them: stress-ng thread 40 on None")])
+    def test_a_thread_that_ran_where_it_was_not_placed_is_repeated(self, tmp_path, moved, why):
+        run = make_run(tmp_path, params=params("kafka", whole_core=True))
+        placement(run, [moved if p["pid"] == moved["pid"] else p for p in PLACED])
+        assert evaluate(run)["checks"]["placement"]["why"] == why
+
+    def test_facts_that_name_no_consumer_are_repeated(self, tmp_path):
+        run = make_run(tmp_path, params=params("kafka", whole_core=True))
+        placement(run, PLACED[3:])
+        assert evaluate(run)["checks"]["placement"]["why"] == (
+            "the clients' facts name no consumer process")
+
+    def test_without_the_facts_the_run_is_repeated(self, tmp_path):
+        found = evaluate(make_run(tmp_path, params=params("kafka", whole_core=True)))
+        assert found["checks"]["placement"]["why"].startswith("the placement could not be")
+
+    def test_a_run_that_keeps_no_core_is_held_to_none(self, tmp_path):
+        assert "placement" not in evaluate(make_run(tmp_path))["checks"]
+
+
+#: The brokers' facts as scripts/run_facts.py's `broker` writes them, every broker read.
+BROKERS = {"kind": "broker", "unread": {},
+           "kafka": {"container": "broker", "version": "4.1.1", "image": {
+               "image": "apache/kafka:4.1.1", "image_id": "sha256:aaa",
+               "repo_digests": ["apache/kafka@sha256:111"]}},
+           "redis": {"container": "redis", "version": "7.4.11", "image": {
+               "image": "redis:7.4.11@sha256:449", "image_id": "sha256:bbb",
+               "repo_digests": ["redis@sha256:449"]}},
+           "rabbitmq": {"container": "rabbitmq", "version": "4.3.7", "image": {
+               "image": "rabbitmq:4.3.7@sha256:ddb", "image_id": "sha256:ccc",
+               "repo_digests": ["rabbitmq@sha256:ddb"]}},
+           "nats": {"version": "2.15.1", "jetstream": True, "server_id": "N1"}}
+
+
+def brokers_read(run, facts=None, text=None, err=True):
+    """The two files the campaign leaves beside a run: the facts (`text` as written, else
+    `facts` as JSON, else none) and the error stream's."""
+    if text is None and facts is not None:
+        text = json.dumps(facts)
+    if text is not None:
+        with open(os.path.join(run, "broker_facts.json"), "w", encoding="utf-8") as fh:
+            fh.write(text)
+    if err:
+        with open(os.path.join(run, "broker_facts.err"), "w", encoding="utf-8") as fh:
+            fh.write("broker facts -> -, 0 unread\n")
+
+
+class TestTheBrokersFacts:
+
+    @pytest.mark.parametrize("backend,image,digests,version", [
+        ("kafka", "apache/kafka:4.1.1", ["apache/kafka@sha256:111"], "4.1.1"),
+        ("redis", "redis:7.4.11@sha256:449", ["redis@sha256:449"], "7.4.11"),
+        ("rabbitmq", "rabbitmq:4.3.7@sha256:ddb", ["rabbitmq@sha256:ddb"], "4.3.7"),
+        ("nats", None, None, "2.15.1")])
+    def test_the_runs_own_broker_read_counts(self, tmp_path, backend, image, digests, version):
+        run = make_run(tmp_path, params=params(backend))
+        brokers_read(run, BROKERS)
+        found = evaluate(run)["checks"]["broker"]
+        assert found["ok"] is True and found["value"] == {"image": image, "digests": digests,
+                                                          "version": version}
+
+    def test_a_broker_whose_digest_and_version_were_not_read_is_repeated(self, tmp_path):
+        facts = json.loads(json.dumps(BROKERS))
+        facts["redis"] = {"container": "redis", "image": None, "version": None}
+        facts["unread"] = {"redis.image": "docker printed nothing and exited 1",
+                           "redis.version": "docker printed nothing and exited 1",
+                           "kafka.version": "/opt/kafka/libs holds no kafka_<scala>-<version>.jar"}
+        run = make_run(tmp_path, params=params("redis"))
+        brokers_read(run, facts)
+        assert evaluate(run)["checks"]["broker"]["why"] == (
+            "the redis broker's facts were not read in the run: no image digest, no server "
+            "version (redis.image: docker printed nothing and exited 1; redis.version: docker "
+            "printed nothing and exited 1)")
+
+    def test_kafka_is_held_to_its_images_tag_and_digest_and_not_its_jar(self, tmp_path):
+        facts = json.loads(json.dumps(BROKERS))
+        facts["kafka"]["version"] = None
+        facts["unread"] = {"kafka.version": "/opt/kafka/libs holds no kafka_<scala>-<version>.jar"}
+        run = make_run(tmp_path, "jar")
+        brokers_read(run, facts)
+        assert evaluate(run)["checks"]["broker"]["ok"] is True
+        facts["kafka"]["image"]["repo_digests"] = []
+        run = make_run(tmp_path, "digest")
+        brokers_read(run, facts)
+        found = evaluate(run)
+        assert found["verdict"] == "repeat" and found["checks"]["broker"]["why"] == (
+            "the kafka broker's facts were not read in the run: no image digest (kafka.version: "
+            "/opt/kafka/libs holds no kafka_<scala>-<version>.jar)")
+
+    def test_another_brokers_facts_do_not_decide_the_run(self, tmp_path):
+        facts = json.loads(json.dumps(BROKERS))
+        facts["redis"] = {"container": "redis", "image": None, "version": None}
+        run = make_run(tmp_path)
+        brokers_read(run, facts)
+        assert evaluate(run)["checks"]["broker"]["ok"] is True
+
+    def test_a_nats_server_without_jetstream_or_unread_is_repeated(self, tmp_path):
+        facts = json.loads(json.dumps(BROKERS))
+        facts["nats"]["jetstream"] = False
+        run = make_run(tmp_path, "on", params=params("nats"))
+        brokers_read(run, facts)
+        assert evaluate(run)["checks"]["broker"]["why"] == (
+            "the nats broker's facts were not read in the run: no JetStream")
+        facts["nats"] = None
+        facts["unread"] = {"nats": "no NATS server answers at 127.0.0.1:4222: refused"}
+        run = make_run(tmp_path, "off", params=params("nats"))
+        brokers_read(run, facts)
+        assert evaluate(run)["checks"]["broker"]["why"] == (
+            "the nats broker's facts were not read in the run: no server version, no JetStream "
+            "(nats: no NATS server answers at 127.0.0.1:4222: refused)")
+
+    @pytest.mark.parametrize("text,err,why", [
+        ("", True, "the broker could not be checked: broker_facts.json is not valid JSON"),
+        (None, True, "the broker could not be checked: broker_facts.json cannot be read"),
+        ("[]", False, "the broker could not be checked: broker_facts.json holds no broker's facts")])
+    def test_facts_the_broker_host_never_gave_are_repeated(self, tmp_path, text, err, why):
+        run = make_run(tmp_path)
+        brokers_read(run, text=text, err=err)
+        assert evaluate(run)["checks"]["broker"]["why"].startswith(why)
+
+    def test_a_run_made_before_the_facts_were_read_is_held_to_none(self, tmp_path):
+        assert "broker" not in evaluate(make_run(tmp_path))["checks"]

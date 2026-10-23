@@ -11,13 +11,21 @@ import pytest
 
 SCRIPTS = Path(__file__).parent.parent.parent / "scripts"
 
-#: The four processes that read the wall clock to make a measurement, and the name each announces
-#: itself by. The Java client's own guard is held by harness/java/src/LawSelfTest.java.
+#: The processes that read the wall clock to make a measurement, and the name each announces
+#: itself by: the four every block has run, and since plan version 47 (23 Oct 2026) its Python
+#: clients. The Java client's own guard is held by harness/java/src/LawSelfTest.java, and the Go
+#: consumers' by tests/unit/test_go_and_java_consumers.py.
 STAMPERS = {
     "kafka_producer.py": "the Kafka producer",
     "kafka_consumer.py": "the Kafka consumer",
     "redis_producer.py": "the Redis producer",
     "redis_consumer.py": "the Redis consumer",
+    "kafka_consumer_confluent.py": "the confluent-kafka consumer",
+    "redis_consumer_waiting.py": "the waiting Redis consumer",
+    "nats_producer.py": "the NATS producer",
+    "nats_consumer.py": "the NATS consumer",
+    "rabbitmq_producer.py": "the RabbitMQ producer",
+    "rabbitmq_consumer.py": "the RabbitMQ consumer",
 }
 
 

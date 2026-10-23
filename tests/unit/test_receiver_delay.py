@@ -323,6 +323,16 @@ class TestMain:
         assert self.run(check + ["2.0"])[0] == 1
 
 
+#: Plan version 47 (23 Oct 2026): the consumers the Kafka and Redis runners start in place of their
+#: own where a setup names one (-CONSUMER), by the words their lines start them with: librdkafka's
+#: by its script, franz-go's by the variable that holds its binary, and Redis's two by the variable
+#: that holds the script; each variable is held to the consumers it may name.
+CONSUMERS_SINCE_47 = {"scripts/kafka_consumer_confluent.py": None,
+                      '"$FRANZ_BIN"': ("FRANZ_BIN", ("harness/go/out/franz-consumer",)),
+                      '"$CONSUMER_SCRIPT"': ("CONSUMER_SCRIPT", ("scripts/redis_consumer.py",
+                                                                 "scripts/redis_consumer_waiting.py"))}
+
+
 @pytest.mark.parametrize("runner,consumer", [("run_kafka_trial.sh", "kafka_consumer.py"),
                                              ("run_redis_trial.sh", "redis_consumer.py")])
 class TestTheTrialRunnersCarryTheConsumerHook:
@@ -345,11 +355,17 @@ class TestTheTrialRunnersCarryTheConsumerHook:
         text = self.text(runner)
         wrapped = [line for line in text.splitlines()
                    if "$CONSUMER_WRAP" in line and not line.lstrip().startswith("#")]
-        receivers = ("scripts/%s" % consumer, "LawConsumer")
+        receivers = ("scripts/%s" % consumer, "LawConsumer") + tuple(CONSUMERS_SINCE_47)
         assert wrapped, "the receiver-only delay needs the consumer prefixed"
         for line in wrapped:
             assert any(name in line for name in receivers), (
                 "the consumer hook prefixes something that does not receive: %s" % line.strip())
+        for word, held in CONSUMERS_SINCE_47.items():
+            if held and [line for line in wrapped if word in line]:
+                variable, consumers = held
+                given = [line.strip().split("=", 1)[1].strip('"') for line in text.splitlines()
+                         if line.strip().startswith(variable + "=")]
+                assert given and set(given) <= set(consumers), (variable, given)
         sends = [line for line in text.splitlines()
                  if ("LawProducer" in line or "KAFKA_PRODUCER_SCRIPT\"" in line
                      or "redis_producer.py" in line) and not line.lstrip().startswith("#")]

@@ -199,6 +199,25 @@ class TestTheClientsOwnShare:
         assert util_sampler.client_pids(proc) == {"11", "12"}
         assert util_sampler.client_pids(tmp_path / "nowhere") == set()
 
+    def test_plan_version_47s_clients_are_found_too(self, tmp_path):
+        """Each by a word of its own: none of them is found by the four clients' words, so a
+        sampler without them would count their processor time as the run's background load."""
+        clients = ["python3 scripts/kafka_consumer_confluent.py --run-id r",
+                   "python3 scripts/kafka_producer_confluent.py --run-id r",
+                   "java -cp out:lib/kafka-clients.jar LawConsumer --run-id r",
+                   "harness/go/out/franz-consumer --run-id r",
+                   "python3 scripts/redis_consumer_waiting.py --depth 256",
+                   "python3 scripts/nats_producer.py --run-id r",
+                   "python3 scripts/nats_consumer.py --run-id r",
+                   "harness/go-nats/out/natsgo-consumer --run-id r",
+                   "python3 scripts/rabbitmq_producer.py --run-id r",
+                   "python3 scripts/rabbitmq_consumer.py --run-id r"]
+        proc = self.fake_proc(tmp_path, {20 + n: (line, 1) for n, line in enumerate(clients)})
+        assert util_sampler.client_pids(proc) == {str(20 + n) for n in range(len(clients))}
+        assert util_sampler.client_pids(proc, marks=("kafka_producer.py", "kafka_consumer.py",
+                                                     "redis_producer.py",
+                                                     "redis_consumer.py")) == set()
+
     def test_the_time_of_a_process_that_is_gone_or_unreadable_is_left_out(self, tmp_path):
         proc = self.fake_proc(tmp_path, {11: ("python3 scripts/kafka_producer.py", 40)})
         (proc / "12").mkdir()

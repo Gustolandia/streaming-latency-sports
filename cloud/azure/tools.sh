@@ -12,6 +12,7 @@
 #     bash cloud/azure/tools.sh t2 wrk2          # forced negatives, by moving the clock it reads
 #     bash cloud/azure/tools.sh t3 vegeta        # idle against 88% load, with and without go-first
 #     bash cloud/azure/tools.sh t4 vegeta        # what it can report at all
+#     bash cloud/azure/tools.sh clients          # ON THE DRIVER: plan version 47's own clients
 #
 # Which machine runs which is not a detail. The servers go on the broker and the tools on the
 # driver, so a tool's messages cross the same wire our own program's do and T1's delay, added on
@@ -2321,8 +2322,94 @@ reference () {
   log "CAMPAIGN_COMPLETE: the reference for $tool is in $run/reference_trips.json"
 }
 
+#: Plan version 47 (23 Oct 2026): the clients its blocks run on the driver beside the Python ones
+#: cloud-init installs, each at the version the plan names, and what landed written down. Safe to
+#: run again: a library already at its version is left as it is, and the consumers are built again
+#: from their sources, by their own build scripts, which check what they fetch:
+#:   confluent-kafka, librdkafka's Python client, for the confluent consumer; pika, RabbitMQ's;
+#:     both system-wide, as pika is for the tools block, because the consumer runs as this user
+#:     inside the receiver's namespace, where a user-local install is not on the path sudo gives;
+#:   Java 17 and harness/java/build.sh, which builds the java consumer with it: Java 11 stays the
+#:     default where the tools block put it, so a run of the java consumer is handed Java 17 by
+#:     SBL_JAVA (cloud/azure/campaign.sh);
+#:   harness/go/build.sh, the franz-go consumer, which fetches its own go1.23.11 and checks every
+#:     module against go.sum, run by the Go the tools block installs (get_go); and
+#:     harness/go-nats/build.sh, the nats.go consumer, which fetches go1.26.0, the least Go its
+#:     nats.go v1.54.0 accepts, in the same way, where it is here.
+#: The paths are this machine's own architecture's, so that the Arm pair installs its own.
+CONFLUENT_KAFKA_VERSION="2.15.1"
+PIKA_VERSION="1.3.2"
+clients () {
+  local dir="runs/azure/clients" arch java17 java11 t
+  mkdir -p "$dir"
+  arch=$(dpkg --print-architecture)
+  java17="/usr/lib/jvm/java-17-openjdk-$arch"
+  java11="/usr/lib/jvm/java-11-openjdk-$arch"
+  log "== plan version 47's clients, on this driver ($arch)"
+  python3 -c "import confluent_kafka, sys; sys.exit(confluent_kafka.version()[0] != '$CONFLUENT_KAFKA_VERSION')" 2>/dev/null \
+    || sudo pip3 install -q "confluent-kafka==$CONFLUENT_KAFKA_VERSION" > "$dir/pip_confluent_kafka.log" 2>&1 \
+    || stop "confluent-kafka $CONFLUENT_KAFKA_VERSION did not install; see $dir/pip_confluent_kafka.log"
+  python3 -c "import pika, sys; sys.exit(pika.__version__ != '$PIKA_VERSION')" 2>/dev/null \
+    || sudo pip3 install -q "pika==$PIKA_VERSION" > "$dir/pip_pika.log" 2>&1 \
+    || stop "pika $PIKA_VERSION did not install; see $dir/pip_pika.log"
+  [ -x "$java17/bin/javac" ] || sudo apt-get install -y -qq openjdk-17-jdk-headless \
+      > "$dir/apt_java17.log" 2>&1 || stop "Java 17 did not install; see $dir/apt_java17.log"
+  for t in java javac jar; do
+    [ -x "$java11/bin/$t" ] && sudo update-alternatives --set "$t" "$java11/bin/$t" >/dev/null 2>&1
+  done
+  PATH="$java17/bin:$PATH" bash harness/java/build.sh > "$dir/build_java.log" 2>&1 \
+    || stop "the java consumer did not build with Java 17; see $dir/build_java.log"
+  get_go || stop "there is no Go to run harness/go/build.sh with"
+  bash harness/go/build.sh > "$dir/build_franz.log" 2>&1 \
+    || stop "the franz-go consumer did not build; see $dir/build_franz.log"
+  if [ -f harness/go-nats/build.sh ]; then
+    bash harness/go-nats/build.sh > "$dir/build_nats_go.log" 2>&1 \
+      || stop "the nats.go consumer did not build; see $dir/build_nats_go.log"
+  else
+    log "   WARN: harness/go-nats is not here, so no run of the nats-go consumer can start"
+  fi
+  python3 - "$dir/clients_installed.json" "$java17" <<'PY'
+import hashlib, json, os, subprocess, sys
+out, java17 = sys.argv[1:3]
+
+
+def said(argv):
+    try:
+        done = subprocess.run(argv, capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return "could not run: %s" % exc
+    return (done.stdout + done.stderr).strip()
+
+
+def fingerprint(path):
+    if not os.path.isfile(path):
+        return None
+    with open(path, "rb") as fh:
+        return hashlib.sha256(fh.read()).hexdigest()
+
+
+found = {
+    "python_libraries": said(["python3", "-c", "import confluent_kafka, pika; print('confluent-kafka %s librdkafka %s pika %s' % (confluent_kafka.version()[0], confluent_kafka.libversion()[0], pika.__version__))"]),
+    "java17": said([os.path.join(java17, "bin", "java"), "-version"]),
+    "java_default": said(["java", "-version"]),
+    "java_consumer": {name: fingerprint(os.path.join("harness/java/out", name))
+                      for name in ("LawConsumer.class", "LawProducer.class")},
+    "franz_consumer": {"sha256": fingerprint("harness/go/out/franz-consumer"),
+                       "build_info": said(["head", "-n", "3", "harness/go/out/BUILD_INFO.txt"])},
+    "nats_go_consumer": {"sha256": fingerprint("harness/go-nats/out/natsgo-consumer"),
+                         "build_info": said(["head", "-n", "3", "harness/go-nats/out/BUILD_INFO.txt"])},
+}
+with open(out, "w", encoding="utf-8") as fh:
+    json.dump(found, fh, indent=2, sort_keys=True)
+print("\n".join("   %-18s %s" % (name, "ok" if value else "MISSING")
+                for name, value in sorted(found.items())))
+PY
+  log "CAMPAIGN_COMPLETE: the clients are installed; what landed is in $dir/clients_installed.json"
+}
+
 case "${1:-}" in
   brokers) brokers ;;
+  clients) clients ;;
   server36) server36 "${2:-}" "${3:-}" ;;
   install) install ;;
   install-for) install_for "${2:-}" ;;
@@ -2333,7 +2420,7 @@ case "${1:-}" in
   t2) t2 "${2:-}" ;;
   t3) t3 "${2:-}" ;;
   t4) t4 "${2:-}" ;;
-  *) echo "usage: bash cloud/azure/tools.sh brokers | install | reference <tool> |" >&2
+  *) echo "usage: bash cloud/azure/tools.sh brokers | install | clients | reference <tool> |" >&2
      echo "       t1 <tool> | t2 <tool> | t3 <tool> | t4 <tool>" >&2
      exit 2 ;;
 esac

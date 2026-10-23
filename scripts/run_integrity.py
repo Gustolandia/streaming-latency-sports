@@ -13,8 +13,12 @@ run as it ends, on the machine that ran it, so they hold when nobody is watching
            run; the delay the broker held not the delay set, or its capture missing; the clock
            not logged; the client not set as every
            campaign sets it (Kafka's producer with 64 requests in flight, Redis's consumer
-           acknowledging in batches of 200, each read from the client's own log line); files
-           that cannot be read. The
+           acknowledging in batches of 200, each read from the client's own log line); since plan
+           version 47, NATS's consumer not at the setup's depth or RabbitMQ's not at its
+           prefetch, the consumer not the one the setup names or not set as it asks, the fetch
+           threads not raised where it asks (fetch_rt), the consumer not alone on its core
+           where it asks (whole_core), or the run's broker's image, digest and server version
+           not read on the broker host in the run; files that cannot be read. The
            run keeps its files and its ledger row, marked failed with the reasons, and
            run_queue.py queues a copy, three attempts at most. Nothing a run measured can make it
            a repeat.
@@ -51,6 +55,7 @@ import statistics
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import cpu_placement  # noqa: E402
 import delay_calibration  # noqa: E402
 import pilot_checks  # noqa: E402
 import run_queue  # noqa: E402
@@ -79,9 +84,42 @@ BLOCK_STATES = ("on", "off")
 #: our messages take, with a 90th percentile of 3 to 4 ms against TCP's 0.5.
 DELAY_TOLERANCE_MS = 0.05
 #: The client settings every campaign run uses (plan v6): the log that states it, the setting,
-#: and its value.
+#: and its value. Plan version 47 (23 Oct 2026) adds its two brokers, each held to the setting its
+#: block varies: NATS's consumer to the pull requests it keeps waiting (depth), RabbitMQ's to the
+#: messages the broker may push it unacknowledged (prefetch), each at the consumer's own default
+#: of 1 unless the setup names its own.
 CLIENT_SETTINGS = {"kafka": ("producer.log", "max_inflight", 64),
-                   "redis": ("consumer.log", "ack_batch", 200)}
+                   "redis": ("consumer.log", "ack_batch", 200),
+                   "nats": ("consumer.log", "depth", 1),
+                   "rabbitmq": ("consumer.log", "prefetch", 1)}
+#: The setup's parameter that names its own value of each backend's setting, where it may.
+SETTING_PARAMS = {"redis": "ack_batch", "nats": "depth", "rabbitmq": "prefetch"}
+#: Plan version 47 (23 Oct 2026): which consumer ran, as the first CONFIG line each one writes to
+#: consumer.log names it, tried in this order: the waiting Redis consumer's line also begins as
+#: redis-py's does. Each is known by the fields it names, wherever they fall in its line, so that a
+#: consumer that comes to log more fields is still known.
+CONSUMER_LINES = (("confluent", re.compile(r"^CONFIG effective client=confluent\b")),
+                  ("java", re.compile(r"^CONFIG client=java side=consumer\b")),
+                  ("franz", re.compile(r"^CONFIG effective client=franz-go\b")),
+                  ("nats-go", re.compile(r"^CONFIG effective client=nats\.go\b")),
+                  ("waiting", re.compile(r"^CONFIG effective (?=.*\back_batch=)"
+                                         r"(?=.*\bconsumer=waiting\b)")),
+                  ("redis-py", re.compile(r"^CONFIG effective ack_batch=")),
+                  ("python", re.compile(r"^CONFIG effective (?=.*\bmax_waiting=)"
+                                        r"(?=.*\bclient=python\b)")),
+                  ("kafka-python", re.compile(r"^CONFIG effective client=python\b")))
+#: The consumers whose process a run that keeps a core for the consumer pins there, by the name
+#: scripts/run_facts.py gives a client's process.
+CONSUMER_PROGRAMS = ("kafka_consumer.py", "kafka_consumer_confluent.py", "LawConsumer",
+                     "franz-consumer", "redis_consumer.py", "redis_consumer_waiting.py",
+                     "nats_consumer.py", "natsgo-consumer", "rabbitmq_consumer.py")
+#: Plan version 47 (23 Oct 2026): NATS's durable consumer is made with room for at least this many
+#: requests waiting for each its consumer keeps, or the server refuses some of them (409 Exceeded
+#: MaxWaiting) while their replacements are on their way.
+MAX_WAITING_PER_REQUEST = 2
+#: The programs that only start another and wait for it, sudo above all: they run nothing, and
+#: the wraps put some before the consumer's own pin (go-first priority) and some after it.
+WRAPPERS = ("sudo", "ip", "chrt", "taskset", "timeout")
 #: Except where the setup itself asks for something else. A8 takes the got-it note two ways, and
 #: taking it inline forces one request in flight: above one, the blocking wait resolves an older
 #: event and the stamp would belong to a different message, so both clients refuse. A run that
@@ -346,16 +384,18 @@ def delay_by_ping_ms(run_dir):
         return None
 
 
-def client_check(run_dir, backend, ack_stamp=None, ack_batch=None):
+def client_check(run_dir, backend, ack_stamp=None, asked=None):
     """The client ran with the setting this setup asked for, as its own log line states it.
 
     M0 acknowledges Redis messages one at a time as well as in batches of 200, the intervention
-    on M-H2 (S0-2, D29-1), so a Redis setup that names its batch is held to that batch."""
+    on M-H2 (S0-2, D29-1), so a Redis setup that names its batch is held to that batch. Plan
+    version 47 (23 Oct 2026): `asked` is the setup's own value of its backend's setting, its
+    parameter named in SETTING_PARAMS: Redis's batch, NATS's depth, RabbitMQ's prefetch."""
     log_name, key, wanted = CLIENT_SETTINGS[backend]
     if backend == "kafka" and ack_stamp == "inline":
         wanted = INLINE_MAX_INFLIGHT
-    if backend == "redis" and ack_batch:
-        wanted = int(ack_batch)
+    if backend != "kafka" and asked is not None:
+        wanted = int(asked)
     found = None
     pattern = re.compile(r"CONFIG effective .*\b%s=(\d+)" % key)
     with open(os.path.join(run_dir, log_name), encoding="utf-8", errors="replace") as fh:
@@ -366,6 +406,158 @@ def client_check(run_dir, backend, ack_stamp=None, ack_batch=None):
     return outcome(found == wanted, found, "%s=%d in %s" % (key, wanted, log_name),
                    "the %s client ran with %s=%s, not %d"
                    % (backend, key, "an unlogged value" if found is None else found, wanted))
+
+
+def consumer_settings(params):
+    """[(setting, wanted, at least)] the consumer's own log is held to beyond the client check,
+    for a setup of plan version 47 (23 Oct 2026); empty for every earlier setup. A setting is held
+    to its value, or, where `at least` is True, to at least it.
+
+    The consumer the setup names, as its first CONFIG line names it; the waiting Redis consumer's
+    depth and reads; NATS's python consumer's reads, and the room its durable consumer was made
+    with; and RabbitMQ's acknowledgment batch, 1 where it acknowledges each message."""
+    backend, consumer = params.get("backend"), params.get("consumer")
+    wanted = [("consumer", consumer, False)] if consumer else []
+    if (backend, consumer) == ("redis", "waiting"):
+        wanted += [("depth", str(params.get("depth") or 1), False),
+                   ("reads", "one-reply" if params.get("one_reply_reads") else "buffered", False)]
+    if backend == "nats" and consumer in (None, "", "python"):
+        depth = int(params.get("depth") or 1)
+        wanted += [("one_reply_reads", "1" if params.get("one_reply_reads") else "0", False),
+                   ("max_waiting", str(MAX_WAITING_PER_REQUEST * depth), True)]
+    if backend == "rabbitmq":
+        wanted.append(("ack_batch", str(params.get("ack_batch") or 1), False))
+    return wanted
+
+
+def held(found, value, at_least):
+    """Whether a setting found in the log holds the value it is held to."""
+    if not at_least:
+        return found == value
+    return found is not None and found.isdigit() and int(found) >= int(value)
+
+
+def consumer_check(run_dir, params):
+    """The consumer that ran, and its own settings, as consumer.log states them, against
+    consumer_settings, for a setup that asks something of them."""
+    wanted = consumer_settings(params)
+    with open(os.path.join(run_dir, "consumer.log"), encoding="utf-8", errors="replace") as fh:
+        lines = [line.rstrip("\n") for line in fh]
+    found = {}
+    for setting, _, _ in wanted:
+        if setting == "consumer":
+            found[setting] = next((name for line in lines for name, pattern in CONSUMER_LINES
+                                   if pattern.search(line)), None)
+            continue
+        pattern = re.compile(r"CONFIG effective .*\b%s=(\S+)" % setting)
+        for line in lines:
+            match = pattern.search(line)
+            if match:
+                found[setting] = match.group(1)
+        found.setdefault(setting, None)
+    missed = ["%s=%s, not %s%s" % (setting, "an unlogged value" if found[setting] is None
+                                   else found[setting], "at least " if at_least else "", value)
+              for setting, value, at_least in wanted if not held(found[setting], value, at_least)]
+    return outcome(not missed, found,
+                   ", ".join("%s=%s%s" % (setting, "at least " if at_least else "", value)
+                             for setting, value, at_least in wanted) + " in consumer.log",
+                   "the consumer ran with " + "; ".join(missed))
+
+
+def fetch_rt_check(run_dir):
+    """Plan version 47 (23 Oct 2026): every thread the consumer named as sending its fetches was
+    raised to SCHED_FIFO and read back so, as scripts/consumer_threads.py recorded it."""
+    record = read_json(os.path.join(run_dir, "consumer_threads.json"))
+    raised = record.get("raised") or []
+    held = [r for r in raised if r.get("ok") and r.get("policy_after") == "SCHED_FIFO"]
+    return outcome(record.get("ok") is True and bool(raised) and len(held) == len(raised),
+                   [{"tid": r.get("tid"), "name": r.get("name"), "policy": r.get("policy_after"),
+                     "rt_priority": r.get("rt_priority_after")} for r in raised],
+                   "every fetch thread at SCHED_FIFO", "the fetch threads were not raised: %s"
+                   % (record.get("why") or "%d of %d held SCHED_FIFO" % (len(held), len(raised))))
+
+
+def in_place(kind, cpus, consumer, load, core):
+    """Whether a thread of this kind of process may run on `cpus`, as the run placed it: the
+    consumer's on its CPU alone, the load's on the load's CPUs, every other on neither of the
+    core's threads."""
+    if kind == "consumer":
+        return cpus == consumer
+    if kind == "load":
+        return cpus == load
+    return not cpus & core
+
+
+def placement_check(run_dir):
+    """Plan version 47 (23 Oct 2026): where the setup keeps a core for the consumer, every thread
+    of the consumer's own process ran on the consumer's CPU alone, every stress-ng on the load's
+    CPUs, and every other process the run started (the producer, the captures, the samplers) on
+    neither of the core's threads, as the kernel held them while the clients ran
+    (run_facts_clients.json) against what the run chose (core_choice.json). A wrapper that only
+    starts another and waits (WRAPPERS) is left out, wherever its wrap put it."""
+    chosen = read_json(os.path.join(run_dir, "core_choice.json"))
+    facts = read_json(os.path.join(run_dir, "run_facts_clients.json"))
+    consumer = {int(chosen["consumer_cpu"])}
+    load = set(int(cpu) for cpu in chosen["load_cpus"])
+    core = set(int(cpu) for cpu in chosen["core"])
+    consumers, wrong = 0, []
+    for process in facts.get("processes") or []:
+        threads = process.get("threads") or []
+        if [t for t in threads if t.get("tid") == process.get("pid") and t.get("comm") in WRAPPERS]:
+            continue
+        if process.get("names") in CONSUMER_PROGRAMS:
+            consumers, kind = consumers + 1, "consumer"
+        elif process.get("names") == "stress-ng":
+            kind = "load"
+        else:
+            kind = "kit"
+        for thread in threads:
+            allowed = thread.get("cpus_allowed_list")
+            if allowed is None or not in_place(kind, set(cpu_placement.parse_list(allowed)),
+                                               consumer, load, core):
+                wrong.append("%s thread %s on %s" % (process.get("names"), thread.get("tid"),
+                                                     allowed))
+    if not consumers:
+        why = "the clients' facts name no consumer process"
+    elif wrong:
+        why = "%d thread(s) ran where the run did not place them: %s" % (len(wrong), wrong[0])
+    else:
+        why = ""
+    return outcome(not why, {"consumer_cpu": chosen["consumer_cpu"],
+                             "load_list": chosen.get("load_list"), "misplaced": len(wrong)},
+                   "the consumer on CPU %s alone, stress-ng on %s"
+                   % (chosen["consumer_cpu"], chosen.get("load_list") or "no CPU"), why)
+
+
+#: Plan version 47 (23 Oct 2026): the files the campaign leaves beside every run since it reads
+#: the brokers' facts, whatever the broker host answered: the facts, and what reading them said
+#: on its error stream. A run with neither was made before they were read, and is not held to them.
+BROKER_FACTS = ("broker_facts.json", "broker_facts.err")
+
+
+def broker_check(run_dir, backend):
+    """Plan version 47 (23 Oct 2026): the facts of the run's own broker, as the campaign read
+    them on the broker host during the run (scripts/run_facts.py broker): the digest of the image
+    it runs, where it runs in a container, and its server's own version; for NATS, a unit of the
+    broker host's own, its version and JetStream on. Kafka's version is its image's tag, as
+    cloud/brokers.sh pins it: the one its jar names is recorded beside it and not held. What the
+    reading could not read of that broker is named beside the failure."""
+    facts = read_json(os.path.join(run_dir, BROKER_FACTS[0]))
+    if not isinstance(facts, dict):
+        raise ValueError("%s holds no broker's facts" % BROKER_FACTS[0])
+    mine = facts.get(backend) or {}
+    image = mine.get("image") or {}
+    missing = [] if backend == "nats" or image.get("repo_digests") else ["image digest"]
+    missing += [] if mine.get("version") or backend == "kafka" else ["server version"]
+    missing += ["JetStream"] if backend == "nats" and not mine.get("jetstream") else []
+    unread = sorted("%s: %s" % (name, why) for name, why in (facts.get("unread") or {}).items()
+                    if name.split(".")[0] == backend)
+    return outcome(not missing, {"image": image.get("image"), "digests": image.get("repo_digests"),
+                                 "version": mine.get("version")},
+                   "the %s broker's image digest and server version in %s"
+                   % (backend, BROKER_FACTS[0]),
+                   "the %s broker's facts were not read in the run: no %s%s"
+                   % (backend, ", no ".join(missing), " (%s)" % "; ".join(unread) if unread else ""))
 
 
 def retransmitted(run_dir, side):
@@ -746,9 +938,24 @@ def evaluate(run_dir, rate, duration, warmup_s, calibration=None,
     else:
         guarded(checks, "load", lambda: load_check(run_dir, float(params["load_pct"]), *window))
     guarded(checks, "settings", lambda: settings_check(run_dir))
-    guarded(checks, "client",
-            lambda: client_check(run_dir, params["backend"], params.get("ack_stamp"),
-                                 params.get("ack_batch")))
+    # Plan version 47 (23 Oct 2026): the Go NATS consumer keeps what nats.go's Consume() keeps
+    # requested, and has no depth to hold; which consumer ran is held below.
+    if (params.get("backend"), params.get("consumer")) != ("nats", "nats-go"):
+        guarded(checks, "client",
+                lambda: client_check(run_dir, params["backend"], params.get("ack_stamp"),
+                                     params.get(SETTING_PARAMS.get(params["backend"], ""))))
+    # Plan version 47 (23 Oct 2026): the consumer the setup names and its own settings, the fetch
+    # threads it asks raised, and the core it asks the consumer kept on, each where it asks.
+    if consumer_settings(params):
+        guarded(checks, "consumer", lambda: consumer_check(run_dir, params))
+    if params.get("fetch_rt"):
+        guarded(checks, "fetch_rt", lambda: fetch_rt_check(run_dir))
+    if params.get("whole_core"):
+        guarded(checks, "placement", lambda: placement_check(run_dir))
+    # Plan version 47 (23 Oct 2026): the run's own broker's facts, in every run made since the
+    # campaign reads them on the broker host, which leaves both files beside each run.
+    if any(os.path.exists(os.path.join(run_dir, name)) for name in BROKER_FACTS):
+        guarded(checks, "broker", lambda: broker_check(run_dir, params["backend"]))
     added = None
     try:
         checks["delay"], added = delay_check(run_dir, float(params["delay_ms"]))

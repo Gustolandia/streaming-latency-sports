@@ -642,7 +642,7 @@ class TestTheTrialRunner:
         text = path.read_text(encoding="utf-8")
         assert text.startswith("#!/usr/bin/env bash\nset -euo pipefail\n")
         consumer = text.index("scripts/nats_consumer.py")
-        assert text.index('> "runs/$RUN_ID/consumer.log" 2>&1 &\nCONS_PID=$!') > consumer
+        assert text.index('> "runs/$RUN_ID/consumer.log" 2>&1 &\nfi\nCONS_PID=$!') > consumer
         assert consumer < text.index("sleep 1") < text.index("scripts/nats_producer.py")
         assert text.index('wait "$CONS_PID"') < text.index("scripts/compute_tti.py")
 
@@ -661,8 +661,12 @@ class TestTheTrialRunner:
         assert "--speedup 1 --max-t-sim 10" in producer
         assert meta["backend"] == "nats" and nats["one_reply_reads"] is False
         assert sorted(meta["code_sha256"]) == [
-            "scripts/compute_tti.py", "scripts/nats_consumer.py", "scripts/nats_producer.py",
+            "harness/go-nats/main.go", "harness/go-nats/out/natsgo-consumer",
+            "scripts/compute_tti.py",
+            "scripts/consumer_threads.py", "scripts/nats_consumer.py", "scripts/nats_producer.py",
             "scripts/nats_wire.py", "scripts/run_nats_trial.sh"]
+        assert meta["consumer"] == {"client": "python", "threads_out": None,
+                                    "extra_not_handed": None}
 
     def test_the_settings_reach_the_clients_and_the_record(self, tmp_path):
         calls, meta = self.calls(

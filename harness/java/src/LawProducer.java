@@ -108,6 +108,11 @@ public final class LawProducer {
         props.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, String.valueOf(maxInflight));
 
         Map<String, Long> ackNs = new ConcurrentHashMap<>();
+        // Plan version 47 (23 Oct 2026): where the broker put each message, its partition and
+        // offset from the acknowledgment's RecordMetadata, as scripts/kafka_producer.py records
+        // them, so that a message is matched by the broker's own ids and both producers still
+        // write the same columns.
+        Map<String, String> placed = new ConcurrentHashMap<>();
         List<String> errors = new ArrayList<>();
 
         long t0WallNs = LawClock.nowNs();
@@ -117,7 +122,7 @@ public final class LawProducer {
              BufferedWriter writer = Files.newBufferedWriter(out, StandardCharsets.UTF_8)) {
 
             writer.write("run_id,backend,topic,event_id,match_id,t_sim_seconds,t_emit_offset_s,"
-                    + "t_prod_sched_ns,t_prod_send_ns,t_broker_ack_ns");
+                    + "t_prod_sched_ns,t_prod_send_ns,t_broker_ack_ns,partition,offset");
             writer.newLine();
 
             List<String[]> rows = new ArrayList<>(plan.size());
@@ -145,6 +150,7 @@ public final class LawProducer {
                             }
                         } else {
                             ackNs.put(eventId, LawClock.nowNs());
+                            placed.put(eventId, metadata.partition() + "," + metadata.offset());
                         }
                     });
                 } else {
@@ -153,10 +159,11 @@ public final class LawProducer {
 
                 if (maxInflight <= 1) {
                     try {
-                        future.get();
+                        RecordMetadata metadata = future.get();
                         if (ackStamp.equals("inline")) {
                             // Stamped here, on this thread, the moment the future resolves.
                             ackNs.put(eventId, LawClock.nowNs());
+                            placed.put(eventId, metadata.partition() + "," + metadata.offset());
                         }
                     } catch (Exception exc) {
                         synchronized (errors) {
@@ -177,6 +184,8 @@ public final class LawProducer {
                 writer.write(String.join(",", row));
                 writer.write(",");
                 writer.write(ack == null ? "" : Long.toString(ack));
+                writer.write(",");
+                writer.write(placed.getOrDefault(row[3], ","));
                 writer.newLine();
             }
         }

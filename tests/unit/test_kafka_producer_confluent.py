@@ -34,11 +34,24 @@ import kafka_producer_confluent as kpc  # noqa: E402
 # --------------------------------------------------------------------------------------------
 
 class FakeMessage:
+    """A delivered message: its key, and where the broker put it, offsets in order of delivery
+    from 40 on partition 0."""
+
+    delivered = 0
+
     def __init__(self, key):
         self._key = key
+        self._offset = 40 + FakeMessage.delivered
+        FakeMessage.delivered += 1
 
     def key(self):
         return self._key
+
+    def partition(self):
+        return 0
+
+    def offset(self):
+        return self._offset
 
 
 class FakeProducer:
@@ -75,6 +88,7 @@ class FakeProducer:
 @pytest.fixture(autouse=True)
 def _fresh_producer_registry():
     FakeProducer.instances = []
+    FakeMessage.delivered = 0
     yield
     FakeProducer.instances = []
 
@@ -267,7 +281,18 @@ class TestTheStampsAreWhatThisScriptExistsToProduce:
             header = f.readline().strip().split(",")
         assert header == ["run_id", "backend", "topic", "event_id", "match_id", "t_sim_seconds",
                           "t_emit_offset_s", "t_prod_sched_ns", "t_prod_send_ns",
-                          "t_broker_ack_ns"]
+                          "t_broker_ack_ns", "partition", "offset"], \
+            "the original columns first, in their order, and the broker's ids after them"
+
+    def test_each_message_is_placed_as_the_broker_placed_it(self, producer, plan, tmp_path):
+        """Plan version 47 (23 Oct 2026): the partition and offset the delivered message carries,
+        so that the message is matched by the broker's own ids; one never delivered has none."""
+        _, out = _run(tmp_path, plan([_row("e1"), _row("e2", row_idx=1)]))
+        assert [(r["event_id"], r["partition"], r["offset"]) for r in _read(out)] == [
+            ("e1", "0", "40"), ("e2", "0", "41")]
+        producer["deliver"] = False
+        _, out = _run(tmp_path / "x", plan([_row("e3")]))
+        assert (_read(out)[0]["partition"], _read(out)[0]["offset"]) == ("", "")
 
     def test_the_backend_column_says_kafka_not_confluent(self, producer, plan, tmp_path):
         """The client changed; the transport did not. Mislabelling it would split the arm."""

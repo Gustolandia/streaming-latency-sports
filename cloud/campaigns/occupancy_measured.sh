@@ -100,9 +100,16 @@ SPEEDUP_RT=$(assert_plan_rate "$PLAN" 1)
 banner "occupancy measured: speedup $SPEEDUP_RT, ${MAXT}s, ${REPS} reps, ${NCORES} cores"
 
 STAMPERS="kafka_producer.py|redis_producer.py|kafka_consumer.py|redis_consumer.py"
+# Plan version 47 (23 Oct 2026): the clients added since, by a word of each one's own command line
+# (none is found by the pattern above). A leftover of another campaign would run beside this one's
+# clients, so they are reaped too; they are not sampled, since this campaign runs none of them.
+OTHER_CLIENTS="LawProducer|LawConsumer|kafka_consumer_confluent.py|kafka_producer_confluent.py"
+OTHER_CLIENTS="$OTHER_CLIENTS|franz-consumer|redis_consumer_waiting.py|nats_producer.py"
+OTHER_CLIENTS="$OTHER_CLIENTS|nats_consumer.py|natsgo-consumer|rabbitmq_producer.py|rabbitmq_consumer.py"
 
 reap () {
   pkill -f "$STAMPERS" 2>/dev/null
+  pkill -f "$OTHER_CLIENTS" 2>/dev/null
   pkill -f "util_sampler.py|schedstat_sampler.py" 2>/dev/null
   pkill -9 -x stress-ng 2>/dev/null
   sleep 2

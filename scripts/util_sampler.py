@@ -36,9 +36,16 @@ BUSIEST_KEPT = 6
 #: 5,000 messages a second the clients use several points of the machine, which the integrity
 #: rule's load check counted as background load: the pilot's idle Kafka run at 500 a second read
 #: 7.1% against 0%. Their share is now written beside the machine's, so that the load the run set
-#: can be read without them.
+#: can be read without them. Plan version 47 (23 Oct 2026) adds its new clients: the consumers on
+#: librdkafka, kafka-clients and franz-go, the waiting Redis consumer, and the NATS and RabbitMQ
+#: clients, nats.go's consumer (harness/go-nats's natsgo-consumer) among them. Each needs a mark of
+#: its own: kafka_consumer.py is not found in the command line of kafka_consumer_confluent.py, nor
+#: redis_consumer.py in the waiting consumer's.
 CLIENT_MARKS = ("kafka_producer.py", "kafka_consumer.py", "redis_producer.py",
-                "redis_consumer.py", "LawProducer", "LawConsumer")
+                "redis_consumer.py", "LawProducer", "LawConsumer", "kafka_consumer_confluent.py",
+                "kafka_producer_confluent.py", "franz-consumer", "redis_consumer_waiting.py",
+                "nats_producer.py", "nats_consumer.py", "natsgo-consumer", "rabbitmq_producer.py",
+                "rabbitmq_consumer.py")
 #: How often, in samples, the clients' processes are looked for again: they start after the
 #: sampler does.
 CLIENT_SCAN_EVERY = 4

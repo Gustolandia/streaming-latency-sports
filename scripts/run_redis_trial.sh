@@ -10,7 +10,14 @@ set -euo pipefail
 # Usage:
 #   scripts/run_redis_trial.sh <RUN_ID> <PLAN_CSV> [SPEEDUP] [MAX_T_SIM] \
 #       [-RedisHost h] [-PORT p] [-STREAM s] [-GROUP g] [-CONSUMER_EXTRA "..."] \
-#       [-CLUSTER_MODE] [-NODE_COUNT n] [-IDLE_SECONDS n]
+#       [-CLUSTER_MODE] [-NODE_COUNT n] [-IDLE_SECONDS n] \
+#       [-CONSUMER redis-py|waiting] [-DEPTH n] [-ONE_REPLY_READS]
+#
+# Plan version 47 (23 Oct 2026): -CONSUMER waiting receives with scripts/redis_consumer_waiting.py,
+# which keeps -DEPTH requests waiting at the broker (1 unless given) and, with -ONE_REPLY_READS,
+# takes one reply a read; redis-py's consumer, scripts/redis_consumer.py, is the default and keeps
+# none waiting, so it takes neither flag. Both take the same acknowledgment batch and the other
+# flags, and both write the same files.
 
 RUN_ID="${1:?run_id required}"
 PLAN_CSV="${2:?plan_csv required}"
@@ -23,7 +30,7 @@ if [ $# -gt 0 ] && [[ "$1" != -* ]]; then MAX_T_SIM="$1"; shift; fi
 
 HOST="localhost"; PORT=6379; STREAM=""; GROUP=""
 CONSUMER_EXTRA=""; PRODUCER_EXTRA=""; NODE_COUNT=1; CLUSTER_MODE=0; IDLE_SECONDS=30
-CLUSTER_NODES=""
+CLUSTER_NODES=""; CONSUMER=""; DEPTH=""; ONE_REPLY=0
 while [ $# -gt 0 ]; do
   case "$1" in
     -RedisHost|-REDISHOST) HOST="$2"; shift 2;;
@@ -36,6 +43,9 @@ while [ $# -gt 0 ]; do
     -IDLE_SECONDS) IDLE_SECONDS="$2"; shift 2;;
     -CLUSTER_NODES) CLUSTER_NODES="$2"; shift 2;;
     -CLUSTER_MODE) CLUSTER_MODE=1; shift;;
+    -CONSUMER) CONSUMER="$2"; shift 2;;
+    -DEPTH) DEPTH="$2"; shift 2;;
+    -ONE_REPLY_READS) ONE_REPLY=1; shift;;
     *) shift;;
   esac
 done
@@ -45,10 +55,28 @@ done
 PY="${PYTHON:-python3}"
 mkdir -p "runs/$RUN_ID"
 
-"$PY" - "$RUN_ID" "$PLAN_CSV" "$SPEEDUP" "$MAX_T_SIM" "$HOST" "$PORT" "$STREAM" "$GROUP" <<'PY'
+case "$CONSUMER" in
+  ""|redis-py|waiting) ;;
+  *) echo "FATAL: -CONSUMER is redis-py or waiting, not '$CONSUMER'"; exit 2 ;;
+esac
+if [ "$CONSUMER" != waiting ] && { [ -n "$DEPTH" ] || [ "$ONE_REPLY" = 1 ]; }; then
+  echo "FATAL: -DEPTH and -ONE_REPLY_READS are the waiting consumer's, and this run's is redis-py's"
+  exit 2
+fi
+CONSUMER_SCRIPT="scripts/redis_consumer.py"
+WAITING_FLAGS=""
+if [ "$CONSUMER" = waiting ]; then
+  CONSUMER_SCRIPT="scripts/redis_consumer_waiting.py"
+  [ -n "$DEPTH" ] && WAITING_FLAGS="--depth $DEPTH"
+  [ "$ONE_REPLY" = 1 ] && WAITING_FLAGS="$WAITING_FLAGS --one-reply-reads"
+fi
+
+"$PY" - "$RUN_ID" "$PLAN_CSV" "$SPEEDUP" "$MAX_T_SIM" "$HOST" "$PORT" "$STREAM" "$GROUP" \
+  "${CONSUMER:-redis-py}" "$DEPTH" "$ONE_REPLY" <<'PY'
 import json, os, sys, hashlib, subprocess, platform
 from pathlib import Path
 run_id, plan_csv, speedup, max_t_sim, host, port, stream, group = sys.argv[1:9]
+consumer, depth, one_reply = sys.argv[9:12]
 
 def sha256(path):
     p = Path(path)
@@ -63,7 +91,16 @@ def cmd(args):
 meta = {
     "run_id": run_id, "backend": "redis", "plan_csv": plan_csv,
     "speedup": float(speedup), "max_t_sim": int(max_t_sim),
-    "redis": {"host": host, "port": int(port), "stream": stream, "group": group},
+    "redis": {"host": host, "port": int(port), "stream": stream, "group": group,
+              # Plan version 47 (23 Oct 2026): which consumer received, and the waiting one's
+              # depth (None where it keeps its own default) and reads.
+              "consumer": consumer, "depth": int(depth) if depth else None,
+              "one_reply_reads": one_reply == "1"},
+    # Plan version 47 (23 Oct 2026): the plan's arrival process and the seed it was drawn from,
+    # as the campaign names them, with the plan's own fingerprint.
+    "plan": {"path": plan_csv, "sha256": sha256(plan_csv),
+             "arrival": os.environ.get("SBL_PLAN_ARRIVAL") or None,
+             "seed": int(os.environ["SBL_PLAN_SEED"]) if os.environ.get("SBL_PLAN_SEED") else None},
     # Platform is recorded because the paper's floors (timer granularity, container
     # network path) are host properties, and cloud runs must be distinguishable.
     "host_platform": {"system": platform.system(), "release": platform.release(),
@@ -78,7 +115,8 @@ meta = {
     "git": {"head": cmd(["git","rev-parse","HEAD"]),
             "status_short": cmd(["git","status","--porcelain"])},
     "code_sha256": {f"scripts/{f}": sha256(f"scripts/{f}") for f in
-                    ("run_redis_trial.sh","redis_producer.py","redis_consumer.py","compute_tti.py")},
+                    ("run_redis_trial.sh","redis_producer.py","redis_consumer.py",
+                     "redis_consumer_waiting.py","resp_wire.py","compute_tti.py")},
 }
 Path(f"runs/{run_id}/meta.json").write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
 PY
@@ -100,12 +138,12 @@ CLUSTER_FLAG=""
 [ "$CLUSTER_MODE" = "1" ] && CLUSTER_FLAG="--cluster-mode"
 [ -n "$CLUSTER_NODES" ] && CLUSTER_FLAG="$CLUSTER_FLAG --cluster-nodes $CLUSTER_NODES"
 
-echo "[1/4] $(date +%H:%M:%S) starting consumer..."
+echo "[1/4] $(date +%H:%M:%S) starting consumer (${CONSUMER:-redis-py})..."
 # shellcheck disable=SC2086
-$SCHED_WRAP $CONSUMER_WRAP "$PY" scripts/redis_consumer.py ${REDIS_CONSUMER_OPTS:-} \
+$SCHED_WRAP $CONSUMER_WRAP "$PY" "$CONSUMER_SCRIPT" ${REDIS_CONSUMER_OPTS:-} \
   --run-id "$RUN_ID" --out "runs/$RUN_ID/consumer.csv" \
   --host "$HOST" --port "$PORT" --stream "$STREAM" --group "$GROUP" \
-  --idle-seconds "$IDLE_SECONDS" --node-count "$NODE_COUNT" $CLUSTER_FLAG \
+  --idle-seconds "$IDLE_SECONDS" --node-count "$NODE_COUNT" $CLUSTER_FLAG $WAITING_FLAGS \
   $CONSUMER_EXTRA > "runs/$RUN_ID/consumer.log" 2>&1 &
 CONS_PID=$!
 

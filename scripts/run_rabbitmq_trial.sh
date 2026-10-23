@@ -73,6 +73,11 @@ meta = {
     "rabbitmq": {"broker": "%s:%d" % (parts.hostname, port),
                  "vhost": unquote(parts.path[1:]) or "/", "queue": queue,
                  "prefetch": int(prefetch) if prefetch else None},
+    # Plan version 47 (23 Oct 2026): the plan's arrival process and the seed it was drawn from,
+    # as the campaign names them, with the plan's own fingerprint.
+    "plan": {"path": plan_csv, "sha256": sha256(plan_csv),
+             "arrival": os.environ.get("SBL_PLAN_ARRIVAL") or None,
+             "seed": int(os.environ["SBL_PLAN_SEED"]) if os.environ.get("SBL_PLAN_SEED") else None},
     "host_platform": {"system": platform.system(), "release": platform.release(),
                       "machine": platform.machine(), "node": platform.node(),
                       "python": platform.python_version()},

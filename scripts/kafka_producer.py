@@ -165,14 +165,20 @@ def main():
     t0_mono = time.monotonic()
 
     ack_ns = {}
+    # Plan version 47 (23 Oct 2026): where the broker put each message, its partition and offset,
+    # from the acknowledgment's RecordMetadata. The general method matches a message's departure
+    # and arrival by the broker's own ids, never by the payload, and the consumers log the same
+    # two numbers in consumer_events.csv.
+    placed = {}
     ack_lock = threading.Lock()
     errors = []
     err_lock = threading.Lock()
     pending = []
 
-    def on_ack(event_id: str):
+    def on_ack(event_id: str, meta=None):
         with ack_lock:
             ack_ns[event_id] = now_ns()
+            placed[event_id] = (getattr(meta, "partition", None), getattr(meta, "offset", None))
         if record is not None:
             record.note("stamps_ack")
 
@@ -218,11 +224,11 @@ def main():
                 record.note("stamps_send")
             fut = producer.send(args.topic, key=corr_event_id, value=corr_msg)
             if args.ack_stamp == "callback":
-                fut.add_callback(lambda _meta, eid=corr_event_id: on_ack(eid))
+                fut.add_callback(lambda meta, eid=corr_event_id: on_ack(eid, meta))
             fut.add_errback(lambda exc, eid=corr_event_id: on_err(eid, exc))
-            fut.get(timeout=30)
+            meta = fut.get(timeout=30)
             if args.ack_stamp == "inline":
-                on_ack(corr_event_id)
+                on_ack(corr_event_id, meta)
 
             corr_rows.append(
                 {
@@ -236,6 +242,8 @@ def main():
                     "t_prod_sched_ns": corr_sched_ns,
                     "t_prod_send_ns": t_prod_send_ns,
                     "t_broker_ack_ns": None,
+                    "partition": None,
+                    "offset": None,
                 }
             )
 
@@ -287,15 +295,15 @@ def main():
 
         fut = producer.send(args.topic, key=event_id, value=msg)
         if args.ack_stamp == "callback":
-            fut.add_callback(lambda _meta, eid=event_id: on_ack(eid))
+            fut.add_callback(lambda meta, eid=event_id: on_ack(eid, meta))
         fut.add_errback(lambda exc, eid=event_id: on_err(eid, exc))
 
         if args.max_inflight <= 1:
-            fut.get(timeout=30)
+            meta = fut.get(timeout=30)
             if args.ack_stamp == "inline":
                 # Symmetric with redis_producer.py: the calling thread stamps the moment the
                 # broker's acknowledgement is in hand, with no second thread in the path.
-                on_ack(event_id)
+                on_ack(event_id, meta)
         else:
             pending.append(fut)
             if len(pending) >= args.max_inflight:
@@ -326,6 +334,8 @@ def main():
                 "t_prod_sched_ns": t_prod_sched_ns,
                 "t_prod_send_ns": t_prod_send_ns,
                 "t_broker_ack_ns": None,
+                "partition": None,
+                "offset": None,
             }
         )
 
@@ -378,8 +388,10 @@ def main():
     with ack_lock:
         for row in rows:
             row["t_broker_ack_ns"] = ack_ns.get(row["event_id"])
+            row["partition"], row["offset"] = placed.get(row["event_id"], (None, None))
 
-    # Output CSV schema is unchanged (we keep the original columns)
+    # The original columns first, in their order, so every reader of them reads them as before;
+    # plan version 47 (23 Oct 2026) adds the broker's ids after them.
     with out_path.open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(
             f,
@@ -394,6 +406,8 @@ def main():
                 "t_prod_sched_ns",
                 "t_prod_send_ns",
                 "t_broker_ack_ns",
+                "partition",
+                "offset",
             ],
         )
         w.writeheader()

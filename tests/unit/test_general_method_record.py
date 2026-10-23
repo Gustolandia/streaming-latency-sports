@@ -18,7 +18,14 @@ FOLDER = REPO / "docs" / "results" / "general_method"
 #: DESIGN47.md's fingerprint, as registered; DESIGN47.sha256 holds the same.
 FINGERPRINT47 = "17d3ba50e87daefcf9229a3b265dd9e1c93b9fcdde3d47fa9aa4e6c7e14823fc"
 BLOCKS = {"v": 3, "n": 3, "p": 2, "k": 5, "c": 3, "s": 2, "a": 4}
-PILOTS = {"x86": 18, "arm": 4}
+#: Pilot round a's first attempt (23 Oct 2026): the Arm pair held 66.3% at a duty of 75 and
+#: starts at 79; the x86 pair held 68.0%.
+PILOTS = {"x86": (18, 75), "arm": (4, 79)}
+#: The same: block C's isolated arms run the load on 6 and 7 of the 8 CPUs at the duty of the
+#: baseline, 70% on each CPU the load runs on, and so 70% x 6/8 and x 7/8 of the machine.
+LOADS = {"C2000-kafka-core": 53, "C2000-kafka-core-sib": 61}
+#: The same: the consumers that are not Python sample no thread of their own.
+UNSAMPLED = ("java", "franz", "nats-go")
 
 
 def design(name):
@@ -65,7 +72,9 @@ def test_each_block_runs_its_setups_four_rounds():
         for s in d["setups"]:
             assert s["id"].startswith(block.upper() + "2000-") and s["id"] not in seen
             seen.add(s["id"])
-            assert s["arrival"] == "poisson" and s["load_pct"] == 70 and s["load_blocks_s"] == 5
+            assert s["arrival"] == "poisson" and s["load_blocks_s"] == 5
+            assert s["load_pct"] == LOADS.get(s["id"], 70)
+            assert s["schedstat"] is (s.get("consumer") not in UNSAMPLED)
             assert s["producer_priority"] is (s["id"] != "S2000-redis-prodnormal")
             assert "duty_pct" not in s, "a judged duty is written in only after the pilot"
             assert "RATE=2000 DURATION=70 WARMUP_S=20 PRIME_S=60" in d["about"]
@@ -77,12 +86,12 @@ def test_the_pilot_runs_every_setup_once_at_the_starting_duty():
     for block in BLOCKS:
         for s in design("g%s_design.json" % block)["setups"]:
             judged[s["id"]] = s
-    for pair, count in PILOTS.items():
+    for pair, (count, duty) in PILOTS.items():
         d = design("gpilot_%s_design.json" % pair)
         rq.check_design(d)
         assert d["rounds"] == 1 and len(d["setups"]) == count
         for s in d["setups"]:
-            assert s["id"].endswith("-pilot") and s["duty_pct"] == 75
+            assert s["id"].endswith("-pilot") and s["duty_pct"] == duty
             twin = judged[s["id"][:-len("-pilot")]]
             assert dict(s, id=twin["id"], duty_pct=None) == dict(twin, duty_pct=None)
 

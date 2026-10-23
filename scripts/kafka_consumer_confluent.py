@@ -150,9 +150,31 @@ def build_config(args, group_id):
 
 
 def load_client():
-    """confluent_kafka, imported only when a run needs it."""
+    """confluent_kafka, with its admin client, imported only when a run needs it."""
     import confluent_kafka
+    import confluent_kafka.admin  # noqa: F401
     return confluent_kafka
+
+
+def ensure_topic(client, bootstrap, topic, timeout_s=30.0):
+    """Make the run's topic, one partition with one replica as the broker's own defaults make it,
+    unless it is there already; True where this call made it.
+
+    23 Oct 2026, pilot round a: the consumer starts before the producer, and on the Arm pair
+    librdkafka found the topic missing when it subscribed, said so (UNKNOWN_TOPIC_OR_PART), and
+    asked the broker again only at its next metadata refresh, five minutes away
+    (topic.metadata.refresh.interval.ms), so it read nothing in its 70-s run. A topic that is
+    there before the consumer subscribes is also how a program normally finds one."""
+    admin = client.admin.AdminClient({"bootstrap.servers": bootstrap})
+    made = admin.create_topics([client.admin.NewTopic(topic, num_partitions=1,
+                                                      replication_factor=1)])
+    try:
+        made[topic].result(timeout_s)
+    except client.KafkaException as exc:
+        if exc.args[0].code() != client.KafkaError.TOPIC_ALREADY_EXISTS:
+            raise
+        return False
+    return True
 
 
 def fetch_names(client, consumer, topic, partitions):
@@ -268,6 +290,8 @@ def main(argv=None):
     out_path.parent.mkdir(parents=True, exist_ok=True)
     events_path = out_path.with_name(out_path.stem + "_events.csv")
 
+    print("OK topic: %s %s" % (args.topic, "made" if ensure_topic(client, args.bootstrap, args.topic)
+                               else "there already"), flush=True)
     consumer = client.Consumer(build_config(args, group_id))
     assigned = []
 

@@ -82,6 +82,49 @@ class FakeKafkaException(Exception):
     pass
 
 
+#: The code librdkafka gives a topic that is there already.
+TOPIC_ALREADY_EXISTS = 36
+
+
+class FakeKafkaError(object):
+    TOPIC_ALREADY_EXISTS = TOPIC_ALREADY_EXISTS
+
+    def __init__(self, code):
+        self._code = code
+
+    def code(self):
+        return self._code
+
+
+class FakeFuture(object):
+    def __init__(self, error):
+        self.error = error
+        self.waited = None
+
+    def result(self, timeout):
+        self.waited = timeout
+        if self.error is not None:
+            raise FakeKafkaException(FakeKafkaError(self.error))
+
+
+class FakeAdmin(object):
+    def __init__(self, conf, world):
+        self.conf = conf
+        self.world = world
+        world.admins.append(self)
+
+    def create_topics(self, topics):
+        self.world.created.extend(topics)
+        self.world.future = FakeFuture(self.world.topic_error)
+        return dict((t.topic, self.world.future) for t in topics)
+
+
+class FakeNewTopic(object):
+    def __init__(self, topic, num_partitions, replication_factor):
+        self.topic = topic
+        self.shape = (num_partitions, replication_factor)
+
+
 class World(object):
     """What the fake library will do: one script entry per poll, then empty polls."""
 
@@ -93,6 +136,10 @@ class World(object):
         self.consumers = []
         self.at_poll = []
         self.watch = None
+        self.admins = []
+        self.created = []
+        self.topic_error = None
+        self.future = None
 
 
 class FakeConsumer(object):
@@ -144,6 +191,12 @@ def world(monkeypatch):
     module = types.ModuleType("confluent_kafka")
     module.Consumer = lambda conf: FakeConsumer(conf, found)
     module.KafkaException = FakeKafkaException
+    module.KafkaError = FakeKafkaError
+    admin = types.ModuleType("confluent_kafka.admin")
+    admin.AdminClient = lambda conf: FakeAdmin(conf, found)
+    admin.NewTopic = FakeNewTopic
+    module.admin = admin
+    monkeypatch.setitem(sys.modules, "confluent_kafka.admin", admin)
     module.version = lambda: ("2.15.1", 0x020f0100)
     module.libversion = lambda: ("2.15.1", 0x020f01ff)
     monkeypatch.setitem(sys.modules, "confluent_kafka", module)
@@ -579,3 +632,30 @@ class TestTheTraceAndTheThreadRecord:
         run(tmp_path)
         assert not (tmp_path / "consumer_readtrace.csv").exists()
         assert not (tmp_path / "consumer_threads.json").exists()
+
+
+class TestTheTopicIsThereBeforeTheConsumerSubscribes:
+
+    def test_it_makes_the_topic_with_the_brokers_own_shape(self, world):
+        client = kcc.load_client()
+        assert kcc.ensure_topic(client, "10.2.1.21:19092", TOPIC) is True
+        assert world.admins[0].conf == {"bootstrap.servers": "10.2.1.21:19092"}
+        assert [(n.topic, n.shape) for n in world.created] == [(TOPIC, (1, 1))]
+        assert world.future.waited == 30.0
+
+    def test_a_topic_there_already_is_taken_as_it_is(self, world):
+        world.topic_error = TOPIC_ALREADY_EXISTS
+        assert kcc.ensure_topic(kcc.load_client(), "b:1", TOPIC) is False
+
+    def test_any_other_refusal_stops_the_run(self, world):
+        world.topic_error = 29
+        with pytest.raises(FakeKafkaException):
+            kcc.ensure_topic(kcc.load_client(), "b:1", TOPIC)
+
+    def test_a_run_makes_it_before_its_consumer_exists(self, world, tmp_path, capsys):
+        world.topic_error = TOPIC_ALREADY_EXISTS
+        code, _ = run(tmp_path)
+        out = capsys.readouterr().out
+        assert code == 0 and "OK topic: %s there already" % TOPIC in out
+        assert out.index("OK topic:") < out.index("OK confluent consumer: wrote")
+        assert len(world.created) == 1 and len(world.consumers) == 1

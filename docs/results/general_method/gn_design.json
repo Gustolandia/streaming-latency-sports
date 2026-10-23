@@ -63,7 +63,7 @@
    "broker_capture": true,
    "producer_priority": true,
    "gc_off": true,
-   "schedstat": true,
+   "schedstat": false,
    "run_facts": true,
    "lateness_p99_ms": 10,
    "arrival": "poisson",

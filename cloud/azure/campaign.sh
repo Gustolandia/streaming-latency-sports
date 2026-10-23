@@ -1056,6 +1056,13 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   # each answer left it, so that the broker's own time can be split from the client's without the
   # two machines' clocks ever meeting. A capture a crashed run left behind is stopped by its own id
   # first, so no two write one file; the larger buffer keeps the kernel from dropping packets.
+  # Pilot round a of plan version 47 (23 Oct 2026): the capture is written to the broker's memory
+  # (/dev/shm), not to its disk. It writes about 2 MB a second, 150 to 190 MB a run. On the Arm
+  # pair, whose broker writes to a slower disk than the x86 pair's, all seven Kafka runs with the
+  # capture on that disk had their acknowledgements held for 190 to 610 ms about 30 s and 60 s
+  # into the capture, as the kernel writes back pages 30 s old, and the producer fell behind;
+  # the broker's run without a capture held none longer than 24 ms. The memory file system
+  # holds 3.9 GB on both brokers.
   local broker_full="" broker_port="${KAFKA_BOOTSTRAP##*:}"
   [ "$BACKEND" = redis ] && broker_port="$REDIS_PORT"
   # Plan version 47 (23 Oct 2026): NATS's port and RabbitMQ's, for their blocks. The client-host
@@ -1063,7 +1070,7 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   [ "$BACKEND" = nats ] && broker_port="$NATS_PORT"
   [ "$BACKEND" = rabbitmq ] && broker_port="$RABBITMQ_PORT"
   if [ -n "$BROKER_CAPTURE" ]; then
-    remote_broker "sudo sh -c 'kill -INT \$(cat /tmp/sbl_bfull.pid 2>/dev/null) 2>/dev/null; rm -f /tmp/sbl_bfull.pcap /tmp/sbl_bfull.err; nohup tcpdump -i eth0 -s 0 --time-stamp-precision=nano -B 32768 -w /tmp/sbl_bfull.pcap tcp port $broker_port > /tmp/sbl_bfull.err 2>&1 & echo \$! > /tmp/sbl_bfull.pid'" \
+    remote_broker "sudo sh -c 'kill -INT \$(cat /dev/shm/sbl_bfull.pid 2>/dev/null) 2>/dev/null; rm -f /dev/shm/sbl_bfull.pcap /dev/shm/sbl_bfull.err; nohup tcpdump -i eth0 -s 0 --time-stamp-precision=nano -B 32768 -w /dev/shm/sbl_bfull.pcap tcp port $broker_port > /dev/shm/sbl_bfull.err 2>&1 & echo \$! > /dev/shm/sbl_bfull.pid'" \
       > /dev/null 2>&1 && broker_full=1
     sleep 2
   fi
@@ -1274,10 +1281,10 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   if [ -n "$broker_full" ]; then
     # Stopped by its own id, then waited for, so that tcpdump has written its last packets and its
     # count of drops before either file is copied back into the run's folder.
-    remote_broker "sudo kill -INT \$(cat /tmp/sbl_bfull.pid) 2>/dev/null; for _ in \$(seq 1 40); do sudo kill -0 \$(cat /tmp/sbl_bfull.pid) 2>/dev/null || break; sleep 0.5; done" \
+    remote_broker "sudo kill -INT \$(cat /dev/shm/sbl_bfull.pid) 2>/dev/null; for _ in \$(seq 1 40); do sudo kill -0 \$(cat /dev/shm/sbl_bfull.pid) 2>/dev/null || break; sleep 0.5; done" \
       > /dev/null 2>&1
-    remote_broker "sudo cat /tmp/sbl_bfull.pcap" > "$RUN_DIR/broker_full.pcap" 2>/dev/null
-    remote_broker "sudo cat /tmp/sbl_bfull.err; sudo rm -f /tmp/sbl_bfull.pcap /tmp/sbl_bfull.err /tmp/sbl_bfull.pid" \
+    remote_broker "sudo cat /dev/shm/sbl_bfull.pcap" > "$RUN_DIR/broker_full.pcap" 2>/dev/null
+    remote_broker "sudo cat /dev/shm/sbl_bfull.err; sudo rm -f /dev/shm/sbl_bfull.pcap /dev/shm/sbl_bfull.err /dev/shm/sbl_bfull.pid" \
       > "$RUN_DIR/broker_full.err" 2>/dev/null
   fi
   if [ -n "$receiver_capture" ]; then

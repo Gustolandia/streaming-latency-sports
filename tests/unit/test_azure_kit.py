@@ -3451,20 +3451,24 @@ def test_freeze_42s_broker_capture_is_its_own_port_stopped_by_its_id_and_copied_
     _, calls = _r1_runner(tmp_path, "kafka", BROKER_CAPTURE="1")
     remote = [c for c in calls if c.startswith("remote_broker ")]
     assert remote[0] == (
-        "remote_broker sudo sh -c 'kill -INT $(cat /tmp/sbl_bfull.pid 2>/dev/null) 2>/dev/null; "
-        "rm -f /tmp/sbl_bfull.pcap /tmp/sbl_bfull.err; nohup tcpdump -i eth0 -s 0 "
-        "--time-stamp-precision=nano -B 32768 -w /tmp/sbl_bfull.pcap tcp port 19092 > "
-        "/tmp/sbl_bfull.err 2>&1 & echo $! > /tmp/sbl_bfull.pid'")
-    assert remote[1].startswith("remote_broker sudo kill -INT $(cat /tmp/sbl_bfull.pid)")
-    assert "sudo kill -0 $(cat /tmp/sbl_bfull.pid) 2>/dev/null || break" in remote[1]
+        "remote_broker sudo sh -c 'kill -INT $(cat /dev/shm/sbl_bfull.pid 2>/dev/null) 2>/dev/null; "
+        "rm -f /dev/shm/sbl_bfull.pcap /dev/shm/sbl_bfull.err; nohup tcpdump -i eth0 -s 0 "
+        "--time-stamp-precision=nano -B 32768 -w /dev/shm/sbl_bfull.pcap tcp port 19092 > "
+        "/dev/shm/sbl_bfull.err 2>&1 & echo $! > /dev/shm/sbl_bfull.pid'")
+    assert remote[1].startswith("remote_broker sudo kill -INT $(cat /dev/shm/sbl_bfull.pid)")
+    assert "sudo kill -0 $(cat /dev/shm/sbl_bfull.pid) 2>/dev/null || break" in remote[1]
     assert remote[2:] == [
-        "remote_broker sudo cat /tmp/sbl_bfull.pcap",
-        "remote_broker sudo cat /tmp/sbl_bfull.err; sudo rm -f /tmp/sbl_bfull.pcap "
-        "/tmp/sbl_bfull.err /tmp/sbl_bfull.pid"]
+        "remote_broker sudo cat /dev/shm/sbl_bfull.pcap",
+        "remote_broker sudo cat /dev/shm/sbl_bfull.err; sudo rm -f /dev/shm/sbl_bfull.pcap "
+        "/dev/shm/sbl_bfull.err /dev/shm/sbl_bfull.pid"]
     assert (tmp_path / "kafka" / "broker_full.pcap").exists()
     assert (tmp_path / "kafka" / "broker_full.err").exists()
     _, calls = _r1_runner(tmp_path, "redis", BROKER_CAPTURE="1", BACKEND="redis")
     assert "tcp port 6379 >" in [c for c in calls if c.startswith("remote_broker ")][0]
+    # Pilot round a of plan version 47: on the broker's memory, never its disk. On the Arm pair
+    # the capture's writes to disk held Kafka's acknowledgements for 190 to 610 ms.
+    assert "/tmp/sbl_bfull" not in _campaign()
+    assert all("/dev/shm/sbl_bfull" in c for c in calls if c.startswith("remote_broker "))
     _, calls = _r1_runner(tmp_path, "none")
     assert not [c for c in calls if c.startswith("remote_broker ")]
 
@@ -4083,7 +4087,7 @@ def test_freeze_43s_run_facts_are_taken_before_the_clients_while_they_run_and_af
     the clients do; the clients' facts in the background once the trial has started; and the
     counters again once it has ended. A setup that asks for none of it takes none."""
     run = _campaign().split("run_one () {", 1)[1].split("\n}\n", 1)[0]
-    order = ['remote_broker "sudo sh -c \'kill -INT \\$(cat /tmp/sbl_bfull.pid',
+    order = ['remote_broker "sudo sh -c \'kill -INT \\$(cat /dev/shm/sbl_bfull.pid',
              "tcp_counters before", "interrupt_counters before",
              'python3 scripts/run_facts.py host --out "$RUN_DIR/run_facts.json"',
              "began=$(date -u +%s)", 'run_facts_later "$RUN_DIR" &', "run_kafka_trial.sh",

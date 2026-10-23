@@ -258,3 +258,143 @@ show it waiting for a core for 32-49% of its turnaround time (the medians of the
 2,000), and 39-46% in the 50-a-second blocks. At real-time priority it was 0.03-0.12%. Real-time
 priority took 1.6-11.1 ms from the turnaround's 99th percentile (normal less real-time), and left
 42-662 µs over idle (real-time less idle).
+
+## Read again after the verdicts (post hoc)
+
+Everything in this section comes from [`scripts/under_load_posthoc.py`](../../../scripts/under_load_posthoc.py),
+which was written after the verdicts. None of it was registered, none of it changes a verdict, and
+where the paper uses any of it, it says so. It reads the block as the general method reads any run:
+1. the clients' kernel timestamps, matched to the client host's captures by the broker's own ids;
+2. the check for a request waiting at the broker, computed from the clients' own timestamps;
+3. the three latencies;
+4. each verdict's robustness.
+
+```
+python scripts/under_load_posthoc.py calibrate --runs runs/azure/collected/matched-b/up2000d/runs \
+    --runs runs/azure/collected/matched-b/up500d/runs --runs runs/azure/collected/matched-b/up50d/runs \
+    --driver 10.2.1.10 --broker 10.2.1.21 --receiver 10.2.1.11 \
+    --out docs/results/under_load/posthoc_allowance.json
+python scripts/under_load_posthoc.py read --runs runs/azure/collected/matched-b/u2000/runs \
+    --runs runs/azure/collected/matched-b/u500/runs --runs runs/azure/collected/matched-b/u50/runs \
+    --driver 10.2.1.10 --broker 10.2.1.21 --receiver 10.2.1.11 \
+    --allowance docs/results/under_load/posthoc_allowance.json \
+    --judged-runs docs/results/under_load/u_runs.csv \
+    --out-runs docs/results/under_load/posthoc_runs.csv --out docs/results/under_load/posthoc.json
+```
+
+**The timestamps, and the broker's own ids.** In every run the sockets' timestamps matched the
+client host's captures within 1.1-3.0 µs at the median, and within 1.6-41.1 µs at the 99th
+percentile. The widest were in loaded Kafka runs, where one read drained several packets and took
+the last one's time.
+
+[`scripts/client_wire.py`](../../../scripts/client_wire.py) reads the two client captures alone and
+names each message by the broker's own id: Kafka's offset, Redis's entry id. On eight of the runs,
+idle and loaded, at all three rates and on both brokers:
+- it paired exactly the messages the payload's event ids pair, with no disagreement;
+- every id agreed with the clients' own files;
+- its kernel-timed latency equalled the payload's to the nanosecond for 99.85-100% of messages.
+  The rest, 210 Kafka messages, it times 6.5-77.5 µs later, because their record's last byte came
+  in the packet after their event id's.
+
+**The check, from the clients' own timestamps.** For each message the question is whether a
+request was waiting at the broker when it arrived. The broker's capture answers it. A message found
+no request waiting when it sat stored more than 50 µs before its request came; one within 50 µs
+carries no more than 50 µs of the client's time. The clients answer the question two ways.
+- **The certain reading:** the delivering request left the consumer more than 50 µs after the
+  producer had its acknowledgment. That needs nothing but cause and effect.
+  - It made no false call in 3.02 million messages, from the sockets or from the captures.
+  - It is a lower bound. At 2,000 a second it called 4.9-77.1% of the messages unwaited, where the
+    broker's capture shows 83-95%.
+- **The estimate:** the same test with the two network crossings between the acknowledgment and the
+  request added back.
+  - The crossings are estimated per pair of connections from the clients' own round trips, taking
+    only requests that cannot have waited: those that ask for no messages, and those whose answer
+    carried a message stored before they left. Each least value needs at least 100 values.
+  - An allowance set from round d's broker captures, 60 µs on Kafka and 35 µs on Redis, takes off
+    the broker's least service times.
+  - At 50 a second, and on Kafka at 500 when idle or at real-time priority, too few requests
+    proved they did not wait, and only the certain reading speaks. There it agreed with the broker
+    on at least 99.8% of messages.
+
+From the captures, one timestamp per packet, the estimate before the allowance agreed with the
+broker on:
+- 96.9-99.2% of messages on Kafka at 2,000 a second, with its share of messages that found none
+  within 3.0 points of the broker's;
+- 98.5-99.7% on Redis at 2,000, within 1.5 points;
+- at least 99.5% at 500, within 0.5 points.
+
+From the sockets, one timestamp per read, it agreed on Kafka at 2,000 on only 86.6-98.2%, within
+11.0 points. Under load the producer's thread read several acknowledgments at once, and each took
+its read's last packet's time. With the allowance, the estimate made one false call in 2.78 million
+messages; from the captures it agreed on 96.0-99.2% (Kafka at 2,000) and 94.1-97.5% (Redis at
+2,000), within 4.0 and 5.9 points. From the sockets, with the allowance, the bound the estimate
+puts on the thread's saving exceeded the broker's own bound for at most 0.13% of any run's
+messages, by at most 14.4 µs.
+
+**The three latencies.** F is what a receiver as ready as the protocol allows would see:
+- on Redis, a request always waiting: `W_so` less the time the message sat stored;
+- on Kafka, a request sent again at once: `W_so` less what the thread added. The round trip
+  stays, as real latency.
+
+Each setup's medians over its runs:
+- F from the broker's capture and, beside it, from the clients' own timestamps with the estimate;
+- the share of messages that found no request waiting, by the broker's capture and by the
+  estimate with its allowance from the client captures.
+
+| Setup | Found none (broker; clients) | `W_so` 99th pct. | F 99th pct. (broker; clients) | D 99th pct. |
+|---|---|---|---|---|
+| Kafka, 2,000, idle | 90%; 88% | 1.81 ms | 1.31; 1.36 ms | 2.80 ms |
+| Kafka, 2,000, 70% load | 94%; 92% | 15.5 ms | 1.28; 1.67 ms | 29.2 ms |
+| Kafka, 2,000, 70%, real-time | 89%; 87% | 2.49 ms | 1.53; 1.69 ms | 4.10 ms |
+| Redis, 2,000, idle | 90%; 84% | 1.39 ms | 0.68; 0.72 ms | 1.70 ms |
+| Redis, 2,000, 70% load | 91%; 87% | 2.66 ms | 0.63; 0.66 ms | 3.36 ms |
+| Redis, 2,000, 70%, real-time | 91%; 87% | 1.81 ms | 0.82; 0.86 ms | 2.20 ms |
+| Kafka, 500, 70% load | 17%; 17% | 3.09 ms | 0.93; 0.94 ms | 5.10 ms |
+| Redis, 500, 70% load | 5.7%; 5.6% | 1.95 ms | 0.57; 0.58 ms | 3.35 ms |
+
+The other setups at 500 and 50 a second found a request waiting for 99.5% of their messages or
+more, so their F is their `W_so`. At 2,000 a second most messages found no request waiting even
+idle, and a single request in flight cannot keep one waiting.
+
+**Each verdict with any one run left out.** Leaving out any one of the 64 runs changes no cell of
+U-a to U-d, and no only-path decision.
+
+**Less each pair's path floor, and U-d on the rise.** Each run draws its connections' path delays
+afresh. Taking each pair's floor out of `W_so` before its 99th percentile:
+- U-b's growth becomes 10.9 and 11.5 times on Kafka (4.7 and 8.5 as judged), and 13.1 and 2.3
+  times on Redis (2.9 and 1.9), at 500 and 2,000 messages a second.
+- U-d's ratio becomes:
+  - 0.10 and 0.12 on Kafka (0.23 and 0.16 as judged);
+  - 0.07 on Redis at 500 (0.39);
+  - 0.54 on Redis at 2,000 (0.68). U-d asked for at most 0.5, so Redis at 2,000 still misses it.
+- Measured on the rise, real-time priority took back:
+  - 0.98 and 0.95 of the rise on Kafka, and 0.93 on Redis at 500;
+  - 0.67 of it on Redis at 2,000, and 0.83 with the floors out.
+
+**The decisions with a run left out.**
+- At 500 messages a second, U-e names the wait stored at the broker on both brokers, whichever run
+  is left out.
+- Each other naming rests on a single run:
+  - Kafka at 2,000 rests on its loaded run 4, the one-second stop. Without it, the tail's rise is
+    −593 µs.
+  - Kafka at 50 rests on its run 4, the broker's 613-ms stall. Without it, `G` fell 10.5 µs.
+  - Redis at 2,000 rests on its loaded run 1. Without it, the tail's rise is −287 µs and no term is
+    named.
+
+**The stalls.** Four runs held messages more than 50 ms, all on Kafka:
+
+| Run | When (s into the run) | Messages | Longest | Where the time was |
+|---|---|---|---|---|
+| 2,000, loaded, run 4 | 46.7-47.9 | 2,298 | 999 ms | the consumer's one-second stop (above) |
+| 500, loaded at real-time priority, run 3 | 51.9-52.0 and 66.8-66.9 | 64 and 64 | 393 and 270 ms | the broker's handling of the produce: each episode held 64 messages, the producer's limit in flight |
+| 50, blocks, run 4 | 29.0-29.6 | 29 | 613 ms | the broker's handling (above) |
+| 50, idle, run 3 | 45.1 | 1 | 56 ms | the broker's handling of the produce |
+
+The broker's log shows nothing at any of these times.
+
+**The thread's counters.** The consumer reads its thread's counters just before each request, so
+each turnaround's split runs from just before the previous request to just before this one:
+- it covers the previous request's round trip as well as the turnaround;
+- during the round trip the thread mostly waits in its read and cannot queue for a core;
+- the shares of the turnaround spent waiting for a core and running are therefore upper bounds on
+  the turnaround's own.

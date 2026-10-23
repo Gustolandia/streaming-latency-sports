@@ -1,0 +1,10 @@
+{
+  "capture": {
+    "kafka": 60.0,
+    "redis": 35.0
+  },
+  "sockets": {
+    "kafka": 60.0,
+    "redis": 35.0
+  }
+}

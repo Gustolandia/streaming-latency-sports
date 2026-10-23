@@ -1,0 +1,1029 @@
+{
+  "check_totals": {
+    "calibrated": {
+      "false_none": 1,
+      "missed_none": 149912,
+      "n": 2782793
+    },
+    "certain": {
+      "false_none": 0,
+      "missed_none": 1246739,
+      "n": 3021577
+    },
+    "raw": {
+      "false_none": 20904,
+      "missed_none": 74106,
+      "n": 2782793
+    }
+  },
+  "decisions_without_a_run": {
+    "2000 kafka": {
+      "all_runs": [
+        "hand",
+        2958.485755792254
+      ],
+      "without": [
+        [
+          "law_u2000_r001-U2000-kafka-l0-a1",
+          [
+            "hand",
+            2827.957407494132
+          ]
+        ],
+        [
+          "law_u2000_r001-U2000-kafka-l70-a1",
+          [
+            "hand",
+            4161.623080068745
+          ]
+        ],
+        [
+          "law_u2000_r002-U2000-kafka-l0-a1",
+          [
+            "hand",
+            2832.8572978026496
+          ]
+        ],
+        [
+          "law_u2000_r002-U2000-kafka-l70-a1",
+          [
+            "hand",
+            4067.018197919396
+          ]
+        ],
+        [
+          "law_u2000_r003-U2000-kafka-l0-a1",
+          [
+            "hand",
+            3003.7607893519457
+          ]
+        ],
+        [
+          "law_u2000_r003-U2000-kafka-l70-a1",
+          [
+            "hand",
+            4161.400974153253
+          ]
+        ],
+        [
+          "law_u2000_r004-U2000-kafka-l0-a1",
+          [
+            "hand",
+            3201.377857728874
+          ]
+        ],
+        [
+          "law_u2000_r004-U2000-kafka-l70-a1",
+          [
+            null,
+            -593.1408862235085
+          ]
+        ]
+      ]
+    },
+    "2000 redis": {
+      "all_runs": [
+        "wait",
+        154.3791707897384
+      ],
+      "without": [
+        [
+          "law_u2000_r001-U2000-redis-l0-a1",
+          [
+            "wait",
+            92.43490580147545
+          ]
+        ],
+        [
+          "law_u2000_r001-U2000-redis-l70-a1",
+          [
+            null,
+            -286.5918742102616
+          ]
+        ],
+        [
+          "law_u2000_r002-U2000-redis-l0-a1",
+          [
+            "wait",
+            141.80889887659282
+          ]
+        ],
+        [
+          "law_u2000_r002-U2000-redis-l70-a1",
+          [
+            "wait",
+            195.38254648725695
+          ]
+        ],
+        [
+          "law_u2000_r003-U2000-redis-l0-a1",
+          [
+            "wait",
+            200.31247025821597
+          ]
+        ],
+        [
+          "law_u2000_r003-U2000-redis-l70-a1",
+          [
+            "wait",
+            212.46536714788738
+          ]
+        ],
+        [
+          "law_u2000_r004-U2000-redis-l0-a1",
+          [
+            "wait",
+            186.8635644164989
+          ]
+        ],
+        [
+          "law_u2000_r004-U2000-redis-l70-a1",
+          [
+            "wait",
+            212.21219290912143
+          ]
+        ]
+      ]
+    },
+    "50 kafka": {
+      "all_runs": [
+        "hand",
+        2557.751172853698
+      ],
+      "without": [
+        [
+          "law_u50_r001-U50-kafka-l88-blocks-a1",
+          [
+            "hand",
+            3413.1972448611114
+          ]
+        ],
+        [
+          "law_u50_r002-U50-kafka-l88-blocks-a1",
+          [
+            "hand",
+            3411.5704079689035
+          ]
+        ],
+        [
+          "law_u50_r003-U50-kafka-l88-blocks-a1",
+          [
+            "hand",
+            3416.768561302516
+          ]
+        ],
+        [
+          "law_u50_r004-U50-kafka-l88-blocks-a1",
+          [
+            null,
+            -10.52973017572856
+          ]
+        ]
+      ]
+    },
+    "50 redis": {
+      "all_runs": [
+        null,
+        -14.436153733223733
+      ],
+      "without": [
+        [
+          "law_u50_r001-U50-redis-l88-blocks-a1",
+          [
+            null,
+            -12.93235903194055
+          ]
+        ],
+        [
+          "law_u50_r002-U50-redis-l88-blocks-a1",
+          [
+            null,
+            -18.9924496750521
+          ]
+        ],
+        [
+          "law_u50_r003-U50-redis-l88-blocks-a1",
+          [
+            null,
+            -12.308648852902863
+          ]
+        ],
+        [
+          "law_u50_r004-U50-redis-l88-blocks-a1",
+          [
+            null,
+            -13.510071166827402
+          ]
+        ]
+      ]
+    },
+    "500 kafka": {
+      "all_runs": [
+        "wait",
+        182.89633540703517
+      ],
+      "without": [
+        [
+          "law_u500_r001-U500-kafka-l0-a1",
+          [
+            "wait",
+            170.2689826005901
+          ]
+        ],
+        [
+          "law_u500_r001-U500-kafka-l70-a1",
+          [
+            "wait",
+            189.10815122467557
+          ]
+        ],
+        [
+          "law_u500_r002-U500-kafka-l0-a1",
+          [
+            "wait",
+            214.4069604021986
+          ]
+        ],
+        [
+          "law_u500_r002-U500-kafka-l70-a1",
+          [
+            "wait",
+            189.84995603700804
+          ]
+        ],
+        [
+          "law_u500_r003-U500-kafka-l0-a1",
+          [
+            "wait",
+            218.06187777485286
+          ]
+        ],
+        [
+          "law_u500_r003-U500-kafka-l70-a1",
+          [
+            "wait",
+            106.9371926723968
+          ]
+        ],
+        [
+          "law_u500_r004-U500-kafka-l0-a1",
+          [
+            "wait",
+            131.04449729227906
+          ]
+        ],
+        [
+          "law_u500_r004-U500-kafka-l70-a1",
+          [
+            "wait",
+            242.61492676086868
+          ]
+        ]
+      ]
+    },
+    "500 redis": {
+      "all_runs": [
+        "wait",
+        178.01739269346737
+      ],
+      "without": [
+        [
+          "law_u500_r001-U500-redis-l0-a1",
+          [
+            "wait",
+            172.83014658756252
+          ]
+        ],
+        [
+          "law_u500_r001-U500-redis-l70-a1",
+          [
+            "wait",
+            108.67117008713811
+          ]
+        ],
+        [
+          "law_u500_r002-U500-redis-l0-a1",
+          [
+            "wait",
+            155.94914572965368
+          ]
+        ],
+        [
+          "law_u500_r002-U500-redis-l70-a1",
+          [
+            "wait",
+            183.2553617761462
+          ]
+        ],
+        [
+          "law_u500_r003-U500-redis-l0-a1",
+          [
+            "wait",
+            236.87243224439896
+          ]
+        ],
+        [
+          "law_u500_r003-U500-redis-l70-a1",
+          [
+            "wait",
+            221.01825721850545
+          ]
+        ],
+        [
+          "law_u500_r004-U500-redis-l0-a1",
+          [
+            "wait",
+            157.23056956343382
+          ]
+        ],
+        [
+          "law_u500_r004-U500-redis-l70-a1",
+          [
+            "wait",
+            192.53241405496655
+          ]
+        ]
+      ]
+    }
+  },
+  "floored": [
+    {
+      "backend": "kafka",
+      "floored_growth": 10.906688553360945,
+      "floored_rise_taken": 0.9896976536314439,
+      "floored_rt_ratio": 0.10104461417874883,
+      "rate": 500,
+      "raw_growth": 4.70162025808812,
+      "raw_rise_taken": 0.9795006870606636,
+      "raw_rt_ratio": 0.22883189474996748
+    },
+    {
+      "backend": "redis",
+      "floored_growth": 13.084123157413849,
+      "floored_rise_taken": 1.010852794396375,
+      "floored_rt_ratio": 0.06640517560550437,
+      "rate": 500,
+      "raw_growth": 2.9357025190856194,
+      "raw_rise_taken": 0.9262338670846967,
+      "raw_rt_ratio": 0.38927285100511505
+    },
+    {
+      "backend": "kafka",
+      "floored_growth": 11.471893967105073,
+      "floored_rise_taken": 0.9630529696666841,
+      "floored_rt_ratio": 0.12089593819701981,
+      "rate": 2000,
+      "raw_growth": 8.531608964712854,
+      "raw_rise_taken": 0.9503339091835056,
+      "raw_rt_ratio": 0.16105585482397916
+    },
+    {
+      "backend": "redis",
+      "floored_growth": 2.2900352998111804,
+      "floored_rise_taken": 0.8250709969273484,
+      "floored_rt_ratio": 0.5352164610849267,
+      "rate": 2000,
+      "raw_growth": 1.9097410610779455,
+      "raw_rise_taken": 0.6742387504477532,
+      "raw_rt_ratio": 0.6788136942994849
+    }
+  ],
+  "leave_one_out": {
+    "cells": [],
+    "verdicts": []
+  },
+  "post_hoc": true,
+  "setups": [
+    {
+      "DW_p50": 815.4235000000001,
+      "DW_p99": 1174.06236,
+      "D_p50": 2048.8265,
+      "D_p99": 2800.9446599999997,
+      "Fb_p50": 798.575,
+      "Fb_p99": 1309.6009900000001,
+      "Fc_p50": 861.04,
+      "Fc_p99": 1362.40935,
+      "WF_p50": 428.26249999999993,
+      "WF_p99": 586.0597799999999,
+      "W_p50": 1215.3135,
+      "W_p99": 1812.5327899999997,
+      "broker_none0_share": 0.9324060566426883,
+      "broker_none_share": 0.8983148045676341,
+      "calibrated_agree": 0.9501987021479954,
+      "calibrated_none_share": 0.8188691584083707,
+      "cap_calibrated_agree": 0.9754215461386776,
+      "cap_calibrated_none_share": 0.8789035776087568,
+      "cap_certain_agree": 0.5920741869958385,
+      "cap_certain_none_share": 0.4607451301752722,
+      "cap_raw_agree": 0.9776449756529437,
+      "cap_raw_none_share": 0.9178483589955215,
+      "cap_wait_err_raw_p50": 28.873500000000007,
+      "cap_wait_err_raw_p99": 34.69102500000003,
+      "certain_agree": 0.5668896825796066,
+      "certain_none_share": 0.4355601388399819,
+      "gap_smin_p50": 198.23649999999998,
+      "gap_tri_p50": 7.645499999999998,
+      "raw_agree": 0.9563257709140298,
+      "raw_none_share": 0.8739825946979225,
+      "runs": 4,
+      "setup": "U2000-kafka-l0",
+      "tri_over_share": 0.0,
+      "wait_err_raw_p50": 29.529999999999916,
+      "wait_err_raw_p99": 264.0721499999998
+    },
+    {
+      "DW_p50": 2322.92025,
+      "DW_p99": 17969.475464999985,
+      "D_p50": 4612.6075,
+      "D_p99": 29230.59626999997,
+      "Fb_p50": 724.5997500000003,
+      "Fb_p99": 1274.9658000000004,
+      "Fc_p50": 786.057,
+      "Fc_p99": 1670.0695149999992,
+      "WF_p50": 1060.36675,
+      "WF_p99": 14655.0258,
+      "W_p50": 1848.40225,
+      "W_p99": 15463.821,
+      "broker_none0_share": 0.9609074967948887,
+      "broker_none_share": 0.938657329403511,
+      "calibrated_agree": 0.9189075071806929,
+      "calibrated_none_share": 0.8575648365842039,
+      "cap_calibrated_agree": 0.9834898941167671,
+      "cap_calibrated_none_share": 0.92214784069026,
+      "cap_certain_agree": 0.7707688747368837,
+      "cap_certain_none_share": 0.7140625026148243,
+      "cap_raw_agree": 0.9890385275921088,
+      "cap_raw_none_share": 0.9495389303145181,
+      "cap_wait_err_raw_p50": 25.026999999999475,
+      "cap_wait_err_raw_p99": 31.093449999999926,
+      "certain_agree": 0.7143111144321698,
+      "certain_none_share": 0.6576041717556401,
+      "gap_smin_p50": 539.2817500000001,
+      "gap_tri_p50": 36.027000000000655,
+      "raw_agree": 0.9308349253804513,
+      "raw_none_share": 0.8843826945959974,
+      "runs": 4,
+      "setup": "U2000-kafka-l70",
+      "tri_over_share": 0.0,
+      "wait_err_raw_p50": 25.920000000000073,
+      "wait_err_raw_p99": 809.1600749999998
+    },
+    {
+      "DW_p50": 1181.234,
+      "DW_p99": 2057.044109999999,
+      "D_p50": 2712.6175,
+      "D_p99": 4103.323819999999,
+      "Fb_p50": 876.139,
+      "Fb_p99": 1526.2610099999997,
+      "Fc_p50": 962.809,
+      "Fc_p99": 1689.4387899999997,
+      "WF_p50": 512.7545,
+      "WF_p99": 1200.4448699999998,
+      "W_p50": 1497.7435,
+      "W_p99": 2490.53891,
+      "broker_none0_share": 0.9303556541323652,
+      "broker_none_share": 0.8941451125582425,
+      "calibrated_agree": 0.9071597610828532,
+      "calibrated_none_share": 0.8008562665312835,
+      "cap_calibrated_agree": 0.9751840532034642,
+      "cap_calibrated_none_share": 0.8693302307882703,
+      "cap_certain_agree": 0.627489315661387,
+      "cap_certain_none_share": 0.521635493246193,
+      "cap_raw_agree": 0.9807680765146232,
+      "cap_raw_none_share": 0.9128851089088579,
+      "cap_wait_err_raw_p50": 27.480000000000015,
+      "cap_wait_err_raw_p99": 32.99106499999998,
+      "certain_agree": 0.5271485101605332,
+      "certain_none_share": 0.4340203592742381,
+      "gap_smin_p50": 302.7715,
+      "gap_tri_p50": 30.619000000000085,
+      "raw_agree": 0.9202504136187456,
+      "raw_none_share": 0.8496640470633459,
+      "runs": 4,
+      "setup": "U2000-kafka-l70-rt",
+      "tri_over_share": 0.0,
+      "wait_err_raw_p50": 28.241500000000016,
+      "wait_err_raw_p99": 693.93395
+    },
+    {
+      "DW_p50": 159.16599999999994,
+      "DW_p99": 333.1515800000001,
+      "D_p50": 981.0339999999999,
+      "D_p99": 1704.4543000000003,
+      "Fb_p50": 419.753,
+      "Fb_p99": 681.32734,
+      "Fc_p50": 462.6195,
+      "Fc_p99": 720.20577,
+      "WF_p50": 370.22650000000004,
+      "WF_p99": 907.7682000000004,
+      "W_p50": 811.912,
+      "W_p99": 1392.70372,
+      "broker_none0_share": 0.9592878774159146,
+      "broker_none_share": 0.8987056173715463,
+      "calibrated_agree": 0.949216996530066,
+      "calibrated_none_share": 0.844079587635963,
+      "cap_calibrated_agree": 0.9501375765529437,
+      "cap_calibrated_none_share": 0.8440745010493752,
+      "cap_certain_agree": 0.21908891295373695,
+      "cap_certain_none_share": 0.10364411980722987,
+      "cap_raw_agree": 0.9881330225305685,
+      "cap_raw_none_share": 0.8851426863148855,
+      "cap_wait_err_raw_p50": 5.979749999999932,
+      "cap_wait_err_raw_p99": 42.47892500000003,
+      "certain_agree": 0.2185707700396618,
+      "certain_none_share": 0.10316621894902055,
+      "gap_smin_p50": 148.15525000000002,
+      "gap_tri_p50": 0.0,
+      "raw_agree": 0.9882235693325851,
+      "raw_none_share": 0.8850622434206716,
+      "runs": 4,
+      "setup": "U2000-redis-l0",
+      "tri_over_share": 0.0,
+      "wait_err_raw_p50": 5.569999999999943,
+      "wait_err_raw_p99": 42.67291999999999
+    },
+    {
+      "DW_p50": 223.32350000000002,
+      "DW_p99": 2024.5913650000132,
+      "D_p50": 1038.2707500000001,
+      "D_p99": 3362.2736150000037,
+      "Fb_p50": 421.53649999999993,
+      "Fb_p99": 633.86835,
+      "Fc_p50": 456.99525,
+      "Fc_p99": 663.2899400000001,
+      "WF_p50": 339.10625000000005,
+      "WF_p99": 2224.484555000002,
+      "W_p50": 769.29975,
+      "W_p99": 2659.703480000002,
+      "broker_none0_share": 0.9665446714556504,
+      "broker_none_share": 0.9126592397463342,
+      "calibrated_agree": 0.9580749144330309,
+      "calibrated_none_share": 0.8707320270526029,
+      "cap_calibrated_agree": 0.958779501066688,
+      "cap_calibrated_none_share": 0.8714370792794316,
+      "cap_certain_agree": 0.39856627934281863,
+      "cap_certain_none_share": 0.3112259844875783,
+      "cap_raw_agree": 0.9915983114354683,
+      "cap_raw_none_share": 0.9128636660484974,
+      "cap_wait_err_raw_p50": 3.9027499999999975,
+      "cap_wait_err_raw_p99": 33.74278500000027,
+      "certain_agree": 0.39753193930586633,
+      "certain_none_share": 0.3101911790522006,
+      "gap_smin_p50": 183.11700000000002,
+      "gap_tri_p50": 0.0,
+      "raw_agree": 0.991908777657357,
+      "raw_none_share": 0.912204128819363,
+      "runs": 4,
+      "setup": "U2000-redis-l70",
+      "tri_over_share": 0.0,
+      "wait_err_raw_p50": 3.4794999999999483,
+      "wait_err_raw_p99": 34.21165000000006
+    },
+    {
+      "DW_p50": 200.70525,
+      "DW_p99": 339.7092799999999,
+      "D_p50": 1263.6032500000001,
+      "D_p99": 2197.746254999997,
+      "Fb_p50": 577.4972499999999,
+      "Fb_p99": 823.5944150000001,
+      "Fc_p50": 612.9445,
+      "Fc_p99": 855.5721500000002,
+      "WF_p50": 422.07475,
+      "WF_p99": 1127.0066249999968,
+      "W_p50": 1063.59925,
+      "W_p99": 1805.4431449999975,
+      "broker_none0_share": 0.9664358633150271,
+      "broker_none_share": 0.9126426444821604,
+      "calibrated_agree": 0.9580571599113702,
+      "calibrated_none_share": 0.8706513754524023,
+      "cap_calibrated_agree": 0.9583150940168295,
+      "cap_calibrated_none_share": 0.8709608806577596,
+      "cap_certain_agree": 0.4428454733879519,
+      "cap_certain_none_share": 0.35604818104836333,
+      "cap_raw_agree": 0.9937793412107367,
+      "cap_raw_none_share": 0.9112520808580886,
+      "cap_wait_err_raw_p50": 3.0570000000000195,
+      "cap_wait_err_raw_p99": 34.37073999999993,
+      "certain_agree": 0.4418594283279341,
+      "certain_none_share": 0.35506213598834546,
+      "gap_smin_p50": 137.74,
+      "gap_tri_p50": 0.0,
+      "raw_agree": 0.9938145705038892,
+      "raw_none_share": 0.9109536267334425,
+      "runs": 4,
+      "setup": "U2000-redis-l70-rt",
+      "tri_over_share": 0.0,
+      "wait_err_raw_p50": 2.994000000000071,
+      "wait_err_raw_p99": 34.68252499999987
+    },
+    {
+      "DW_p50": 983.857,
+      "DW_p99": 1603.8134199999995,
+      "D_p50": 1781.3115,
+      "D_p99": 2434.6134999999995,
+      "Fb_p50": 786.165,
+      "Fb_p99": 901.1599999999999,
+      "Fc_p50": 786.165,
+      "Fc_p99": 901.1599999999999,
+      "WF_p50": 0.0,
+      "WF_p99": 0.0,
+      "W_p50": 786.165,
+      "W_p99": 901.1599999999999,
+      "broker_none0_share": 0.0,
+      "broker_none_share": 0.0,
+      "calibrated_agree": null,
+      "calibrated_none_share": null,
+      "cap_calibrated_agree": null,
+      "cap_calibrated_none_share": null,
+      "cap_certain_agree": 1.0,
+      "cap_certain_none_share": 0.0,
+      "cap_raw_agree": null,
+      "cap_raw_none_share": null,
+      "cap_wait_err_raw_p50": null,
+      "cap_wait_err_raw_p99": null,
+      "certain_agree": 1.0,
+      "certain_none_share": 0.0,
+      "gap_smin_p50": 0.0,
+      "gap_tri_p50": 0.0,
+      "raw_agree": null,
+      "raw_none_share": null,
+      "runs": 4,
+      "setup": "U50-kafka-l0",
+      "tri_over_share": 0.0,
+      "wait_err_raw_p50": null,
+      "wait_err_raw_p99": null
+    },
+    {
+      "DW_p50": 1080.9895000000001,
+      "DW_p99": 5250.635099999998,
+      "D_p50": 1900.394,
+      "D_p99": 6056.592459999996,
+      "Fb_p50": 820.7864999999999,
+      "Fb_p99": 926.3459799999994,
+      "Fc_p50": 820.7864999999999,
+      "Fc_p99": 926.3459799999994,
+      "WF_p50": 0.0,
+      "WF_p99": 0.0,
+      "W_p50": 820.7864999999999,
+      "W_p99": 926.3459799999994,
+      "broker_none0_share": 0.0,
+      "broker_none_share": 0.0,
+      "calibrated_agree": null,
+      "calibrated_none_share": null,
+      "cap_calibrated_agree": null,
+      "cap_calibrated_none_share": null,
+      "cap_certain_agree": 1.0,
+      "cap_certain_none_share": 0.0,
+      "cap_raw_agree": null,
+      "cap_raw_none_share": null,
+      "cap_wait_err_raw_p50": null,
+      "cap_wait_err_raw_p99": null,
+      "certain_agree": 1.0,
+      "certain_none_share": 0.0,
+      "gap_smin_p50": 0.0,
+      "gap_tri_p50": 0.0,
+      "raw_agree": null,
+      "raw_none_share": null,
+      "runs": 4,
+      "setup": "U50-kafka-l88-blocks",
+      "tri_over_share": 0.0,
+      "wait_err_raw_p50": null,
+      "wait_err_raw_p99": null
+    },
+    {
+      "DW_p50": 242.639,
+      "DW_p99": 407.72461999999973,
+      "D_p50": 1036.0175,
+      "D_p99": 1217.1977399999998,
+      "Fb_p50": 797.4495,
+      "Fb_p99": 857.2045399999997,
+      "Fc_p50": 797.4495,
+      "Fc_p99": 857.2045399999997,
+      "WF_p50": 0.0,
+      "WF_p99": 0.0,
+      "W_p50": 797.4495,
+      "W_p99": 857.2045399999997,
+      "broker_none0_share": 0.0,
+      "broker_none_share": 0.0,
+      "calibrated_agree": null,
+      "calibrated_none_share": null,
+      "cap_calibrated_agree": null,
+      "cap_calibrated_none_share": null,
+      "cap_certain_agree": 1.0,
+      "cap_certain_none_share": 0.0,
+      "cap_raw_agree": null,
+      "cap_raw_none_share": null,
+      "cap_wait_err_raw_p50": null,
+      "cap_wait_err_raw_p99": null,
+      "certain_agree": 1.0,
+      "certain_none_share": 0.0,
+      "gap_smin_p50": 0.0,
+      "gap_tri_p50": 0.0,
+      "raw_agree": null,
+      "raw_none_share": null,
+      "runs": 4,
+      "setup": "U50-redis-l0",
+      "tri_over_share": 0.0,
+      "wait_err_raw_p50": null,
+      "wait_err_raw_p99": null
+    },
+    {
+      "DW_p50": 244.37350000000004,
+      "DW_p99": 3696.5121999999947,
+      "D_p50": 902.4165,
+      "D_p99": 4233.910359999994,
+      "Fb_p50": 661.995,
+      "Fb_p99": 769.1317599999995,
+      "Fc_p50": 661.995,
+      "Fc_p99": 769.1317599999995,
+      "WF_p50": 0.0,
+      "WF_p99": 0.0,
+      "W_p50": 661.995,
+      "W_p99": 769.1317599999995,
+      "broker_none0_share": 0.0,
+      "broker_none_share": 0.0,
+      "calibrated_agree": null,
+      "calibrated_none_share": null,
+      "cap_calibrated_agree": null,
+      "cap_calibrated_none_share": null,
+      "cap_certain_agree": 1.0,
+      "cap_certain_none_share": 0.0,
+      "cap_raw_agree": null,
+      "cap_raw_none_share": null,
+      "cap_wait_err_raw_p50": null,
+      "cap_wait_err_raw_p99": null,
+      "certain_agree": 1.0,
+      "certain_none_share": 0.0,
+      "gap_smin_p50": 0.0,
+      "gap_tri_p50": 0.0,
+      "raw_agree": null,
+      "raw_none_share": null,
+      "runs": 4,
+      "setup": "U50-redis-l88-blocks",
+      "tri_over_share": 0.0,
+      "wait_err_raw_p50": null,
+      "wait_err_raw_p99": null
+    },
+    {
+      "DW_p50": 624.2814999999999,
+      "DW_p99": 682.6575799999999,
+      "D_p50": 1219.5104999999999,
+      "D_p99": 1322.64592,
+      "Fb_p50": 593.0305000000001,
+      "Fb_p99": 656.1306399999999,
+      "Fc_p50": 593.0305000000001,
+      "Fc_p99": 656.6206999999998,
+      "WF_p50": 0.0,
+      "WF_p99": 0.0,
+      "W_p50": 593.0305000000001,
+      "W_p99": 656.6206999999998,
+      "broker_none0_share": 0.0006840220496519535,
+      "broker_none_share": 0.0006840220496519535,
+      "calibrated_agree": null,
+      "calibrated_none_share": null,
+      "cap_calibrated_agree": null,
+      "cap_calibrated_none_share": null,
+      "cap_certain_agree": 0.9998390536353761,
+      "cap_certain_none_share": 0.0005029573894499658,
+      "cap_raw_agree": null,
+      "cap_raw_none_share": null,
+      "cap_wait_err_raw_p50": null,
+      "cap_wait_err_raw_p99": null,
+      "certain_agree": 0.9998390536353761,
+      "certain_none_share": 0.0005029573894499658,
+      "gap_smin_p50": 0.0,
+      "gap_tri_p50": 0.0,
+      "raw_agree": null,
+      "raw_none_share": null,
+      "runs": 4,
+      "setup": "U500-kafka-l0",
+      "tri_over_share": 0.0,
+      "wait_err_raw_p50": null,
+      "wait_err_raw_p99": null
+    },
+    {
+      "DW_p50": 836.4014999999999,
+      "DW_p99": 3803.5408650000013,
+      "D_p50": 1564.3447500000002,
+      "D_p99": 5103.974905000004,
+      "Fb_p50": 675.9385,
+      "Fb_p99": 932.7349050000018,
+      "Fc_p50": 675.9385,
+      "Fc_p99": 934.636285000001,
+      "WF_p50": 0.0,
+      "WF_p99": 2292.1965350000023,
+      "W_p50": 675.9385,
+      "W_p99": 3087.1811850000013,
+      "broker_none0_share": 0.17185739578303558,
+      "broker_none_share": 0.16773297923708352,
+      "calibrated_agree": 0.9987928536938677,
+      "calibrated_none_share": 0.16652583293095125,
+      "cap_calibrated_agree": 0.9988129727989699,
+      "cap_calibrated_none_share": 0.16654595203605344,
+      "cap_certain_agree": 0.9518549814904234,
+      "cap_certain_none_share": 0.10701352003862868,
+      "cap_raw_agree": 0.9964791566071141,
+      "cap_raw_none_share": 0.17145501368099147,
+      "cap_wait_err_raw_p50": 0.0,
+      "cap_wait_err_raw_p99": 50.24721499999999,
+      "certain_agree": 0.9517946241751167,
+      "certain_none_share": 0.10693304361821987,
+      "gap_smin_p50": 0.0,
+      "gap_tri_p50": 0.0,
+      "raw_agree": 0.9964791566071141,
+      "raw_none_share": 0.17145501368099147,
+      "runs": 4,
+      "setup": "U500-kafka-l70",
+      "tri_over_share": 0.0,
+      "wait_err_raw_p50": 0.0,
+      "wait_err_raw_p99": 50.012490000000014
+    },
+    {
+      "DW_p50": 755.77925,
+      "DW_p99": 1048.3670700000002,
+      "D_p50": 1273.38075,
+      "D_p99": 1700.87294,
+      "Fb_p50": 502.361,
+      "Fb_p99": 638.8924299999995,
+      "Fc_p50": 502.361,
+      "Fc_p99": 706.4455200000002,
+      "WF_p50": 0.0,
+      "WF_p99": 0.0,
+      "W_p50": 502.361,
+      "W_p99": 706.4455200000002,
+      "broker_none0_share": 0.0011870045343523184,
+      "broker_none_share": 0.0011467663241479082,
+      "calibrated_agree": null,
+      "calibrated_none_share": null,
+      "cap_calibrated_agree": null,
+      "cap_calibrated_none_share": null,
+      "cap_certain_agree": 0.9994366747714287,
+      "cap_certain_none_share": 0.0005834410955766438,
+      "cap_raw_agree": null,
+      "cap_raw_none_share": null,
+      "cap_wait_err_raw_p50": null,
+      "cap_wait_err_raw_p99": null,
+      "certain_agree": 0.9994165564758508,
+      "certain_none_share": 0.0005633227999986452,
+      "gap_smin_p50": 0.0,
+      "gap_tri_p50": 0.0,
+      "raw_agree": null,
+      "raw_none_share": null,
+      "runs": 4,
+      "setup": "U500-kafka-l70-rt",
+      "tri_over_share": 0.0,
+      "wait_err_raw_p50": null,
+      "wait_err_raw_p99": null
+    },
+    {
+      "DW_p50": 133.62800000000001,
+      "DW_p99": 181.98936000000003,
+      "D_p50": 628.4884999999999,
+      "D_p99": 803.1838,
+      "Fb_p50": 487.62249999999995,
+      "Fb_p99": 662.4842199999999,
+      "Fc_p50": 487.62249999999995,
+      "Fc_p99": 662.4842199999999,
+      "WF_p50": 0.0,
+      "WF_p99": 0.0,
+      "W_p50": 487.62249999999995,
+      "W_p99": 662.6245599999999,
+      "broker_none0_share": 0.00016094636462398904,
+      "broker_none_share": 4.023659115599726e-05,
+      "calibrated_agree": 1.0,
+      "calibrated_none_share": 4.023659115599726e-05,
+      "cap_calibrated_agree": 1.0,
+      "cap_calibrated_none_share": 4.023659115599726e-05,
+      "cap_certain_agree": 0.999959763408844,
+      "cap_certain_none_share": 0.0,
+      "cap_raw_agree": 0.999979881704422,
+      "cap_raw_none_share": 0.00012070977346799179,
+      "cap_wait_err_raw_p50": 0.0,
+      "cap_wait_err_raw_p99": 0.0,
+      "certain_agree": 0.999959763408844,
+      "certain_none_share": 0.0,
+      "gap_smin_p50": 0.0,
+      "gap_tri_p50": 0.0,
+      "raw_agree": 0.999979881704422,
+      "raw_none_share": 0.00012070977346799179,
+      "runs": 4,
+      "setup": "U500-redis-l0",
+      "tri_over_share": 0.0,
+      "wait_err_raw_p50": 0.0,
+      "wait_err_raw_p99": 0.0
+    },
+    {
+      "DW_p50": 185.974,
+      "DW_p99": 2825.064419999995,
+      "D_p50": 669.5754999999999,
+      "D_p99": 3347.125969999998,
+      "Fb_p50": 474.341,
+      "Fb_p99": 570.9533399999999,
+      "Fc_p50": 474.341,
+      "Fc_p99": 579.4054899999999,
+      "WF_p50": 0.0,
+      "WF_p99": 1425.0448499999995,
+      "W_p50": 474.341,
+      "W_p99": 1945.2685899999997,
+      "broker_none0_share": 0.0594520520105324,
+      "broker_none_share": 0.05725907036039815,
+      "calibrated_agree": 0.9989336963329812,
+      "calibrated_none_share": 0.056414067944737384,
+      "cap_calibrated_agree": 0.9989538146285593,
+      "cap_calibrated_none_share": 0.056414067944737384,
+      "cap_certain_agree": 0.9635643143633783,
+      "cap_certain_none_share": 0.021205632339758522,
+      "cap_raw_agree": 0.9992757057386936,
+      "cap_raw_none_share": 0.057822405304171993,
+      "cap_wait_err_raw_p50": 0.0,
+      "cap_wait_err_raw_p99": 20.670199999999966,
+      "certain_agree": 0.9635240761531089,
+      "certain_none_share": 0.021185512425066957,
+      "gap_smin_p50": 0.0,
+      "gap_tri_p50": 0.0,
+      "raw_agree": 0.9992757057386936,
+      "raw_none_share": 0.057822405304171993,
+      "runs": 4,
+      "setup": "U500-redis-l70",
+      "tri_over_share": 0.0,
+      "wait_err_raw_p50": 0.0,
+      "wait_err_raw_p99": 20.55568000000006
+    },
+    {
+      "DW_p50": 169.76199999999997,
+      "DW_p99": 242.2849050000001,
+      "D_p50": 887.893,
+      "D_p99": 980.299,
+      "Fb_p50": 708.308,
+      "Fb_p99": 751.998,
+      "Fc_p50": 708.308,
+      "Fc_p99": 752.8109999999999,
+      "WF_p50": 0.0,
+      "WF_p99": 0.0,
+      "W_p50": 708.308,
+      "W_p99": 757.2402500000001,
+      "broker_none0_share": 0.0012071463061323032,
+      "broker_none_share": 0.0007645259938837921,
+      "calibrated_agree": 0.9998189248157228,
+      "calibrated_none_share": 0.0005633495154701612,
+      "cap_calibrated_agree": 0.9998189248157228,
+      "cap_calibrated_none_share": 0.0005633495154701612,
+      "cap_certain_agree": 0.9992555931112184,
+      "cap_certain_none_share": 2.0119105102205054e-05,
+      "cap_raw_agree": 0.999939641875104,
+      "cap_raw_none_share": 0.0009053823981012137,
+      "cap_wait_err_raw_p50": 0.0,
+      "cap_wait_err_raw_p99": 0.0,
+      "certain_agree": 0.9992555931112184,
+      "certain_none_share": 2.0119105102205054e-05,
+      "gap_smin_p50": 0.0,
+      "gap_tri_p50": 0.0,
+      "raw_agree": 0.999939641875104,
+      "raw_none_share": 0.0009053823981012137,
+      "runs": 4,
+      "setup": "U500-redis-l70-rt",
+      "tri_over_share": 0.0,
+      "wait_err_raw_p50": 0.0,
+      "wait_err_raw_p99": 0.0
+    }
+  ],
+  "stalls": [
+    {
+      "run": "law_u50_r003-U50-kafka-l0-a1",
+      "setup": "U50-kafka-l0",
+      "stall_from_s": 45.138371026,
+      "stall_max_ms": 55.935836,
+      "stall_n": 1,
+      "stall_to_s": 45.138371026
+    },
+    {
+      "run": "law_u50_r004-U50-kafka-l88-blocks-a1",
+      "setup": "U50-kafka-l88-blocks",
+      "stall_from_s": 29.046690563,
+      "stall_max_ms": 612.90027,
+      "stall_n": 29,
+      "stall_to_s": 29.598849414
+    },
+    {
+      "run": "law_u500_r003-U500-kafka-l70-rt-a1",
+      "setup": "U500-kafka-l70-rt",
+      "stall_from_s": 51.857794858,
+      "stall_max_ms": 393.442122,
+      "stall_n": 128,
+      "stall_to_s": 66.888394921
+    },
+    {
+      "run": "law_u2000_r004-U2000-kafka-l70-a1",
+      "setup": "U2000-kafka-l70",
+      "stall_from_s": 46.698607565,
+      "stall_max_ms": 999.240727,
+      "stall_n": 2298,
+      "stall_to_s": 47.865006973
+    }
+  ],
+  "tri_valid": {
+    "over_b_min_max_us": 14.344999999999864,
+    "over_b_min_share_max": 0.001247434710876826,
+    "runs": 64
+  }
+}

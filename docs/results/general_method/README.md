@@ -225,3 +225,29 @@ The record of the verdicts will say where it did.
   - M2-c's client clause: the checks of `B` held for Redis and NATS. For RabbitMQ they failed on
     silences of 15 and 17 ms on the delivering connection, longer than `B`, so the clause may stay
     out of reach there.
+
+### Block C's pilot under plan version 48 (23 October 2026: instruments only, never judged)
+
+One run of each arm, from the x86 pair's job 239 (`gpilot_c48`), on the checkout of `18263406`,
+copied home and checked ([`gpilot_c48_runs.csv`](gpilot_c48_runs.csv)).
+
+**Stated before any judged run of block C (D48-2).**
+- **The interrupts.** In every arm, every card interrupt ran on the core's other thread, vCPU 7
+  (398,164 to 448,044 a run), and so did 99.99% of the NET_RX softirqs. Receive steering was off on
+  every queue, and irqbalance was stopped during the run and restored after it.
+- **The threads.** In the two arms that keep the core, the consumer's main thread was seen only on
+  vCPU 6, over about 1,700 looks a run. Its other thread, the heartbeat, was moved to vCPU 7 as it
+  appeared and ended there (`thread_apart.json`). Both clients ran at SCHED_FIFO 80, and every other
+  process of the run stayed on vCPUs 0 to 5.
+- **The consumer's main thread** used 0.58 to 0.62 of its vCPU over each run's middle half. Under
+  version 47's placement it had used 0.83 to 0.95.
+- **The broker's log** shows no member removed and no rebalance while messages were sent. Each
+  consumer joined about 2 s before the first send and left its group 15 s after the last, at its
+  own idle stop.
+- **The integrity and lateness rules** held in all three arms. The on-blocks' load was 67.7%, 52.8%
+  and 61.8%, against 70%, 53% and 61%.
+- **Each arm's frozen duty:** 75, unchanged, now `duty_pct` in [`gc_design.json`](gc_design.json).
+- **The rounds: four.** C-a does not clear its margin at the pilot's values. The baseline arm's
+  residual (`W`'s on-block tail mean less its off-block one) was -2.8 ms, its off-block tail the
+  larger. With the sibling idle the residual was +5.6 ms, and with it loaded +0.2 ms. C-a rests on
+  the floor of four, its power stated: none at four ([`gc48_power.json`](gc48_power.json)).

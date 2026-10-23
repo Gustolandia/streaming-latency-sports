@@ -27,7 +27,8 @@
    "irq_cpus": "sibling",
    "irqbalance_off": true,
    "rps_off": true,
-   "id": "C2000-kafka-base"
+   "id": "C2000-kafka-base",
+   "duty_pct": 75
   },
   {
    "slice_ns": 3000000,
@@ -55,7 +56,8 @@
    "rps_off": true,
    "whole_core": true,
    "threads_apart": true,
-   "id": "C2000-kafka-core"
+   "id": "C2000-kafka-core",
+   "duty_pct": 75
   },
   {
    "slice_ns": 3000000,
@@ -84,7 +86,8 @@
    "whole_core": true,
    "sibling_load": true,
    "threads_apart": true,
-   "id": "C2000-kafka-core-sib"
+   "id": "C2000-kafka-core-sib",
+   "duty_pct": 75
   }
  ]
 }

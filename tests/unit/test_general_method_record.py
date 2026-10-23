@@ -29,7 +29,9 @@ DUTIES = {"V2000-redis-d1": 75, "V2000-redis-d256": 75, "V2000-redis-d256-lib": 
           "P2000-rabbitmq-p1": 72, "P2000-rabbitmq-p1000": 75,
           "K2000-kafka-python": 75, "K2000-kafka-java": 75, "K2000-kafka-franz": 75,
           "K2000-kafka-rdk": 75, "K2000-kafka-rdk-rt": 75, "S2000-redis-udp": 82,
-          "A2000-kafka-rdk": 73, "A2000-kafka-rdk-rt": 73}
+          "A2000-kafka-rdk": 73, "A2000-kafka-rdk-rt": 73,
+          # Block C's, from its own pilot under plan version 48 (DESIGN48.md, D48-2).
+          "C2000-kafka-base": 75, "C2000-kafka-core": 75, "C2000-kafka-core-sib": 75}
 #: Pilot round a's first attempt (23 Oct 2026): the Arm pair held 66.3% at a duty of 75 and
 #: starts at 79; the x86 pair held 68.0%.
 PILOTS = {"x86": (18, 75), "arm": (4, 79)}
@@ -91,7 +93,7 @@ def test_each_block_runs_its_setups_four_rounds():
             assert s.get("duty_pct") == DUTIES.get(s["id"]), "the duty the pilot froze"
             assert "RATE=2000 DURATION=70 WARMUP_S=20 PRIME_S=60" in d["about"]
     assert sum(BLOCKS[b] for b in BLOCKS if b != "a") * 4 == 68 and BLOCKS["a"] * 4 == 8
-    assert sorted(DUTIES) == sorted(seen - {i for i in seen if i.startswith("C2000-")})
+    assert sorted(DUTIES) == sorted(seen)
 
 
 def test_the_pilot_runs_every_setup_once_at_the_starting_duty():

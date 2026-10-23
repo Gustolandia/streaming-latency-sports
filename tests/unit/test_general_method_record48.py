@@ -44,7 +44,7 @@ def test_block_c_is_placed_as_version_48_says():
         assert s["irq_cpus"] == "sibling" and s["irqbalance_off"] and s["rps_off"]
         assert s["priority"] and s["consumer"] == "kafka-python"
         assert s.get("threads_apart") is s.get("whole_core"), "apart only where the core is kept"
-        assert "duty_pct" not in s, "block C's duty is written in only after its own pilot"
+        assert s["duty_pct"] == 75, "the duty block C's own pilot froze"
     assert arms["C2000-kafka-core-sib"]["sibling_load"]
     assert not arms["C2000-kafka-base"].get("whole_core")
 

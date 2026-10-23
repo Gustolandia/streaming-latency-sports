@@ -251,3 +251,45 @@ copied home and checked ([`gpilot_c48_runs.csv`](gpilot_c48_runs.csv)).
   residual (`W`'s on-block tail mean less its off-block one) was -2.8 ms, its off-block tail the
   larger. With the sibling idle the residual was +5.6 ms, and with it loaded +0.2 ms. C-a rests on
   the floor of four, its power stated: none at four ([`gc48_power.json`](gc48_power.json)).
+
+### The verdicts (23 October 2026)
+
+Every passing judged run was read by `scripts/general_method.py`'s `read_run`, with each pair's
+allowance, into [`g_runs.csv`](g_runs.csv): 76 runs, 68 on the x86 pair (blocks V, N, P, K, S and
+C) and 8 on the Arm pair (block A). They were judged by `scripts/general_method.py judge`
+([`g_verdicts.json`](g_verdicts.json)).
+- **The code each block ran on.** Blocks V, N, P, K and S ran on the checkout of `df0a9850`, the
+  kit pilot round a's statement covers, and so did block A on the Arm pair. Block C ran on
+  `a4255779`, after version 48's pilot.
+- **The collection.** Each campaign was copied home and checked.
+- **The runs repeated.** Three runs were repeated, and each passed on its second attempt; the first
+  attempts are kept:
+  - block K's Java consumer in round 3, whose producer fell 361 ms behind;
+  - block K's librdkafka at real-time priority in round 3, whose producer fell 8.8 s behind;
+  - block C's baseline arm in round 2, which read no message after the warm-up.
+
+| Prediction | Verdict | What decided it |
+|---|---|---|
+| M1-a | not confirmed | `Q`'s 99th percentile was at most 99 µs in every x86 run, within 150 µs. But in 9 of the 16 x86 setups, at least one run had a packet the kernel timed before the card stamped it (`Q` down to -62 µs), below the clause's -1.5 µs. The Arm pair has no card, so its cells are out of reach. |
+| M1-b | confirmed | In all 76 runs, the broker's ids paired every message the payload's ids paired, and none differently. On RabbitMQ, the confirm order and the delivery order agreed. |
+| M1-c | not confirmed | With one reply per read at depth 256, the sockets' 99th percentile of `W` sat 2.6 to 2.7 ms above the capture's on Redis and NATS. The clause asks for within 10 µs. With the library's own reads it sat 2.0 ms above, as that clause asks. |
+| M2-a | confirmed | In all 76 runs, the certain reading called no message unwaited that the broker shows waiting. |
+| M2-b | confirmed | Where the estimate has a value, its share of messages that found none was within 3.1 points of the broker's in every run (the bar is 6). It is out of reach where every request waited. |
+| M2-c | confirmed | For Redis at depth 256 (both kinds of read), NATS at depth 256 and nats.go, the broker shows a request waiting for every message, and the clients' own timestamps certify one for every message, with the checks of `B` holding in every run. For RabbitMQ at 1,000, the broker shows a credit waiting for every message, but the checks of `B` failed in all four runs, on silences of 13 to 20 ms, so its cell is out of reach. |
+| M3-a | not confirmed | Where requests waited, `W`'s tail held still in all four judged cells (ratios 0.98 to 1.03, equivalence p at most 0.003). But `D`'s on/off ratio was 1.14 to 1.47, short of 1.5. RabbitMQ at 1,000 is not judged, since its M2-c cell is out of reach. |
+| V-a, N-a | not confirmed | As M3-a, on Redis and on NATS. |
+| P-a | not judged | M2-c's RabbitMQ cell is out of reach. |
+| M3-b | not confirmed | `W`'s tail rose for Redis at depth 1 (2.15) and for kafka-python, Java and franz-go (2.30 to 4.14), and removing the turnaround took out all of the rise in each (shares 1.00 to 1.62). For NATS at depth 1 (0.93) and RabbitMQ at prefetch 1 (1.02) it did not rise. |
+| KC-a | confirmed | The in-poll clients' turnaround tails rose 14.6 times (kafka-python), 31.4 times (Java) and 35.7 times (franz-go) in the on-blocks. |
+| KC-b | confirmed | For each Kafka client at normal priority, removing the turnaround took out all of the rise in `W`'s tail (shares 1.00 to 2.07). |
+| KC-c | not confirmed | librdkafka's rise of the turnaround, 3.3 ms, was under half of kafka-python's (9.2 ms), but not under half of Java's (3.1 ms) or franz-go's (3.7 ms). |
+| KC-d | not confirmed | With only its broker thread at real-time priority, librdkafka's `W` tail did not hold still (ratio 0.54, p 0.90), and `D` did not grow (0.66). |
+| KC-h | confirmed | Its turnaround's tail ratio was 1.09. 59% of messages in the on-blocks, and 82% in the off-blocks, found no fetch waiting. |
+| C-a | confirmed | With the consumer's polling thread alone on its core and the sibling idle, the residual was -0.1 ms, against the baseline arm's 0.9 ms. With the sibling loaded it was also 0.9 ms. |
+| A | not confirmed | KC-d on the Arm pair: `W`'s tail ratio 0.82 (p 0.39), `D`'s 0.92. V-a and M2-c on Redis are out of reach, because their setups were left out. |
+
+**Block S, described.** With the producer at real-time priority, under a loopback UDP load pinned to
+the receive queue's vCPU:
+- `W`'s tail held still (ratios 0.98 to 1.04), while `D`'s grew 3.2 to 5.0 times;
+- every message found a request waiting, and the clients' own timestamps certified every one.
+Its producer at normal priority was left out (above).

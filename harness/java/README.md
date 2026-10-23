@@ -73,6 +73,47 @@ than 25 microseconds, naming the figure. The measurement is printed on the CONFI
 in the run's record. This is the defect the tools audit found in others; it is cheaper to be
 stopped by it than to publish it.
 
+## The consumer, and the thread that fetches
+
+*Words in this part.* **Fetch**: the consumer's request to the broker for the next messages.
+**Poll**: the call the program makes to get messages from the client. **Thread**: one line of
+work inside a program, which the operating system schedules on its own. **Offset**: a message's
+number in its partition, given by the broker.
+
+`LawConsumer` identifies each message as the broker does, by the partition and offset the client
+hands back with it (`ConsumerRecord.partition()` and `offset()`), and writes both in
+`consumer_events.csv`. The payload's `run_id` only decides whether a message is this run's, and
+its `event_id` is only copied into its column. It ends, as `scripts/kafka_consumer.py` does, with
+`OK java consumer: wrote N rows -> PATH` for each of its two files.
+
+It uses the classic group protocol, set by name (`group.protocol=classic`), which is
+kafka-clients 3.9.0's default and the only one kafka-python speaks. Under it the consumer has no
+network thread of its own (kafka-clients 3.9.0, `ClassicKafkaConsumer`):
+
+- the thread that calls `poll()` builds each fetch and sends it, and sends the next one just
+  before `poll()` hands back the records it has (`poll` and `pollForFetches`);
+- the broker never holds more than one fetch from it (`AbstractFetch.prepareFetchRequests` skips
+  a broker with a fetch outstanding), so a message that arrives after that fetch was answered,
+  while the program works on the last batch, waits at the broker for the next `poll()`;
+- the heartbeat thread (`kafka-coordinator-heartbeat-thread | <group>`) polls the same network
+  client between heartbeats and may read an answer off the socket, but it builds no fetch.
+
+kafka-clients 3.9.0 has a network thread of its own only under the newer protocol
+(`group.protocol=consumer`, its `consumer_background_thread`), which this harness does not use.
+
+So the poll thread is the thread whose scheduling decides when fetches leave. The consumer names
+it `law-poll`, and HotSpot passes the name to the kernel, so it is in
+`/proc/<pid>/task/<tid>/comm` too. With `--threads-out PATH`, once the group has assigned the
+partitions, it writes every thread of the process, one row each:
+
+    tid           the kernel's id for the thread, which chrt -f -p 80 <tid> takes
+    name          the kernel's name for it, at most 15 bytes
+    role          poll+fetch for the poll thread, which finds its own id in /proc/thread-self
+    runtime_name  the JVM's name for it, matched by those 15 bytes where no other thread shares them
+
+The file is the same in `scripts/kafka_consumer_confluent.py` and `harness/go`, and it is written
+beside the path and then moved onto it, so a reader never sees half a list.
+
 ## Building and checking
 
 `build.sh` fetches two jars from Maven Central and refuses to build if either has changed under

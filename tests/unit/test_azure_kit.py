@@ -2711,9 +2711,10 @@ def test_no_stop_run_through_sudo_finds_its_own_sudo():
     one of R1's 53 runs, and each run's log said so (3 October)."""
     code = (KIT / "campaign.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
     stops = re.findall(r'(sudo pkill -[A-Z]+) -f "([^"]+)"', code)
-    assert len(stops) == 9, ("R1's capture, freeze 39's sender capture, its card capture with the "
-                             "card's clock sampler, and M0's, each asked politely, the captures "
-                             "then forced")
+    assert len(stops) == 11, ("R1's capture, freeze 39's sender capture, its card capture with the "
+                              "card's clock sampler, and M0's, each asked politely, the captures "
+                              "then forced; and plan version 48's mover of the consumer's threads, "
+                              "asked politely and then forced")
     for how, pattern in stops:
         # As the shell hands each pattern to pkill, with its variables expanded.
         for name, value in (("$RUN_DIR", "runs/law_r1_r001-R1-redis-l75-rtc-a1"),
@@ -3804,6 +3805,9 @@ def _trial_starts(tmp_path, **setting):
         'recorrect_load () { echo "$BASHPID $*" > "$REC/recorrect"; }',
         'stop_load_blocks () { echo "BLOCKS_PID=$BLOCKS_PID" >> "$REC/stops"; BLOCKS_PID=""; }',
         'kill () { echo "kill $*" >> "$REC/kills"; }',
+        # Plan version 48 (23 Oct 2026): the mover of the consumer's threads, started and stopped
+        # through sudo, and the process it is waited on as.
+        'sudo () { echo "$BASHPID $*" >> "$REC/sudo"; }', "ps () { return 1; }",
         "trial () {", '  local rc began ended stress_pid="" adjusted=""', block, "}",
         'BLOCKS_PID=""', "trial", "builtin wait", ""])
     run_dir = tmp_path / "run"
@@ -3829,7 +3833,7 @@ def _trial_starts(tmp_path, **setting):
     _run_script(tmp_path / "trial.sh", script, env, capture_output=True, text=True, check=True)
     found = {name: _lines(rec / name)
              for name in ("trial", "wraps", "blocks", "facts", "recorrect", "stops", "kills",
-                          "plan")}
+                          "plan", "sudo")}
     found["run_dir"], found["so"] = run_dir.as_posix(), so
     return found
 
@@ -4329,8 +4333,9 @@ def _v47_setup_says(tmp_path, **setting):
     ({"SIBLING_LOAD": "1", "WHOLE_CORE": "1", "LOAD": "0"}, "sibling_load runs the load on the"),
     ({"SIBLING_LOAD": "1", "WHOLE_CORE": "1", "LOAD_KIND": "udp"},
      "sibling_load runs the load on the core's other threads, and a udp load runs where"),
-    ({"IRQ_CPUS": "3-1"}, 'irq_cpus is core, or a list of CPUs as the kernel writes one'),
-    ({"IRQ_CPUS": "cores"}, 'irq_cpus is core, or a list of CPUs')])
+    ({"IRQ_CPUS": "3-1"},
+     'irq_cpus is core, sibling, or a list of CPUs as the kernel writes one'),
+    ({"IRQ_CPUS": "cores"}, 'irq_cpus is core, sibling, or a list of CPUs')])
 def test_a_v47_setup_the_runner_cannot_give_fails_before_the_machine_is_touched(
         tmp_path, setting, said):
     """Each would otherwise run, and be filed, under a setting it did not have."""
@@ -5294,3 +5299,191 @@ def test_v47s_the_driver_installs_each_client_at_its_version_on_its_own_architec
     for record in ("harness/go/out/BUILD_INFO.txt", "harness/go-nats/out/BUILD_INFO.txt"):
         assert record in body, "each Go consumer's compiler and modules are written down"
     assert "clients) clients ;;" in tools
+
+
+# --- Plan version 48 (23 Oct 2026): block C's amendment. The card's interrupts on the other threads
+# of the core the run chooses (irq_cpus sibling), and every thread of the consumer's process but its
+# main one moved onto them as soon as it exists (threads_apart, scripts/thread_apart.py).
+
+def test_v48s_fields_reach_the_runner_and_a_row_without_them_sets_none():
+    """A row's threads_apart becomes THREADS_APART, and irq_cpus sibling is handed on as every
+    value of irq_cpus is; a row of any earlier block leaves THREADS_APART empty. A design that
+    names both makes a queue whose rows carry them as written."""
+    asked = _row_reader_says({"backend": "kafka", "whole_core": True, "threads_apart": True,
+                              "irq_cpus": "sibling"})
+    assert (asked["THREADS_APART"], asked["IRQ_CPUS"], asked["WHOLE_CORE"]) == ("1", "sibling", "1")
+    earlier = _row_reader_says({"whole_core": True, "sibling_load": True, "irq_cpus": "core"})
+    assert (earlier["THREADS_APART"], earlier["IRQ_CPUS"]) == ("", "core")
+    assert _row_reader_says({"threads_apart": False})["THREADS_APART"] == ""
+    sys.path.insert(0, str(REPO / "scripts"))
+    import run_queue
+    design = {"seed": 20261104, "rounds": 1, "setups": [
+        {"id": "C2000-kafka-core", "backend": "kafka", "load_pct": 53, "delay_ms": 0,
+         "whole_core": True, "threads_apart": True, "irq_cpus": "sibling"},
+        {"id": "C2000-kafka-base", "backend": "kafka", "load_pct": 70, "delay_ms": 0,
+         "irq_cpus": "sibling"}]}
+    assert run_queue.check_design(design) == []
+    rows = {row["setup"]: json.loads(row["params"]) for row in run_queue.make_rows(design)}
+    core = _row_reader_says(rows["C2000-kafka-core"], key="r001-C2000-kafka-core-a1")
+    assert (core["THREADS_APART"], core["IRQ_CPUS"], core["WHOLE_CORE"]) == ("1", "sibling", "1")
+    base = _row_reader_says(rows["C2000-kafka-base"], key="r001-C2000-kafka-base-a1")
+    assert (base["THREADS_APART"], base["IRQ_CPUS"], base["WHOLE_CORE"]) == ("", "sibling", "")
+
+
+#: What threads_apart's checks say of a setup it cannot be given as written.
+NO_CORE_KEPT = ("threads_apart moves the consumer's other threads onto the other threads of the "
+                "core whole_core keeps, and this setup keeps none")
+NOT_KAFKA_PYTHON = ("threads_apart moves the threads of kafka-python's consumer, "
+                    "scripts/kafka_consumer.py, which it finds by its command line, and this run "
+                    "does not run that consumer")
+
+
+@needs_bash
+@pytest.mark.parametrize("setting,said", [
+    ({"THREADS_APART": "1"}, NO_CORE_KEPT),
+    ({"THREADS_APART": "1", "IRQ_CPUS": "sibling"}, NO_CORE_KEPT),
+    ({"THREADS_APART": "1", "WHOLE_CORE": "1", "BACKEND": "redis"}, NOT_KAFKA_PYTHON),
+    ({"THREADS_APART": "1", "WHOLE_CORE": "1", "CONSUMER": "confluent"}, NOT_KAFKA_PYTHON),
+    ({"THREADS_APART": "1", "WHOLE_CORE": "1", "CLIENT": "java"}, NOT_KAFKA_PYTHON),
+    ({"IRQ_CPUS": "siblings"}, 'irq_cpus is core, sibling, or a list of CPUs as the kernel writes '
+                               'one, 2-3 or 1,3, not "siblings"')])
+def test_a_v48_setup_the_runner_cannot_give_fails_before_the_machine_is_touched(
+        tmp_path, setting, said):
+    """threads_apart moves threads onto the core whole_core keeps, and finds kafka-python's
+    consumer alone by its command line: any other run would be repeated until the guard stopped
+    the campaign, its consumer never found."""
+    assert _v47_setup_says(tmp_path, **setting) == said
+
+
+@needs_bash
+@pytest.mark.parametrize("setting", [
+    {"IRQ_CPUS": "sibling"}, {"IRQ_CPUS": "sibling", "WHOLE_CORE": "1"},
+    {"THREADS_APART": "1", "WHOLE_CORE": "1"}, {"THREADS_APART": "1", "WHOLE_CORE": "1",
+                                                "CLIENT": "python"},
+    {"THREADS_APART": "1", "WHOLE_CORE": "1", "SIBLING_LOAD": "1", "CONSUMER": "kafka-python",
+     "IRQ_CPUS": "sibling"}])
+def test_and_a_v48_setup_it_can_give_passes_those_checks(tmp_path, setting):
+    assert _v47_setup_says(tmp_path, **setting) == ""
+
+
+@needs_bash
+def test_v48s_card_interrupts_go_to_the_cores_other_threads_whether_or_not_it_is_kept(tmp_path):
+    """irq_cpus sibling, block C's arms all three: the core is chosen as for "core", where the
+    run keeps it or not, and the card's interrupts are given its other threads, irqbalance
+    stopped first; the consumer is pinned only where whole_core asks."""
+    calls, held = _placement(tmp_path, IRQ_CPUS="sibling", IRQBALANCE_OFF="1")
+    run = (tmp_path / "run").as_posix()
+    assert calls[0] == "python3 scripts/cpu_placement.py core --out %s/core_choice.json" % run
+    assert held["REASON"] == "" and held["CORE_CPU"] == "" and held["KIT_MASK_BEFORE"] == ""
+    moved = ("sudo python3 scripts/cpu_placement.py irqs --set 7 --out %s/irq_affinity_set.json"
+             % run)
+    assert calls.index("sudo systemctl stop irqbalance") < calls.index(moved)
+    assert held["IRQS_MOVED"] == "%s/irq_affinity_before.json" % run
+    calls, held = _placement(tmp_path / "kept", IRQ_CPUS="sibling", IRQBALANCE_OFF="1",
+                             WHOLE_CORE="1", THREADS_APART="1")
+    run = (tmp_path / "kept" / "run").as_posix()
+    assert held["REASON"] == "" and held["CORE_CPU"] == "6" and held["KIT_MASK_BEFORE"] == "0-7"
+    assert ("sudo python3 scripts/cpu_placement.py irqs --set 7 --out %s/irq_affinity_set.json"
+            % run) in calls
+    calls, _ = _placement(tmp_path / "four", cores="6 5,7 0-4 0-4 5", IRQ_CPUS="sibling",
+                          IRQBALANCE_OFF="1")
+    assert [c for c in calls if " irqs --set " in c][0].startswith(
+        "sudo python3 scripts/cpu_placement.py irqs --set 5,7 "), "every other thread of the core"
+
+
+@needs_bash
+@pytest.mark.parametrize("setting,said", [
+    ({"IRQ_CPUS": "sibling", "IRQBALANCE_OFF": "1"},
+     "irq_cpus sibling gives the receiver card's interrupts to the other threads of the core "
+     "chosen for the consumer, and CPU 6's core has none"),
+    ({"WHOLE_CORE": "1", "THREADS_APART": "1", "IRQ_CPUS": "core", "IRQBALANCE_OFF": "1"},
+     "threads_apart moves the consumer's other threads onto the other threads of its core, and CPU "
+     "6's core has none")])
+def test_v48s_a_core_with_no_other_thread_fails_the_run_before_anything_moves(tmp_path, setting,
+                                                                              said):
+    """The Arm pair's CPUs are one thread to a core: neither setting can be given there."""
+    calls, held = _placement(tmp_path, cores="6 - 0-5 0-5 6", **setting)
+    assert held["REASON"] == said
+    assert calls == ["python3 scripts/cpu_placement.py core --out %s/core_choice.json"
+                     % (tmp_path / "run").as_posix()], "irqbalance and the interrupts left alone"
+    assert [held[name] for name in ("CORE_CPU", "LOAD_TASKSET", "KIT_MASK_BEFORE", "IRQS_MOVED",
+                                    "IRQBALANCE_STOPPED")] == [""] * 5
+
+
+@needs_bash
+@pytest.mark.parametrize("setting,moved", [
+    ({"IRQ_CPUS": "core"}, "6"), ({"IRQ_CPUS": "3"}, "3"), ({"WHOLE_CORE": "1"}, None)])
+def test_v48s_core_lists_and_a_kept_core_ask_nothing_of_its_other_threads(tmp_path, setting,
+                                                                          moved):
+    """On a core with one thread, "core", a list and whole_core alone are given as before."""
+    calls, held = _placement(tmp_path, cores="6 - 0-5 0-5 6", IRQBALANCE_OFF="1", **setting)
+    assert held["REASON"] == ""
+    sets = [c for c in calls if " irqs --set " in c]
+    assert sets == ([] if moved is None else [
+        "sudo python3 scripts/cpu_placement.py irqs --set %s --out %s/irq_affinity_set.json"
+        % (moved, (tmp_path / "run").as_posix())])
+
+
+@needs_bash
+def test_v48s_mover_starts_with_the_trial_through_sudo_and_is_stopped_by_its_own_command_line(
+        tmp_path):
+    """Once the trial has started, in the background, for the run's consumer, its CPU and the
+    core's other threads; stopped once the trial ends by its own command line, asked politely
+    and then forced, never through the sudo that started it; and nothing that finds the clients
+    by their command lines finds it: reap's patterns, or the clients' facts, which name it the
+    run's own working process, held off a kept core."""
+    found = _trial_starts(tmp_path / "apart", THREADS_APART="1", WHOLE_CORE="1", CORE_CPU="6",
+                          siblings="7")
+    out = "%s/thread_apart.json" % found["run_dir"]
+    calls = [line.split(" ", 1) for line in found["sudo"]]
+    starts = [(pid, call) for pid, call in calls if call.startswith("python3 ")]
+    stops = [(pid, call) for pid, call in calls if call.startswith("pkill ")]
+    started = ("python3 scripts/thread_apart.py --out %s --run-id law_u50_r001 --cpu 6 --siblings 7"
+               % out)
+    assert [call for _, call in starts] == [started]
+    assert [call for _, call in stops] == ["pkill -INT -f [t]hread_apart.py --out %s" % out,
+                                           "pkill -KILL -f [t]hread_apart.py --out %s" % out]
+    assert starts[0][0] not in {pid for pid, _ in stops}, "started in the background"
+    for _, call in stops:
+        pattern = call.split(" -f ", 1)[1]
+        assert re.search(pattern, started), "pkill -f finds the mover by its command line"
+        assert not re.search(pattern, "sudo " + call), "and not the sudo that runs pkill"
+    for pattern in re.findall(r'pkill -f "([^"]+)"', _function("reap")):
+        assert not re.search(pattern, started), pattern
+    sys.path.insert(0, str(REPO / "scripts"))
+    import run_facts
+    import thread_apart
+    assert run_facts.names(str(tmp_path), "1", started.split()) == "thread_apart.py"
+    assert not thread_apart.is_consumer(started.split(), "law_u50_r001")
+    plain = _trial_starts(tmp_path / "plain", WHOLE_CORE="1", CORE_CPU="6", siblings="7")
+    assert plain["sudo"] is None, "a run that keeps its consumer's threads together starts none"
+
+
+def test_v48s_movers_record_is_whole_before_the_runs_files_are_read():
+    run = _campaign().split("run_one () {", 1)[1].split("\n}\n", 1)[0]
+    start = run.index('sudo python3 scripts/thread_apart.py --out "$RUN_DIR/thread_apart.json"')
+    assert run.index("began=$(date -u +%s)") < start < run.index("run_kafka_trial.sh")
+    stop = run.index('sudo pkill -INT -f "[t]hread_apart.py --out $RUN_DIR/thread_apart.json"')
+    assert (run.index("ended=$(date -u +%s)") < stop < run.index('wait "$apart_pid"')
+            < run.index('sudo chown -R "$(id -u):$(id -g)" "$RUN_DIR"')
+            < run.index("python3 scripts/run_integrity.py check"))
+    assert '--siblings "${siblings:-}"' in run and '--cpu "$CORE_CPU"' in run
+
+
+@needs_bash
+def test_v48s_run_line_names_each_new_setting_and_an_earlier_row_none(tmp_path):
+    line = next(text.strip() for text in _campaign().splitlines()
+                if text.strip().startswith('log "run $KEY: '))
+    row = {"KEY": "r001-C2000-kafka-core-a1", "BACKEND": "kafka", "LOAD": "53", "DELAY_MS": "0"}
+    script = "\n".join(["set -uo pipefail", 'log () { echo "$*"; }', line, ""])
+    plain = _run_script(tmp_path / "plain.sh", script, row, capture_output=True, text=True,
+                        check=True).stdout.strip()
+    assert plain == ("run r001-C2000-kafka-core-a1: kafka, load 53%, slice kernel default, "
+                     "delay 0 ms")
+    asked = dict(row, WHOLE_CORE="1", THREADS_APART="1", IRQ_CPUS="sibling", IRQBALANCE_OFF="1",
+                 RPS_OFF="1")
+    asked = _run_script(tmp_path / "asked.sh", script, asked, capture_output=True, text=True,
+                        check=True).stdout.strip()
+    assert asked == plain + (", the consumer alone on a core, the consumer's other threads on its "
+                             "sibling, card interrupts on sibling, irqbalance off, receive "
+                             "steering off")

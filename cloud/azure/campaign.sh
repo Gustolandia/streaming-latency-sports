@@ -87,6 +87,14 @@
 #                    card's interrupts), the last two heavy in softirq work and held at the duty.
 # A row that names none of them is launched exactly as before. The values the settings run with
 # are set in one place, below (NATS_STORAGE ... RECEIVER_LINK).
+#
+# Plan version 48 (23 Oct 2026): a setup may also name
+#   irq_cpus         "sibling", the other threads of the core whole_core would keep, with or
+#                    without it; on a core with no other thread the run fails before anything moves;
+#   threads_apart    with whole_core, every thread of the consumer's process but its main one moved
+#                    onto those other threads as soon as it exists, for as long as the consumer
+#                    runs, and the main thread left alone on its CPU (scripts/thread_apart.py).
+# A row that names neither is launched exactly as before.
 . "$(dirname "${BASH_SOURCE[0]}")/../campaigns/common.sh"
 set +e
 
@@ -662,11 +670,23 @@ run_one () {
       REASON="sibling_load runs the load on the core's other threads, and a udp load runs where the card's interrupts go"; return; }
   fi
   # "core", the first thread of the core whole_core would keep, or a list read by the parser that
-  # later writes it to the kernel (scripts/cpu_placement.py).
-  if [ -n "${IRQ_CPUS:-}" ] && [ "$IRQ_CPUS" != core ] && ! python3 -c 'import sys
+  # later writes it to the kernel (scripts/cpu_placement.py). Plan version 48 (23 Oct 2026): or
+  # "sibling", that core's other threads.
+  if [ -n "${IRQ_CPUS:-}" ] && [ "$IRQ_CPUS" != core ] && [ "$IRQ_CPUS" != sibling ] \
+      && ! python3 -c 'import sys
 sys.path.insert(0, "scripts"); import cpu_placement; cpu_placement.parse_list(sys.argv[1])' \
       "$IRQ_CPUS" 2>/dev/null; then
-    REASON="irq_cpus is core, or a list of CPUs as the kernel writes one, 2-3 or 1,3, not \"$IRQ_CPUS\""; return
+    REASON="irq_cpus is core, sibling, or a list of CPUs as the kernel writes one, 2-3 or 1,3, not \"$IRQ_CPUS\""; return
+  fi
+  # Plan version 48 (23 Oct 2026): threads_apart moves the consumer's threads but its main one onto
+  # the other threads of the core whole_core keeps, so it needs that core; and the consumer it
+  # moves is kafka-python's, the one scripts/thread_apart.py finds by its command line. Whether the
+  # core has another thread is known once the core is chosen, below.
+  if [ -n "${THREADS_APART:-}" ]; then
+    [ -n "${WHOLE_CORE:-}" ] || {
+      REASON="threads_apart moves the consumer's other threads onto the other threads of the core whole_core keeps, and this setup keeps none"; return; }
+    [ "$BACKEND:${CONSUMER:-kafka-python}:${CLIENT:-python}" = kafka:kafka-python:python ] || {
+      REASON="threads_apart moves the threads of kafka-python's consumer, scripts/kafka_consumer.py, which it finds by its command line, and this run does not run that consumer"; return; }
   fi
   # Freeze 43 (22 Oct 2026): so does a setup that names one of freeze 43's settings in a form
   # this runner cannot give. stress-ng takes a whole percentage, the blocks a whole number of
@@ -758,14 +778,15 @@ sys.path.insert(0, "scripts"); import cpu_placement; cpu_placement.parse_list(sy
   #     every other process the run starts off both of its threads, the load on every other CPU
   #     and, with sibling_load, on the core's other threads as well;
   #   irqbalance_off: irqbalance stopped, which would otherwise move the card's interrupts back;
-  #   irq_cpus: the card's interrupts given their CPUs, "core" being the core's first thread;
+  #   irq_cpus: the card's interrupts given their CPUs, "core" being the core's first thread and,
+  #     since plan version 48, "sibling" its other threads, the core chosen as for "core";
   #   load_kind udp: the UDP load on the CPUs that take the card's interrupts, as given or as the
   #     kernel was found running them;
   #   rps_off: no receive packet steering on the receiver's queues, the card's and its own;
   #   whole_core: the campaign's own CPUs narrowed to the others, so that every process it starts
   #     from here on, through sudo or not, runs off the core; the consumer's wrap pins it there.
   local placed="" core_first="" core_list="" kit_list="" irq_target=""
-  if [ -n "${WHOLE_CORE:-}" ] || [ "${IRQ_CPUS:-}" = core ]; then
+  if [ -n "${WHOLE_CORE:-}" ] || [ "${IRQ_CPUS:-}" = core ] || [ "${IRQ_CPUS:-}" = sibling ]; then
     placed=$(python3 scripts/cpu_placement.py core ${SIBLING_LOAD:+--sibling-load} \
       --out "$RUN_DIR/core_choice.json" 2> "$RUN_DIR/core_choice.err") || {
       REASON="no core could be chosen for the consumer: $placed"; return; }
@@ -773,6 +794,21 @@ sys.path.insert(0, "scripts"); import cpu_placement; cpu_placement.parse_list(sy
     read -r core_first siblings kit_list load_list load_count <<< "$placed"
     core_list="$core_first"
     [ "$siblings" = - ] || core_list="$core_first,$siblings"
+    # Plan version 48 (23 Oct 2026): irq_cpus "sibling" gives the card's interrupts to the core's
+    # other threads, and threads_apart the consumer's own threads but its main one. Block C's
+    # pilot found the placement it registered cannot be run on these pairs: the driver's one card
+    # carries both clients and three captures, so "core" put every one of its interrupts, with
+    # their receive softirq, on the consumer's own CPU. The consumer at SCHED_FIFO 80 ran into the
+    # real-time throttle there (95% of each second), ksoftirqd on that CPU was starved, and
+    # kafka-python's heartbeat thread, at the same priority on the same CPU, never ran: the broker
+    # removed the consumer from its group once its 10 s session timeout had passed. Neither can be
+    # given on a core with no other thread, and such a run fails here, before anything is moved.
+    if [ "$siblings" = - ] && [ "${IRQ_CPUS:-}" = sibling ]; then
+      REASON="irq_cpus sibling gives the receiver card's interrupts to the other threads of the core chosen for the consumer, and CPU $core_first's core has none"; return
+    fi
+    if [ "$siblings" = - ] && [ -n "${THREADS_APART:-}" ]; then
+      REASON="threads_apart moves the consumer's other threads onto the other threads of its core, and CPU $core_first's core has none"; return
+    fi
     if [ -n "${WHOLE_CORE:-}" ]; then
       CORE_CPU="$core_first"
       [ "$load_list" = - ] || { LOAD_TASKSET="$load_list"; LOAD_CPUS="$load_count"; }
@@ -783,8 +819,12 @@ sys.path.insert(0, "scripts"); import cpu_placement; cpu_placement.parse_list(sy
         REASON="whole_core keeps the only core for the consumer, and leaves no CPU for the run's other processes"; return; }
     fi
   fi
-  [ "${IRQ_CPUS:-}" = core ] && irq_target="$core_first"
-  [ -n "${IRQ_CPUS:-}" ] && [ "$IRQ_CPUS" != core ] && irq_target="$IRQ_CPUS"
+  case "${IRQ_CPUS:-}" in
+    "") ;;
+    core) irq_target="$core_first" ;;
+    sibling) irq_target="$siblings" ;;
+    *) irq_target="$IRQ_CPUS" ;;
+  esac
   local placing=""
   [ -n "${WHOLE_CORE:-}${IRQ_CPUS:-}${IRQBALANCE_OFF:-}${RPS_OFF:-}" ] && placing=1
   [ "${LOAD_KIND:-}" = udp ] && placing=1
@@ -1145,6 +1185,20 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     run_facts_later "$RUN_DIR" &
     facts_pid=$!
   fi
+  # Plan version 48 (23 Oct 2026): where the setup asks (threads_apart), every thread of the
+  # consumer's process but its main one moved onto the core's other threads as soon as it exists,
+  # through sudo, and the main thread left alone on the consumer's CPU (scripts/thread_apart.py).
+  # kafka-python starts its heartbeat thread only when the consumer first joins its group, so the
+  # mover starts with the trial and watches for as long as the consumer runs; what it saw and
+  # moved is written beside the run (thread_apart.json), and the integrity rule reads it. Its
+  # command line names the run's own record first, by which it is stopped once the trial ends, and
+  # no client's script, so that nothing that finds the clients by their command lines finds it.
+  local apart_pid=""
+  if [ -n "${THREADS_APART:-}" ]; then
+    sudo python3 scripts/thread_apart.py --out "$RUN_DIR/thread_apart.json" --run-id "$RUN_ID" \
+      --cpu "$CORE_CPU" --siblings "${siblings:-}" > "$RUN_DIR/thread_apart.log" 2>&1 &
+    apart_pid=$!
+  fi
   # Plan version 47 (23 Oct 2026): one trial runner for each backend, each handed the three wraps
   # and the plan's arrival process and seed, which it writes into meta.json beside the plan's path.
   if [ "$BACKEND" = kafka ]; then
@@ -1223,6 +1277,16 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   # read while the clients run or not at all.
   stop_load_blocks
   if [ -n "$facts_pid" ]; then kill "$facts_pid" 2>/dev/null; wait "$facts_pid" 2>/dev/null; fi
+  # Plan version 48 (23 Oct 2026): the mover ends by itself once the consumer has, and is stopped
+  # by its own command line all the same, as the captures are: a signal sent from here to the sudo
+  # that started it is not relayed. It writes its record before it exits, and is waited for, so
+  # that the record is whole before the run's files change owner and are read.
+  if [ -n "$apart_pid" ]; then
+    sudo pkill -INT -f "[t]hread_apart.py --out $RUN_DIR/thread_apart.json" 2>/dev/null
+    for _ in $(seq 1 20); do ps -p "$apart_pid" > /dev/null || break; sleep 0.5; done
+    sudo pkill -KILL -f "[t]hread_apart.py --out $RUN_DIR/thread_apart.json" 2>/dev/null
+    wait "$apart_pid" 2>/dev/null
+  fi
   head -n 1 /proc/stat > "$RUN_DIR/stat_after.txt"
   chronyc -c tracking > "$RUN_DIR/clock_after.txt" 2>/dev/null
   tcp_counters after
@@ -1486,6 +1550,10 @@ values = {
     "IRQBALANCE_OFF": "1" if p.get("irqbalance_off") else "",
     "RPS_OFF": "1" if p.get("rps_off") else "",
     "LOAD_KIND": str(p.get("load_kind") or ""),
+    # Plan version 48 (23 Oct 2026): the consumer's threads but its main one on its core's other
+    # threads; irq_cpus "sibling" is handed on as every value of irq_cpus is. A row that names
+    # neither leaves this empty, and its run is launched exactly as before.
+    "THREADS_APART": "1" if p.get("threads_apart") else "",
     "TRACE": 1 if int(hashlib.sha256(row["key"].encode()).hexdigest(), 16) % 2 == 0 else 0,
     "HZ": round(1000 / tick) if tick else "",
 }
@@ -1504,7 +1572,10 @@ PY
   echo "$ROW" > "$RUN_DIR/queue_row.json"
   printf '{"lane": "%s", "profile": "%s", "driver": "%s", "commit": "%s"}\n' "$LANE" \
     "${AZ_PROFILE:-unknown}" "$(hostname)" "$(git rev-parse HEAD 2>/dev/null)" > "$RUN_DIR/lane.json"
-  log "run $KEY: $BACKEND, load $LOAD%, slice ${SLICE_NS:-kernel default}, delay $DELAY_MS ms${PRIORITY:+, go-first}${CONSUMER_PRIORITY:+, go-first consumer}${RECV_CAPTURE:+, receiver capture}${SEND_CAPTURE:+, sender capture}${HW_CAPTURE:+, card capture}${SO_STAMPS:+, socket timestamps ($SO_STAMPS)}${SO_JOURNAL:+, journal=$SO_JOURNAL}${SEND_CAPTURE_BOTH:+, both directions of the sender}${SEND_WORKERS:+, $SEND_WORKERS send workers}${SCHED_FEATURES:+, $SCHED_FEATURES}${IDLE_POLL:+, idle_poll=$IDLE_POLL}${BROKER_CAPTURE:+, broker capture}${LOAD_RECORRECT:+, the load corrected again with the clients running}${PRODUCER_PRIORITY:+, go-first producer}${GC_OFF:+, collectors off}${GC_LOG:+, collections logged}${SCHEDSTAT:+, consumer schedstat}${DUTY:+, duty frozen at $DUTY%}${LOAD_BLOCKS:+, load in $LOAD_BLOCKS s blocks}${RUN_FACTS:+, run facts}${CONSUMER:+, consumer $CONSUMER}${DEPTH:+, depth $DEPTH}${ONE_REPLY:+, one-reply reads}${PREFETCH:+, prefetch $PREFETCH}${FETCH_RT:+, fetch threads at real-time priority}${ARRIVAL:+, $ARRIVAL arrivals}${WHOLE_CORE:+, the consumer alone on a core}${SIBLING_LOAD:+, its sibling loaded}${IRQ_CPUS:+, card interrupts on $IRQ_CPUS}${IRQBALANCE_OFF:+, irqbalance off}${RPS_OFF:+, receive steering off}${LOAD_KIND:+, $LOAD_KIND load}${CPUS:+, $CPUS CPUs online}"
+  # Plan version 48 (23 Oct 2026): the apostrophe in threads_apart's words is quoted on its own,
+  # "'", because bash takes a bare one inside ${...:+...} within double quotes for the start of a
+  # quoted string, and the script then does not parse.
+  log "run $KEY: $BACKEND, load $LOAD%, slice ${SLICE_NS:-kernel default}, delay $DELAY_MS ms${PRIORITY:+, go-first}${CONSUMER_PRIORITY:+, go-first consumer}${RECV_CAPTURE:+, receiver capture}${SEND_CAPTURE:+, sender capture}${HW_CAPTURE:+, card capture}${SO_STAMPS:+, socket timestamps ($SO_STAMPS)}${SO_JOURNAL:+, journal=$SO_JOURNAL}${SEND_CAPTURE_BOTH:+, both directions of the sender}${SEND_WORKERS:+, $SEND_WORKERS send workers}${SCHED_FEATURES:+, $SCHED_FEATURES}${IDLE_POLL:+, idle_poll=$IDLE_POLL}${BROKER_CAPTURE:+, broker capture}${LOAD_RECORRECT:+, the load corrected again with the clients running}${PRODUCER_PRIORITY:+, go-first producer}${GC_OFF:+, collectors off}${GC_LOG:+, collections logged}${SCHEDSTAT:+, consumer schedstat}${DUTY:+, duty frozen at $DUTY%}${LOAD_BLOCKS:+, load in $LOAD_BLOCKS s blocks}${RUN_FACTS:+, run facts}${CONSUMER:+, consumer $CONSUMER}${DEPTH:+, depth $DEPTH}${ONE_REPLY:+, one-reply reads}${PREFETCH:+, prefetch $PREFETCH}${FETCH_RT:+, fetch threads at real-time priority}${ARRIVAL:+, $ARRIVAL arrivals}${WHOLE_CORE:+, the consumer alone on a core}${SIBLING_LOAD:+, its sibling loaded}${THREADS_APART:+, the consumer"'"s other threads on its sibling}${IRQ_CPUS:+, card interrupts on $IRQ_CPUS}${IRQBALANCE_OFF:+, irqbalance off}${RPS_OFF:+, receive steering off}${LOAD_KIND:+, $LOAD_KIND load}${CPUS:+, $CPUS CPUs online}"
   REASON=""
   STOP_REASON=""
   CORE_CPU=""; LOAD_TASKSET=""; LOAD_CPUS=""

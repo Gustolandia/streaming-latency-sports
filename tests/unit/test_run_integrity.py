@@ -1454,3 +1454,141 @@ class TestTheBrokersFacts:
 
     def test_a_run_made_before_the_facts_were_read_is_held_to_none(self, tmp_path):
         assert "broker" not in evaluate(make_run(tmp_path))["checks"]
+
+
+# --- Plan version 48 (23 Oct 2026): the consumer's threads but its main one on its core's other
+# threads (threads_apart).
+
+#: The core block C's driver chooses, as scripts/cpu_placement.py writes it: the consumer on CPU 6,
+#: the core's other thread 7, and the load on the other six.
+CHOSEN = {"core": [6, 7], "consumer_cpu": 6, "siblings": [7], "siblings_list": "7",
+          "load_cpus": [0, 1, 2, 3, 4, 5], "load_list": "0-5", "kit_list": "0-5"}
+#: The clients' facts in such a run: go-first's sudo before the pin, the consumer's main thread on
+#: CPU 6 and its heartbeat thread moved onto 7, the producer, the mover itself and the load.
+APART_PLACED = [process(10, "kafka_consumer.py", (10, "sudo", "0-5")),
+                process(12, "kafka_consumer.py", (12, "python3", "6"), (13, "python3", "7")),
+                process(20, "kafka_producer.py", (20, "python3", "0-5"), (21, "python3", "0-5")),
+                process(30, "thread_apart.py", (30, "python3", "0-5")),
+                process(40, "stress-ng", (40, "stress-ng-cpu", "0-5"))]
+#: The main thread, and the heartbeat thread moved onto the core's other thread.
+APART_TASKS = [{"tid": 12, "comm": "python3", "affinity": "6", "main": True},
+               {"tid": 13, "comm": "python3", "affinity": "7", "main": False}]
+APART = params("kafka", consumer="kafka-python", whole_core=True, threads_apart=True)
+
+
+def apart(run, tasks=APART_TASKS, seen=("6",), pid=12, why="", moves=None,
+          processes=APART_PLACED, record=None):
+    """The files a run that keeps its consumer's threads apart leaves: the core it chose, the
+    clients' facts, and thread_apart.json as scripts/thread_apart.py writes it (`record` as
+    written instead, where given)."""
+    moves = [{"tid": 13, "comm": "python3", "affinity_before": "6", "affinity_after": "7",
+              "ok": True, "why": ""}] if moves is None else moves
+    for name, value in (("core_choice.json", CHOSEN),
+                        ("run_facts_clients.json", {"processes": processes}),
+                        ("thread_apart.json", {"pid": pid, "tasks": tasks, "moves": moves,
+                                               "main_affinity_seen": list(seen),
+                                               "ok": not why, "why": why}
+                         if record is None else record)):
+        with open(os.path.join(run, name), "w", encoding="utf-8") as fh:
+            json.dump(value, fh)
+
+
+def apart_run(tmp_path, name="run", setup=APART, **files):
+    run = make_run(tmp_path, name, params=setup)
+    log_line(run, "consumer.log", "CONFIG effective client=python clock_resolution_ns=232")
+    apart(run, **files)
+    return run
+
+
+class TestTheConsumersThreadsApart:
+
+    def test_moved_onto_the_sibling_with_the_main_one_alone_they_count(self, tmp_path):
+        found = evaluate(apart_run(tmp_path))
+        assert found["verdict"] == "count" and found["reasons"] == []
+        assert found["checks"]["threads_apart"] == {
+            "ok": True, "value": {"pid": 12, "others": 1, "moved": 1, "stray": 0},
+            "limit": "every thread of the consumer's but its main one on 7, and the main one on "
+                     "CPU 6 alone", "why": ""}
+        assert found["checks"]["placement"]["limit"] == (
+            "the consumer's main thread on CPU 6 alone and its other threads on 7, stress-ng on "
+            "0-5")
+
+    @pytest.mark.parametrize("why,said", [
+        ("no process ran scripts/kafka_consumer.py with --run-id r within 60 s",
+         "no process ran scripts/kafka_consumer.py with --run-id r within 60 s"),
+        ("", "thread_apart.py gave no reason")])
+    def test_a_consumer_never_found_is_repeated(self, tmp_path, why, said):
+        found = evaluate(apart_run(tmp_path, record={"pid": None, "tasks": [], "moves": [],
+                                                     "main_affinity_seen": [], "why": why}))
+        assert found["verdict"] == "repeat" and found["reasons"] == [
+            "the consumer's process was not found: " + said]
+
+    @pytest.mark.parametrize("affinity", ["6", "6-7", None, "7-x"])
+    def test_a_thread_left_off_the_sibling_is_repeated(self, tmp_path, affinity):
+        """Where the mover's record says the heartbeat thread ended anywhere but on the core's
+        other thread: left on the consumer's CPU, given both, with CPUs it could not read, or
+        with a list the kernel would not write."""
+        tasks = [APART_TASKS[0], dict(APART_TASKS[1], affinity=affinity)]
+        found = evaluate(apart_run(tmp_path, tasks=tasks))
+        assert found["verdict"] == "repeat"
+        assert found["checks"]["threads_apart"]["why"] == (
+            "1 of the consumer's 1 other thread(s) ended off 7: thread 13 (python3) on %s"
+            % affinity)
+
+    @pytest.mark.parametrize("seen,said", [
+        (("6", "6-7"), "6 and 6-7"), (("5",), "5"), ((), "no CPU")])
+    def test_a_main_thread_not_on_the_consumers_cpu_alone_is_repeated(self, tmp_path, seen, said):
+        found = evaluate(apart_run(tmp_path, seen=seen))
+        assert found["checks"]["threads_apart"]["why"] == (
+            "the consumer's main thread was seen on %s, not on CPU 6 alone" % said)
+
+    def test_the_record_is_held_to_the_core_the_run_chose(self, tmp_path):
+        """A mover handed another core's threads would record its own moves as taken."""
+        tasks = [APART_TASKS[0], dict(APART_TASKS[1], affinity="3")]
+        found = evaluate(apart_run(tmp_path, tasks=tasks))
+        assert found["checks"]["threads_apart"]["why"].endswith("thread 13 (python3) on 3")
+
+    @pytest.mark.parametrize("record,said", [
+        (None, "thread_apart.json cannot be read"),
+        ([], "thread_apart.json holds no record of the consumer's threads")])
+    def test_without_the_movers_record_the_run_is_repeated(self, tmp_path, record, said):
+        run = apart_run(tmp_path, record=record)
+        if record is None:
+            os.remove(os.path.join(run, "thread_apart.json"))
+        found = evaluate(run)
+        assert found["verdict"] == "repeat" and found["checks"]["threads_apart"]["why"].startswith(
+            "the threads_apart could not be checked: " + said)
+
+    def test_a_consumer_thread_left_on_its_cpu_is_misplaced_where_the_setup_moves_it(
+            self, tmp_path):
+        """The clients' facts, read while they run, hold the consumer's threads but its main one
+        to the core's other threads, as the mover's record does."""
+        placed = list(APART_PLACED)
+        placed[1] = process(12, "kafka_consumer.py", (12, "python3", "6"), (13, "python3", "6"))
+        found = evaluate(apart_run(tmp_path, processes=placed))
+        assert found["checks"]["placement"]["why"] == (
+            "1 thread(s) ran where the run did not place them: kafka_consumer.py thread 13 on 6")
+        placed[1] = process(12, "kafka_consumer.py", (12, "python3", "7"), (13, "python3", "7"))
+        found = evaluate(apart_run(tmp_path, "main", processes=placed))
+        assert found["checks"]["placement"]["why"] == (
+            "1 thread(s) ran where the run did not place them: kafka_consumer.py thread 12 on 7")
+
+    def test_a_setup_that_keeps_the_threads_together_is_held_as_before(self, tmp_path):
+        """whole_core alone: no mover's record is asked for, and every thread of the consumer's
+        is held to its CPU alone, so a thread on the sibling is one the run did not place."""
+        found = evaluate(apart_run(tmp_path, setup=params("kafka", consumer="kafka-python",
+                                                         whole_core=True)))
+        assert "threads_apart" not in found["checks"]
+        assert found["checks"]["placement"] == {
+            "ok": False, "value": {"consumer_cpu": 6, "load_list": "0-5", "misplaced": 1},
+            "limit": "the consumer on CPU 6 alone, stress-ng on 0-5",
+            "why": "1 thread(s) ran where the run did not place them: kafka_consumer.py thread 13 "
+                   "on 7"}
+
+    def test_the_command_repeats_a_run_whose_threads_were_not_kept_apart(self, tmp_path):
+        tasks = [APART_TASKS[0], dict(APART_TASKS[1], affinity="6")]
+        run = apart_run(tmp_path, tasks=tasks)
+        code, text = TestMain.run(["check", run, "--rate", "10", "--duration", "40",
+                                   "--warmup-s", "10"])
+        assert code == 1 and text.startswith("repeat: 1 of the consumer's 1 other thread(s) ended "
+                                             "off 7: thread 13 (python3) on 6")

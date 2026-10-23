@@ -116,9 +116,10 @@ CPU_SIBLINGS = "sys/devices/system/cpu/cpu%s/topology/thread_siblings_list"
 CPUS_ALLOWED = "Cpus_allowed_list:"
 #: Plan version 47 (23 Oct 2026): the run's own working processes, by a word of their command
 #: lines: the captures and bpftrace, the samplers, the socket load's duty cycle and the wait on
-#: the consumer's thread list.
+#: the consumer's thread list; and since plan version 48 (23 Oct 2026), what moves the
+#: consumer's threads but its main one onto its core's other threads (threads_apart).
 KIT_PROGRAMS = ("tcpdump", "bpftrace", "util_sampler.py", "phc_offset.py", "schedstat_sampler.py",
-                "duty_cycle.py", "consumer_threads.py")
+                "duty_cycle.py", "consumer_threads.py", "thread_apart.py")
 #: Plan version 47 (23 Oct 2026): the containers the brokers run in, by the names cloud/brokers.sh
 #: gives them, and where the NATS server, a unit of the broker's own, greets a client.
 BROKER_CONTAINERS = {"kafka": "broker", "redis": "redis", "rabbitmq": "rabbitmq"}

@@ -18,7 +18,9 @@ run as it ends, on the machine that ran it, so they hold when nobody is watching
            prefetch, the consumer not the one the setup names or not set as it asks, the fetch
            threads not raised where it asks (fetch_rt), the consumer not alone on its core
            where it asks (whole_core), or the run's broker's image, digest and server version
-           not read on the broker host in the run; files that cannot be read. The
+           not read on the broker host in the run; since plan version 48, the consumer's other
+           threads not moved onto its core's other threads where it asks (threads_apart); files
+           that cannot be read. The
            run keeps its files and its ledger row, marked failed with the reasons, and
            run_queue.py queues a copy, three attempts at most. Nothing a run measured can make it
            a repeat.
@@ -488,16 +490,22 @@ def in_place(kind, cpus, consumer, load, core):
     return not cpus & core
 
 
-def placement_check(run_dir):
+def placement_check(run_dir, threads_apart=False):
     """Plan version 47 (23 Oct 2026): where the setup keeps a core for the consumer, every thread
     of the consumer's own process ran on the consumer's CPU alone, every stress-ng on the load's
     CPUs, and every other process the run started (the producer, the captures, the samplers) on
     neither of the core's threads, as the kernel held them while the clients ran
     (run_facts_clients.json) against what the run chose (core_choice.json). A wrapper that only
-    starts another and waits (WRAPPERS) is left out, wherever its wrap put it."""
+    starts another and waits (WRAPPERS) is left out, wherever its wrap put it.
+
+    Plan version 48 (23 Oct 2026): where the setup also moves the consumer's other threads onto
+    the core's other threads (threads_apart), the consumer's main thread, whose id is its
+    process's, on the consumer's CPU alone, and every other thread of its process on the core's
+    other threads, the siblings the run chose."""
     chosen = read_json(os.path.join(run_dir, "core_choice.json"))
     facts = read_json(os.path.join(run_dir, "run_facts_clients.json"))
     consumer = {int(chosen["consumer_cpu"])}
+    siblings = set(int(cpu) for cpu in chosen.get("siblings") or [])
     load = set(int(cpu) for cpu in chosen["load_cpus"])
     core = set(int(cpu) for cpu in chosen["core"])
     consumers, wrong = 0, []
@@ -513,8 +521,10 @@ def placement_check(run_dir):
             kind = "kit"
         for thread in threads:
             allowed = thread.get("cpus_allowed_list")
+            apart = (threads_apart and kind == "consumer"
+                     and thread.get("tid") != process.get("pid"))
             if allowed is None or not in_place(kind, set(cpu_placement.parse_list(allowed)),
-                                               consumer, load, core):
+                                               siblings if apart else consumer, load, core):
                 wrong.append("%s thread %s on %s" % (process.get("names"), thread.get("tid"),
                                                      allowed))
     if not consumers:
@@ -523,10 +533,61 @@ def placement_check(run_dir):
         why = "%d thread(s) ran where the run did not place them: %s" % (len(wrong), wrong[0])
     else:
         why = ""
+    limit = ("the consumer on CPU %s alone, stress-ng on %s"
+             % (chosen["consumer_cpu"], chosen.get("load_list") or "no CPU"))
+    if threads_apart:
+        limit = ("the consumer's main thread on CPU %s alone and its other threads on %s, "
+                 "stress-ng on %s" % (chosen["consumer_cpu"],
+                                      cpu_placement.format_list(siblings) or "no CPU",
+                                      chosen.get("load_list") or "no CPU"))
     return outcome(not why, {"consumer_cpu": chosen["consumer_cpu"],
                              "load_list": chosen.get("load_list"), "misplaced": len(wrong)},
-                   "the consumer on CPU %s alone, stress-ng on %s"
-                   % (chosen["consumer_cpu"], chosen.get("load_list") or "no CPU"), why)
+                   limit, why)
+
+
+def listed_as(listed, cpus):
+    """Whether a list of CPUs as the kernel writes one, 6 or 0-5,7, names exactly `cpus`."""
+    if not isinstance(listed, str):
+        return False
+    try:
+        return cpu_placement.parse_list(listed) == sorted(cpus)
+    except ValueError:
+        return False
+
+
+def threads_apart_check(run_dir):
+    """Plan version 48 (23 Oct 2026): where the setup moves the consumer's other threads onto the
+    core's other threads (threads_apart), scripts/thread_apart.py found the consumer's process,
+    every thread of it but the main one was last seen on the core's other threads, and the main
+    thread on the consumer's CPU alone at every look, as thread_apart.json records them, against
+    the core the run chose (core_choice.json). A thread that ended before it could be moved ran
+    its whole life beside the main one, and is held as one left there."""
+    chosen = read_json(os.path.join(run_dir, "core_choice.json"))
+    record = read_json(os.path.join(run_dir, "thread_apart.json"))
+    if not isinstance(record, dict):
+        raise ValueError("thread_apart.json holds no record of the consumer's threads")
+    cpu = int(chosen["consumer_cpu"])
+    siblings = sorted(int(c) for c in chosen["siblings"])
+    others = [t for t in record.get("tasks") or [] if not t.get("main")]
+    stray = [t for t in others if not listed_as(t.get("affinity"), siblings)]
+    seen = record.get("main_affinity_seen") or []
+    if record.get("pid") is None:
+        why = "the consumer's process was not found: %s" % (
+            record.get("why") or "thread_apart.py gave no reason")
+    elif stray:
+        why = "%d of the consumer's %d other thread(s) ended off %s: thread %s (%s) on %s" % (
+            len(stray), len(others), cpu_placement.format_list(siblings), stray[0].get("tid"),
+            stray[0].get("comm"), stray[0].get("affinity"))
+    elif not seen or not all(listed_as(cpus, [cpu]) for cpus in seen):
+        why = "the consumer's main thread was seen on %s, not on CPU %d alone" % (
+            " and ".join(str(cpus) for cpus in seen) or "no CPU", cpu)
+    else:
+        why = ""
+    moved = [m for m in record.get("moves") or [] if m.get("ok")]
+    return outcome(not why, {"pid": record.get("pid"), "others": len(others),
+                             "moved": len(moved), "stray": len(stray)},
+                   "every thread of the consumer's but its main one on %s, and the main one on "
+                   "CPU %d alone" % (cpu_placement.format_list(siblings), cpu), why)
 
 
 #: Plan version 47 (23 Oct 2026): the files the campaign leaves beside every run since it reads
@@ -951,7 +1012,12 @@ def evaluate(run_dir, rate, duration, warmup_s, calibration=None,
     if params.get("fetch_rt"):
         guarded(checks, "fetch_rt", lambda: fetch_rt_check(run_dir))
     if params.get("whole_core"):
-        guarded(checks, "placement", lambda: placement_check(run_dir))
+        guarded(checks, "placement",
+                lambda: placement_check(run_dir, bool(params.get("threads_apart"))))
+    # Plan version 48 (23 Oct 2026): the consumer's other threads on its core's other threads,
+    # where the setup moves them there.
+    if params.get("threads_apart"):
+        guarded(checks, "threads_apart", lambda: threads_apart_check(run_dir))
     # Plan version 47 (23 Oct 2026): the run's own broker's facts, in every run made since the
     # campaign reads them on the broker host, which leaves both files beside each run.
     if any(os.path.exists(os.path.join(run_dir, name)) for name in BROKER_FACTS):

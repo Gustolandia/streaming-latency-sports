@@ -617,3 +617,15 @@ class TestTheCommandLine:
         assert rw.main(["priority", "--runs", str(folder), "--out", str(tmp_path / "p.csv")],
                        out=out) == 0
         assert "1 pooled rows" in out.getvalue()
+
+
+def test_an_event_id_of_every_arrival_the_plan_maker_names():
+    """Plan version 47's Poisson plans name their events poisson-000000 and on; read as
+    constant- alone, none of pilot round a's payloads named a message."""
+    import make_synthetic_plan as msp
+    for arrival in msp.ARRIVALS:
+        name = ("%s-%06d" % (arrival, 42)).encode()
+        assert rw.EVENT_ID.fullmatch(name), arrival
+        assert rw.EVENT_ID.search(b'{"event_id":"' + name + b'","x":1}').group(0) == name
+    assert rw.EVENT_ID.search(b"poisson-12345") is None, "six digits"
+    assert rw.EVENT_ID.search(b"uniform-000001") is None

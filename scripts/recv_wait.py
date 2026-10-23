@@ -56,8 +56,11 @@ import quality_report  # noqa: E402
 
 #: The warm-up every reading leaves out.
 WARMUP_S = 30.0
-#: The synthetic plan's event ids, as the payload carries them.
-EVENT_ID = re.compile(rb"constant-\d{6}")
+#: The synthetic plan's event ids, as the payload carries them: the arrival process's name and a
+#: six-digit number (scripts/make_synthetic_plan.py). Plan version 47 sends Poisson plans, whose
+#: ids run poisson-000000 and on; read as constant- alone, pilot round a's payloads named none of
+#: their messages (23 Oct 2026).
+EVENT_ID = re.compile(rb"(?:constant|poisson|bursty)-\d{6}")
 #: Bytes after an id's first sight that still belong to its record (Kafka repeats the id as the
 #: record's key and inside its value).
 SAME_RECORD = 2048

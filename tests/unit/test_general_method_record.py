@@ -17,7 +17,19 @@ import under_load_posthoc as ph  # noqa: E402
 FOLDER = REPO / "docs" / "results" / "general_method"
 #: DESIGN47.md's fingerprint, as registered; DESIGN47.sha256 holds the same.
 FINGERPRINT47 = "17d3ba50e87daefcf9229a3b265dd9e1c93b9fcdde3d47fa9aa4e6c7e14823fc"
-BLOCKS = {"v": 3, "n": 3, "p": 2, "k": 5, "c": 3, "s": 2, "a": 4}
+#: Pilot round a's statements (D47-11), made before any judged run: block S's producer at
+#: normal priority and block A's two Redis setups are left out, with the reasons in README.md.
+BLOCKS = {"v": 3, "n": 3, "p": 2, "k": 5, "c": 3, "s": 1, "a": 2}
+LEFT_OUT = ("S2000-redis-prodnormal", "A2000-redis-d1", "A2000-redis-d256")
+#: The same: each setup's frozen duty, the starting duty corrected by the median miss of its
+#: pilot runs where any of them missed 70% by more than 3 points. Block C has none until plan
+#: version 48 amends it.
+DUTIES = {"V2000-redis-d1": 75, "V2000-redis-d256": 75, "V2000-redis-d256-lib": 75,
+          "N2000-nats-d1": 75, "N2000-nats-d256": 75, "N2000-nats-go": 75,
+          "P2000-rabbitmq-p1": 72, "P2000-rabbitmq-p1000": 75,
+          "K2000-kafka-python": 75, "K2000-kafka-java": 75, "K2000-kafka-franz": 75,
+          "K2000-kafka-rdk": 75, "K2000-kafka-rdk-rt": 75, "S2000-redis-udp": 82,
+          "A2000-kafka-rdk": 73, "A2000-kafka-rdk-rt": 73}
 #: Pilot round a's first attempt (23 Oct 2026): the Arm pair held 66.3% at a duty of 75 and
 #: starts at 79; the x86 pair held 68.0%.
 PILOTS = {"x86": (18, 75), "arm": (4, 79)}
@@ -76,9 +88,10 @@ def test_each_block_runs_its_setups_four_rounds():
             assert s["load_pct"] == LOADS.get(s["id"], 70)
             assert s["schedstat"] is (s.get("consumer") not in UNSAMPLED)
             assert s["producer_priority"] is (s["id"] != "S2000-redis-prodnormal")
-            assert "duty_pct" not in s, "a judged duty is written in only after the pilot"
+            assert s.get("duty_pct") == DUTIES.get(s["id"]), "the duty the pilot froze"
             assert "RATE=2000 DURATION=70 WARMUP_S=20 PRIME_S=60" in d["about"]
-    assert sum(BLOCKS[b] for b in BLOCKS if b != "a") * 4 == 72 and BLOCKS["a"] * 4 == 16
+    assert sum(BLOCKS[b] for b in BLOCKS if b != "a") * 4 == 68 and BLOCKS["a"] * 4 == 8
+    assert sorted(DUTIES) == sorted(seen - {i for i in seen if i.startswith("C2000-")})
 
 
 def test_the_pilot_runs_every_setup_once_at_the_starting_duty():
@@ -92,6 +105,9 @@ def test_the_pilot_runs_every_setup_once_at_the_starting_duty():
         assert d["rounds"] == 1 and len(d["setups"]) == count
         for s in d["setups"]:
             assert s["id"].endswith("-pilot") and s["duty_pct"] == duty
+            if s["id"][:-len("-pilot")] in LEFT_OUT:
+                assert s["id"][:-len("-pilot")] not in judged
+                continue
             twin = judged[s["id"][:-len("-pilot")]]
             assert dict(s, id=twin["id"], duty_pct=None) == dict(twin, duty_pct=None)
 

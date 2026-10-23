@@ -23,7 +23,8 @@
    "load_blocks_s": 5,
    "backend": "rabbitmq",
    "prefetch": 1,
-   "id": "P2000-rabbitmq-p1"
+   "id": "P2000-rabbitmq-p1",
+   "duty_pct": 72
   },
   {
    "slice_ns": 3000000,
@@ -45,7 +46,8 @@
    "load_blocks_s": 5,
    "backend": "rabbitmq",
    "prefetch": 1000,
-   "id": "P2000-rabbitmq-p1000"
+   "id": "P2000-rabbitmq-p1000",
+   "duty_pct": 75
   }
  ]
 }

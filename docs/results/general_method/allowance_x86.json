@@ -1,0 +1,14 @@
+{
+  "capture": {
+    "kafka": 60.0,
+    "nats": 0.0,
+    "rabbitmq": 0.0,
+    "redis": 15.0
+  },
+  "sockets": {
+    "kafka": 45.0,
+    "nats": 0.0,
+    "rabbitmq": 0.0,
+    "redis": 15.0
+  }
+}

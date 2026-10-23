@@ -26,7 +26,8 @@
    "depth": 1,
    "one_reply_reads": true,
    "ack_batch": 200,
-   "id": "V2000-redis-d1"
+   "id": "V2000-redis-d1",
+   "duty_pct": 75
   },
   {
    "slice_ns": 3000000,
@@ -51,7 +52,8 @@
    "depth": 256,
    "one_reply_reads": true,
    "ack_batch": 200,
-   "id": "V2000-redis-d256"
+   "id": "V2000-redis-d256",
+   "duty_pct": 75
   },
   {
    "slice_ns": 3000000,
@@ -76,7 +78,8 @@
    "depth": 256,
    "one_reply_reads": false,
    "ack_batch": 200,
-   "id": "V2000-redis-d256-lib"
+   "id": "V2000-redis-d256-lib",
+   "duty_pct": 75
   }
  ]
 }

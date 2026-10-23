@@ -25,7 +25,8 @@
    "consumer": "python",
    "depth": 1,
    "one_reply_reads": true,
-   "id": "N2000-nats-d1"
+   "id": "N2000-nats-d1",
+   "duty_pct": 75
   },
   {
    "slice_ns": 3000000,
@@ -49,7 +50,8 @@
    "consumer": "python",
    "depth": 256,
    "one_reply_reads": true,
-   "id": "N2000-nats-d256"
+   "id": "N2000-nats-d256",
+   "duty_pct": 75
   },
   {
    "slice_ns": 3000000,
@@ -71,7 +73,8 @@
    "load_blocks_s": 5,
    "backend": "nats",
    "consumer": "nats-go",
-   "id": "N2000-nats-go"
+   "id": "N2000-nats-go",
+   "duty_pct": 75
   }
  ]
 }

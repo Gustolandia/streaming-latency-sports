@@ -23,7 +23,8 @@
    "load_blocks_s": 5,
    "backend": "kafka",
    "consumer": "kafka-python",
-   "id": "K2000-kafka-python"
+   "id": "K2000-kafka-python",
+   "duty_pct": 75
   },
   {
    "slice_ns": 3000000,
@@ -45,7 +46,8 @@
    "load_blocks_s": 5,
    "backend": "kafka",
    "consumer": "java",
-   "id": "K2000-kafka-java"
+   "id": "K2000-kafka-java",
+   "duty_pct": 75
   },
   {
    "slice_ns": 3000000,
@@ -67,7 +69,8 @@
    "load_blocks_s": 5,
    "backend": "kafka",
    "consumer": "franz",
-   "id": "K2000-kafka-franz"
+   "id": "K2000-kafka-franz",
+   "duty_pct": 75
   },
   {
    "slice_ns": 3000000,
@@ -89,7 +92,8 @@
    "load_blocks_s": 5,
    "backend": "kafka",
    "consumer": "confluent",
-   "id": "K2000-kafka-rdk"
+   "id": "K2000-kafka-rdk",
+   "duty_pct": 75
   },
   {
    "slice_ns": 3000000,
@@ -112,7 +116,8 @@
    "backend": "kafka",
    "consumer": "confluent",
    "fetch_rt": true,
-   "id": "K2000-kafka-rdk-rt"
+   "id": "K2000-kafka-rdk-rt",
+   "duty_pct": 75
   }
  ]
 }

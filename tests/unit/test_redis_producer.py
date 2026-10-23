@@ -17,6 +17,7 @@ from unittest.mock import MagicMock, patch
 SCRIPTS_DIR = Path(__file__).parent.parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
+import redis_producer  # noqa: E402
 from redis_producer import now_ns, main as rp_main
 
 
@@ -49,6 +50,28 @@ class TestMain:
                 sys.argv = old_argv
         
         assert (temp_dir / "prod.csv").exists()
+
+    def test_the_interpreter_hands_its_lock_on_every_half_millisecond(self, temp_dir):
+        """Pilot round a of plan version 47: at CPython's 5 ms the pool's threads waited two
+        intervals for their replies on the Arm pair, and the producer fell behind."""
+        plan_data = {"event_id": ["e1"], "match_id": [1], "t_sim_seconds": [0],
+                     "t_emit_offset_s": [0.0], "row_idx": [0]}
+        pd.DataFrame(plan_data).to_csv(temp_dir / "plan.csv", index=False)
+        mock_redis = MagicMock()
+        mock_redis.xadd = MagicMock(return_value="rid1")
+        sys.setswitchinterval(0.005)
+        with patch('redis.Redis', return_value=mock_redis):
+            old_argv, old_cwd = sys.argv, os.getcwd()
+            try:
+                os.chdir(temp_dir)
+                sys.argv = ["rp", "--run-id", "tr", "--plan-csv", "plan.csv", "--out",
+                            "prod.csv"]
+                rp_main()
+            finally:
+                os.chdir(old_cwd)
+                sys.argv = old_argv
+        assert redis_producer.SWITCH_S == 0.0005
+        assert sys.getswitchinterval() == pytest.approx(0.0005)
 
     def test_main_with_max_t_sim(self, temp_dir, monkeypatch):
         plan_data = {"event_id": ["e1", "e2"], "match_id": [1, 1], "t_sim_seconds": [0, 1000], "t_emit_offset_s": [0.0, 1000.0], "row_idx": [0, 1]}
@@ -187,11 +210,11 @@ class TestMain:
         }
         pd.DataFrame(plan_data).to_csv(temp_dir / "plan.csv", index=False)
         
-        # Set up a mock that raises on the second xadd call (correction)
-        call_count = [0]
-        def xadd_with_error(*args, **kwargs):
-            call_count[0] += 1
-            if call_count[0] > 1:  # First call is base event, second is correction
+        # A mock that raises on the correction's xadd alone. The correction is told from the base
+        # event by its own flag, not by the order of the calls: the send pool's thread and the
+        # correction worker race for the first one.
+        def xadd_with_error(stream, fields, *args, **kwargs):
+            if json.loads(fields["value"]).get("s3_is_correction"):
                 raise Exception("Test error")
             return "rid1"
         

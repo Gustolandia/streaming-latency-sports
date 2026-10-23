@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse, csv, json, sys, time, threading, heapq
+import argparse, csv, json, time, threading, heapq
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -20,18 +20,6 @@ import law_clock
 import thread_record
 import so_timestamps
 import client_quiet
-
-#: Pilot round a of plan version 47 (23 Oct 2026): how often, in seconds, the interpreter hands
-#: its lock from one thread to another that waits for it; CPython's own is 0.005. The sends run
-#: in a pool of threads, each waiting on its XADD's reply and each needing the lock to read it.
-#: On the Arm pair the broker answered every XADD within 54 us at the median and 139 us at the
-#: 99th percentile, by its own capture, while in its worst run the producer took its replies
-#: 7.4 to 8.2 ms after sending at the median and 10.0 to 10.7 ms at the 99th: within two of
-#: CPython's intervals. Once behind, the loop that hands out the sends stopped sleeping and held
-#: the lock, the pool sent fewer than 2,000 a second, and the producer's lateness spread 27 to
-#: 892 ms in all four of that attempt's Redis runs; on the x86 pair, whose cores are faster, it
-#: kept its schedule.
-SWITCH_S = 0.0005
 
 
 def now_ns() -> int:
@@ -157,7 +145,6 @@ def main():
     # no message's schedule. No message is sent before the loop: the send pool below starts its
     # threads only at its first submit.
     quiet = client_quiet.start(args)
-    sys.setswitchinterval(SWITCH_S)
 
     # Producer time origins:
     # - t0_mono: time.monotonic() reference used for sleep scheduling

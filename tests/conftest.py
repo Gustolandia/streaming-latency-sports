@@ -127,16 +127,6 @@ def pytest_collection_modifyitems(config, items):
 # FIXTURES: FILE SYSTEM
 # ============================================================
 
-@pytest.fixture(autouse=True)
-def _the_interpreters_switch_interval_kept():
-    """Every test runs at the switch interval it found. The Redis producer's main() sets the
-    interpreter's for the whole process (scripts/redis_producer.py, SWITCH_S), and a test that
-    calls it in-process would otherwise change the threads' timing of every test after it."""
-    before = sys.getswitchinterval()
-    yield
-    sys.setswitchinterval(before)
-
-
 @pytest.fixture
 def temp_dir():
     """Create a temporary directory for test files."""

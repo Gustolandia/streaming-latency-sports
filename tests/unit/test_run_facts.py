@@ -611,3 +611,8 @@ class TestPlanVersion47sMain:
                        connect=greeting(b'INFO {"version":"2.15.1","jetstream":true}\r\n'))
         assert code == 0 and json.loads(printed.getvalue())["kind"] == "broker"
         assert capsys.readouterr().err.startswith("broker facts -> -, 1 unread")
+
+
+def test_rabbitmqs_version_is_asked_as_the_brokers_own_user():
+    """As root, the tool could write the Erlang cookie the broker then cannot read."""
+    assert rf.RABBITMQ_VERSION[:5] == ("docker", "exec", "--user", "rabbitmq", "rabbitmq")

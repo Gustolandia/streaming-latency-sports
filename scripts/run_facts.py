@@ -125,7 +125,10 @@ BROKER_CONTAINERS = {"kafka": "broker", "redis": "redis", "rabbitmq": "rabbitmq"
 NATS_ADDRESS = ("127.0.0.1", 4222)
 #: The commands that read the servers' own versions, inside their containers.
 REDIS_INFO = ("docker", "exec", "redis", "redis-cli", "INFO", "server")
-RABBITMQ_VERSION = ("docker", "exec", "rabbitmq", "rabbitmq-diagnostics", "-q", "server_version")
+#: Asked as the broker's own user, as brokers.sh asks: a tool run as root can write the Erlang
+#: cookie the broker then cannot read.
+RABBITMQ_VERSION = ("docker", "exec", "--user", "rabbitmq", "rabbitmq", "rabbitmq-diagnostics",
+                    "-q", "server_version")
 #: Kafka's, from the name of its server's jar among the libraries apache/kafka's image keeps in
 #: /opt/kafka/libs (kafka_2.13-4.1.1.jar): a listing starts no second JVM beside the broker's, and
 #: only a version of digits and dots is taken, so that a test or sources jar is not read as one.

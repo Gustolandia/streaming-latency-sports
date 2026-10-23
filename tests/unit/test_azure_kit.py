@@ -5206,6 +5206,10 @@ def test_v47s_nats_runs_with_jetstream_on_its_own_port_with_the_tools_blocks_ser
     places = [rabbit.index(step) for step in order]
     assert places == sorted(places)
     assert '-v "$RABBITMQ_CONF:/etc/rabbitmq/conf.d/20-sbl.conf:ro"' in rabbit
+    # Asked as root before the broker is up, the tool writes the Erlang cookie as root, and the
+    # broker cannot read it.
+    assert "docker exec --user rabbitmq rabbitmq rabbitmq-diagnostics" in rabbit
+    assert "docker exec rabbitmq " not in rabbit
 
 
 def _nats_install(tmp_path, pin=None, sums=None):

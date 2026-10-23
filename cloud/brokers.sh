@@ -154,10 +154,14 @@ if wanted rabbitmq; then
   docker run -d --name rabbitmq -p 5672:5672 \
     -v "$RABBITMQ_CONF:/etc/rabbitmq/conf.d/20-sbl.conf:ro" "$RABBITMQ_IMAGE" >/dev/null
   # Docker's proxy takes a connection on 5672 before RabbitMQ listens behind it, so the broker
-  # itself is asked, for up to two minutes: it boots in some tens of seconds.
+  # itself is asked, for up to two minutes: it boots in some tens of seconds. The tool asks as
+  # the broker's own user: run as root before the broker is up, it writes the Erlang cookie
+  # itself, as root, and the broker, which runs as rabbitmq, then cannot read it and stops
+  # ("Error when reading /var/lib/rabbitmq/.erlang.cookie: eacces", 23 Oct 2026).
   up=""
   for _ in $(seq 1 60); do
-    docker exec rabbitmq rabbitmq-diagnostics -q check_port_listener 5672 >/dev/null 2>&1 \
+    docker exec --user rabbitmq rabbitmq rabbitmq-diagnostics -q check_port_listener 5672 \
+        >/dev/null 2>&1 \
       && { up=1; break; }
     sleep 2
   done

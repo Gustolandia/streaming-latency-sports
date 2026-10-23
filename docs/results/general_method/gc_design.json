@@ -1,5 +1,5 @@
 {
- "about": "Freeze 44 (plan version 47), block C: the consumer's thread alone on its core. Run with RATE=2000 DURATION=70 WARMUP_S=20 PRIME_S=60. Every run sends Poisson, runs its load at 70% in 5-s blocks, on then off, at the duty the pilot froze for its setup; takes both client captures, the card's and the broker's; runs the producer at real-time priority with the clients' collectors off; records its facts and each broker's image digest and version; and is held to the lateness rule (docs/results/general_method/DESIGN47.md). Queue: python3 scripts/run_queue.py make --design docs/results/general_method/gc_design.json --out runs/azure/queues/gc.csv",
+ "about": "Freeze 45 (plan version 48), block C: the consumer's polling thread alone on its core, the card's interrupts and the consumer's other threads on the core's other thread. Run with RATE=2000 DURATION=70 WARMUP_S=20 PRIME_S=60. Every run sends Poisson, runs its load at 70% in 5-s blocks, on then off, at the duty the pilot froze for its setup; takes both client captures, the card's and the broker's; runs the producer at real-time priority with the clients' collectors off; records its facts and each broker's image digest and version; and is held to the lateness rule (docs/results/general_method/DESIGN47.md, block C amended by DESIGN48.md). Queue: python3 scripts/run_queue.py make --design docs/results/general_method/gc_design.json --out runs/azure/queues/gc.csv",
  "rounds": 4,
  "seed": 20261104,
  "setups": [
@@ -24,7 +24,7 @@
    "backend": "kafka",
    "consumer": "kafka-python",
    "priority": true,
-   "irq_cpus": "core",
+   "irq_cpus": "sibling",
    "irqbalance_off": true,
    "rps_off": true,
    "id": "C2000-kafka-base"
@@ -50,10 +50,11 @@
    "backend": "kafka",
    "consumer": "kafka-python",
    "priority": true,
-   "irq_cpus": "core",
+   "irq_cpus": "sibling",
    "irqbalance_off": true,
    "rps_off": true,
    "whole_core": true,
+   "threads_apart": true,
    "id": "C2000-kafka-core"
   },
   {
@@ -77,11 +78,12 @@
    "backend": "kafka",
    "consumer": "kafka-python",
    "priority": true,
-   "irq_cpus": "core",
+   "irq_cpus": "sibling",
    "irqbalance_off": true,
    "rps_off": true,
    "whole_core": true,
    "sibling_load": true,
+   "threads_apart": true,
    "id": "C2000-kafka-core-sib"
   }
  ]

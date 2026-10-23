@@ -109,6 +109,11 @@ def test_the_pilot_runs_every_setup_once_at_the_starting_duty():
                 assert s["id"][:-len("-pilot")] not in judged
                 continue
             twin = judged[s["id"][:-len("-pilot")]]
+            if twin["id"].startswith("C2000-"):
+                # Plan version 48 amends block C's placement after this pilot ran it
+                # (DESIGN48.md), and block C has its own pilot (gpilot_c48_design.json).
+                twin = dict(twin, irq_cpus="core")
+                twin.pop("threads_apart", None)
             assert dict(s, id=twin["id"], duty_pct=None) == dict(twin, duty_pct=None)
 
 
@@ -121,8 +126,12 @@ def test_the_remedy_setups_are_as_the_design_says():
     assert sorted(s["consumer"] for s in k.values()) == ["confluent", "confluent", "franz",
                                                          "java", "kafka-python"]
     c = {s["id"]: s for s in design("gc_design.json")["setups"]}
-    assert all(s["priority"] and s["irq_cpus"] == "core" and s["irqbalance_off"] and s["rps_off"]
-               for s in c.values())
+    # Plan version 48 (DESIGN48.md): the card's interrupts on the core's other thread, and the
+    # consumer's other threads there too where the arm keeps the core.
+    assert all(s["priority"] and s["irq_cpus"] == "sibling" and s["irqbalance_off"]
+               and s["rps_off"] for s in c.values())
+    assert [s["id"] for s in c.values() if s.get("threads_apart")] == [
+        "C2000-kafka-core", "C2000-kafka-core-sib"]
     assert not c["C2000-kafka-base"].get("whole_core")
     assert c["C2000-kafka-core-sib"]["sibling_load"] and "sibling_load" not in c["C2000-kafka-core"]
     p = {s["id"]: s["prefetch"] for s in design("gp_design.json")["setups"]}

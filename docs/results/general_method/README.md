@@ -27,13 +27,14 @@ A method for timing message latency beneath any client, with a check built in:
 | N | [`gn_design.json`](gn_design.json) | NATS JetStream with requests kept waiting (our pull consumer at depth 1 and 256; nats.go's `Consume()`) |
 | P | [`gp_design.json`](gp_design.json) | RabbitMQ with credit (prefetch 1 and 1,000) |
 | K | [`gk_design.json`](gk_design.json) | Kafka's real clients: kafka-python, Java, franz-go and librdkafka, and librdkafka's broker thread alone at real-time priority |
-| C | [`gc_design.json`](gc_design.json) | the consumer's thread alone on its core: baseline, sibling idle, sibling loaded |
+| C | [`gc_design.json`](gc_design.json) | the consumer's thread alone on its core: baseline, sibling idle, sibling loaded; placed as plan version 48 amends it ([`DESIGN48.md`](DESIGN48.md)) |
 | S | [`gs_design.json`](gs_design.json) | scope probes, described only: a normal-priority producer; a load heavy in softirq work |
 | A | [`ga_design.json`](ga_design.json) | the Arm pair's replication of V and of librdkafka |
 
 The pilot, round a, is [`gpilot_x86_design.json`](gpilot_x86_design.json) and
 [`gpilot_arm_design.json`](gpilot_arm_design.json): one run of each setup, instruments only, never
-judged. Each judged setup's duty is written into its design only after the pilot, by the record
+judged. Block C, amended by plan version 48 (freeze 45), has its own pilot,
+[`gpilot_c48_design.json`](gpilot_c48_design.json). Each judged setup's duty is written into its design only after the pilot, by the record
 below.
 
 ## How it is run

@@ -235,6 +235,10 @@ class FakeConn(object):
 
     def _write(self, reply, indices, eids):
         server = self.server
+        # A reply is logged as it starts to leave: the consumer can read it and send the request
+        # it frees before sendall() has returned here, and a stamp taken after the write then
+        # came later than that request's own (Windows CI, 23 Oct 2026).
+        leaving = time.perf_counter()
         try:
             if indices and server.parts is not None and len(reply) > server.parts[0]:
                 cut, pause = server.parts
@@ -250,7 +254,7 @@ class FakeConn(object):
             server.paired += len(indices) > 1
             for index in indices:
                 self.answered += 1
-                self.log.append(("reply", index, now))
+                self.log.append(("reply", index, leaving))
             for eid in eids:
                 server.delivered[eid] = now
             server.lock.notify_all()

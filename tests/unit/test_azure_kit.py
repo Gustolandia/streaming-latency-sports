@@ -5228,8 +5228,15 @@ def _nats_install(tmp_path, pin=None, sums=None):
     inner = tmp_path / "nats-server-v2.15.1-linux-amd64"
     inner.mkdir(parents=True)
     _write(inner / "nats-server", "#!/bin/sh\necho nats-server: v2.15.1\n")
+    def executable(info):
+        # As the release's own archive holds it. Git Bash calls a file with a #! line
+        # executable whatever its mode, and Linux does not (CI, 23 Oct 2026).
+        if info.isfile():
+            info.mode = 0o755
+        return info
+
     with tarfile.open(release / asset, "w:gz") as tar:
-        tar.add(str(inner), arcname="nats-server-v2.15.1-linux-amd64")
+        tar.add(str(inner), arcname="nats-server-v2.15.1-linux-amd64", filter=executable)
     digest = hashlib.sha256((release / asset).read_bytes()).hexdigest()
     _write(release / "SHA256SUMS", (sums or "%s  %s\n") % (digest, asset)
            if sums is None else sums)

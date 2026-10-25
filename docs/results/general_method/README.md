@@ -360,3 +360,61 @@ python scripts/general_method49.py judge --runs-table g49_runs_x86.csv \
 
 The runs stay on the drivers' disks, which are kept when the pairs stop. They come home, and are
 checked against their fingerprints, once the home machine has room.
+
+### The verdicts of plan version 49 (25 October 2026)
+
+Registered by the push of `90a92f97` on 25 October 2026, before any of its runs. Both pairs ran the
+checkout of that commit, after CI had passed on it, from 03:54 UTC. Every judged run was read on its
+own driver by `scripts/general_method49.py read`, with each pair's allowance, into
+[`g49_runs_x86.csv`](g49_runs_x86.csv) (42 runs) and [`g49_runs_arm.csv`](g49_runs_arm.csv) (12
+runs). The runs were judged by `scripts/general_method49.py judge`
+([`g49_verdicts.json`](g49_verdicts.json)).
+- **The fingerprints.** Every file of every run of this version, the failed attempts and the primes
+  among them, is fingerprinted in [`g49_SHA256SUMS_x86.txt`](g49_SHA256SUMS_x86.txt) (55 folders,
+  4,122 files) and [`g49_SHA256SUMS_arm.txt`](g49_SHA256SUMS_arm.txt) (14 folders, 931 files). The
+  runs stay on the drivers' disks, which were kept when the pairs stopped. They come home, checked
+  against these lists, once the home machine has room.
+- **The runs repeated.** Three runs failed their integrity rule, and each passed on its repeat; the
+  failed attempts are kept:
+  - nats.go in round 3, whose on-blocks' load measured 73.2%, against 70 ± 3;
+  - both of block Q's round-3 runs, librdkafka at normal priority and with its broker thread raised,
+    whose producer fell 2.96 and 3.08 s behind. In those minutes the Kafka broker's log shows its
+    heartbeat to its own controller timing out three times.
+- **The runs judged.** No run was left out by its instrument's checks, and every setup has six
+  judged runs.
+
+| Prediction | Verdict | What decided it |
+|---|---|---|
+| R-a | confirmed | At depth 1, `W`'s tail rose 2.20 times under the load, by 1.82 ms. |
+| R-b | confirmed | At depth 256, the broker shows a request waiting for every message. The clients' own timestamps certify one for every message, in the five runs whose checks of `B` held at 10 ms. |
+| R-c | confirmed | `W`'s tail held still (ratio 1.00, equivalence p = 3 × 10⁻⁶), while `D`'s own tail grew 3.4 times. |
+| R-d | confirmed | At depth 256, `W`'s tail rose by −3.3 µs: −0.18% of the rise at depth 1 (95% interval −1.2% to +1.2%). |
+| J-a | confirmed | For our pull consumer at depth 256 and for nats.go, every message found a request waiting, and was certified at 10 ms in the runs whose checks of `B` held (five and six of six). |
+| J-b | confirmed | `W`'s tail held still for both (ratios 0.98 and 1.03, p at most 0.00015), while `D`'s own tail grew 7.8 and 4.8 times. |
+| G-a | confirmed | At a prefetch of 1,000, every message found credit waiting, and was certified at 50 ms in the five runs whose checks held. The client captures' longest silences were 17.5 to 20.8 ms. |
+| G-b | confirmed | `W`'s tail held still (0.96, p = 0.0012), while `D`'s own tail grew 17.8 times. |
+| Q-a | confirmed | At normal priority, the client's part's own tail rose from 54 µs to 3.13 ms (ratio 59.6). |
+| Q-b | confirmed | With only the broker thread at real-time priority, it rose by 10.2 µs: 0.33% of the rise at normal priority (95% interval 0.03% to 0.52%), and below 50 µs. |
+| Q-c | confirmed | With the broker thread raised, 61% of the messages in the on-blocks and 82% in the off-blocks found no fetch waiting. The gap at the broker was 730 µs, 27 µs of it the client's turnaround. |
+| Z-a | confirmed | On the Arm pair, the client's part's own tail rose from 23 µs to 2.20 ms (ratio 99). |
+| Z-b | confirmed | With the broker thread raised, it rose by 1.5 µs: 0.07% of the rise at normal priority (−0.27% to +0.12%). |
+
+**The parts of `W`, as the design asks to say.**
+- **Redis at depth 256 and our NATS pull consumer.** The card's lag `Q` and the broker's residence
+  held within 1/1.2 and 1.2 between the load states (1.03 and 1.00; 0.94 and 0.92).
+- **nats.go and RabbitMQ.** `Q`'s on/off ratio was 0.72 and 0.73, outside that band, so their holds
+  of `W` do not by themselves show that the load left `W` alone. In microseconds the change was
+  small: `Q`'s own tail fell from 55 to 43 µs (nats.go) and from 71 to 48 µs (RabbitMQ), against
+  `W`'s tails of 765 to 978 µs. Read after the verdicts, adding that change back to `W`'s on-block
+  tail leaves its ratio at 1.04 and 0.99.
+- **The load reached the consumer.** Where its thread was sampled, it waited for a core 14% to 22%
+  of the time with the load on, against at most 4% with it off.
+
+**Described, not judged.**
+- **The round trip on the Arm pair.** With the broker thread raised, 1.0% of the off-blocks'
+  messages and 1.2% of the on-blocks' found no fetch waiting. The gap at the broker was 73 µs,
+  against 730 µs on x86.
+- **The broker's side.** On Kafka with the broker thread raised, `F`'s tail was higher in the
+  off-blocks than in the on-blocks (2.31 ms against 2.09 ms on x86). On the Arm pair at normal
+  priority, the off-blocks held broker stalls: `W`'s off-block tail was 118 ms. The client's part,
+  which Q-b and Z-b judge, carries neither.

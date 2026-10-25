@@ -169,3 +169,32 @@ def test_the_plan_says_what_the_design_says():
                    "A run whose own instrument does not check out is left out",
                    "the largest values of 1% of the state's messages, by count, at least one"):
         assert phrase in text, phrase
+
+
+def test_the_verdicts_are_the_judges_on_the_runs():
+    """The verdicts recorded on 25 October 2026 are what the registered judge gives on the run
+    tables read on the drivers: every prediction confirmed, on six runs of every setup, none left
+    out."""
+    rows = g49.read_tables([str(FOLDER / "g49_runs_x86.csv"), str(FOLDER / "g49_runs_arm.csv")])
+    assert len(rows) == 54 and all(r["verdict"] == "count" for r in rows)
+    out = json.loads(json.dumps(g49.judge(rows), sort_keys=True))
+    recorded = json.loads((FOLDER / "g49_verdicts.json").read_text(encoding="utf-8"))
+    assert out == recorded
+    assert [recorded[p]["verdict"] for p in g49.PREDICTIONS] == ["confirmed"] * 13
+    assert recorded["described"]["left_out"] == []
+    assert sorted(set((c["setup"], c["runs"]) for c in recorded["described"]["setups"])) == sorted(
+        (s, 6) for s in g49.FROM47.values())
+
+
+def test_every_judged_run_is_fingerprinted():
+    """The drivers' fingerprint lists name every file of every run of this version, the judged
+    runs among them."""
+    for pair in ("x86", "arm"):
+        listed = set()
+        for line in (FOLDER / ("g49_SHA256SUMS_%s.txt" % pair)).read_text(
+                encoding="utf-8").splitlines():
+            digest, name = line.split(None, 1)
+            assert len(digest) == 64
+            listed.add(name.lstrip("*").split("/")[0])
+        judged = set(r["run"] for r in gm.read_table(str(FOLDER / ("g49_runs_%s.csv" % pair))))
+        assert judged <= listed and all(name.startswith("law_g49") for name in listed)

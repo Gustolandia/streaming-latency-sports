@@ -293,3 +293,70 @@ the receive queue's vCPU:
 - `W`'s tail held still (ratios 0.98 to 1.04), while `D`'s grew 3.2 to 5.0 times;
 - every message found a request waiting, and the clients' own timestamps certified every one.
 Its producer at normal priority was left out (above).
+
+## Plan version 49 (freeze 46): the remedy, judged by what it changes
+
+Plan version 49 tests the remedy by protocol again, on new runs, by what the remedy changes. Its
+design is [`DESIGN49.md`](DESIGN49.md), fingerprinted in [`DESIGN49.sha256`](DESIGN49.sha256) and
+frozen with the plan in [`freezes/46-experiment-plan/`](../../../freezes/46-experiment-plan/). It
+was written after the verdicts above and before any of its runs. Those verdicts stand.
+
+Its predictions were chosen after reading version 47's runs of the same setups, and every one holds
+on those runs. The new runs are their only test. Compared with version 47, they read:
+- **On Redis and Kafka, the gap and the remedy in one block.** The setup with the problem and the
+  setup with the remedy run under the same load.
+- **On Kafka, the client's part of the latency, `W − F`.** A delay on the broker's side can raise it
+  only up to the client's own turnaround, timed on the client host.
+- **The load check where the load acts:** `D`'s own top 1%, not `D` over `W`'s top 1%.
+- **On RabbitMQ, a bound `B` of 50 ms,** wider than the silences of up to 19.4 ms in its client
+  captures.
+- **On NATS and RabbitMQ, less than on Redis.** Their gap setups fell behind in version 47, so their
+  blocks judge only that `W` holds still where requests or credit wait.
+
+Every run is also checked for its own instrument: a run whose matching by the broker's ids, or whose
+certain reading, does not check out is left out and listed. Beside each held-still `W`, the parts
+of `W` the load could move the other way are described by load state: the card's lag, the
+broker's residence and the consumer thread's wait for a core.
+
+| Block | Design | What it tests |
+|---|---|---|
+| R | [`g49r_design.json`](g49r_design.json) | Redis: the gap at depth 1, and requests kept waiting at depth 256 (R-a to R-d) |
+| J | [`g49j_design.json`](g49j_design.json) | NATS JetStream: requests kept waiting at depth 256 and by nats.go's `Consume()` (J-a, J-b) |
+| G | [`g49g_design.json`](g49g_design.json) | RabbitMQ: credit kept waiting at a prefetch of 1,000, certified at 50 ms (G-a, G-b) |
+| Q | [`g49q_design.json`](g49q_design.json) | Kafka: the client's part with librdkafka at normal priority and with its broker thread raised, and the round trip (Q-a to Q-c) |
+| Z | [`g49z_design.json`](g49z_design.json) | block Q's two setups on the Arm pair (Z-a, Z-b) |
+
+**The rounds: six.** Version 45's rule ran through this version's judge, about version 47's 36
+judged runs of the nine setups. Those runs were read again with this version's reader, into
+[`g49_from47_runs.csv`](g49_from47_runs.csv). The rule's numbers are in
+[`g49_power.json`](g49_power.json), and those with the runs' own spread, described, in
+[`g49_power_pilot_spread.json`](g49_power_pilot_spread.json). Under the rule, no number of rounds
+brings the three held-still clauses (R-c, J-b, G-b) to the bar. With the runs' own spread they
+reach 1.000, 1.000 and 1.000 at six rounds.
+
+**How it is run.** On each pair, from its own work list. Block G's one setup has no order to
+shuffle, so its queue is six one-round queues joined in order:
+
+```
+python3 scripts/run_queue.py make --design docs/results/general_method/g49r_design.json \
+    --out runs/azure/queues/g49r.csv
+python3 -c "import json, sys; sys.path.insert(0, 'scripts'); import run_queue as rq; \
+d = json.load(open('docs/results/general_method/g49g_design.json')); \
+rq.write_queue('runs/azure/queues/g49g.csv', [r for f in range(1, 7) \
+for r in rq.make_rows(dict(d, rounds=1, first_round=f))])"
+```
+
+**How it is read.** On each driver, once its list has run, with each pair's allowance from version
+47's pilot. Then every file of every run is fingerprinted there, and the tables and fingerprints
+come home:
+
+```
+python3 scripts/general_method49.py read --runs runs --driver 10.2.1.10 --broker 10.2.1.21 \
+    --receiver 10.2.1.11 --allowance docs/results/general_method/allowance_x86.json \
+    --out-runs g49_runs_x86.csv --workers 4
+python scripts/general_method49.py judge --runs-table g49_runs_x86.csv \
+    --runs-table g49_runs_arm.csv --out docs/results/general_method/g49_verdicts.json
+```
+
+The runs stay on the drivers' disks, which are kept when the pairs stop. They come home, and are
+checked against their fingerprints, once the home machine has room.

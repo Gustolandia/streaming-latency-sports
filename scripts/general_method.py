@@ -83,6 +83,15 @@ its per-run on/off ratios, at ALPHA, within 1/HOLDS_STILL and HOLDS_STILL, with 
 beside it. Every judged share has a run-level bootstrap interval. Block S is described only; block
 A repeats V-a, M2-c and KC-d on the Arm pair.
 
+Plan version 49 (freeze 46, DESIGN49.md) reads its runs with this same read_run, which also gives,
+for every run: the client's part of the latency, W - F for each message (on Kafka min(T_c, S), on
+the others S), from the broker's capture (WF) and from the clients alone (W - Fc, WFc), with the
+tail means over W's top 1% and each one's own tail mean in each load state, their on/off ratios
+and rises; in each load state, the own tails of the card's lag Q, packet by packet, and of the
+broker's residence, R_out - P_in, message by message, and the share of the time the consumer's
+thread waited for a core; and the certification with its checks at the wider bound
+CERTIFY_B_WIDE_MS. Its judge is scripts/general_method49.py.
+
 CLI:
     python scripts/general_method.py calibrate --runs FOLDER [--runs ...] --driver IP --broker IP \
         --receiver IP --out JSON
@@ -115,8 +124,8 @@ import under_load_posthoc as ph  # noqa: E402
 #: A setup's id: its block's letter, its rate, the rest of its name, and "-pilot" for the pilot's
 #: runs, which are read only when asked for and never judged. The settings are read from the run's
 #: queue row and its consumer's log, never from the id. Block U's ids start with U, so they never
-#: match.
-SETUP_ID = re.compile(r"^([VNPKCSA])(\d+)-(.+?)(-pilot)?$")
+#: match. Plan version 49's blocks are R, J, G, Q and Z, which no prediction of version 47 reaches.
+SETUP_ID = re.compile(r"^([VNPKCSARJGQZ])(\d+)-(.+?)(-pilot)?$")
 
 #: The blocks every prediction of the instrument and the check reaches (all but S); those whose
 #: other predictions are judged on the second x86 pair; the Arm pair's block, and the scope's,
@@ -144,9 +153,10 @@ READY = dict(ph.READY, nats="E3", rabbitmq="E3")
 #: The percentile above a state's tail: its top 1% of W. The quantities whose tail means each state
 #: gives, over its top 1% of W: W, D, the ready receiver's latency from the broker (F) and from the
 #: clients alone (Fc), E2 (W less min(T_c, S)), W less what the turnaround surely added (Fs), and
-#: the turnaround of each message's delivering request (Tc).
+#: the turnaround of each message's delivering request (Tc); and, for plan version 49, the client's
+#: part of the latency, W less F (WF) and W less Fc (WFc).
 TAIL_PERCENTILE = ul.TAIL_PERCENTILE
-TAILED = ("W", "D", "F", "Fc", "E2", "Fs", "Tc")
+TAILED = ("W", "D", "F", "Fc", "E2", "Fs", "Tc", "WF", "WFc")
 
 # --- the predictions' margins (DESIGN47.md) ------------------------------------------------------
 
@@ -172,6 +182,9 @@ M2C_WAITING = 0.999
 M2C_CERTIFIED = 0.999
 CERTIFY_B_MS = 10.0
 CERTIFY_B_DESCRIBED_MS = 2.0
+#: Plan version 49's bound for RabbitMQ (block G, DESIGN49.md), whose deliveries paused for up to
+#: 19.4 ms in version 47's runs at a prefetch of 1,000, longer than CERTIFY_B_MS.
+CERTIFY_B_WIDE_MS = 50.0
 WAITING_DEPTH, WAITING_PREFETCH = 256, 1000
 #: The checks of B, run by run, on the delivering connection, while the measured messages were
 #: sent (from the warm-up's end to the plan's last send): no retransmission (a tail-loss probe
@@ -463,13 +476,13 @@ def _packets(pcap, broker, receiver, port):
     return found
 
 
-def card_lags(run_dir, broker, receiver, port):
-    """({the receiver's port: [Q, us, for each data packet from the broker on that connection the
-    receiver's capture and the card's both hold]}, the card's clock window in ns): Q the packet's
-    kernel capture time on receiver_full.pcap less its hardware timestamp on receiver_hw.pcap, put
-    on the system's clock through the card's clock samples (full_fix.to_system), a packet being
-    the same in both captures by its connection, sequence number and length. (None, window) where
-    the run has no card capture or no clock samples."""
+def card_packets(run_dir, broker, receiver, port):
+    """([(the receiver's port, the kernel's capture time in ns, Q in us)] for each data packet from
+    the broker on that connection the receiver's capture and the card's both hold, the card's
+    clock window in ns): Q the packet's kernel capture time on receiver_full.pcap less its hardware
+    timestamp on receiver_hw.pcap, put on the system's clock through the card's clock samples
+    (full_fix.to_system), a packet being the same in both captures by its connection, sequence
+    number and length. (None, window) where the run has no card capture or no clock samples."""
     samples = os.path.join(run_dir, "phc_offset.csv")
     hw = os.path.join(run_dir, "receiver_hw.pcap")
     offsets, window = ff.card_offsets(samples), ff.card_window(samples)
@@ -477,11 +490,26 @@ def card_lags(run_dir, broker, receiver, port):
         return None, window
     kernel = _packets(os.path.join(run_dir, "receiver_full.pcap"), broker, receiver, port)
     card = _packets(hw, broker, receiver, port)
+    return [(k[0], kernel[k], (kernel[k] - ff.to_system(card[k], offsets)) / 1e3)
+            for k in sorted(kernel) if k in card], window
+
+
+def _by_port(packets):
+    """{the receiver's port: [Q]} from card_packets' list; None from None."""
+    if packets is None:
+        return None
     lags = {}
-    for k in sorted(kernel):
-        if k in card:
-            lags.setdefault(k[0], []).append((kernel[k] - ff.to_system(card[k], offsets)) / 1e3)
-    return lags, window
+    for port, _, q in packets:
+        lags.setdefault(port, []).append(q)
+    return lags
+
+
+def card_lags(run_dir, broker, receiver, port):
+    """({the receiver's port: [Q, us, for each data packet from the broker on that connection the
+    receiver's capture and the card's both hold]}, the card's clock window in ns), from
+    card_packets; (None, window) where the run has no card capture or no clock samples."""
+    packets, window = card_packets(run_dir, broker, receiver, port)
+    return _by_port(packets), window
 
 
 def payload_pairs(run_dir, driver, broker, receiver):
@@ -667,12 +695,18 @@ def state_tails(row, parts, name=""):
 
 def own_tails(row, values, name):
     """Described beside the tail means over W's top 1%: a quantity's mean over its own top 1% in
-    each load state, from [(value, state)], and the on/off ratio."""
+    each load state, from [(value, state)], and the on/off ratio and the rise, on less off. The top
+    1% is taken by count, the largest values of 1% of the state's messages, at least one: a part of
+    the latency that is zero for all but a few messages keeps its zeros in its top 1%, as the top
+    1% of messages does."""
     for state in STATES:
-        chosen = [v for v, s in values if s == state and v is not None]
-        cut = _p(chosen, TAIL_PERCENTILE)
-        row["%s_tail_%s" % (name, state)] = _mean([v for v in chosen if v > cut])
-    row[name + "_ratio"] = _ratio(row[name + "_tail_on"], row[name + "_tail_off"])
+        chosen = sorted(v for v, s in values if s == state and v is not None)
+        # Rounded first, so that 7.000000000000001 messages are seven.
+        k = int(math.ceil(round(len(chosen) * (100 - TAIL_PERCENTILE) / 100.0, 9)))
+        row["%s_tail_%s" % (name, state)] = _mean(chosen[len(chosen) - k:]) if k else None
+    on, off = row[name + "_tail_on"], row[name + "_tail_off"]
+    row[name + "_ratio"] = _ratio(on, off)
+    row[name + "_rise"] = None if None in (on, off) else on - off
 
 
 def _gap_parts(p, gap, cut, lift):
@@ -763,7 +797,8 @@ def read_run(run_dir, driver, broker, receiver, allowance=None, warmup_s=WARMUP_
         row["wire_" + name] = wire[name]
     at_broker, broker_exchanges, at_wire = cw.broker_times(run_dir, driver, broker, receiver)
     row["broker_matched"], row["broker_unreadable"] = at_wire["matched"], at_wire["unreadable"]
-    by_port, row["card_window_ns"] = card_lags(run_dir, broker, receiver, cw.PORTS[backend])
+    packets, row["card_window_ns"] = card_packets(run_dir, broker, receiver, cw.PORTS[backend])
+    by_port = _by_port(packets)
     lags = None if by_port is None else [q for port in sorted(by_port) for q in by_port[port]]
     row["q_n"] = None if lags is None else len(lags)
     _stats(row, "q", lags or [])
@@ -791,6 +826,10 @@ def read_run(run_dir, driver, broker, receiver, allowance=None, warmup_s=WARMUP_
         p["state"] = ul.block_state(switches, m["t_depart"])
         _gap_parts(p, gaps.get(p["request"]), cut, raw.get(p["pair"]))
         p["F"], p["Fc"], p["E2"] = p[ready + "b"], p[ready + "c"], p["E2b"]
+        p["WF"] = None if p["F"] is None else p["W"] - p["F"]
+        p["WFc"] = None if p["Fc"] is None else p["W"] - p["Fc"]
+        b = at_broker.get(p["key"])
+        p["Res"] = None if not b or None in (b[0], b[3]) else (b[3] - b[0]) / 1e3
     row["timed"], row["d_joined"] = len(parts), sum(1 for p in parts if p["D"] is not None)
     row["untimed_gap"] = sum(1 for p in parts if p["Tc"] is None)
     for name in ("W", "D", "F", "Fc", "E2b", "E3b", "E2c", "E3c", "Fs"):
@@ -809,6 +848,11 @@ def read_run(run_dir, driver, broker, receiver, allowance=None, warmup_s=WARMUP_
     state_tails(row, [p for p in parts if p["found"] == "waiting"], "waiting_")
     own_tails(row, [(p["D"], p["state"]) for p in parts], "D_own")
     own_tails(row, within, "Tc_req")
+    for name in ("WF", "WFc", "Res"):
+        own_tails(row, [(p[name], p["state"]) for p in parts], name + "_own")
+    own_tails(row, [(q, ul.block_state(switches, t)) for _, t, q in packets or []
+                    if cut_ns <= t], "Q_own")
+    row.update(run_queue_shares(run_dir, switches, cut_ns, last))
     for state in STATES:
         _broker_shares(row, [p for p in parts if p["state"] == state], "_" + state)
     on, off = row["W_tail_on"], row["W_tail_off"]
@@ -837,6 +881,30 @@ def read_run(run_dir, driver, broker, receiver, allowance=None, warmup_s=WARMUP_
     return row
 
 
+def run_queue_shares(run_dir, switches, lo, hi):
+    """{rq_share_on, rq_share_off, rq_ratio}: the share of the time the consumer's thread waited
+    for a core in each load state, from its own samples (consumer_schedstat.csv, taken just before
+    each request) within [lo, hi]: over each pair of consecutive samples in the same state, the
+    run-queue time added over the time passed; and on over off. Each None where the run took no
+    samples there."""
+    out = dict.fromkeys(("rq_share_on", "rq_share_off", "rq_ratio"))
+    samples = ul.schedstat(run_dir)
+    if samples is None or hi is None:
+        return out
+    times, _, delays = samples
+    spent = dict((state, [0, 0]) for state in STATES)
+    for i in range(1, len(times)):
+        a, b = times[i - 1], times[i]
+        state = ul.block_state(switches, a)
+        if lo <= a and b <= hi and state is not None and state == ul.block_state(switches, b):
+            spent[state][0] += delays[i] - delays[i - 1]
+            spent[state][1] += b - a
+    for state in STATES:
+        out["rq_share_" + state] = _share(*spent[state])
+    out["rq_ratio"] = _ratio(out["rq_share_on"], out["rq_share_off"])
+    return out
+
+
 def _within(times, lo, hi):
     return sum(1 for t in times if lo <= t <= hi)
 
@@ -851,7 +919,8 @@ def certify(row, run_dir, backend, parts, exchanges, conns, by_port, cut_ns, las
     the longest silence in either client capture; then whether the checks hold at each B. A
     stall in the warm-up, such as a producer's wait at its first send, touches no measured
     message."""
-    for name, b_ms in (("", CERTIFY_B_MS), ("_2ms", CERTIFY_B_DESCRIBED_MS)):
+    for name, b_ms in (("", CERTIFY_B_MS), ("_2ms", CERTIFY_B_DESCRIBED_MS),
+                       ("_50ms", CERTIFY_B_WIDE_MS)):
         held, counted = certified(parts, exchanges, b_ms)
         row["certified_n" + name] = held
         row["certified_share" + name] = _share(held, counted)
@@ -876,6 +945,7 @@ def certify(row, run_dir, backend, parts, exchanges, conns, by_port, cut_ns, las
     row["silence_max_us"] = None if None in quiet else max(quiet)
     row["b_checks"] = b_checks(row, CERTIFY_B_MS)
     row["b_checks_2ms"] = b_checks(row, CERTIFY_B_DESCRIBED_MS)
+    row["b_checks_50ms"] = b_checks(row, CERTIFY_B_WIDE_MS)
 
 
 # --- the block -----------------------------------------------------------------------------------

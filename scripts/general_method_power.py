@@ -31,6 +31,9 @@ blocks. A prediction whose pilot effect does not clear its margin rests on the f
 its power stated; one that no number up to twelve brings to POWER cannot be brought to the bar by
 more rounds either, and is reported at the rounds the others need.
 
+Plan version 49 (scripts/general_method49.py) runs the same rule through its own judge, drawing
+the tails its predictions read, about version 47's judged runs of the setups it repeats.
+
 CLI:
     python scripts/general_method_power.py --pilot-table CSV [--pilot-table CSV ...]
         [--rounds 4] [--most 12] [--blocks 2000] [--seed 20261104] [--spread rule|pilot]
@@ -125,12 +128,12 @@ def profile(runs):
     return base, cv
 
 
-def ratio_spreads(profiles):
+def ratio_spreads(profiles, tails=TAILS):
     """{tail: the median over the setups that ran more than once of its on/off ratio's spread}, for
     the setups that ran once."""
     found = {}
     for _, (_, cv) in profiles.items():
-        for tail in TAILS:
+        for tail in tails:
             value = cv.get(tail + "_ratio")
             if value is not None:
                 found.setdefault(tail, []).append(value)
@@ -145,13 +148,13 @@ def draw(rng, mean, cv):
     return math.copysign(ulp.draw(rng, abs(mean), cv), mean)
 
 
-def made_up_run(rng, base, cv, index, mode="rule", ratio_cv=None, scale=1.0):
+def made_up_run(rng, base, cv, index, mode="rule", ratio_cv=None, scale=1.0, tails=TAILS):
     """One made-up run of a setup from its pilot profile: (`base`, `cv`) as profile() gives them.
     `scale` multiplies each state's on-block excess over its off-block, to ask how the rule fares
-    with a smaller effect than the pilot's."""
+    with a smaller effect than the pilot's; `tails` are the tail means drawn."""
     run = dict(base, pilot=False, setup=setup_name(base["setup"]),
                run="%s_m%d" % (setup_name(base["setup"]), index))
-    for tail in TAILS:
+    for tail in tails:
         on, off = (_number(base.get("%s_tail_%s" % (tail, s))) for s in ("on", "off"))
         if on is None or off is None:
             continue
@@ -223,24 +226,27 @@ def power(profiles, rounds, blocks, seed, mode="rule", scale=1.0):
     return dict((p, counts[p] / float(blocks)) for p in PREDICTIONS)
 
 
-def rounds_needed(profiles, blocks, seed, start=4, most=12, mode="rule"):
+def rounds_needed(profiles, blocks, seed, start=4, most=12, mode="rule", power_of=None,
+                  clear=None, predictions=PREDICTIONS):
     """The rule: (rounds, {prediction: power} there, the predictions that clear their margin, those
     of them no number up to `most` brings to POWER). The rounds are the least from `start` at which
     every prediction that clears its margin and can be brought to the bar reaches it; `start`
-    where none can."""
-    clear = clears(profiles)
-    wanted = [p for p in PREDICTIONS if clear[p]]
-    at = {start: power(profiles, start, blocks, seed, mode)}
+    where none can. `power_of` and `clear` stand in for power() and clears() where another plan's
+    judge decides, over its `predictions`."""
+    power_of = power_of or power
+    clear = clears(profiles) if clear is None else clear
+    wanted = [p for p in predictions if clear[p]]
+    at = {start: power_of(profiles, start, blocks, seed, mode)}
     if all(at[start][p] >= POWER for p in wanted):
         return start, at[start], wanted, []
-    at[most] = power(profiles, most, blocks, seed, mode)
+    at[most] = power_of(profiles, most, blocks, seed, mode)
     unreachable = [p for p in wanted if at[most][p] < POWER]
     reachable = [p for p in wanted if p not in unreachable]
     rounds = start
     while not all(at[rounds][p] >= POWER for p in reachable):
         rounds += 1
         if rounds not in at:
-            at[rounds] = power(profiles, rounds, blocks, seed, mode)
+            at[rounds] = power_of(profiles, rounds, blocks, seed, mode)
     return rounds, at[rounds], wanted, unreachable
 
 

@@ -149,6 +149,18 @@ class TestTheDraws:
         zero = dict(once, Tc_tail_off=0.0)
         assert gp.made_up_run(rng, zero, cv1, 0, mode="pilot")["Tc_tail_on"] == 3000.0
 
+    def test_only_the_tails_asked_for_are_drawn(self):
+        base, cv = gp.profile([kafka_python(3000.0, 1000.0, W_tail_on=2.0, W_tail_off=1.0,
+                                            W_ratio=2.0)])
+        run = gp.made_up_run(random.Random(1), base, cv, 0, tails=("W",))
+        assert run["Tc_tail_on"] == 3000.0 and run["Tc_ratio"] == 3.0, "not drawn"
+        assert run["W_tail_on"] != 2.0 and run["W_ratio"] == pytest.approx(
+            run["W_tail_on"] / run["W_tail_off"])
+        twice = dict(kafka_python(3000.0, 1000.0), W_ratio=2.0)
+        spreads = gp.ratio_spreads({"a": gp.profile([twice, dict(twice, W_ratio=4.0)])},
+                                   tails=("W",))
+        assert spreads == {"W": pytest.approx(1.0 / 3.0)}
+
     def test_a_block_has_its_rounds_of_every_setup(self):
         profiles = {"K2000-kafka-python": gp.profile([kafka_python(3000.0, 1000.0)]),
                     "V2000-redis-d1": gp.profile([pilot("V2000-redis-d1-pilot", "V", "redis")])}
@@ -220,6 +232,20 @@ class TestTheRule:
                           lambda r: {"KC-a": 0.8 if r >= 12 else 0.5})
         assert gp.rounds_needed({}, 10, 1)[0] == 12
         assert asked == [4, 12] + list(range(5, 12))
+
+    def test_another_plans_judge_and_predictions(self, monkeypatch):
+        monkeypatch.setattr(gp, "power", lambda *a: pytest.fail("version 47's power"))
+        monkeypatch.setattr(gp, "clears", lambda *a: pytest.fail("version 47's clears"))
+        asked = []
+
+        def power_of(profiles, rounds, blocks, seed, mode="rule"):
+            asked.append((rounds, mode))
+            return {"X-a": 0.5 + 0.1 * rounds, "X-b": 0.1}
+        assert gp.rounds_needed({}, 10, 1, mode="pilot", power_of=power_of,
+                                clear={"X-a": True, "X-b": False},
+                                predictions=("X-a", "X-b")) == (
+            4, {"X-a": pytest.approx(0.9), "X-b": 0.1}, ["X-a"], [])
+        assert asked == [(4, "pilot")]
 
     def test_one_no_rounds_bring_to_the_bar_is_reported_at_the_others_rounds(self,
                                                                                monkeypatch):

@@ -1,0 +1,131 @@
+{
+  "bar": 0.8,
+  "blocks": 2000,
+  "clears": {
+    "G-a": true,
+    "G-b": true,
+    "J-a": true,
+    "J-b": true,
+    "Q-a": true,
+    "Q-b": true,
+    "Q-c": true,
+    "R-a": true,
+    "R-b": true,
+    "R-c": true,
+    "R-d": true,
+    "Z-a": true,
+    "Z-b": true
+  },
+  "idle_cv": 0.15,
+  "load_cv": 0.25,
+  "most": 12,
+  "power": {
+    "G-a": 0.9995,
+    "G-b": 0.0605,
+    "J-a": 1.0,
+    "J-b": 0.002,
+    "Q-a": 1.0,
+    "Q-b": 1.0,
+    "Q-c": 0.977,
+    "R-a": 0.994,
+    "R-b": 1.0,
+    "R-c": 0.0655,
+    "R-d": 0.8425,
+    "Z-a": 1.0,
+    "Z-b": 1.0
+  },
+  "power_excess_halved": {
+    "G-a": 0.9995,
+    "G-b": 0.0705,
+    "J-a": 1.0,
+    "J-b": 0.0025,
+    "Q-a": 1.0,
+    "Q-b": 1.0,
+    "Q-c": 0.977,
+    "R-a": 0.58,
+    "R-b": 1.0,
+    "R-c": 0.067,
+    "R-d": 0.369,
+    "Z-a": 1.0,
+    "Z-b": 1.0
+  },
+  "rounds": 6,
+  "runs": {
+    "G2000-rabbitmq-p1000": [
+      "law_gp_r001-P2000-rabbitmq-p1000-a1",
+      "law_gp_r002-P2000-rabbitmq-p1000-a1",
+      "law_gp_r003-P2000-rabbitmq-p1000-a1",
+      "law_gp_r004-P2000-rabbitmq-p1000-a1"
+    ],
+    "J2000-nats-d256": [
+      "law_gn_r001-N2000-nats-d256-a1",
+      "law_gn_r002-N2000-nats-d256-a1",
+      "law_gn_r003-N2000-nats-d256-a1",
+      "law_gn_r004-N2000-nats-d256-a1"
+    ],
+    "J2000-nats-go": [
+      "law_gn_r001-N2000-nats-go-a1",
+      "law_gn_r002-N2000-nats-go-a1",
+      "law_gn_r003-N2000-nats-go-a1",
+      "law_gn_r004-N2000-nats-go-a1"
+    ],
+    "Q2000-kafka-rdk": [
+      "law_gk_r001-K2000-kafka-rdk-a1",
+      "law_gk_r002-K2000-kafka-rdk-a1",
+      "law_gk_r003-K2000-kafka-rdk-a1",
+      "law_gk_r004-K2000-kafka-rdk-a1"
+    ],
+    "Q2000-kafka-rdk-rt": [
+      "law_gk_r001-K2000-kafka-rdk-rt-a1",
+      "law_gk_r002-K2000-kafka-rdk-rt-a1",
+      "law_gk_r003-K2000-kafka-rdk-rt-a2",
+      "law_gk_r004-K2000-kafka-rdk-rt-a1"
+    ],
+    "R2000-redis-d1": [
+      "law_gv_r001-V2000-redis-d1-a1",
+      "law_gv_r002-V2000-redis-d1-a1",
+      "law_gv_r003-V2000-redis-d1-a1",
+      "law_gv_r004-V2000-redis-d1-a1"
+    ],
+    "R2000-redis-d256": [
+      "law_gv_r001-V2000-redis-d256-a1",
+      "law_gv_r002-V2000-redis-d256-a1",
+      "law_gv_r003-V2000-redis-d256-a1",
+      "law_gv_r004-V2000-redis-d256-a1"
+    ],
+    "Z2000-kafka-rdk": [
+      "law_ga_r001-A2000-kafka-rdk-a1",
+      "law_ga_r002-A2000-kafka-rdk-a1",
+      "law_ga_r003-A2000-kafka-rdk-a1",
+      "law_ga_r004-A2000-kafka-rdk-a1"
+    ],
+    "Z2000-kafka-rdk-rt": [
+      "law_ga_r001-A2000-kafka-rdk-rt-a1",
+      "law_ga_r002-A2000-kafka-rdk-rt-a1",
+      "law_ga_r003-A2000-kafka-rdk-rt-a1",
+      "law_ga_r004-A2000-kafka-rdk-rt-a1"
+    ]
+  },
+  "seed": 20261104,
+  "spread": "rule",
+  "unreachable": [
+    "R-c",
+    "J-b",
+    "G-b"
+  ],
+  "wanted": [
+    "R-a",
+    "R-b",
+    "R-c",
+    "R-d",
+    "J-a",
+    "J-b",
+    "G-a",
+    "G-b",
+    "Q-a",
+    "Q-b",
+    "Q-c",
+    "Z-a",
+    "Z-b"
+  ]
+}

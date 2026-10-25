@@ -83,10 +83,46 @@ class TestSmallPieces:
                                       None)] == [True, False, True, True, True, False, False,
                                                  False]
 
+    def test_own_tails_and_a_part_that_is_zero_for_every_message(self):
+        row = {}
+        gm.own_tails(row, [(0.0, "on")] * 5 + [(0.0, "off")] * 5 + [(None, "on")], "WF_own")
+        assert (row["WF_own_tail_on"], row["WF_own_tail_off"], row["WF_own_rise"],
+                row["WF_own_ratio"]) == (0.0, 0.0, 0.0, None)
+        gm.own_tails(row, [(v, "on") for v in (0.0, 0.0, 300.0)]
+                     + [(v, "off") for v in (0.0, 10.0)], "X")
+        assert (row["X_tail_on"], row["X_tail_off"], row["X_rise"]) == (300.0, 10.0, 290.0)
+        gm.own_tails(row, [], "E")
+        assert (row["E_tail_on"], row["E_ratio"], row["E_rise"]) == (None, None, None)
+        gm.own_tails(row, [(0.0, "on")] * 199 + [(300.0, "on")], "Y")
+        assert row["Y_tail_on"] == 150.0, "the top 1% of 200 messages is two, one of them zero"
+        gm.own_tails(row, [(float(i), "on") for i in range(700)]
+                     + [(float(i), "off") for i in range(701)], "Z")
+        assert (row["Z_tail_on"], row["Z_tail_off"]) == (696.0, 696.5), (
+            "seven of 700 messages, and eight of 701")
+
+    def test_the_consumers_wait_for_a_core_in_each_state(self, tmp_path):
+        """Samples at 2, 3 and 4 s in the on-block from 0 s, at 5.5 s within the guard after the
+        switch at 5 s, and at 6.5, 7.5 and 8.5 s in the off-block; one at 20 s, past the window."""
+        run = tb.new_run(tmp_path, "law_x", "redis")
+        assert gm.run_queue_shares(run, ([0], ["on"]), 0, 10) == dict.fromkeys(
+            ("rq_share_on", "rq_share_off", "rq_ratio")), "no samples"
+        with open(os.path.join(run, "consumer_schedstat.csv"), "w", encoding="utf-8") as fh:
+            fh.write("t_ns,exec_ns,delay_ns,slices\n")
+            for t, waited in ((2.0, 0.0), (3.0, 0.5), (4.0, 1.0), (5.5, 1.3), (6.5, 1.3),
+                              (7.5, 1.4), (8.5, 1.5), (20.0, 9.0)):
+                fh.write("%d,0,%d,1\n" % (t * 1e9, waited * 1e9))
+        switches = ([0, 5 * 10 ** 9], ["on", "off"])
+        out = gm.run_queue_shares(run, switches, 0, 10 * 10 ** 9)
+        assert out == {"rq_share_on": pytest.approx(0.5), "rq_share_off": pytest.approx(0.1),
+                       "rq_ratio": pytest.approx(5.0)}
+        assert gm.run_queue_shares(run, switches, 0, None)["rq_share_on"] is None
+
     def test_setup_ids(self, tmp_path):
         for setup, expected in (("V2000-redis-d256-lib", ("V", False, 2000)),
                                 ("K2000-kafka-rdk-rt-pilot", ("K", True, 2000)),
                                 ("A2000-kafka-rdk", ("A", False, 2000)),
+                                ("R2000-redis-d1", ("R", False, 2000)),
+                                ("Z2000-kafka-rdk-rt", ("Z", False, 2000)),
                                 ("U2000-kafka-l70", (None, False, None))):
             run = tb.new_run(tmp_path, "law_" + setup, "redis", setup)
             got = gm.setup_of(run)
@@ -307,6 +343,10 @@ class TestTheRemedysOwnCheck:
         assert row["silence_max_us"] == pytest.approx(4600.0), (
             "between an acknowledgment and the next message's departure, on the driver")
         assert (row["b_checks"], row["b_checks_2ms"]) == (True, False)
+        assert (row["certified_share_50ms"], row["certified_n_50ms"], row["b_checks_50ms"]) == (
+            0.7, 14, True), ("at 50 ms only what the requests had granted 50 ms before each "
+                             "departure counts: the six messages sent in the first 50 ms are not "
+                             "certified")
         assert row["broker_waiting_share"] == 1.0
         assert row["cap_pairs"] == 1 and row["cap_calibrated_n"] == 20, (
             "the PINGs could not have waited, so the estimate has its floor")
@@ -318,6 +358,7 @@ class TestTheRemedysOwnCheck:
         assert (row["probe_n"], row["probe_max_us"]) == (0, None), "no XACK, so no proxy"
         assert row["silence_max_us"] == pytest.approx(2799600.0)
         assert row["b_checks"] is False, "the run is silent for 2.8 s between its blocks"
+        assert (row["certified_share_50ms"], row["b_checks_50ms"]) == (0.0, False)
 
     def test_the_checks_read_only_the_measured_window(self, tmp_path):
         """A 2-s warm-up: the window opens at 2,099,990 us, the first send plus 2 s, so the run's
@@ -418,13 +459,30 @@ class TestOneRedisRun:
         on = dict((q, row[q + "_tail_on"]) for q in gm.TAILED)
         off = dict((q, row[q + "_tail_off"]) for q in gm.TAILED)
         assert on == pytest.approx({"W": 1500.0, "D": 1660.0, "F": 1000.0, "Fc": 1030.0,
-                                    "E2": 1000.0, "Fs": 1200.0, "Tc": 99700.0})
+                                    "E2": 1000.0, "Fs": 1200.0, "Tc": 99700.0, "WF": 500.0,
+                                    "WFc": 470.0})
         assert off == pytest.approx({"W": 1000.0, "D": 1080.0, "F": 780.0, "Fc": 810.0,
-                                     "E2": 780.0, "Fs": 980.0, "Tc": 99520.0})
+                                     "E2": 780.0, "Fs": 980.0, "Tc": 99520.0, "WF": 220.0,
+                                     "WFc": 190.0})
         assert row["W_ratio"] == pytest.approx(1.5) and row["W_rise"] == pytest.approx(500.0)
         assert row["e2_share"] == pytest.approx(1 - 220.0 / 500.0)
         assert row["D_own_ratio"] == pytest.approx(1660.0 / 1080.0)
+        assert row["D_own_rise"] == pytest.approx(580.0)
         assert row["Tc_req_ratio"] == pytest.approx(99700.0 / 2797800.0)
+        assert (row["WF_own_tail_on"], row["WF_own_tail_off"], row["WF_own_rise"]) == (
+            pytest.approx(500.0), pytest.approx(220.0), pytest.approx(280.0)), (
+            "the client's part, the time each message sat stored before its request came: "
+            "zero for those that found one waiting, so each state's largest is message 1's "
+            "and message 5's")
+        assert (row["WFc_own_tail_on"], row["WFc_own_tail_off"]) == (pytest.approx(470.0),
+                                                                     pytest.approx(190.0))
+        assert (row["Res_own_tail_on"], row["Res_own_tail_off"]) == (
+            pytest.approx(1300.0), pytest.approx(800.0)), (
+            "the broker's residence, from the message's arrival there to its own departure: "
+            "message 1's, which waited 700 us for its request, and message 5's")
+        assert (row["Q_own_tail_on"], row["Q_own_tail_off"], row["Q_own_rise"]) == (
+            pytest.approx(20.0), pytest.approx(20.0), pytest.approx(0.0)), (
+            "the card's lag, packet by packet, the same in both states")
         assert row["waiting_n_on"] == 1 and row["waiting_W_tail_on"] is None, (
             "one message: none lies above its own 99th percentile")
         assert row["waiting_W_tail_off"] == pytest.approx(900.0)

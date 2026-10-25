@@ -4,6 +4,7 @@ drawn about and the rounds stated, and the freezes' own record. A change to any 
 fact fails here, as a freeze is never edited."""
 import hashlib
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -171,6 +172,37 @@ def test_the_plan_says_what_the_design_says():
         assert phrase in text, phrase
 
 
+def same(a, b, path="verdicts"):
+    """Whether two judged outputs agree: their numbers to nine significant digits, everything else
+    exactly. On 25 October 2026 the equivalence test's p, from scipy's t distribution, differed in
+    its seventeenth digit between the library versions CI installs."""
+    if isinstance(a, dict) and isinstance(b, dict):
+        assert sorted(a) == sorted(b), path
+        return all(same(a[k], b[k], "%s.%s" % (path, k)) for k in a)
+    if isinstance(a, list) and isinstance(b, list):
+        assert len(a) == len(b), path
+        return all(same(x, y, "%s[%d]" % (path, i)) for i, (x, y) in enumerate(zip(a, b)))
+    if isinstance(a, float) and isinstance(b, float):
+        assert math.isclose(a, b, rel_tol=1e-9, abs_tol=1e-12), (path, a, b)
+        return True
+    assert a == b and type(a) is type(b), (path, a, b)
+    return True
+
+
+def test_the_comparison_still_tells_a_changed_verdict():
+    assert same({"p": 0.00014186209660488227, "v": "confirmed", "n": [1, None]},
+                {"p": 0.00014186209660488244, "v": "confirmed", "n": [1, None]})
+    for changed in ({"p": 0.000141862, "v": "confirmed", "n": [1, None]},
+                    {"p": 0.00014186209660488227, "v": "not confirmed", "n": [1, None]},
+                    {"p": 0.00014186209660488227, "v": "confirmed", "n": [1, 0]},
+                    {"p": 0.00014186209660488227, "v": "confirmed"}):
+        try:
+            same({"p": 0.00014186209660488227, "v": "confirmed", "n": [1, None]}, changed)
+        except AssertionError:
+            continue
+        raise AssertionError("not told apart: %r" % changed)
+
+
 def test_the_verdicts_are_the_judges_on_the_runs():
     """The verdicts recorded on 25 October 2026 are what the registered judge gives on the run
     tables read on the drivers: every prediction confirmed, on six runs of every setup, none left
@@ -179,7 +211,7 @@ def test_the_verdicts_are_the_judges_on_the_runs():
     assert len(rows) == 54 and all(r["verdict"] == "count" for r in rows)
     out = json.loads(json.dumps(g49.judge(rows), sort_keys=True))
     recorded = json.loads((FOLDER / "g49_verdicts.json").read_text(encoding="utf-8"))
-    assert out == recorded
+    assert same(out, recorded)
     assert [recorded[p]["verdict"] for p in g49.PREDICTIONS] == ["confirmed"] * 13
     assert recorded["described"]["left_out"] == []
     assert sorted(set((c["setup"], c["runs"]) for c in recorded["described"]["setups"])) == sorted(

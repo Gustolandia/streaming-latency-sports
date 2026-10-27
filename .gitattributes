@@ -35,3 +35,5 @@ docs/results/general_method/DESIGN47.md -text
 docs/results/general_method/DESIGN48.md -text
 docs/results/general_method/DESIGN49.md -text
 data/broker_audit/PROTOCOL.md -text
+data/broker_audit/AMENDMENT_01.md -text
+data/broker_audit/AMENDMENT_01_EXPECTED.md -text

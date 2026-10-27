@@ -1,0 +1,2967 @@
+{
+ "audited_utc": "2026-10-27",
+ "brokers": [
+  {
+   "broker": "Google Cloud Pub/Sub",
+   "group": "A",
+   "version": "v1 (google.pubsub.v1 API)",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+     "quote": "package google.pubsub.v1;"
+    }
+   ],
+   "note": "Pub/Sub Lite had not been shut down by the coding date, so it is coded in this batch as its own broker record, 'Google Cloud Pub/Sub Lite' (group B); its end date is in that record's note.",
+   "modes": [
+    {
+     "mode": "pull",
+     "Q0": {
+      "fields": [
+       "PullResponse.received_messages[] (ReceivedMessage)",
+       "ReceivedMessage.ack_id",
+       "ReceivedMessage.message (PubsubMessage)",
+       "ReceivedMessage.delivery_attempt (0 unless the subscription has a dead-letter policy)",
+       "PubsubMessage.data",
+       "PubsubMessage.attributes (map set by the publisher)",
+       "PubsubMessage.message_id (set by the service)",
+       "PubsubMessage.publish_time (google.protobuf.Timestamp, set by the service)",
+       "PubsubMessage.ordering_key"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "repeated ReceivedMessage received_messages = 1 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "message ReceivedMessage {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "string ack_id = 1 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "PubsubMessage message = 2 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "int32 delivery_attempt = 3 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "message PubsubMessage {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "bytes data = 1 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "map<string, string> attributes = 2 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "string message_id = 3;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "google.protobuf.Timestamp publish_time = 4;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "string ordering_key = 5 [(google.api.field_behavior) = OPTIONAL];"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "publish_time (JSON publishTime)",
+      "resolution": "Timestamp ns field; filled precision undocumented (examples: ms)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "The time at which the message was published, populated by the server when // it receives the `Publish` call. It must not be populated by the // publisher in a `Publish` call."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "google.protobuf.Timestamp publish_time = 4;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/protocolbuffers/protobuf/v36.2/src/google/protobuf/timestamp.proto",
+        "quote": "// Non-negative fractions of a second at nanosecond resolution. This field is"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/protocolbuffers/protobuf/v36.2/src/google/protobuf/timestamp.proto",
+        "quote": "int32 nanos = 2;"
+       }
+      ],
+      "note": "Set by the service when it receives the Publish call; a publisher must not set it. Returned by default in every PubsubMessage. The API type is google.protobuf.Timestamp (seconds plus a nanosecond field); the precision the service fills is not documented, and the documented push examples show milliseconds (2021-02-26T19:13:55.749Z)."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "PubsubMessage message = 2 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "google.protobuf.Timestamp publish_time = 4;"
+       }
+      ],
+      "note": "Every ReceivedMessage carries the PubsubMessage, and with it publish_time, by default."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "delivery time, kept as the ack deadline (delivery + ackDeadlineSeconds)",
+      "resolution": "not documented (the deadline is set in whole seconds)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "The approximate amount of time (on a best-effort basis) Pub/Sub // waits for the subscriber to acknowledge receipt before resending the // message. In the interval after the message is delivered and before it is // acknowledged, it is considered to be _outstanding_."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "int32 ack_deadline_seconds = 5 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/docs/lease-management",
+        "quote": "When a message is delivered to a pull subscriber, the subscriber must process and acknowledge (ack) the message within the acknowledgment deadline."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "For pull subscriptions, this value is used as the initial value for the ack // deadline."
+       }
+      ],
+      "note": "Recorded, not delivered: the documentation counts the ack deadline from delivery (Pub/Sub waits that long, while the message is outstanding after it is delivered, before resending it), so the service keeps each delivery's time as its deadline, approximately and on a best-effort basis. A ModifyAckDeadline request resets the deadline relative to that request."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "message ReceivedMessage {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "string ack_id = 1 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "PubsubMessage message = 2 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "int32 delivery_attempt = 3 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "google.protobuf.Timestamp publish_time = 4;"
+       }
+      ],
+      "note": "Neither the delivery time nor the ack deadline is delivered; the consumer knows the deadline's duration but not the deadline."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "message ReceivedMessage {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "string ack_id = 1 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "PubsubMessage message = 2 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "int32 delivery_attempt = 3 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "google.protobuf.Timestamp publish_time = 4;"
+       }
+      ],
+      "note": "No duration is delivered, and the ack deadline is not in the message, so nothing is derivable beyond the arrival stamp."
+     },
+     "Q6": {
+      "answer": "aggregate only",
+      "what": "Cloud Monitoring metrics only, e.g. subscription/oldest_unacked_message_age (age of the oldest unacknowledged message). Pub/Sub writes no Data Access audit logs for message operations (Publish, Subscribe, Acknowledge), and its OpenTelemetry tracing is spans recorded by the client library, not by the service.",
+      "resolution": "seconds, sampled every 60 s",
+      "evidence": [
+       {
+        "url": "https://cloud.google.com/pubsub/docs/audit-logging",
+        "quote": "Pub/Sub does not currently write Data Access audit logs for message operations, such as Publish, Subscribe, and Acknowledge."
+       },
+       {
+        "url": "https://cloud.google.com/monitoring/api/metrics_gcp_p_z",
+        "quote": "Age (in seconds) of the oldest unacknowledged message in a subscription, broken down by Cloud region. Sampled every 60 seconds."
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/docs/open-telemetry-tracing",
+        "quote": "These spans represent the work the client library does when processing a message."
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "Otherwise, the system may wait (for a bounded amount of time) // until at least one message is available, rather than returning no messages."
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/docs/pull",
+        "quote": "To achieve high throughput and low latency with the Pull API, you must have multiple simultaneous outstanding requests."
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/docs/pull",
+        "quote": "New requests are created when old requests receive a response."
+       }
+      ],
+      "note": "Unless the deprecated return_immediately is set, a Pull request may wait at the service until a message is available, and the documentation asks for several simultaneous outstanding Pull requests."
+     },
+     "not_determined": [
+      "publish_time's filled precision: the API defines google.protobuf.Timestamp (nanosecond field). Searched pubsub.proto and timestamp.proto at the pinned commits, and the push, payload-unwrapping, pull and monitoring pages; only examples were found, in milliseconds (2021-02-26T19:13:55.749Z)."
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited API text says what the answer says: requests that wait and may be several at once, a stream or subscription the service pushes into, or credit the receiver grants.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+       "read": "The proto counts the ack deadline from delivery (the interval after the message is delivered and before it is acknowledged), so each delivery's time is kept as its deadline; nothing in ReceivedMessage carries it.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "streaming pull",
+     "Q0": {
+      "fields": [
+       "StreamingPullResponse.received_messages[] (ReceivedMessage: ack_id, message, delivery_attempt)",
+       "StreamingPullResponse.acknowledge_confirmation (ack ids; exactly-once delivery only)",
+       "StreamingPullResponse.modify_ack_deadline_confirmation (ack ids; exactly-once delivery only)",
+       "StreamingPullResponse.subscription_properties (exactly_once_delivery_enabled, message_ordering_enabled)",
+       "PubsubMessage.data",
+       "PubsubMessage.attributes (map set by the publisher)",
+       "PubsubMessage.message_id (set by the service)",
+       "PubsubMessage.publish_time (google.protobuf.Timestamp, set by the service)",
+       "PubsubMessage.ordering_key"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "message StreamingPullResponse {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "repeated ReceivedMessage received_messages = 1 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "AcknowledgeConfirmation acknowledge_confirmation = 5 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "ModifyAckDeadlineConfirmation modify_ack_deadline_confirmation = 3 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "SubscriptionProperties subscription_properties = 4 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "bool exactly_once_delivery_enabled = 1 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "bool message_ordering_enabled = 2 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "message ReceivedMessage {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "string ack_id = 1 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "PubsubMessage message = 2 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "int32 delivery_attempt = 3 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "message PubsubMessage {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "bytes data = 1 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "map<string, string> attributes = 2 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "string message_id = 3;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "google.protobuf.Timestamp publish_time = 4;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "string ordering_key = 5 [(google.api.field_behavior) = OPTIONAL];"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "publish_time (JSON publishTime)",
+      "resolution": "Timestamp ns field; filled precision undocumented (examples: ms)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "The time at which the message was published, populated by the server when // it receives the `Publish` call. It must not be populated by the // publisher in a `Publish` call."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "google.protobuf.Timestamp publish_time = 4;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/protocolbuffers/protobuf/v36.2/src/google/protobuf/timestamp.proto",
+        "quote": "// Non-negative fractions of a second at nanosecond resolution. This field is"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/protocolbuffers/protobuf/v36.2/src/google/protobuf/timestamp.proto",
+        "quote": "int32 nanos = 2;"
+       }
+      ],
+      "note": "Set by the service when it receives the Publish call; a publisher must not set it. Returned by default in every PubsubMessage. The API type is google.protobuf.Timestamp (seconds plus a nanosecond field); the precision the service fills is not documented, and the documented push examples show milliseconds (2021-02-26T19:13:55.749Z)."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "repeated ReceivedMessage received_messages = 1 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "PubsubMessage message = 2 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "google.protobuf.Timestamp publish_time = 4;"
+       }
+      ],
+      "note": "Every ReceivedMessage on the stream carries publish_time, by default."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "delivery time, kept as the ack deadline (delivery + stream_ack_deadline_seconds)",
+      "resolution": "not documented (the deadline is set in whole seconds)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "The approximate amount of time (on a best-effort basis) Pub/Sub // waits for the subscriber to acknowledge receipt before resending the // message. In the interval after the message is delivered and before it is // acknowledged, it is considered to be _outstanding_."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "int32 ack_deadline_seconds = 5 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/docs/lease-management",
+        "quote": "When a message is delivered to a pull subscriber, the subscriber must process and acknowledge (ack) the message within the acknowledgment deadline."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "Required. The ack deadline to use for the stream."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "int32 stream_ack_deadline_seconds = 5 [(google.api.field_behavior) = REQUIRED];"
+       }
+      ],
+      "note": "Recorded, not delivered: the documentation counts the ack deadline from delivery (Pub/Sub waits that long, while the message is outstanding after it is delivered, before resending it), so the service keeps each delivery's time as its deadline, approximately and on a best-effort basis. A ModifyAckDeadline request resets the deadline relative to that request."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "repeated ReceivedMessage received_messages = 1 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "message ReceivedMessage {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "string ack_id = 1 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "PubsubMessage message = 2 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "int32 delivery_attempt = 3 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "AcknowledgeConfirmation acknowledge_confirmation = 5 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "SubscriptionProperties subscription_properties = 4 [(google.api.field_behavior) = OPTIONAL];"
+       }
+      ],
+      "note": "Neither the delivery time nor the ack deadline is delivered; the consumer knows the deadline's duration but not the deadline. The confirmations and subscription properties hold ids and flags only."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "message ReceivedMessage {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "string ack_id = 1 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "PubsubMessage message = 2 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "int32 delivery_attempt = 3 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "google.protobuf.Timestamp publish_time = 4;"
+       }
+      ],
+      "note": "No duration is delivered; the stream's ack deadline is not in the message."
+     },
+     "Q6": {
+      "answer": "aggregate only",
+      "what": "Cloud Monitoring metrics only, e.g. subscription/oldest_unacked_message_age (age of the oldest unacknowledged message). Pub/Sub writes no Data Access audit logs for message operations (Publish, Subscribe, Acknowledge), and its OpenTelemetry tracing is spans recorded by the client library, not by the service.",
+      "resolution": "seconds, sampled every 60 s",
+      "evidence": [
+       {
+        "url": "https://cloud.google.com/pubsub/docs/audit-logging",
+        "quote": "Pub/Sub does not currently write Data Access audit logs for message operations, such as Publish, Subscribe, and Acknowledge."
+       },
+       {
+        "url": "https://cloud.google.com/monitoring/api/metrics_gcp_p_z",
+        "quote": "Age (in seconds) of the oldest unacknowledged message in a subscription, broken down by Cloud region. Sampled every 60 seconds."
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/docs/open-telemetry-tracing",
+        "quote": "These spans represent the work the client library does when processing a message."
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://cloud.google.com/pubsub/docs/pull",
+        "quote": "The StreamingPull API relies on a persistent bidirectional connection to receive multiple messages as they become available."
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/docs/pull",
+        "quote": "If there is no error or the connection quota is available again, the server continuously sends messages to the connected client."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "If the value is // <= 0, there is no limit to the number of outstanding messages."
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/docs/pull",
+        "quote": "The Pub/Sub servers recurrently close the connection after a time period to avoid a long-running sticky connection."
+       }
+      ],
+      "note": "The open stream receives messages as they become available. Its flow control (max_outstanding_messages, max_outstanding_bytes) is a window the consumer may set or leave unlimited (<= 0); with a limit set the answer is credit. The service stops sending while a throughput quota is exceeded and closes streams from time to time, and the client reopens them."
+     },
+     "not_determined": [
+      "publish_time's filled precision: the API defines google.protobuf.Timestamp (nanosecond field). Searched pubsub.proto and timestamp.proto at the pinned commits, and the push, payload-unwrapping, pull and monitoring pages; only examples were found, in milliseconds (2021-02-26T19:13:55.749Z)."
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited API text says what the answer says: requests that wait and may be several at once, a stream or subscription the service pushes into, or credit the receiver grants.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+       "read": "As for pull, with the stream's ack deadline.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "push",
+     "Q0": {
+      "fields": [
+       "wrapped (default): HTTPS POST JSON body: message.data, message.attributes, message.messageId (and message_id), message.publishTime (and publish_time), message.orderingKey, subscription, deliveryAttempt",
+       "unwrapped (NoWrapper): message data as the HTTP body; with write_metadata, headers x-goog-pubsub-subscription-name, x-goog-pubsub-message-id, x-goog-pubsub-publish-time, x-goog-pubsub-ordering-key, and the attributes as headers",
+       "Authorization header with an OIDC JWT when push authentication is configured"
+      ],
+      "evidence": [
+       {
+        "url": "https://cloud.google.com/pubsub/docs/push",
+        "quote": "Wrapped. Pub/Sub sends the message in the JSON body of a POST request."
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/docs/push",
+        "quote": "Note that this example shows the current maximum values, which might change over time."
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/docs/push",
+        "quote": "{ \"deliveryAttempt\": 5, \"message\": { \"attributes\": { \"key\": \"value\" }, \"data\": \"SGVsbG8gQ2xvdWQgUHViL1N1YiEgSGVyZSBpcyBteSBtZXNzYWdlIQ==\", \"messageId\": \"2070443601311540\", \"message_id\": \"2070443601311540\", \"orderingKey\": \"key\","
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/docs/push",
+        "quote": "\"publishTime\": \"2021-02-26T19:13:55.749Z\", \"publish_time\": \"2021-02-26T19:13:55.749Z\" }, \"subscription\": \"projects/myproject/subscriptions/mysubscription\" }"
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/docs/payload-unwrapping",
+        "quote": "x-goog-pubsub-subscription-name: \"projects/myproject/...\" x-goog-pubsub-message-id: \"2070443601311540\" x-goog-pubsub-publish-time: \"2021-02-26T19:13:55.749Z\" x-goog-pubsub-ordering-key: \"some-key\""
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "When true, writes the Pub/Sub message metadata to // `x-goog-pubsub-<KEY>:<VAL>` headers of the HTTP request. Writes the // Pub/Sub message attributes to `<KEY>:<VAL>` headers of the HTTP request."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "If specified, Pub/Sub will generate and attach an OIDC JWT // token as an `Authorization` header in the HTTP request for every pushed // message."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "publishTime (JSON body) or x-goog-pubsub-publish-time (unwrapped, with write_metadata)",
+      "resolution": "Timestamp ns field; filled precision undocumented (examples: ms)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "The time at which the message was published, populated by the server when // it receives the `Publish` call. It must not be populated by the // publisher in a `Publish` call."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "google.protobuf.Timestamp publish_time = 4;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/protocolbuffers/protobuf/v36.2/src/google/protobuf/timestamp.proto",
+        "quote": "// Non-negative fractions of a second at nanosecond resolution. This field is"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/protocolbuffers/protobuf/v36.2/src/google/protobuf/timestamp.proto",
+        "quote": "int32 nanos = 2;"
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/docs/push",
+        "quote": "\"publishTime\": \"2021-02-26T19:13:55.749Z\", \"publish_time\": \"2021-02-26T19:13:55.749Z\" }"
+       }
+      ],
+      "note": "Set by the service when it receives the Publish call; a publisher must not set it. Returned by default in every PubsubMessage. The API type is google.protobuf.Timestamp (seconds plus a nanosecond field); the precision the service fills is not documented, and the documented push examples show milliseconds (2021-02-26T19:13:55.749Z). In the unwrapped format it is delivered only as the x-goog-pubsub-publish-time header, and only with write_metadata."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://cloud.google.com/pubsub/docs/push",
+        "quote": "\"publishTime\": \"2021-02-26T19:13:55.749Z\", \"publish_time\": \"2021-02-26T19:13:55.749Z\" }"
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/docs/payload-unwrapping",
+        "quote": "x-goog-pubsub-publish-time: \"2021-02-26T19:13:55.749Z\""
+       }
+      ],
+      "note": "By default (wrapped). Unwrapped, only when write_metadata is set; with write_metadata off the push request carries no publish time."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "push request time, kept as the ack deadline (the push call's request timeout, ackDeadlineSeconds)",
+      "resolution": "not documented (the deadline is set in whole seconds)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "The approximate amount of time (on a best-effort basis) Pub/Sub // waits for the subscriber to acknowledge receipt before resending the // message. In the interval after the message is delivered and before it is // acknowledged, it is considered to be _outstanding_."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "int32 ack_deadline_seconds = 5 [(google.api.field_behavior) = OPTIONAL];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "For push delivery, this value is also used to set the request timeout for // the call to the push endpoint."
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/docs/push",
+        "quote": "If you send a negative acknowledgment or the acknowledgment deadline expires, Pub/Sub resends the message."
+       }
+      ],
+      "note": "Recorded, not delivered: for push the ack deadline is the request timeout of the push call, which runs from the moment the service sends the push request; the service keeps it per push, approximately and on a best-effort basis."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://cloud.google.com/pubsub/docs/push",
+        "quote": "{ \"deliveryAttempt\": 5, \"message\": { \"attributes\": { \"key\": \"value\" }, \"data\": \"SGVsbG8gQ2xvdWQgUHViL1N1YiEgSGVyZSBpcyBteSBtZXNzYWdlIQ==\", \"messageId\": \"2070443601311540\", \"message_id\": \"2070443601311540\", \"orderingKey\": \"key\","
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/docs/authenticate-push-subscriptions",
+        "quote": "The tokens attached to requests sent to push endpoints may be up to an hour old."
+       }
+      ],
+      "note": "The push request carries neither its send time nor the deadline. The OIDC token's iat claim is not a send time: the documentation says the attached tokens may be up to an hour old."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://cloud.google.com/pubsub/docs/push",
+        "quote": "\"publishTime\": \"2021-02-26T19:13:55.749Z\", \"publish_time\": \"2021-02-26T19:13:55.749Z\" }, \"subscription\": \"projects/myproject/subscriptions/mysubscription\" }"
+       }
+      ],
+      "note": "No duration is delivered in the push request body or headers."
+     },
+     "Q6": {
+      "answer": "aggregate only",
+      "what": "Cloud Monitoring metrics only, e.g. subscription/oldest_unacked_message_age (age of the oldest unacknowledged message). Pub/Sub writes no Data Access audit logs for message operations (Publish, Subscribe, Acknowledge), and its OpenTelemetry tracing is spans recorded by the client library, not by the service. For push, subscription/push_request_latencies is a distribution of push request latencies (in microseconds), also an aggregate.",
+      "resolution": "seconds (backlog age) and microseconds (push latency distribution), sampled every 60 s",
+      "evidence": [
+       {
+        "url": "https://cloud.google.com/pubsub/docs/audit-logging",
+        "quote": "Pub/Sub does not currently write Data Access audit logs for message operations, such as Publish, Subscribe, and Acknowledge."
+       },
+       {
+        "url": "https://cloud.google.com/monitoring/api/metrics_gcp_p_z",
+        "quote": "Age (in seconds) of the oldest unacknowledged message in a subscription, broken down by Cloud region. Sampled every 60 seconds."
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/docs/open-telemetry-tracing",
+        "quote": "These spans represent the work the client library does when processing a message."
+       },
+       {
+        "url": "https://cloud.google.com/monitoring/api/metrics_gcp_p_z",
+        "quote": "Distribution of push request latencies (in microseconds), grouped by result. Sampled every 60 seconds."
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://cloud.google.com/pubsub/docs/push",
+        "quote": "Pub/Sub adjusts the number of concurrent push requests using a slow-start algorithm. The maximum allowed number of concurrent push requests is the push window."
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/docs/push",
+        "quote": "The push window increases on any successful delivery and decreases on any failure."
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/docs/push",
+        "quote": "In push delivery, Pub/Sub initiates requests to your subscriber application to deliver messages."
+       }
+      ],
+      "note": "The service pushes messages as they arrive, with up to a push window of concurrent push requests outstanding. The window acts as credit: it grows as the endpoint acknowledges, shrinks on failures, and a message arriving while it is full waits at the service."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited API text says what the answer says: requests that wait and may be several at once, a stream or subscription the service pushes into, or credit the receiver grants.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+       "read": "For push the same value sets the push call's request timeout, counted from the push request.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "Google Cloud Pub/Sub Lite",
+   "group": "B",
+   "version": "v1 (google.cloud.pubsublite.v1 API)",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+     "quote": "package google.cloud.pubsublite.v1;"
+    }
+   ],
+   "note": "Pub/Sub Lite had not been shut down by the coding date (2026-10-27). Its documentation page https://cloud.google.com/pubsub/lite/docs (fetched 2026-10-27; it says 'Last updated 2026-10-22 UTC.') reads: 'Note: Pub/Sub Lite is deprecated. Effective January 31, 2027, Pub/Sub Lite will be turned down.' and 'Current customers: Pub/Sub Lite remains functional until January 31, 2027.' It has been closed to new customers since 24 September 2024. The protocol leaves out retired services only if the provider has shut them down by the coding date, so it is coded here, in group B.",
+   "modes": [
+    {
+     "mode": "Subscribe (streaming, flow-control tokens)",
+     "Q0": {
+      "fields": [
+       "SubscribeResponse (one of): initial (InitialSubscribeResponse.cursor), seek (SeekResponse.cursor), messages (MessageResponse.messages[])",
+       "SequencedMessage.cursor (offset in the partition)",
+       "SequencedMessage.publish_time (google.protobuf.Timestamp, set by the server)",
+       "SequencedMessage.size_bytes",
+       "SequencedMessage.message (PubSubMessage): key, data, attributes (map of byte-string lists), event_time (optional, set by the publisher)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/subscriber.proto",
+        "quote": "rpc Subscribe(stream SubscribeRequest) returns (stream SubscribeResponse) {}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/subscriber.proto",
+        "quote": "InitialSubscribeResponse initial = 1;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/subscriber.proto",
+        "quote": "SeekResponse seek = 2;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/subscriber.proto",
+        "quote": "MessageResponse messages = 3;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/subscriber.proto",
+        "quote": "repeated SequencedMessage messages = 1;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "message SequencedMessage {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "Cursor cursor = 1;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "google.protobuf.Timestamp publish_time = 2;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "PubSubMessage message = 3;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "int64 size_bytes = 4;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "message PubSubMessage {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "bytes key = 1;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "bytes data = 2;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "map<string, AttributeValues> attributes = 3;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "An optional, user-specified event time."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "google.protobuf.Timestamp event_time = 4;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "int64 offset = 1;"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "publish_time (SequencedMessage)",
+      "resolution": "Timestamp ns field; filled precision undocumented",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "The time when the message was received by the server when it was first // published."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "google.protobuf.Timestamp publish_time = 2;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/protocolbuffers/protobuf/v36.2/src/google/protobuf/timestamp.proto",
+        "quote": "// Non-negative fractions of a second at nanosecond resolution. This field is"
+       }
+      ],
+      "note": "Set by the server when it first receives the message on publish; the PubSubMessage's event_time is the publisher's own, optional time. Returned by default in every SequencedMessage."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "google.protobuf.Timestamp publish_time = 2;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/subscriber.proto",
+        "quote": "repeated SequencedMessage messages = 1;"
+       }
+      ],
+      "note": "Every delivered SequencedMessage carries publish_time, by default."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "message SequencedMessage {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "Cursor cursor = 1;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "google.protobuf.Timestamp publish_time = 2;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "PubSubMessage message = 3;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "int64 size_bytes = 4;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/subscriber.proto",
+        "quote": "repeated SequencedMessage messages = 1;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/subscriber.proto",
+        "quote": "Updates the stream's delivery cursor to one greater than the cursor of the // last message in the list."
+       }
+      ],
+      "note": "No delivered field is a request-arrival or send time, and no per-delivery lock or deadline is documented: on delivery the server advances the stream's delivery cursor and spends flow-control tokens."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "message SequencedMessage {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "Cursor cursor = 1;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "google.protobuf.Timestamp publish_time = 2;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "PubSubMessage message = 3;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "int64 size_bytes = 4;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "google.protobuf.Timestamp event_time = 4;"
+       }
+      ],
+      "note": "No duration is delivered; event_time is the publisher's time, not the server's."
+     },
+     "Q6": {
+      "answer": "aggregate only",
+      "what": "Cloud Monitoring metrics, e.g. subscription/oldest_unacked_message_age per topic partition (seconds). The audit-logging page lists the methods that write Data Access logs, and SubscriberService.Subscribe is not among them.",
+      "resolution": "seconds, sampled every 60 s",
+      "evidence": [
+       {
+        "url": "https://cloud.google.com/monitoring/api/metrics_gcp_p_z",
+        "quote": "Age (in seconds) of the oldest unacknowledged message retained for a subscription in a given topic partition. Sampled every 60 seconds."
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/lite/docs/audit-logging",
+        "quote": "DATA_READ google.cloud.pubsublite.v1.CursorService.ListPartitionCursors google.cloud.pubsublite.v1.PartitionAssignmentService.AssignPartitions google.cloud.pubsublite.v1.TopicStatsService.ComputeMessageStats"
+       },
+       {
+        "url": "https://cloud.google.com/pubsub/lite/docs/audit-logging",
+        "quote": "DATA_WRITE google.cloud.pubsublite.v1.AdminService.SeekSubscription (LRO) google.cloud.pubsublite.v1.CursorService.CommitCursor google.cloud.pubsublite.v1.CursorService.StreamingCommitCursor"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/subscriber.proto",
+        "quote": "Request to grant tokens to the server, requesting delivery of messages when // they become available."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/subscriber.proto",
+        "quote": "int64 allowed_messages = 1;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/subscriber.proto",
+        "quote": "Subtracts the total number of bytes and messages from the tokens available // to the server."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/subscriber.proto",
+        "quote": "The cursor from which the subscriber will start receiving messages once // flow control tokens become available."
+       }
+      ],
+      "note": "The subscriber grants message and byte tokens on the stream, and the server delivers messages as they become available while tokens remain."
+     },
+     "not_determined": [
+      "publish_time's filled precision: the API defines google.protobuf.Timestamp (nanosecond field). Searched common.proto and subscriber.proto at the pinned googleapis commit and the Pub/Sub Lite subscribing, monitoring and audit-logging pages; no statement of the precision was found."
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited API text says what the answer says: requests that wait and may be several at once, a stream or subscription the service pushes into, or credit the receiver grants.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "Amazon SQS",
+   "group": "A",
+   "version": "API version 2012-11-05",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+     "quote": "\"apiVersion\":\"2012-11-05\","
+    }
+   ],
+   "modes": [
+    {
+     "mode": "ReceiveMessage (short and long polling)",
+     "Q0": {
+      "fields": [
+       "ReceiveMessageResult.Messages[] (Message)",
+       "Message.MessageId",
+       "Message.ReceiptHandle",
+       "Message.MD5OfBody",
+       "Message.Body",
+       "Message.Attributes (system attributes, only those the consumer requests: SenderId, SentTimestamp, ApproximateReceiveCount, ApproximateFirstReceiveTimestamp, SequenceNumber, MessageDeduplicationId, MessageGroupId, AWSTraceHeader, DeadLetterQueueSourceArn)",
+       "Message.MD5OfMessageAttributes",
+       "Message.MessageAttributes (set by the producer; only those the consumer requests)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"Message\":{ \"type\":\"structure\", \"members\":{ \"MessageId\":{ \"shape\":\"String\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"MessageAttributes\":{ \"shape\":\"MessageBodyAttributeMap\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "An Amazon SQS message."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "A map of the attributes requested in ReceiveMessage to their respective values."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"MessageSystemAttributeName\":{ \"type\":\"string\", \"enum\":[ \"All\", \"SenderId\", \"SentTimestamp\", \"ApproximateReceiveCount\", \"ApproximateFirstReceiveTimestamp\", \"SequenceNumber\", \"MessageDeduplicationId\", \"MessageGroupId\", \"AWSTraceHeader\", \"DeadLetterQueueSourceArn\" ] },"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "SentTimestamp (system attribute)",
+      "resolution": "ms (epoch milliseconds)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "SentTimestamp – Returns the time the message was sent to the queue (epoch time in milliseconds)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "ApproximateFirstReceiveTimestamp and SentTimestamp are each returned as an integer representing the epoch time in milliseconds."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "Currently, the only supported message system attribute is AWSTraceHeader."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "This parameter has been discontinued but will be supported for backward compatibility."
+       }
+      ],
+      "note": "Set by SQS (a producer can set no system attribute but AWSTraceHeader). Returned only when the consumer names SentTimestamp or All in MessageSystemAttributeNames (or AttributeNames, which the API marks discontinued)."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "A list of attributes that need to be returned along with each message."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "A map of the attributes requested in ReceiveMessage to their respective values."
+       }
+      ],
+      "note": "Only when requested, as above."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "ApproximateFirstReceiveTimestamp (system attribute)",
+      "resolution": "ms (epoch milliseconds)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "ApproximateFirstReceiveTimestamp – Returns the time the message was first received from the queue (epoch time in milliseconds)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "ApproximateFirstReceiveTimestamp and SentTimestamp are each returned as an integer representing the epoch time in milliseconds."
+       },
+       {
+        "url": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html",
+        "quote": "The visibility timeout starts as soon as a message is delivered to you."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "The duration (in seconds) that the received messages are hidden from subsequent retrieve requests after being retrieved by a ReceiveMessage request."
+       }
+      ],
+      "note": "ApproximateFirstReceiveTimestamp is approximate and covers the first receive only. Every receive, redeliveries included, is also recorded, not delivered, as its visibility deadline, which the documentation counts from delivery. The API calls the stamp the time the message was first received from the queue, which does not say whether it is taken when the receiving request arrives or when the response is sent; it is coded as send time, the weaker verdict. The HTTP Date header in the API reference's sample response ('Date: <Date>') is not defined by the API, so it is not coded."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "A list of attributes that need to be returned along with each message."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "A map of the attributes requested in ReceiveMessage to their respective values."
+       }
+      ],
+      "note": "Only when the consumer names ApproximateFirstReceiveTimestamp or All, and only the first receive's time: on a redelivery, that delivery's receive time and its visibility deadline are recorded but not delivered."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"Message\":{ \"type\":\"structure\", \"members\":{ \"MessageId\":{ \"shape\":\"String\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"MessageAttributes\":{ \"shape\":\"MessageBodyAttributeMap\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "An Amazon SQS message."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "A map of the attributes requested in ReceiveMessage to their respective values."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"MessageSystemAttributeName\":{ \"type\":\"string\", \"enum\":[ \"All\", \"SenderId\", \"SentTimestamp\", \"ApproximateReceiveCount\", \"ApproximateFirstReceiveTimestamp\", \"SequenceNumber\", \"MessageDeduplicationId\", \"MessageGroupId\", \"AWSTraceHeader\", \"DeadLetterQueueSourceArn\" ] },"
+       }
+      ],
+      "note": "No duration is delivered. The two stamps are coded under Q1 to Q4; the visibility deadline is not delivered."
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "CloudTrail data events (off by default; enabled with advanced event selectors) log each ReceiveMessage call with eventTime, the time the request was completed (UTC, from the host serving the endpoint). CloudWatch metrics are aggregates.",
+      "resolution": "eventTime: the documented examples are to the second",
+      "evidence": [
+       {
+        "url": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-logging-using-cloudtrail.html",
+        "quote": "Data APIs logged to CloudTrail Amazon SQS queue AWS::SQS::Queue ChangeMessageVisibility ChangeMessageVisibilityBatch DeleteMessage DeleteMessageBatch GetQueueAttributes GetQueueUrl ListDeadLetterSourceQueues ListQueues ListQueueTags ReceiveMessage SendMessage SendMessageBatch"
+       },
+       {
+        "url": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-logging-using-cloudtrail.html",
+        "quote": "By default, CloudTrail doesn’t log data events."
+       },
+       {
+        "url": "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-event-reference-record-contents.html",
+        "quote": "eventTime The date and time the request was completed, in coordinated universal time (UTC)."
+       },
+       {
+        "url": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-logging-using-cloudtrail.html",
+        "quote": "\"eventTime\": \"2023-11-07T23:59:11Z\""
+       },
+       {
+        "url": "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-event-reference-record-contents.html",
+        "quote": "An event's time stamp comes from the local host that provides the service API endpoint on which the API call was made."
+       },
+       {
+        "url": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-logging-using-cloudtrail.html",
+        "quote": "To log Amazon SQS data events with CloudTrail, you must use advanced event selectors"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "The duration (in seconds) for which the call waits for a message to arrive in the queue before returning. If a message is available, the call returns sooner than WaitTimeSeconds."
+       },
+       {
+        "url": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-short-and-long-polling.html",
+        "quote": "Long polling – ReceiveMessage queries all servers for messages, sending a response once at least one message is available, up to the specified maximum."
+       },
+       {
+        "url": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-throughput-horizontal-scaling-and-batching.html",
+        "quote": "Horizontal scaling involves increasing the number of message producers (which make SendMessage requests) and consumers (which make ReceiveMessage and DeleteMessage requests) in order to increase your overall queue throughput."
+       },
+       {
+        "url": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-throughput-horizontal-scaling-and-batching.html",
+        "quote": "You can scale horizontally in three ways: Increase the number of threads per client"
+       },
+       {
+        "url": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-short-and-long-polling.html",
+        "quote": "Short polling (default) – The ReceiveMessage request queries a subset of servers (based on a weighted random distribution) to find available messages and sends an immediate response, even if no messages are found."
+       },
+       {
+        "url": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-short-and-long-polling.html",
+        "quote": "The maximum long polling wait time is 20 seconds."
+       }
+      ],
+      "note": "A long poll (WaitTimeSeconds up to 20 s) waits at the queue for a message, and the documentation scales consumers by running several receiving threads and clients, so several long polls can be pending at once. Short polling (WaitTimeSeconds 0) returns at once."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+       "read": "The API model defines ApproximateFirstReceiveTimestamp as the time the message was first received from the queue, in epoch ms, returned when asked for; the model does not say whether it is taken at the request's arrival or at the response.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+       "read": "Returned with each message when the request names it (or All) in its attribute names.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited API text says what the answer says: requests that wait and may be several at once, a stream or subscription the service pushes into, or credit the receiver grants.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "Azure Service Bus",
+   "group": "A",
+   "version": "AMQP 1.0 (service protocol); SDK Azure.Messaging.ServiceBus 7.21.0",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/CHANGELOG.md",
+     "quote": "## 7.21.0 (2026-10-06)"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+     "quote": "It's the primary protocol of Azure Service Bus Messaging and Azure Event Hubs."
+    }
+   ],
+   "modes": [
+    {
+     "mode": "receive, peek-lock",
+     "Q0": {
+      "fields": [
+       "Body",
+       "ApplicationProperties (set by the sender; on dead-lettered messages also DeadLetterReason, DeadLetterErrorDescription)",
+       "MessageId, CorrelationId, Subject, To, ReplyTo, ReplyToSessionId, SessionId, ContentType (AMQP properties, set by the sender)",
+       "PartitionKey (x-opt-partition-key), TransactionPartitionKey (x-opt-via-partition-key)",
+       "TimeToLive (AMQP header ttl); ExpiresAt (absolute-expiry-time, computed by the service from EnqueuedTime + TimeToLive)",
+       "ScheduledEnqueueTime (x-opt-scheduled-enqueue-time)",
+       "EnqueuedTime (x-opt-enqueued-time, set by the service)",
+       "SequenceNumber (x-opt-sequence-number), EnqueuedSequenceNumber (x-opt-enqueue-sequence-number)",
+       "DeliveryCount (AMQP header delivery-count)",
+       "DeadLetterSource (x-opt-deadletter-source)",
+       "State (x-opt-message-state)",
+       "the raw AMQP message (GetRawAmqpMessage): header, annotations, properties including the sender's creation-time, application properties, footer",
+       "LockToken (AMQP delivery tag)",
+       "LockedUntil (x-opt-locked-until, set by the service)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public BinaryData Body => AmqpMessage.GetBody();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public string MessageId => AmqpMessage.Properties.MessageId?.ToString();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public string PartitionKey => AmqpMessage.GetPartitionKey();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public string SessionId => AmqpMessage.Properties.GroupId;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public TimeSpan TimeToLive => AmqpMessage.GetTimeToLive();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public DateTimeOffset ScheduledEnqueueTime => AmqpMessage.GetScheduledEnqueueTime();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public IReadOnlyDictionary<string, object> ApplicationProperties => new ReadOnlyDictionary<string, object>(AmqpMessage.ApplicationProperties);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public string LockToken => LockTokenGuid.ToString();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public DateTimeOffset LockedUntil"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public DateTimeOffset EnqueuedTime"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public DateTimeOffset ExpiresAt"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public ServiceBusMessageState State"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public AmqpAnnotatedMessage GetRawAmqpMessage() => AmqpMessage;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-messages-payloads.md",
+        "quote": "The following table lists the predefined broker properties. All official client APIs use these names."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "There are few other service bus message properties, which aren't part of AMQP message properties, and are passed along as `MessageAnnotations` on the message."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/message-transfers-locks-settlement.md",
+        "quote": "mode tells the broker that the receiving client wants to settle received messages explicitly. The message is available for the receiver to process, while the service holds an exclusive lock so that other competing receivers can't see it."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "EnqueuedTime / EnqueuedTimeUtc (AMQP message annotation x-opt-enqueued-time)",
+      "resolution": "ms (AMQP timestamp)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "| `x-opt-enqueued-time` | Service-defined UTC time representing the actual time of enqueuing the message. Ignored on input. |"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-messages-payloads.md",
+        "quote": "The UTC instant at which the message is accepted and stored in the entity."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Amqp/AmqpMessageConstants.cs",
+        "quote": "internal const string EnqueuedTimeUtcName = \"x-opt-enqueued-time\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public DateTimeOffset EnqueuedTime { get { if (AmqpMessage.MessageAnnotations.TryGetValue( AmqpMessageConstants.EnqueuedTimeUtcName, out object val)) { return (DateTime)val; }"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-types-v1.0-os.html",
+        "quote": "Represents an approximate point in time using the Unix time_t [IEEE1003] encoding of UTC, but with a precision of milliseconds."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-amqp/v2.7.3/Microsoft.Azure.Amqp/Amqp/Encoding/TimeStampEncoding.cs",
+        "quote": "return ToDateTime(AmqpBitConverter.ReadLong(buffer));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-amqp/v2.7.3/Microsoft.Azure.Amqp/Amqp/Encoding/TimeStampEncoding.cs",
+        "quote": "return AmqpConstants.StartOfEpoch.AddMilliseconds(milliseconds);"
+       }
+      ],
+      "note": "Set by the service when it accepts and stores the message; ignored on input. Delivered by default with every received message. The client reads it as an AMQP timestamp (a DateTime decoded from milliseconds since the epoch)."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public DateTimeOffset EnqueuedTime { get { if (AmqpMessage.MessageAnnotations.TryGetValue( AmqpMessageConstants.EnqueuedTimeUtcName, out object val)) { return (DateTime)val; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "| `x-opt-enqueued-time` | Service-defined UTC time representing the actual time of enqueuing the message. Ignored on input. |"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "lock time (the message taken from the entity), kept as LockedUntil = lock time + LockDuration (x-opt-locked-until)",
+      "resolution": "ms (AMQP timestamp)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "it's important to understand that the clock for the expiration of the lock on the message inside the entity starts when the message is taken from the entity, not when the message is put on the wire."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/message-transfers-locks-settlement.md",
+        "quote": "The queue or subscription initially defines the duration of the lock."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-messages-payloads.md",
+        "quote": "For messages retrieved under a lock (peek-lock receive mode, not presettled) this property reflects the UTC instant until which the message is held locked in the queue or subscription."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "| `x-opt-locked-until` | Service-defined. The date and time until which the message will be locked in the queue/subscription. |"
+       }
+      ],
+      "note": "The documentation starts the lock's clock when the message is taken from the entity (not when it is put on the wire), and the entity sets the lock duration, so the service keeps each delivery's lock time as LockedUntil. The message is taken to use the receiver's credit, so this is coded as send time."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public DateTimeOffset LockedUntil { get { if (AmqpMessage.MessageAnnotations.TryGetValue( AmqpMessageConstants.LockedUntilName, out object val)) { return (DateTime)val; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "| `x-opt-locked-until` | Service-defined. The date and time until which the message will be locked in the queue/subscription. |"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/message-transfers-locks-settlement.md",
+        "quote": "The queue or subscription initially defines the duration of the lock."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/message-transfers-locks-settlement.md",
+        "quote": "The default value for the lock duration is **1 minute**."
+       }
+      ],
+      "note": "LockedUntil is delivered with every peek-locked message by default, and its duration is the entity's LockDuration (default 1 minute), an entity setting the consumer knows."
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "it's important to understand that the clock for the expiration of the lock on the message inside the entity starts when the message is taken from the entity, not when the message is put on the wire."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/message-transfers-locks-settlement.md",
+        "quote": "The queue or subscription initially defines the duration of the lock."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/message-transfers-locks-settlement.md",
+        "quote": "The default value for the lock duration is **1 minute**."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-messages-payloads.md",
+        "quote": "For messages retrieved under a lock (peek-lock receive mode, not presettled) this property reflects the UTC instant until which the message is held locked in the queue or subscription."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "| `x-opt-locked-until` | Service-defined. The date and time until which the message will be locked in the queue/subscription. |"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "| `x-opt-enqueued-time` | Service-defined UTC time representing the actual time of enqueuing the message. Ignored on input. |"
+       }
+      ],
+      "note": "LockedUntil minus the entity's LockDuration (default 1 minute) is the instant the message was taken from the entity and locked; minus EnqueuedTime, that is the message's time in the entity before it was taken, from two service-set UTC instants (ms AMQP timestamps; the documentation does not name the clock). It ends when the message is taken, before it is put on the wire. The rule holds for the value delivered with the message, before any lock renewal.",
+      "resolution": "ms"
+     },
+     "Q6": {
+      "answer": "aggregate only",
+      "what": "Runtime audit logs (premium tier only) aggregate data-plane operations such as send and receive per 1-minute period, with a count; diagnostic error logs count identical errors per minute; metrics are aggregates. No per-message or per-request timing is documented.",
+      "resolution": "1-minute aggregation periods",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/monitor-service-bus-reference.md",
+        "quote": "Runtime audit logs capture aggregated diagnostic information for various data plane access operations (such as send or receive messages) in Service Bus."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/monitor-service-bus-reference.md",
+        "quote": "| `Count` | Total number of operations performed during the aggregated period of 1 minute. | Yes | Yes|"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/monitor-service-bus-reference.md",
+        "quote": "> Runtime audit logs are currently available only in the **premium** tier."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/monitor-service-bus-reference.md",
+        "quote": "| `ErrorCount` | Count of identical errors during the aggregation period of 1 minute. | Yes | Yes |"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "A \"receive\" call at the API level translates into a *flow* performative being sent to Service Bus by the client, and Service Bus consumes that credit by taking the first available, unlocked message from the queue, locking it, and transferring it."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "If there's no message readily available for delivery, any outstanding credit by any link established with that particular entity remains recorded in order of arrival, and messages are locked and transferred as they become available, to use any outstanding credit."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "When they're non-zero, the AMQP client uses it as the link credit."
+       }
+      ],
+      "note": "AMQP link credit waits at the entity and a message arriving is transferred against it; a non-zero prefetch count is used as the link credit."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+       "read": "The protocol guide says the lock's clock starts when the message is taken from the entity, not when it is put on the wire; the entity sets the lock duration.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+       "read": "x-opt-locked-until is a service-defined message annotation delivered with each peek-locked message.",
+       "agrees": true
+      },
+      {
+       "question": "Q5",
+       "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/message-transfers-locks-settlement.md",
+       "read": "LockedUntil less the entity's lock duration is the instant the message was taken; less EnqueuedTime, the time it spent in the entity before it was taken. The rule rests on the two documented sentences.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited API text says what the answer says: requests that wait and may be several at once, a stream or subscription the service pushes into, or credit the receiver grants.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "receive, receive-and-delete",
+     "Q0": {
+      "fields": [
+       "Body",
+       "ApplicationProperties (set by the sender; on dead-lettered messages also DeadLetterReason, DeadLetterErrorDescription)",
+       "MessageId, CorrelationId, Subject, To, ReplyTo, ReplyToSessionId, SessionId, ContentType (AMQP properties, set by the sender)",
+       "PartitionKey (x-opt-partition-key), TransactionPartitionKey (x-opt-via-partition-key)",
+       "TimeToLive (AMQP header ttl); ExpiresAt (absolute-expiry-time, computed by the service from EnqueuedTime + TimeToLive)",
+       "ScheduledEnqueueTime (x-opt-scheduled-enqueue-time)",
+       "EnqueuedTime (x-opt-enqueued-time, set by the service)",
+       "SequenceNumber (x-opt-sequence-number), EnqueuedSequenceNumber (x-opt-enqueue-sequence-number)",
+       "DeliveryCount (AMQP header delivery-count)",
+       "DeadLetterSource (x-opt-deadletter-source)",
+       "State (x-opt-message-state)",
+       "the raw AMQP message (GetRawAmqpMessage): header, annotations, properties including the sender's creation-time, application properties, footer"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public BinaryData Body => AmqpMessage.GetBody();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public string MessageId => AmqpMessage.Properties.MessageId?.ToString();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public string PartitionKey => AmqpMessage.GetPartitionKey();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public string SessionId => AmqpMessage.Properties.GroupId;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public TimeSpan TimeToLive => AmqpMessage.GetTimeToLive();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public DateTimeOffset ScheduledEnqueueTime => AmqpMessage.GetScheduledEnqueueTime();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public IReadOnlyDictionary<string, object> ApplicationProperties => new ReadOnlyDictionary<string, object>(AmqpMessage.ApplicationProperties);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public string LockToken => LockTokenGuid.ToString();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public DateTimeOffset LockedUntil"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public DateTimeOffset EnqueuedTime"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public DateTimeOffset ExpiresAt"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public ServiceBusMessageState State"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public AmqpAnnotatedMessage GetRawAmqpMessage() => AmqpMessage;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-messages-payloads.md",
+        "quote": "The following table lists the predefined broker properties. All official client APIs use these names."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "There are few other service bus message properties, which aren't part of AMQP message properties, and are passed along as `MessageAnnotations` on the message."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/message-transfers-locks-settlement.md",
+        "quote": "mode instructs the broker to consider all messages it sends to the receiving client as settled when sent. The message is consumed as soon as the broker puts it onto the wire."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-messages-payloads.md",
+        "quote": "For messages retrieved under a lock (peek-lock receive mode, not presettled) this property reflects the UTC instant until which the message is held locked in the queue or subscription."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "EnqueuedTime / EnqueuedTimeUtc (AMQP message annotation x-opt-enqueued-time)",
+      "resolution": "ms (AMQP timestamp)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "| `x-opt-enqueued-time` | Service-defined UTC time representing the actual time of enqueuing the message. Ignored on input. |"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-messages-payloads.md",
+        "quote": "The UTC instant at which the message is accepted and stored in the entity."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Amqp/AmqpMessageConstants.cs",
+        "quote": "internal const string EnqueuedTimeUtcName = \"x-opt-enqueued-time\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public DateTimeOffset EnqueuedTime { get { if (AmqpMessage.MessageAnnotations.TryGetValue( AmqpMessageConstants.EnqueuedTimeUtcName, out object val)) { return (DateTime)val; }"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-types-v1.0-os.html",
+        "quote": "Represents an approximate point in time using the Unix time_t [IEEE1003] encoding of UTC, but with a precision of milliseconds."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-amqp/v2.7.3/Microsoft.Azure.Amqp/Amqp/Encoding/TimeStampEncoding.cs",
+        "quote": "return ToDateTime(AmqpBitConverter.ReadLong(buffer));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-amqp/v2.7.3/Microsoft.Azure.Amqp/Amqp/Encoding/TimeStampEncoding.cs",
+        "quote": "return AmqpConstants.StartOfEpoch.AddMilliseconds(milliseconds);"
+       }
+      ],
+      "note": "Set by the service when it accepts and stores the message; ignored on input. Delivered by default with every received message. The client reads it as an AMQP timestamp (a DateTime decoded from milliseconds since the epoch)."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Primitives/ServiceBusReceivedMessage.cs",
+        "quote": "public DateTimeOffset EnqueuedTime { get { if (AmqpMessage.MessageAnnotations.TryGetValue( AmqpMessageConstants.EnqueuedTimeUtcName, out object val)) { return (DateTime)val; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "| `x-opt-enqueued-time` | Service-defined UTC time representing the actual time of enqueuing the message. Ignored on input. |"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/message-transfers-locks-settlement.md",
+        "quote": "mode instructs the broker to consider all messages it sends to the receiving client as settled when sent. The message is consumed as soon as the broker puts it onto the wire."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-messages-payloads.md",
+        "quote": "For messages retrieved under a lock (peek-lock receive mode, not presettled) this property reflects the UTC instant until which the message is held locked in the queue or subscription."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "| `x-opt-enqueued-time` | Service-defined UTC time representing the actual time of enqueuing the message. Ignored on input. |"
+       }
+      ],
+      "note": "The message is settled when sent and consumed as soon as it is put on the wire: no lock is taken, so there is no LockedUntil, and no other per-delivery time or deadline is documented."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/message-transfers-locks-settlement.md",
+        "quote": "mode instructs the broker to consider all messages it sends to the receiving client as settled when sent. The message is consumed as soon as the broker puts it onto the wire."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-messages-payloads.md",
+        "quote": "For messages retrieved under a lock (peek-lock receive mode, not presettled) this property reflects the UTC instant until which the message is held locked in the queue or subscription."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "| `x-opt-enqueued-time` | Service-defined UTC time representing the actual time of enqueuing the message. Ignored on input. |"
+       }
+      ],
+      "note": "No duration is delivered, and there is no lock deadline to derive one from."
+     },
+     "Q6": {
+      "answer": "aggregate only",
+      "what": "Runtime audit logs (premium tier only) aggregate data-plane operations such as send and receive per 1-minute period, with a count; diagnostic error logs count identical errors per minute; metrics are aggregates. No per-message or per-request timing is documented.",
+      "resolution": "1-minute aggregation periods",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/monitor-service-bus-reference.md",
+        "quote": "Runtime audit logs capture aggregated diagnostic information for various data plane access operations (such as send or receive messages) in Service Bus."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/monitor-service-bus-reference.md",
+        "quote": "| `Count` | Total number of operations performed during the aggregated period of 1 minute. | Yes | Yes|"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/monitor-service-bus-reference.md",
+        "quote": "> Runtime audit logs are currently available only in the **premium** tier."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/monitor-service-bus-reference.md",
+        "quote": "| `ErrorCount` | Count of identical errors during the aggregation period of 1 minute. | Yes | Yes |"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "A \"receive\" call at the API level translates into a *flow* performative being sent to Service Bus by the client, and Service Bus consumes that credit by taking the first available, unlocked message from the queue, locking it, and transferring it."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "If there's no message readily available for delivery, any outstanding credit by any link established with that particular entity remains recorded in order of arrival, and messages are locked and transferred as they become available, to use any outstanding credit."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "When they're non-zero, the AMQP client uses it as the link credit."
+       }
+      ],
+      "note": "AMQP link credit waits at the entity and a message arriving is transferred against it; a non-zero prefetch count is used as the link credit. In this mode the transfer is settled when sent; the credit works the same way."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited API text says what the answer says: requests that wait and may be several at once, a stream or subscription the service pushes into, or credit the receiver grants.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "Amazon Kinesis Data Streams",
+   "group": "B",
+   "version": "API version 2013-12-02",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+     "quote": "\"apiVersion\":\"2013-12-02\","
+    }
+   ],
+   "modes": [
+    {
+     "mode": "GetRecords",
+     "Q0": {
+      "fields": [
+       "GetRecordsOutput.Records[] (Record)",
+       "GetRecordsOutput.NextShardIterator",
+       "GetRecordsOutput.MillisBehindLatest (per response)",
+       "GetRecordsOutput.ChildShards (at the end of a shard)",
+       "Record.SequenceNumber",
+       "Record.ApproximateArrivalTimestamp (set by the service)",
+       "Record.Data",
+       "Record.PartitionKey (set by the producer)",
+       "Record.EncryptionType"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"GetRecordsOutput\":{ \"type\":\"structure\", \"required\":[\"Records\"], \"members\":{ \"Records\":{"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "The number of milliseconds the GetRecords response is from the tip of the stream, indicating how far behind current time the consumer is. A value of zero indicates that record processing is caught up, and there are no new records to process at this moment."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"Record\":{ \"type\":\"structure\", \"required\":[ \"SequenceNumber\", \"Data\" ], \"members\":{ \"SequenceNumber\":{"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"ApproximateArrivalTimestamp\":{ \"shape\":\"Timestamp\", \"documentation\":\"<p>The approximate time that the record was inserted into the stream.</p>\" }, \"Data\":{ \"shape\":\"Data\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "The unit of data of the Kinesis data stream, which is composed of a sequence number, a partition key, and a data blob."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"EncryptionType\":{ \"shape\":\"EncryptionType\", \"documentation\":\"<p>The encryption type used on the record."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "ApproximateArrivalTimestamp",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "Each Amazon Kinesis record includes a value, ApproximateArrivalTimestamp, that is set when a stream successfully receives and stores a record."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "The time stamp has millisecond precision. There are no guarantees about the time stamp accuracy, or that the time stamp is always increasing."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"ApproximateArrivalTimestamp\":{ \"shape\":\"Timestamp\", \"documentation\":\"<p>The approximate time that the record was inserted into the stream.</p>\" }, \"Data\":{ \"shape\":\"Data\","
+       }
+      ],
+      "note": "Set by the service when the stream receives and stores the record (the documentation calls it a server-side time stamp, against a producer's client-side one). Returned by default in every Record. Accuracy and monotonicity are not guaranteed."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"ApproximateArrivalTimestamp\":{ \"shape\":\"Timestamp\", \"documentation\":\"<p>The approximate time that the record was inserted into the stream.</p>\" }, \"Data\":{ \"shape\":\"Data\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"Record\":{ \"type\":\"structure\", \"required\":[ \"SequenceNumber\", \"Data\" ], \"members\":{ \"SequenceNumber\":{"
+       }
+      ],
+      "note": "By default, in every Record."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "time the response's NextShardIterator is returned, kept as the iterator's expiry (5 minutes later)",
+      "resolution": "not documented",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "Gets an Amazon Kinesis shard iterator. A shard iterator expires 5 minutes after it is returned to the requester."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "GetRecords returns a new shard iterator in NextShardIterator."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "The provided iterator exceeds the maximum age allowed."
+       }
+      ],
+      "note": "Recorded, not delivered: every GetRecords response returns a new shard iterator, and the documentation says a shard iterator expires 5 minutes after it is returned, so the service keeps, for each response, the time it was returned (as the iterator's expiry). The time is that of the response that delivered the records. The API reference's sample responses also show an HTTP Date header ('Date: <Date>') that the API does not define, so it is not coded."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"Record\":{ \"type\":\"structure\", \"required\":[ \"SequenceNumber\", \"Data\" ], \"members\":{ \"SequenceNumber\":{"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"ApproximateArrivalTimestamp\":{ \"shape\":\"Timestamp\", \"documentation\":\"<p>The approximate time that the record was inserted into the stream.</p>\" }, \"Data\":{ \"shape\":\"Data\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "The unit of data of the Kinesis data stream, which is composed of a sequence number, a partition key, and a data blob."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"EncryptionType\":{ \"shape\":\"EncryptionType\", \"documentation\":\"<p>The encryption type used on the record."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "The number of milliseconds the GetRecords response is from the tip of the stream, indicating how far behind current time the consumer is. A value of zero indicates that record processing is caught up, and there are no new records to process at this moment."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"GetRecordsOutput\":{ \"type\":\"structure\", \"required\":[\"Records\"], \"members\":{ \"Records\":{"
+       }
+      ],
+      "note": "NextShardIterator is delivered but opaque: neither the time it was returned nor its expiry is a delivered field. MillisBehindLatest is a per-response duration (Q5)."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "The number of milliseconds the GetRecords response is from the tip of the stream, indicating how far behind current time the consumer is. A value of zero indicates that record processing is caught up, and there are no new records to process at this moment."
+       }
+      ],
+      "note": "MillisBehindLatest is measured by the service and delivered with each response, but it is the response's distance from the tip of the stream and is zero when the consumer is caught up, so it does not contain a record's wait, and no documented rule derives a record's stay from it."
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "CloudTrail logs each GetRecords call with eventTime, the time the request was completed (UTC). CloudWatch's GetRecords.IteratorAgeMilliseconds (current time minus the time the last record of each GetRecords call was written) is reported only as aggregate statistics.",
+      "resolution": "eventTime: the documented examples are to the second; IteratorAgeMilliseconds: ms, aggregated",
+      "evidence": [
+       {
+        "url": "https://docs.aws.amazon.com/streams/latest/dev/logging-using-cloudtrail.html",
+        "quote": "Kinesis Data Streams supports logging the following actions as events in CloudTrail log files:"
+       },
+       {
+        "url": "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-event-reference-record-contents.html",
+        "quote": "eventTime The date and time the request was completed, in coordinated universal time (UTC)."
+       },
+       {
+        "url": "https://docs.aws.amazon.com/streams/latest/dev/logging-using-cloudtrail.html",
+        "quote": "GetRecords GetShardIterator IncreaseStreamRetentionPeriod"
+       },
+       {
+        "url": "https://docs.aws.amazon.com/streams/latest/dev/monitoring-with-cloudwatch.html",
+        "quote": "Age is the difference between the current time and when the last record of the GetRecords call was written to the stream."
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "If there are no records available in the portion of the shard that the iterator points to, GetRecords returns an empty list."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "To read from a stream continually, call GetRecords in a loop."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "This operation has a limit of five transactions per second per shard."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"GetRecordsInput\":{ \"type\":\"structure\", \"required\":[\"ShardIterator\"], \"members\":{ \"ShardIterator\":{"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"Limit\":{ \"shape\":\"GetRecordsInputLimit\", \"documentation\":\"<p>The maximum number of records to return."
+       }
+      ],
+      "note": "GetRecords has no wait parameter (ShardIterator, Limit, stream name or ARN) and returns an empty list if nothing is there; the consumer polls, at most five calls per second per shard."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+       "read": "Each GetRecords response returns a new shard iterator, which expires 5 minutes after it is returned: the response's time is kept, in or with the iterator. A judgment call: it is a time per response, not per record, and the consumer cannot read it.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "SubscribeToShard (enhanced fan-out)",
+     "Q0": {
+      "fields": [
+       "SubscribeToShardEvent.Records[] (Record)",
+       "SubscribeToShardEvent.ContinuationSequenceNumber",
+       "SubscribeToShardEvent.MillisBehindLatest (per event)",
+       "SubscribeToShardEvent.ChildShards (at the end of a shard)",
+       "Record.SequenceNumber",
+       "Record.ApproximateArrivalTimestamp (set by the service)",
+       "Record.Data",
+       "Record.PartitionKey (set by the producer)",
+       "Record.EncryptionType"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"SubscribeToShardEvent\":{ \"type\":\"structure\", \"required\":[ \"Records\", \"ContinuationSequenceNumber\", \"MillisBehindLatest\" ],"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "After you call SubscribeToShard, Kinesis Data Streams sends events of this type over an HTTP/2 connection to your consumer."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "The number of milliseconds the read records are from the tip of the stream, indicating how far behind current time the consumer is."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"Record\":{ \"type\":\"structure\", \"required\":[ \"SequenceNumber\", \"Data\" ], \"members\":{ \"SequenceNumber\":{"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"ApproximateArrivalTimestamp\":{ \"shape\":\"Timestamp\", \"documentation\":\"<p>The approximate time that the record was inserted into the stream.</p>\" }, \"Data\":{ \"shape\":\"Data\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "The unit of data of the Kinesis data stream, which is composed of a sequence number, a partition key, and a data blob."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"EncryptionType\":{ \"shape\":\"EncryptionType\", \"documentation\":\"<p>The encryption type used on the record."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "ApproximateArrivalTimestamp",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "Each Amazon Kinesis record includes a value, ApproximateArrivalTimestamp, that is set when a stream successfully receives and stores a record."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "The time stamp has millisecond precision. There are no guarantees about the time stamp accuracy, or that the time stamp is always increasing."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"ApproximateArrivalTimestamp\":{ \"shape\":\"Timestamp\", \"documentation\":\"<p>The approximate time that the record was inserted into the stream.</p>\" }, \"Data\":{ \"shape\":\"Data\","
+       }
+      ],
+      "note": "Set by the service when the stream receives and stores the record (the documentation calls it a server-side time stamp, against a producer's client-side one). Returned by default in every Record. Accuracy and monotonicity are not guaranteed."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"ApproximateArrivalTimestamp\":{ \"shape\":\"Timestamp\", \"documentation\":\"<p>The approximate time that the record was inserted into the stream.</p>\" }, \"Data\":{ \"shape\":\"Data\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"SubscribeToShardEvent\":{ \"type\":\"structure\", \"required\":[ \"Records\", \"ContinuationSequenceNumber\", \"MillisBehindLatest\" ],"
+       }
+      ],
+      "note": "By default, in every Record of every event."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"Record\":{ \"type\":\"structure\", \"required\":[ \"SequenceNumber\", \"Data\" ], \"members\":{ \"SequenceNumber\":{"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"ApproximateArrivalTimestamp\":{ \"shape\":\"Timestamp\", \"documentation\":\"<p>The approximate time that the record was inserted into the stream.</p>\" }, \"Data\":{ \"shape\":\"Data\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "The unit of data of the Kinesis data stream, which is composed of a sequence number, a partition key, and a data blob."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"EncryptionType\":{ \"shape\":\"EncryptionType\", \"documentation\":\"<p>The encryption type used on the record."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "The number of milliseconds the read records are from the tip of the stream, indicating how far behind current time the consumer is."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "If you call SubscribeToShard again with the same ConsumerARN and ShardId within 5 seconds of a successful call, you'll get a ResourceInUseException."
+       }
+      ],
+      "note": "No per-event or per-record time or deadline is documented, and no field of an event or record is a request-arrival or send time. The service keeps only per subscription the time of the successful SubscribeToShard call (a repeat call within 5 seconds of it fails, and the subscription lasts up to 5 minutes), which is not a time of each delivery. MillisBehindLatest is a per-event duration (Q5)."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "The number of milliseconds the read records are from the tip of the stream, indicating how far behind current time the consumer is."
+       }
+      ],
+      "note": "MillisBehindLatest is the read records' distance from the tip of the stream, not a record's wait; no documented rule derives a record's stay from it."
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "CloudTrail logs each SubscribeToShard call (one per subscription of up to 5 minutes) with eventTime, the time the request was completed (UTC); there is no per-event record. Per-event timing exists only as the aggregate CloudWatch metric SubscribeToShardEvent.MillisBehindLatest.",
+      "resolution": "eventTime: the documented examples are to the second; the metric: ms, aggregated",
+      "evidence": [
+       {
+        "url": "https://docs.aws.amazon.com/streams/latest/dev/logging-using-cloudtrail.html",
+        "quote": "Kinesis Data Streams supports logging the following actions as events in CloudTrail log files:"
+       },
+       {
+        "url": "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-event-reference-record-contents.html",
+        "quote": "eventTime The date and time the request was completed, in coordinated universal time (UTC)."
+       },
+       {
+        "url": "https://docs.aws.amazon.com/streams/latest/dev/logging-using-cloudtrail.html",
+        "quote": "StopStreamEncryption SubscribeToShard UpdateShardCount"
+       },
+       {
+        "url": "https://docs.aws.amazon.com/streams/latest/dev/monitoring-with-cloudwatch.html",
+        "quote": "SubscribeToShardEvent.MillisBehindLatest The number of milliseconds the read records are from the tip of the stream, indicating how far behind current time the consumer is. Dimensions: StreamName, ConsumerName Statistics: Minimum, Maximum, Average, Samples"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "After the connection is successfully established, Kinesis Data Streams pushes records from the shard to the consumer over this connection."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "your consumer starts receiving events of type SubscribeToShardEvent over the HTTP/2 connection for up to 5 minutes, after which time you need to call SubscribeToShard again to renew the subscription if you want to continue to receive records."
+       }
+      ],
+      "note": "Records are pushed as they arrive while the subscription lasts; it must be renewed every 5 minutes."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited API text says what the answer says: requests that wait and may be several at once, a stream or subscription the service pushes into, or credit the receiver grants.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "Azure Event Hubs",
+   "group": "B",
+   "version": "AMQP 1.0 and Kafka protocol 1.0+ (service); SDK Azure.Messaging.EventHubs 5.12.2",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/CHANGELOG.md",
+     "quote": "## 5.12.2 (2025-06-12)"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/azure-event-hubs-apache-kafka-overview.md",
+     "quote": "Event Hubs for Apache Kafka Ecosystems support [Apache Kafka version 1.0](https://kafka.apache.org/10/documentation.html) and later."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+     "quote": "It's the primary protocol of Azure Service Bus Messaging and Azure Event Hubs."
+    }
+   ],
+   "modes": [
+    {
+     "mode": "AMQP receive",
+     "Q0": {
+      "fields": [
+       "EventBody",
+       "Properties (application properties, set by the producer)",
+       "MessageId, CorrelationId, ContentType (AMQP properties, set by the producer)",
+       "SystemProperties (the message annotations and AMQP properties)",
+       "SequenceNumber (x-opt-sequence-number)",
+       "Offset / OffsetString (x-opt-offset)",
+       "EnqueuedTime (x-opt-enqueued-time, set by the service)",
+       "PartitionKey (x-opt-partition-key)",
+       "only when the receiver asks (desired capability com.microsoft:enable-receiver-runtime-metric): delivery annotations last_enqueued_sequence_number, last_enqueued_offset, last_enqueued_time_utc, runtime_info_retrieval_time_utc",
+       "the raw AMQP message (GetRawAmqpMessage)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/EventData.cs",
+        "quote": "public string MessageId"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/EventData.cs",
+        "quote": "public string CorrelationId"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/EventData.cs",
+        "quote": "public IDictionary<string, object> Properties => _amqpMessage.ApplicationProperties;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/EventData.cs",
+        "quote": "public IReadOnlyDictionary<string, object> SystemProperties => _systemProperties ??= new AmqpSystemProperties(_amqpMessage);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/EventData.cs",
+        "quote": "public long SequenceNumber => _amqpMessage.GetSequenceNumber(long.MinValue);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/EventData.cs",
+        "quote": "public string OffsetString => _amqpMessage.GetOffset(null);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/EventData.cs",
+        "quote": "public DateTimeOffset EnqueuedTime => _amqpMessage.GetEnqueuedTime();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/EventData.cs",
+        "quote": "public string PartitionKey => _amqpMessage.GetPartitionKey();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/EventData.cs",
+        "quote": "internal DateTimeOffset? LastPartitionPropertiesRetrievalTime => _amqpMessage.GetLastPartitionPropertiesRetrievalTime();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/EventData.cs",
+        "quote": "public AmqpAnnotatedMessage GetRawAmqpMessage() => _amqpMessage;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProperty.cs",
+        "quote": "public static AmqpSymbol EnqueuedTime { get; } = \"x-opt-enqueued-time\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProperty.cs",
+        "quote": "public static AmqpSymbol SequenceNumber { get; } = \"x-opt-sequence-number\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProperty.cs",
+        "quote": "public static AmqpSymbol Offset { get; } = \"x-opt-offset\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProperty.cs",
+        "quote": "public static AmqpSymbol PartitionKey { get; } = \"x-opt-partition-key\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProperty.cs",
+        "quote": "public static AmqpSymbol PartitionLastEnqueuedSequenceNumber { get; } = \"last_enqueued_sequence_number\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProperty.cs",
+        "quote": "public static AmqpSymbol PartitionLastEnqueuedOffset { get; } = \"last_enqueued_offset\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProperty.cs",
+        "quote": "public static AmqpSymbol PartitionLastEnqueuedTimeUtc { get; } = \"last_enqueued_time_utc\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProperty.cs",
+        "quote": "public static AmqpSymbol LastPartitionPropertiesRetrievalTimeUtc { get; } = \"runtime_info_retrieval_time_utc\";"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "EnqueuedTime (AMQP message annotation x-opt-enqueued-time)",
+      "resolution": "ms (AMQP timestamp)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/EventData.cs",
+        "quote": "The date and time, in UTC, of when the event was enqueued in the Event Hub partition."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/EventData.cs",
+        "quote": "This value is read-only and will only be populated for events that have been read from Event Hubs."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProperty.cs",
+        "quote": "public static AmqpSymbol EnqueuedTime { get; } = \"x-opt-enqueued-time\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpAnnotatedMessageExtensions.cs",
+        "quote": "DateTime dateValue => new DateTimeOffset(dateValue, TimeSpan.Zero),"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-types-v1.0-os.html",
+        "quote": "Represents an approximate point in time using the Unix time_t [IEEE1003] encoding of UTC, but with a precision of milliseconds."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-amqp/v2.7.3/Microsoft.Azure.Amqp/Amqp/Encoding/TimeStampEncoding.cs",
+        "quote": "return ToDateTime(AmqpBitConverter.ReadLong(buffer));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-amqp/v2.7.3/Microsoft.Azure.Amqp/Amqp/Encoding/TimeStampEncoding.cs",
+        "quote": "return AmqpConstants.StartOfEpoch.AddMilliseconds(milliseconds);"
+       }
+      ],
+      "note": "Set by the service when the event is enqueued in the partition; delivered by default with every event as a message annotation, decoded as an AMQP timestamp (milliseconds since the epoch)."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpAnnotatedMessageExtensions.cs",
+        "quote": "&& (instance.MessageAnnotations.TryGetValue(AmqpProperty.EnqueuedTime.ToString(), out var value)))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/EventData.cs",
+        "quote": "public DateTimeOffset EnqueuedTime => _amqpMessage.GetEnqueuedTime();"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProperty.cs",
+        "quote": "public static AmqpSymbol LastPartitionPropertiesRetrievalTimeUtc { get; } = \"runtime_info_retrieval_time_utc\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProperty.cs",
+        "quote": "The message property that identifies the time that the last enqueued event information was ///   received from the service."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Consumer/LastEnqueuedEventProperties.cs",
+        "quote": "The date and time, in UTC, that the information about the last enqueued event was received."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/samples/Sample05_ReadingEvents.md",
+        "quote": "Debug.WriteLine($\"\\tThe information was updated at: { properties.LastReceivedTime }, in UTC.\");"
+       }
+      ],
+      "note": "When the receiver asks, the service attaches runtime_info_retrieval_time_utc to every event as a delivery annotation. The sources describe it only as the time the last-enqueued-event information was retrieved or received; none says it is the time the event was sent, or on which clock it is taken. Event Hubs takes no lock and documents no per-delivery deadline that would record a delivery time otherwise. If it is the send time, the verdict would be stay in the message."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpAnnotatedMessageExtensions.cs",
+        "quote": "&& (instance.DeliveryAnnotations.TryGetValue(AmqpProperty.LastPartitionPropertiesRetrievalTimeUtc.ToString(), out var value)))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProperty.cs",
+        "quote": "public static AmqpSymbol TrackLastEnqueuedEventProperties { get; } = AmqpConstants.Vendor + \":enable-receiver-runtime-metric\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpConnectionScope.cs",
+        "quote": "linkSettings.DesiredCapabilities.Add(AmqpProperty.TrackLastEnqueuedEventProperties);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Consumer/ReadEventOptions.cs",
+        "quote": "When information about a partition's last enqueued event is being tracked, each event received from the Event Hubs /// service will carry metadata about the partition that it otherwise would not."
+       }
+      ],
+      "note": "The candidate stamp of Q3 is delivered with each event, as a delivery annotation, only when the receiver sets the com.microsoft:enable-receiver-runtime-metric capability (TrackLastEnqueuedEventProperties in the .NET client)."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/EventData.cs",
+        "quote": "public DateTimeOffset EnqueuedTime => _amqpMessage.GetEnqueuedTime();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/EventData.cs",
+        "quote": "public string PartitionKey => _amqpMessage.GetPartitionKey();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/EventData.cs",
+        "quote": "internal DateTimeOffset? LastPartitionPropertiesRetrievalTime => _amqpMessage.GetLastPartitionPropertiesRetrievalTime();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/EventData.cs",
+        "quote": "public AmqpAnnotatedMessage GetRawAmqpMessage() => _amqpMessage;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProperty.cs",
+        "quote": "public static AmqpSymbol PartitionLastEnqueuedTimeUtc { get; } = \"last_enqueued_time_utc\";"
+       }
+      ],
+      "note": "No duration is delivered. last_enqueued_time_utc is the enqueue time of the partition's newest event, not of this event, and no documented rule derives this event's wait or stay."
+     },
+     "Q6": {
+      "answer": "aggregate only",
+      "what": "Runtime audit logs aggregate data-plane operations such as send and receive per 1-minute period, with a count; application metrics logs are aggregates (consumer lag is in sequence numbers); operational logs leave data operations out; Kafka user error logs record errors only. No per-message or per-request timing of deliveries is documented.",
+      "resolution": "1-minute aggregation periods",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/monitor-event-hubs-reference.md",
+        "quote": "Runtime audit logs capture aggregated diagnostic information for all data plane access operations (such as send or receive events) in Event Hubs."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/monitor-event-hubs-reference.md",
+        "quote": "| `Count` | Total number of operations performed during the aggregated period of 1 minute. | Yes | Yes |"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/includes/event-hubs-diagnostic-log-schema.md",
+        "quote": "Data operations aren't captured, because of the high volume of data operations that are conducted on Azure Event Hubs."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/includes/event-hubs-diagnostic-log-schema.md",
+        "quote": "| `Message` | Informational message, which provides details about an error | Yes | Yes"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/monitor-event-hubs-reference.md",
+        "quote": "Application metrics logs capture the aggregated information on certain metrics related to data plane operations."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/monitor-event-hubs-reference.md",
+        "quote": "For AMQP, consumer lag is delivery lag: the difference between the last sequence number in the partition and the sequence number of the last event delivered to the receiver."
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/event-hubs-features.md",
+        "quote": "Event Hubs uses a **pull model**—consumers request events rather than having events pushed to them."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpConnectionScope.cs",
+        "quote": "TotalLinkCredit = prefetchCount,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpConnectionScope.cs",
+        "quote": "AutoSendFlow = prefetchCount > 0,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpConsumer.cs",
+        "quote": "private const uint DefaultPrefetchCount = 300;"
+       }
+      ],
+      "note": "The consumer requests events with AMQP link credit; the client opens the receiving link with its prefetch count (default 300) as link credit and replenishes it, so credit is waiting at the service when an event arrives."
+     },
+     "not_determined": [
+      "Q3: what runtime_info_retrieval_time_utc is. Searched: Azure.Messaging.EventHubs 5.12.2 source (AmqpProperty.cs, AmqpAnnotatedMessageExtensions.cs, LastEnqueuedEventProperties.cs, ReadEventOptions.cs, AmqpConnectionScope.cs, samples/Sample05_ReadingEvents.md), the Event Hubs articles in MicrosoftDocs/azure-docs at a33853236d24ee8adc979dc3924c7d4c4f79c43f (features, AMQP guide, monitoring reference, log schema, Kafka pages), and a GitHub code search for the annotation name across the Azure SDK repositories. The SDKs call it the time the last enqueued event information was received ('The information was updated at'); no service documentation defines it."
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited API text says what the answer says: requests that wait and may be several at once, a stream or subscription the service pushes into, or credit the receiver grants.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "Kafka endpoint",
+     "Q0": {
+      "fields": [
+       "record batch: BaseOffset, Length, PartitionLeaderEpoch, Magic, CRC, Attributes (incl. the timestamp type bit), LastOffsetDelta, BaseTimestamp, MaxTimestamp, ProducerId, ProducerEpoch, BaseSequence, RecordsCount",
+       "record: Attributes, TimestampDelta, OffsetDelta, Key, Value, Headers",
+       "consumer view (ConsumerRecord): topic, partition, offset, timestamp, timestampType, serializedKeySize, serializedValueSize, headers, key, value, leaderEpoch, deliveryCount",
+       "headers converted by the service from AMQP properties of AMQP-sent events: message-id, user-id, to, reply-to, content-type, content-encoding, creation-time",
+       "fetch response: throttle_time_ms (per response)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecordBatch.java",
+        "quote": "*  BaseOffset => Int64 *  Length => Int32 *  PartitionLeaderEpoch => Int32 *  Magic => Int8 *  CRC => Uint32 *  Attributes => Int16"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecordBatch.java",
+        "quote": "*  LastOffsetDelta => Int32 // also serves as LastSequenceDelta *  BaseTimestamp => Int64 *  MaxTimestamp => Int64 *  ProducerId => Int64 *  ProducerEpoch => Int16 *  BaseSequence => Int32 *  RecordsCount => Int32 *  Records => [Record]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecord.java",
+        "quote": "* Record => *   Length => Varint *   Attributes => Int8 *   TimestampDelta => Varlong *   OffsetDelta => Varint *   KeyLength => Varint *   Key => Bytes *   ValueLength => Varint *   Value => Bytes *   HeadersCount => Varint *   Headers => [HeaderKey HeaderValue]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/clients/consumer/ConsumerRecord.java",
+        "quote": "private final long timestamp;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/clients/consumer/ConsumerRecord.java",
+        "quote": "private final TimestampType timestampType;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/event-hubs-exchange-events-different-protocols.md",
+        "quote": "Here is the list of immutable properties that Event Hubs support in this conversion today."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/azure-event-hubs-apache-kafka-overview.md",
+        "quote": "Even though Event Hubs implements the same protocol, this difference means that all Kafka traffic for all partitions is predictably routed through this one endpoint rather than requiring firewall access for all brokers of a cluster."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "the event's enqueue (log append) time; over Kafka, the record timestamp of type LOG_APPEND_TIME (batch MaxTimestamp)",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/EventData.cs",
+        "quote": "The date and time, in UTC, of when the event was enqueued in the Event Hub partition."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/azure-event-hubs-apache-kafka-overview.md",
+        "quote": "You can write with any of these protocols and read with any another"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/apache-kafka-streams.md",
+        "quote": "| `messageTimestampType` | set to `AppendTime` | should be set to `CreateTime` | Kafka Streams relies on creation timestamp rather than append timestamp |"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/apache-kafka-streams.md",
+        "quote": "It's the time when the data is stored and committed to the storage of the Kafka broker."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/clients/consumer/ConsumerRecord.java",
+        "quote": "The timestamp of this record, in milliseconds elapsed since unix epoch."
+       }
+      ],
+      "note": "The service records every event's enqueue time, whatever the protocol: events written over Kafka can be read over AMQP, where each carries the service's enqueued time. Over Kafka it is delivered as the log append time, which is the default (messageTimestampType AppendTime); see Q2."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecordBatch.java",
+        "quote": "return (attributes() & TIMESTAMP_TYPE_MASK) == 0 ? TimestampType.CREATE_TIME : TimestampType.LOG_APPEND_TIME;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecordBatch.java",
+        "quote": "For LOG_APPEND_TIME, on the other hand, the MaxTimestamp field reflects the timestamp set * by the broker"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/clients/consumer/ConsumerRecord.java",
+        "quote": "private final long timestamp;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/apache-kafka-streams.md",
+        "quote": "| `messageTimestampType` | set to `AppendTime` | should be set to `CreateTime` | Kafka Streams relies on creation timestamp rather than append timestamp |"
+       }
+      ],
+      "note": "By default, in every record batch, with its timestamp type. Only by configuration: with the event hub property messageTimestampType set to CreateTime, the Kafka record carries the producer's time instead, and the service's arrival time is recorded but not delivered over Kafka. The documentation does not say whether the AppendTime equals the AMQP x-opt-enqueued-time."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecordBatch.java",
+        "quote": "*  BaseOffset => Int64 *  Length => Int32 *  PartitionLeaderEpoch => Int32 *  Magic => Int8 *  CRC => Uint32 *  Attributes => Int16"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecordBatch.java",
+        "quote": "*  LastOffsetDelta => Int32 // also serves as LastSequenceDelta *  BaseTimestamp => Int64 *  MaxTimestamp => Int64 *  ProducerId => Int64 *  ProducerEpoch => Int16 *  BaseSequence => Int32 *  RecordsCount => Int32 *  Records => [Record]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecord.java",
+        "quote": "* Record => *   Length => Varint *   Attributes => Int8 *   TimestampDelta => Varlong *   OffsetDelta => Varint *   KeyLength => Varint *   Key => Bytes *   ValueLength => Varint *   Value => Bytes *   HeadersCount => Varint *   Headers => [HeaderKey HeaderValue]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/clients/consumer/ConsumerRecord.java",
+        "quote": "private final long timestamp;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/clients/consumer/ConsumerRecord.java",
+        "quote": "private final TimestampType timestampType;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/FetchResponse.json",
+        "quote": "\"about\": \"The duration in milliseconds for which the request was throttled due to a quota violation, or zero if the request did not violate any quota.\" },"
+       }
+      ],
+      "note": "No record, batch or fetch-response field is a request-arrival or send time, and no per-delivery lock or deadline is documented for the Kafka endpoint."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/apache-kafka-troubleshooting-guide.md",
+        "quote": "The delay length is returned in milliseconds as `throttle_time_ms` in the produce/fetch response."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/FetchResponse.json",
+        "quote": "\"about\": \"The duration in milliseconds for which the request was throttled due to a quota violation, or zero if the request did not violate any quota.\" },"
+       }
+      ],
+      "note": "throttle_time_ms is a duration on the service's clock, per fetch response, but it is the delay the service added for exceeding a quota, not the wait for a request."
+     },
+     "Q6": {
+      "answer": "aggregate only",
+      "what": "Runtime audit logs aggregate data-plane operations such as send and receive per 1-minute period, with a count; application metrics logs are aggregates (consumer lag is in sequence numbers); operational logs leave data operations out; Kafka user error logs record errors only. No per-message or per-request timing of deliveries is documented.",
+      "resolution": "1-minute aggregation periods",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/monitor-event-hubs-reference.md",
+        "quote": "Runtime audit logs capture aggregated diagnostic information for all data plane access operations (such as send or receive events) in Event Hubs."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/monitor-event-hubs-reference.md",
+        "quote": "| `Count` | Total number of operations performed during the aggregated period of 1 minute. | Yes | Yes |"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/includes/event-hubs-diagnostic-log-schema.md",
+        "quote": "Data operations aren't captured, because of the high volume of data operations that are conducted on Azure Event Hubs."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/includes/event-hubs-diagnostic-log-schema.md",
+        "quote": "| `Message` | Informational message, which provides details about an error | Yes | Yes"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/monitor-event-hubs-reference.md",
+        "quote": "Application metrics logs capture the aggregated information on certain metrics related to data plane operations."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/monitor-event-hubs-reference.md",
+        "quote": "For AMQP, consumer lag is delivery lag: the difference between the last sequence number in the partition and the sequence number of the last event delivered to the receiver."
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/FetchRequest.json",
+        "quote": "{ \"name\": \"MaxWaitMs\", \"type\": \"int32\", \"versions\": \"0+\", \"about\": \"The maximum time in milliseconds to wait for the response.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/azure-event-hubs-apache-kafka-overview.md",
+        "quote": "Even though Event Hubs implements the same protocol, this difference means that all Kafka traffic for all partitions is predictably routed through this one endpoint rather than requiring firewall access for all brokers of a cluster."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/apache-kafka-troubleshooting-guide.md",
+        "quote": "If fetch request's delay exceeds request time out, Event Hubs logs the request as throttled and responds with empty set of records and no error code."
+       }
+      ],
+      "note": "The Kafka protocol lets a fetch wait at the broker (MaxWaitMs, MinBytes), and a Kafka consumer keeps one fetch in flight per broker connection, which would make this one at a time; whether the Event Hubs endpoint holds a fetch until data arrives, or answers at once, is not documented."
+     },
+     "not_determined": [
+      "Q7: whether the Kafka endpoint holds a fetch request until data arrives (Kafka's MaxWaitMs and MinBytes). Searched: the Event Hubs Kafka overview, configurations, troubleshooting guide, developer guide, FAQ and Kafka Streams articles in MicrosoftDocs/azure-docs at a33853236d24ee8adc979dc3924c7d4c4f79c43f, CONFIGURATION.md in Azure/azure-event-hubs-for-kafka at ca9afcac342f0aed5170705516110662f37d4085, and a GitHub code search of azure-docs for fetch.max.wait.ms and fetch.min.bytes (only HDInsight's own Kafka pages mention them). None says; the overview says only that Event Hubs implements the same protocol."
+     ],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Azure Queue Storage",
+   "group": "B",
+   "version": "Storage REST API version 2026-04-06",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+     "quote": "\"title\": \"Azure Queue Storage\", \"version\": \"2026-04-06\","
+    }
+   ],
+   "modes": [
+    {
+     "mode": "Get Messages",
+     "Q0": {
+      "fields": [
+       "QueueMessagesList[] (QueueMessage)",
+       "MessageId",
+       "InsertionTime (set by the service)",
+       "ExpirationTime",
+       "PopReceipt",
+       "TimeNextVisible (set by the service from the request's visibilitytimeout)",
+       "DequeueCount",
+       "MessageText (set by the producer)",
+       "response headers: x-ms-request-id, x-ms-version, Date (set by the service)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"operationId\": \"Messages_Dequeue\", \"description\": \"The Dequeue operation retrieves one or more messages from the front of the queue.\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"description\": \"The object returned in the QueueMessageList array when calling Get Messages on a Queue.\", \"type\": \"object\", \"required\": [ \"MessageId\", \"InsertionTime\", \"ExpirationTime\", \"PopReceipt\", \"TimeNextVisible\", \"DequeueCount\", \"MessageText\" ],"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"description\": \"UTC date/time value generated by the service that indicates the time at which the response was initiated\" } }, \"schema\": { \"$ref\": \"#/definitions/DequeuedMessagesList\" }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"x-ms-request-id\": { \"x-ms-client-name\": \"RequestId\", \"type\": \"string\","
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "InsertionTime",
+      "resolution": "s (RFC 1123 date-time)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"InsertionTime\": { \"type\": \"string\", \"format\": \"date-time-rfc1123\", \"description\": \"The time the Message was inserted into the Queue.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"description\": \"The object returned in the QueueMessageList array when calling Get Messages on a Queue.\", \"type\": \"object\", \"required\": [ \"MessageId\", \"InsertionTime\", \"ExpirationTime\", \"PopReceipt\", \"TimeNextVisible\", \"DequeueCount\", \"MessageText\" ],"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"description\": \"A Message object which can be stored in a Queue\", \"type\": \"object\", \"required\": [ \"MessageText\" ],"
+       }
+      ],
+      "note": "Set by the service: the Put Message request body carries only MessageText. Delivered by default with every message."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"description\": \"The object returned in the QueueMessageList array when calling Get Messages on a Queue.\", \"type\": \"object\", \"required\": [ \"MessageId\", \"InsertionTime\", \"ExpirationTime\", \"PopReceipt\", \"TimeNextVisible\", \"DequeueCount\", \"MessageText\" ],"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"InsertionTime\": { \"type\": \"string\", \"format\": \"date-time-rfc1123\", \"description\": \"The time the Message was inserted into the Queue.\" },"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "dequeue time: the Date header of Get Messages, and TimeNextVisible = dequeue server time + visibilitytimeout",
+      "resolution": "s (RFC 1123 date-time)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"description\": \"UTC date/time value generated by the service that indicates the time at which the response was initiated\" } }, \"schema\": { \"$ref\": \"#/definitions/DequeuedMessagesList\" }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "Optional. Specifies the new visibility timeout value, in seconds, relative to server time. The default value is 30 seconds."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"TimeNextVisible\": { \"type\": \"string\", \"format\": \"date-time-rfc1123\", \"description\": \"The time that the message will again become visible in the Queue.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "Optional. A nonzero integer value that specifies the number of messages to retrieve from the queue, up to a maximum of 32."
+       }
+      ],
+      "note": "The API defines the Get Messages response's Date header as generated by the service and as the time at which the response was initiated: one value per response, shared by up to 32 messages. Each dequeue is also recorded as the message's new visibility deadline, TimeNextVisible, which the API counts from server time by the request's visibilitytimeout. The API does not say whether InsertionTime and Date come from one clock."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"description\": \"UTC date/time value generated by the service that indicates the time at which the response was initiated\" } }, \"schema\": { \"$ref\": \"#/definitions/DequeuedMessagesList\" }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"TimeNextVisible\": { \"type\": \"string\", \"format\": \"date-time-rfc1123\", \"description\": \"The time that the message will again become visible in the Queue.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "Optional. Specifies the new visibility timeout value, in seconds, relative to server time. The default value is 30 seconds."
+       }
+      ],
+      "note": "Every Get Messages response carries the Date header, and every message its TimeNextVisible, whose duration is the consumer's own visibilitytimeout (default 30 s); both by default."
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "Optional. Specifies the new visibility timeout value, in seconds, relative to server time. The default value is 30 seconds."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"TimeNextVisible\": { \"type\": \"string\", \"format\": \"date-time-rfc1123\", \"description\": \"The time that the message will again become visible in the Queue.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"InsertionTime\": { \"type\": \"string\", \"format\": \"date-time-rfc1123\", \"description\": \"The time the Message was inserted into the Queue.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"parameters\": [ { \"$ref\": \"#/parameters/NumOfMessages\" }, { \"$ref\": \"#/parameters/VisibilityTimeout\" },"
+       }
+      ],
+      "note": "TimeNextVisible minus the request's visibilitytimeout (default 30 s), which the API defines relative to server time, is the server time at which the message was dequeued; minus InsertionTime it is the message's stay, to the second. For a message made invisible at insertion, or redelivered after a visibility timeout expired, the stay includes those periods.",
+      "resolution": "s"
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "Azure Storage resource logs (StorageQueueLogs) record each request with time (the UTC time the request was received by storage), durationMs (the whole operation, including reading the request and sending the response) and serverLatencyMs (without network latency).",
+      "resolution": "time: 100 ns digits in the documented example; durations: ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/includes/azure-storage-logs-properties-operation.md",
+        "quote": "|**time** | The Universal Time Coordinated (UTC) time when the request was received by storage. For example: `2018/11/08 21:09:36.6900118`.|"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/includes/azure-storage-logs-properties-operation.md",
+        "quote": "|**durationMs** | The total time, expressed in milliseconds, to perform the requested operation. This includes the time to read the incoming request, and to send the response to the requester. For example: `12`.|"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/includes/azure-storage-logs-properties-service.md",
+        "quote": "|**serverLatencyMs** | The total time expressed in milliseconds to perform the requested operation. This value doesn't include network latency"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/storage/queues/monitor-queue-storage-reference.md",
+        "quote": "### Supported resource logs for Microsoft.Storage/storageAccounts/queueServices"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-azure-and-service-bus-queues-compared-contrasted.md",
+        "quote": "| Comparison Criteria | Storage queues | Service Bus queues |"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-azure-and-service-bus-queues-compared-contrasted.md",
+        "quote": "| Receive behavior |Nonblocking<br/><br/>(completes immediately if no new message is found) |"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"parameters\": [ { \"$ref\": \"#/parameters/NumOfMessages\" }, { \"$ref\": \"#/parameters/VisibilityTimeout\" }, { \"$ref\": \"#/parameters/Timeout\" },"
+       }
+      ],
+      "note": "Get Messages completes at once, empty if no message is visible; it has no wait parameter, so the consumer polls."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "(the cited Queue Storage REST definitions)",
+       "read": "The spec defines the response Date header as generated by the service at the time the response was initiated, and the visibility timeout as relative to server time; both are seconds.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "(the cited Queue Storage REST definitions)",
+       "read": "Both come back with every Get Messages response by default.",
+       "agrees": true
+      },
+      {
+       "question": "Q5",
+       "url": "(the cited Queue Storage REST definitions)",
+       "read": "TimeNextVisible less the request's visibilitytimeout, less InsertionTime, is the message's stay, to the second.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "Azure Event Grid",
+   "group": "B",
+   "version": "namespace data-plane API version 2024-06-01",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+     "quote": "\"version\": \"2024-06-01\","
+    }
+   ],
+   "modes": [
+    {
+     "mode": "namespace topics, pull delivery (receive)",
+     "Q0": {
+      "fields": [
+       "ReceiveResult.value[] (ReceiveDetails, one per event)",
+       "brokerProperties.lockToken",
+       "brokerProperties.deliveryCount",
+       "event (CloudEvent): id, source, type, specversion, data or data_base64, time (optional, set by the publisher), dataschema, datacontenttype, subject"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"description\": \"Array of receive responses, one per cloud event.\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"description\": \"Receive operation details per Cloud Event.\", \"properties\": { \"brokerProperties\": { \"$ref\": \"#/definitions/BrokerProperties\", \"description\": \"The Event Broker details.\" }, \"event\": { \"$ref\": \"#/definitions/CloudEvent\", \"description\": \"Cloud Event details.\" } },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"lockToken\": { \"type\": \"string\", \"description\": \"The token of the lock on the event.\" }, \"deliveryCount\": { \"type\": \"integer\", \"format\": \"int32\", \"description\": \"The attempt count for delivering the event.\" } }, \"required\": [ \"lockToken\", \"deliveryCount\" ]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"time\": { \"type\": \"string\", \"format\": \"date-time\", \"description\": \"The time (in UTC) the event was generated, in RFC3339 format.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"required\": [ \"id\", \"source\", \"type\", \"specversion\" ]"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "publish time, kept as the event's time-to-live deadline (publish + eventTimeToLive)",
+      "resolution": "not documented",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-grid/event-retention.md",
+        "quote": "An event's time to live is a time span duration in ISO 8601 format that determines how long messages are available to the subscription from the time the message was published."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-grid/event-retention.md",
+        "quote": "Use the `eventTimeToLive` determines how long messages are in the subscription from the time the message was published."
+       }
+      ],
+      "note": "Recorded, not delivered: the documentation counts each event's time to live from the time it was published, so the service keeps that time (or the deadline computed from it). Its clock and resolution are not documented."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"lockToken\": { \"type\": \"string\", \"description\": \"The token of the lock on the event.\" }, \"deliveryCount\": { \"type\": \"integer\", \"format\": \"int32\", \"description\": \"The attempt count for delivering the event.\" } }, \"required\": [ \"lockToken\", \"deliveryCount\" ]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"time\": { \"type\": \"string\", \"format\": \"date-time\", \"description\": \"The time (in UTC) the event was generated, in RFC3339 format.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"description\": \"Receive operation details per Cloud Event.\", \"properties\": { \"brokerProperties\": { \"$ref\": \"#/definitions/BrokerProperties\", \"description\": \"The Event Broker details.\" }, \"event\": { \"$ref\": \"#/definitions/CloudEvent\", \"description\": \"Cloud Event details.\" } },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"name\": \"event\", \"in\": \"body\", \"description\": \"Single Cloud Event being published.\", \"required\": true, \"schema\": { \"$ref\": \"#/definitions/CloudEvent\" }"
+       }
+      ],
+      "note": "Neither the publish time nor the time-to-live deadline is delivered. The only time in a received event is the CloudEvents time attribute, which is optional and is the publisher's time the event was generated."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "receive time, kept as the lock deadline (receive + receiveLockDurationInSeconds)",
+      "resolution": "not documented",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-grid/subscriber-operations.md",
+        "quote": "Once a client has received an event, that event is locked, that is, unavailable for redelivery for the amount specified in *receiveLockDurationInSeconds* on the event subscription."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-grid/subscriber-operations.md",
+        "quote": "A client requests to renew a lock within 1 hour from the time the lock was created, that is, from the time the event was first received."
+       }
+      ],
+      "note": "Recorded, not delivered: the documentation runs each lock from the time the event is received, for the subscription's receiveLockDurationInSeconds, and dates the lock's creation by the time the event was first received, so the service keeps each delivery's receive time. Coded as send time: the receive is when the service hands the event to the receive request."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"lockToken\": { \"type\": \"string\", \"description\": \"The token of the lock on the event.\" }, \"deliveryCount\": { \"type\": \"integer\", \"format\": \"int32\", \"description\": \"The attempt count for delivering the event.\" } }, \"required\": [ \"lockToken\", \"deliveryCount\" ]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"description\": \"Receive operation details per Cloud Event.\", \"properties\": { \"brokerProperties\": { \"$ref\": \"#/definitions/BrokerProperties\", \"description\": \"The Event Broker details.\" }, \"event\": { \"$ref\": \"#/definitions/CloudEvent\", \"description\": \"Cloud Event details.\" } },"
+       }
+      ],
+      "note": "Broker properties are only lockToken and deliveryCount: neither the receive time nor the lock deadline is delivered."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"lockToken\": { \"type\": \"string\", \"description\": \"The token of the lock on the event.\" }, \"deliveryCount\": { \"type\": \"integer\", \"format\": \"int32\", \"description\": \"The attempt count for delivering the event.\" } }, \"required\": [ \"lockToken\", \"deliveryCount\" ]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"description\": \"Receive operation details per Cloud Event.\", \"properties\": { \"brokerProperties\": { \"$ref\": \"#/definitions/BrokerProperties\", \"description\": \"The Event Broker details.\" }, \"event\": { \"$ref\": \"#/definitions/CloudEvent\", \"description\": \"Cloud Event details.\" } },"
+       }
+      ],
+      "note": "No duration and no deadline is delivered, so nothing is derivable."
+     },
+     "Q6": {
+      "answer": "aggregate only",
+      "what": "Runtime audit logs aggregate data-plane operations (publishing and consuming events); metrics such as ReceiveLatencyInMilliseconds (latency of receive operations) are aggregates. No per-message or per-request timing is documented.",
+      "resolution": "aggregates; latency metrics in ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-grid/monitor-namespaces.md",
+        "quote": "Using *Runtime audit logs* you can capture aggregated diagnostic information for all data plane access operations such as publishing or consuming events."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-grid/monitor-pull-reference.md",
+        "quote": "| ReceiveLatencyInMilliseconds | Receive operations latency in milliseconds | Latency in milliseconds for receive message operations |"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "It is the time in seconds that the server approximately waits for the availability of an event and responds to the request. If an event is available, the broker responds immediately to the client. Minimum value is 10 seconds, while maximum value is 120 seconds."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-grid/pull-delivery-overview.md",
+        "quote": "By default, the broker waits for up to 60 seconds for events to become available."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-grid/pull-delivery-overview.md",
+        "quote": "One or more subscriber (consumer) applications can connect to the same namespace endpoint and use the same topic and event subscription."
+       }
+      ],
+      "note": "A receive request waits at the service (maxWaitTime 10 to 120 s, default 60 s) until an event is available, and several consumers may receive from one event subscription, so several receive requests can be pending at once."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited API text says what the answer says: requests that wait and may be several at once, a stream or subscription the service pushes into, or credit the receiver grants.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-grid/subscriber-operations.md",
+       "read": "The lock is counted from the time the event was first received, so the receive time is kept as the lock; the receive returns only the lock token and delivery count besides the event.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

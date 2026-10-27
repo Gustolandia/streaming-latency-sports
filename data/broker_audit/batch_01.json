@@ -1,0 +1,2093 @@
+{
+ "audited_utc": "2026-10-27",
+ "brokers": [
+  {
+   "broker": "Apache Kafka",
+   "group": "A",
+   "version": "4.4.0",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/gradle.properties",
+     "quote": "version=4.4.0"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "consumer groups (fetch)",
+     "Q0": {
+      "fields": [
+       "batch.baseOffset",
+       "batch.batchLength",
+       "batch.partitionLeaderEpoch",
+       "batch.magic (2)",
+       "batch.crc",
+       "batch.attributes (compression, timestampType, isTransactional, isControlBatch, hasDeleteHorizonMs)",
+       "batch.lastOffsetDelta",
+       "batch.baseTimestamp",
+       "batch.maxTimestamp",
+       "batch.producerId",
+       "batch.producerEpoch",
+       "batch.baseSequence",
+       "batch.recordsCount",
+       "record.length",
+       "record.attributes (unused)",
+       "record.timestampDelta",
+       "record.offsetDelta",
+       "record.key",
+       "record.value",
+       "record.headers[] (key, value)",
+       "ConsumerRecord: topic, partition, offset, timestamp, timestampType, serializedKeySize, serializedValueSize, headers, key, value, leaderEpoch, deliveryCount (share groups only)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/docs/implementation/message-format.md",
+        "quote": "baseOffset: int64 batchLength: int32 partitionLeaderEpoch: int32 magic: int8 (current magic value is 2) crc: uint32 attributes: int16"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/docs/implementation/message-format.md",
+        "quote": "lastOffsetDelta: int32 baseTimestamp: int64 maxTimestamp: int64 producerId: int64 producerEpoch: int16 baseSequence: int32 recordsCount: int32 records: [Record]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/docs/implementation/message-format.md",
+        "quote": "length: varint attributes: int8 bit 0~7: unused timestampDelta: varlong offsetDelta: varint keyLength: varint key: byte[] valueLength: varint value: byte[] headersCount: varint Headers => [Header]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/docs/design/design.md",
+        "quote": "The message log maintained by the broker is itself just a directory of files, each populated by a sequence of message sets that have been written to disk in the same format used by the producer and consumer."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/clients/consumer/ConsumerRecord.java",
+        "quote": "private final String topic; private final int partition; private final long offset; private final long timestamp; private final TimestampType timestampType; private final int serializedKeySize; private final int serializedValueSize; private final Headers headers;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/clients/consumer/ConsumerRecord.java",
+        "quote": "private final K key; private final V value; private final Optional<Integer> leaderEpoch; private final Optional<Short> deliveryCount;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/FetchResponse.json",
+        "quote": "{ \"name\": \"Records\", \"type\": \"records\", \"versions\": \"0+\", \"nullableVersions\": \"0+\", \"about\": \"The record data.\"}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/server/KafkaApis.scala",
+        "quote": ".setRecords(data.records)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/clients/consumer/ConsumerRecord.java",
+        "quote": "* are counted for records delivered by share groups."
+       }
+      ],
+      "note": "Per partition (not per message) the fetch response also carries HighWatermark, LastStableOffset, LogStartOffset, AbortedTransactions, PreferredReadReplica, DivergingEpoch, CurrentLeader and SnapshotId; per response ThrottleTimeMs, ErrorCode, SessionId and NodeEndpoints. ConsumerRecord's deliveryCount is counted only for records delivered by share groups."
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "batch.maxTimestamp, timestampType = LogAppendTime",
+      "resolution": "ms",
+      "setting": "topic config message.timestamp.type=LogAppendTime, or the broker default log.message.timestamp.type=LogAppendTime; the default is CreateTime (the producer's time)",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/server-common/src/main/java/org/apache/kafka/server/config/ServerLogConfigs.java",
+        "quote": "public static final String LOG_MESSAGE_TIMESTAMP_TYPE_DEFAULT = \"CreateTime\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/storage/src/main/java/org/apache/kafka/storage/internals/log/LogValidator.java",
+        "quote": "long now = time.milliseconds();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/storage/src/main/java/org/apache/kafka/storage/internals/log/LogValidator.java",
+        "quote": "batch.setMaxTimestamp(TimestampType.LOG_APPEND_TIME, now);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/utils/SystemTime.java",
+        "quote": "return System.currentTimeMillis();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/docs/streams/developer-guide/config-streams.md",
+        "quote": "This represents the time when the Kafka broker received the original message, in milliseconds since the epoch."
+       }
+      ],
+      "note": "Set by the partition leader in LogValidator, from its wall clock (System.currentTimeMillis), once per append, one value per batch. Under the default CreateTime the timestamp is the producer's and the broker keeps no time of its own for the message while it is stored."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecordBatch.java",
+        "quote": "this.logAppendTime = timestampType() == TimestampType.LOG_APPEND_TIME ? maxTimestamp() : null;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecord.java",
+        "quote": "timestamp = logAppendTime;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecordBatch.java",
+        "quote": "For LOG_APPEND_TIME, on the other hand, the MaxTimestamp field reflects the timestamp set"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/server/KafkaApis.scala",
+        "quote": ".setRecords(data.records)"
+       }
+      ],
+      "note": "The batch travels to the consumer in the stored format; the client gives every record of a LogAppendTime batch the batch's maxTimestamp, with timestampType LOG_APPEND_TIME."
+     },
+     "Q3": {
+      "answer": "request arrival",
+      "field": "Request.startTimeNanos (kept while the fetch waits in purgatory)",
+      "resolution": "ns (System.nanoTime)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/network/SocketServer.scala",
+        "quote": "val nowNanos = time.nanoseconds()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/network/SocketServer.scala",
+        "quote": "req = new Request(id, context, nowNanos, memoryPool, receive.payload, requestChannel.metrics)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/server/src/main/java/org/apache/kafka/network/Request.java",
+        "quote": "private final long startTimeNanos;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/utils/SystemTime.java",
+        "quote": "return System.nanoTime();"
+       }
+      ],
+      "note": "Taken when the network thread has read the request, and kept in the Request until the response is sent, including any wait in the fetch purgatory; monotonic, not the wall clock of the Q1 stamp. The same Request keeps requestDequeueTimeNanos, apiLocalCompleteTimeNanos, responseCompleteTimeNanos and responseDequeueTimeNanos, and ReplicaManager reads fetchTimeMs per partition read. They feed request metrics and the request log (Q6); none is sent."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/FetchResponse.json",
+        "quote": "{ \"name\": \"Records\", \"type\": \"records\", \"versions\": \"0+\", \"nullableVersions\": \"0+\", \"about\": \"The record data.\"}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/server/KafkaApis.scala",
+        "quote": "val partitionData = new FetchResponseData.PartitionData()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/server/KafkaApis.scala",
+        "quote": ".setRecords(data.records)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/server/src/main/java/org/apache/kafka/network/Request.java",
+        "quote": "double totalTimeMs = nanosToMs(endTimeNanos - startTimeNanos);"
+       }
+      ],
+      "note": "KafkaApis.handleFetchRequest builds each partition's response from the read result (error, high watermark, last stable offset, log start offset, aborted transactions, records, preferred read replica); the request's times are used only for metrics and the request log."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/FetchResponse.json",
+        "quote": "\"about\": \"The duration in milliseconds for which the request was throttled due to a quota violation, or zero if the request did not violate any quota.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/docs/implementation/message-format.md",
+        "quote": "length: varint attributes: int8 bit 0~7: unused timestampDelta: varlong offsetDelta: varint keyLength: varint key: byte[] valueLength: varint value: byte[] headersCount: varint Headers => [Header]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/server/KafkaApis.scala",
+        "quote": ".setRecords(data.records)"
+       }
+      ],
+      "note": "The only duration in a fetch response is ThrottleTimeMs (quota throttling of the response, per response); timestampDelta is relative to the batch's baseTimestamp, not a time at the broker."
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "The request log: logger kafka.request.logger at DEBUG (WARN in the shipped log4j2.yaml) writes one 'Completed request' JSON line per request, fetches included, with totalTimeMs, requestQueueTimeMs, localTimeMs, remoteTimeMs, throttleTimeMs, responseQueueTimeMs and sendTimeMs. RequestMetrics histograms give the same parts in aggregate, rounded to ms.",
+      "resolution": "durations in ms with microsecond precision; the line's own time per the log4j pattern",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/server/src/main/java/org/apache/kafka/network/Request.java",
+        "quote": "String logPrefix = \"Completed request:{}\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/server/src/main/java/org/apache/kafka/network/Request.java",
+        "quote": "return REQUEST_LOGGER.isDebugEnabled()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/server/src/main/java/org/apache/kafka/network/Request.java",
+        "quote": "* Converts nanos to millis with micros precision as additional decimal places in the request log have low"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/server/src/main/java/org/apache/kafka/network/RequestConvertToJson.java",
+        "quote": "node.set(\"remoteTimeMs\", new DoubleNode(apiRemoteTimeMs));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/server/src/main/java/org/apache/kafka/network/RequestConvertToJson.java",
+        "quote": "node.set(\"totalTimeMs\", new DoubleNode(totalTimeMs));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/config/log4j2.yaml",
+        "quote": "- name: kafka.request.logger level: WARN"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "one at a time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/docs/design/protocol.md",
+        "quote": "The broker's request processing allows only a single in-flight request per connection in order to guarantee this ordering."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/network/SocketServer.scala",
+        "quote": "selector.mute(connectionId)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/docs/design/design.md",
+        "quote": "To avoid this we have parameters in our pull request that allow the consumer request to block in a \"long poll\" waiting until data arrives"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/FetchRequest.json",
+        "quote": "\"about\": \"The maximum time in milliseconds to wait for the response.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/clients/consumer/ConsumerConfig.java",
+        "quote": "private static final String FETCH_MAX_WAIT_MS_DOC = \"The maximum amount of time the server will block before \" +"
+       }
+      ],
+      "note": "A fetch can wait at the broker (long poll, up to MaxWaitMs) and one fetch covers many partitions, but the broker mutes the connection from a request's arrival until its response is sent, so one request per connection is held at a time; a message that arrives between a response and the next fetch waits for that fetch."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/network/SocketServer.scala",
+       "read": "The network processor takes nowNanos = time.nanoseconds() once it has parsed a fully received request's header, and builds the Request with it; the Request object, with that time, is what the fetch purgatory holds while the fetch waits. Nothing puts it in the response.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "share groups (KIP-932, GA since 4.2)",
+     "Q0": {
+      "fields": [
+       "batch.baseOffset",
+       "batch.batchLength",
+       "batch.partitionLeaderEpoch",
+       "batch.magic (2)",
+       "batch.crc",
+       "batch.attributes (compression, timestampType, isTransactional, isControlBatch, hasDeleteHorizonMs)",
+       "batch.lastOffsetDelta",
+       "batch.baseTimestamp",
+       "batch.maxTimestamp",
+       "batch.producerId",
+       "batch.producerEpoch",
+       "batch.baseSequence",
+       "batch.recordsCount",
+       "record.length",
+       "record.attributes (unused)",
+       "record.timestampDelta",
+       "record.offsetDelta",
+       "record.key",
+       "record.value",
+       "record.headers[] (key, value)",
+       "ConsumerRecord: topic, partition, offset, timestamp, timestampType, serializedKeySize, serializedValueSize, headers, key, value, leaderEpoch, deliveryCount (share groups only)",
+       "AcquiredRecords[]: FirstOffset, LastOffset, DeliveryCount (per acquired range)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/docs/implementation/message-format.md",
+        "quote": "baseOffset: int64 batchLength: int32 partitionLeaderEpoch: int32 magic: int8 (current magic value is 2) crc: uint32 attributes: int16"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/docs/implementation/message-format.md",
+        "quote": "lastOffsetDelta: int32 baseTimestamp: int64 maxTimestamp: int64 producerId: int64 producerEpoch: int16 baseSequence: int32 recordsCount: int32 records: [Record]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/docs/implementation/message-format.md",
+        "quote": "length: varint attributes: int8 bit 0~7: unused timestampDelta: varlong offsetDelta: varint keyLength: varint key: byte[] valueLength: varint value: byte[] headersCount: varint Headers => [Header]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/docs/design/design.md",
+        "quote": "The message log maintained by the broker is itself just a directory of files, each populated by a sequence of message sets that have been written to disk in the same format used by the producer and consumer."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/clients/consumer/ConsumerRecord.java",
+        "quote": "private final String topic; private final int partition; private final long offset; private final long timestamp; private final TimestampType timestampType; private final int serializedKeySize; private final int serializedValueSize; private final Headers headers;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/clients/consumer/ConsumerRecord.java",
+        "quote": "private final K key; private final V value; private final Optional<Integer> leaderEpoch; private final Optional<Short> deliveryCount;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ShareFetchResponse.json",
+        "quote": "{ \"name\": \"Records\", \"type\": \"records\", \"versions\": \"0+\", \"nullableVersions\": \"0\", \"about\": \"The record data.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ShareFetchResponse.json",
+        "quote": "{ \"name\": \"DeliveryCount\", \"type\": \"int16\", \"versions\": \"0+\", \"about\": \"The delivery count of this batch of acquired records.\" }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/java/kafka/server/share/ShareFetchUtils.java",
+        "quote": ".setRecords(maybeSliceFetchRecords(fetchPartitionData.records, shareAcquiredRecords))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/docs/getting-started/upgrade.md",
+        "quote": "is production-ready in Apache Kafka 4.2. This feature introduces a new kind of group called share groups, as an alternative to consumer groups."
+       }
+      ],
+      "note": "Per response the ShareFetch response also carries ThrottleTimeMs, ErrorCode, ErrorMessage, AcquisitionLockTimeoutMs and NodeEndpoints; per partition ErrorCode, ErrorMessage, AcknowledgeErrorCode, AcknowledgeErrorMessage and CurrentLeader."
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "batch.maxTimestamp, timestampType = LogAppendTime",
+      "resolution": "ms",
+      "setting": "topic config message.timestamp.type=LogAppendTime, or the broker default log.message.timestamp.type=LogAppendTime; the default is CreateTime (the producer's time)",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/server-common/src/main/java/org/apache/kafka/server/config/ServerLogConfigs.java",
+        "quote": "public static final String LOG_MESSAGE_TIMESTAMP_TYPE_DEFAULT = \"CreateTime\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/storage/src/main/java/org/apache/kafka/storage/internals/log/LogValidator.java",
+        "quote": "long now = time.milliseconds();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/storage/src/main/java/org/apache/kafka/storage/internals/log/LogValidator.java",
+        "quote": "batch.setMaxTimestamp(TimestampType.LOG_APPEND_TIME, now);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/utils/SystemTime.java",
+        "quote": "return System.currentTimeMillis();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/docs/streams/developer-guide/config-streams.md",
+        "quote": "This represents the time when the Kafka broker received the original message, in milliseconds since the epoch."
+       }
+      ],
+      "note": "Set by the partition leader in LogValidator, from its wall clock (System.currentTimeMillis), once per append, one value per batch. Under the default CreateTime the timestamp is the producer's and the broker keeps no time of its own for the message while it is stored. Share groups read the same partition logs."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecordBatch.java",
+        "quote": "this.logAppendTime = timestampType() == TimestampType.LOG_APPEND_TIME ? maxTimestamp() : null;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecord.java",
+        "quote": "timestamp = logAppendTime;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecordBatch.java",
+        "quote": "For LOG_APPEND_TIME, on the other hand, the MaxTimestamp field reflects the timestamp set"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/java/kafka/server/share/ShareFetchUtils.java",
+        "quote": ".setRecords(maybeSliceFetchRecords(fetchPartitionData.records, shareAcquiredRecords))"
+       }
+      ],
+      "note": "The batch travels to the consumer in the stored format; the client gives every record of a LogAppendTime batch the batch's maxTimestamp, with timestampType LOG_APPEND_TIME."
+     },
+     "Q3": {
+      "answer": "request arrival",
+      "field": "Request.startTimeNanos (kept while the ShareFetch waits); also the acquisition-lock deadline of each acquired range",
+      "resolution": "ns (System.nanoTime)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/network/SocketServer.scala",
+        "quote": "val nowNanos = time.nanoseconds()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/network/SocketServer.scala",
+        "quote": "req = new Request(id, context, nowNanos, memoryPool, receive.payload, requestChannel.metrics)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/server/src/main/java/org/apache/kafka/network/Request.java",
+        "quote": "private final long startTimeNanos;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/utils/SystemTime.java",
+        "quote": "return System.nanoTime();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/server/src/main/java/org/apache/kafka/server/share/fetch/AcquisitionLockTimerTask.java",
+        "quote": "this.expirationMs = time.hiResClockMs() + delayMs;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/java/kafka/server/share/SharePartition.java",
+        "quote": "inFlightBatch.updateAcquisitionLockTimeout(acquisitionLockTimeoutTask);"
+       }
+      ],
+      "note": "Per ShareFetch request as for Fetch (same network layer). The broker also records a send-side time: each acquired range gets an acquisition-lock timer with expirationMs = time.hiResClockMs() + delayMs (the record lock duration), monotonic ms, stored with the in-flight batch. Neither time is sent with the records."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ShareFetchResponse.json",
+        "quote": "{ \"name\": \"AcquiredRecords\", \"type\": \"[]AcquiredRecords\", \"versions\": \"0+\", \"about\": \"The acquired records.\", \"fields\": ["
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/java/kafka/server/share/ShareFetchUtils.java",
+        "quote": ".setAcquiredRecords(shareAcquiredRecords.acquiredRecords());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/server/src/main/java/org/apache/kafka/network/Request.java",
+        "quote": "double totalTimeMs = nanosToMs(endTimeNanos - startTimeNanos);"
+       }
+      ],
+      "note": "The ShareFetch response's fields (listed in Q0) hold no request-arrival time and no lock deadline: AcquisitionLockTimeoutMs gives the lock's duration, but not the broker time it is counted from."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ShareFetchResponse.json",
+        "quote": "\"about\": \"The time in milliseconds for which the acquired records are locked.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ShareFetchResponse.json",
+        "quote": "\"about\": \"The duration in milliseconds for which the request was throttled due to a quota violation, or zero if the request did not violate any quota.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/java/kafka/server/share/ShareFetchUtils.java",
+        "quote": ".setRecords(maybeSliceFetchRecords(fetchPartitionData.records, shareAcquiredRecords))"
+       }
+      ],
+      "note": "AcquisitionLockTimeoutMs is the configured lock duration and ThrottleTimeMs is quota throttling; neither is a measured wait or stay."
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "The request log: logger kafka.request.logger at DEBUG (WARN in the shipped log4j2.yaml) writes one 'Completed request' JSON line per request, fetches included, with totalTimeMs, requestQueueTimeMs, localTimeMs, remoteTimeMs, throttleTimeMs, responseQueueTimeMs and sendTimeMs. RequestMetrics histograms give the same parts in aggregate, rounded to ms. ShareFetch requests are logged by the same code path.",
+      "resolution": "durations in ms with microsecond precision; the line's own time per the log4j pattern",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/server/src/main/java/org/apache/kafka/network/Request.java",
+        "quote": "String logPrefix = \"Completed request:{}\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/server/src/main/java/org/apache/kafka/network/Request.java",
+        "quote": "return REQUEST_LOGGER.isDebugEnabled()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/server/src/main/java/org/apache/kafka/network/Request.java",
+        "quote": "* Converts nanos to millis with micros precision as additional decimal places in the request log have low"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/server/src/main/java/org/apache/kafka/network/RequestConvertToJson.java",
+        "quote": "node.set(\"remoteTimeMs\", new DoubleNode(apiRemoteTimeMs));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/server/src/main/java/org/apache/kafka/network/RequestConvertToJson.java",
+        "quote": "node.set(\"totalTimeMs\", new DoubleNode(totalTimeMs));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/config/log4j2.yaml",
+        "quote": "- name: kafka.request.logger level: WARN"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "one at a time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/docs/design/protocol.md",
+        "quote": "The broker's request processing allows only a single in-flight request per connection in order to guarantee this ordering."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/network/SocketServer.scala",
+        "quote": "selector.mute(connectionId)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ShareFetchRequest.json",
+        "quote": "\"about\": \"The maximum time in milliseconds to wait for the response.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ShareFetchRequest.json",
+        "quote": "\"about\": \"The minimum bytes to accumulate in the response.\" },"
+       }
+      ],
+      "note": "A ShareFetch waits like a fetch (MaxWaitMs, MinBytes), one per connection at a time; several members of one share group can each hold one for the same partition, but no single consumer can hold more than one per connection."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/network/SocketServer.scala",
+       "read": "The same network layer stamps each ShareFetch request on arrival; the acquisition lock's deadline is kept with the in-flight batch. Neither is in the response.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "Redpanda",
+   "group": "A",
+   "version": "26.2.2",
+   "version_evidence": [
+    {
+     "url": "https://github.com/redpanda-data/redpanda/releases/tag/v26.2.2",
+     "quote": "Release v26.2.2"
+    },
+    {
+     "url": "https://api.github.com/repos/redpanda-data/redpanda/releases/tags/v26.2.2",
+     "quote": "\"tag_name\":\"v26.2.2\""
+    },
+    {
+     "url": "https://api.github.com/repos/redpanda-data/redpanda/releases/tags/v26.2.2",
+     "quote": "\"prerelease\":false"
+    },
+    {
+     "url": "https://github.com/redpanda-data/redpanda/releases/tag/v26.2.2",
+     "quote": "This is the last Redpanda release published on GitHub."
+    },
+    {
+     "url": "https://docs.redpanda.com/streaming/current/reference/releases/redpanda/",
+     "quote": "v26.2.5 (2026-10-16)"
+    }
+   ],
+   "version_note": "No file at the tag states the version (it is stamped from git at build time), so the evidence is the GitHub release v26.2.2, which GitHub marks latest and which is the highest non-pre-release tag (tag commit fd30e45b31e0c5e9595e530121a0896e3ddd12a3). Deviation: its notes say it is the last release published on GitHub, and Redpanda's docs list v26.2.3 (2026-09-17), v26.2.4 (2026-10-06) and v26.2.5 (2026-10-16), which have no tag in the public repository (its v26.2.x branch ends at v26.2.2's commit). v26.2.2 is the newest release whose source can be pinned.",
+   "modes": [
+    {
+     "mode": "Kafka API (fetch)",
+     "Q0": {
+      "fields": [
+       "batch.baseOffset",
+       "batch.batchLength",
+       "batch.partitionLeaderEpoch (from the Raft term)",
+       "batch.magic (2)",
+       "batch.crc",
+       "batch.attributes (compression, timestampType, isTransactional, isControlBatch)",
+       "batch.lastOffsetDelta",
+       "batch.firstTimestamp (baseTimestamp)",
+       "batch.maxTimestamp",
+       "batch.producerId",
+       "batch.producerEpoch",
+       "batch.baseSequence",
+       "batch.recordCount",
+       "record.length",
+       "record.attributes",
+       "record.timestampDelta",
+       "record.offsetDelta",
+       "record.key",
+       "record.value",
+       "record.headers[] (key, value)",
+       "(client side: the Kafka client's record class, e.g. Java ConsumerRecord)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/wire.h",
+        "quote": "w.write(int64_t(batch.base_offset()));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/wire.h",
+        "quote": "w.write(int16_t(batch.header().attrs.value()));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/wire.h",
+        "quote": "w.write(int64_t(batch.header().first_timestamp.value()));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/wire.h",
+        "quote": "w.write(int64_t(batch.header().max_timestamp.value()));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/wire.h",
+        "quote": "w.write_direct(std::move(batch).release_data());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/model/record.h",
+        "quote": "int32_t _size_bytes{0}; record_attributes _attributes; int64_t _timestamp_delta{0}; int32_t _offset_delta{0}; int32_t _key_size{-1}; iobuf _key; int32_t _val_size{-1}; iobuf _value; chunked_vector<record_header> _headers{};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/schemata/fetch_response.json",
+        "quote": "{ \"name\": \"Records\", \"type\": \"records\", \"versions\": \"0+\", \"nullableVersions\": \"0+\", \"about\": \"The record data.\"}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/fetch.cc",
+        "quote": "resp.records = batch_reader(std::move(res).release_data());"
+       }
+      ],
+      "note": "Redpanda serves the Kafka v2 batch: writer_serialize_batch writes the Kafka batch header from its own header, then the stored records. Per partition (not per message) the response also carries high watermark, last stable offset, log start offset, aborted transactions, preferred read replica and current leader; per response ThrottleTimeMs, ErrorCode and SessionId (fetch versions 0-13)."
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "batch.maxTimestamp, timestampType = LogAppendTime",
+      "resolution": "ms",
+      "setting": "cluster property log_message_timestamp_type=LogAppendTime, or topic property message.timestamp.type=LogAppendTime; the default is CreateTime",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/config/configuration.cc",
+        "quote": "\"Default timestamp type for topic messages (CreateTime or \" \"LogAppendTime). The topic property `message.timestamp.type` overrides \""
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/config/configuration.cc",
+        "quote": ".visibility = visibility::user}, model::timestamp_type::create_time, {model::timestamp_type::create_time, model::timestamp_type::append_time})"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/produce_validation.cc",
+        "quote": "const auto broker_time = model::timestamp::now();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/produce_validation.cc",
+        "quote": "max_ts = broker_time;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/produce_validation.cc",
+        "quote": "batch.set_max_timestamp(timestamp_type, max_ts.value());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/model/timestamp.h",
+        "quote": "using timestamp_clock = std::chrono::system_clock;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/model/timestamp.h",
+        "quote": "// This mimics System.currentTimeMillis() which needs a duration_cast<>"
+       }
+      ],
+      "note": "Set in the produce path (produce_validation.cc, validate_batch) from the broker's system clock in ms, one value per batch. Separately, storage keeps per log segment the broker time of the last append (segment_index broker_timestamp, for time-based retention); that is per segment, not per message, and is not sent to consumers."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/wire.h",
+        "quote": "w.write(int64_t(batch.header().max_timestamp.value()));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/wire.h",
+        "quote": "w.write(int16_t(batch.header().attrs.value()));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/model/record.h",
+        "quote": "_attributes.set(3, t == timestamp_type::append_time);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/fetch.cc",
+        "quote": "resp.records = batch_reader(std::move(res).release_data());"
+       }
+      ],
+      "note": "The stamp and the timestamp-type bit travel in the Kafka batch header; a Kafka client then gives each record of the batch the batch's maxTimestamp."
+     },
+     "Q3": {
+      "answer": "request arrival",
+      "field": "in-flight request recv_time; per-request latency begin time",
+      "resolution": "recv_time: Seastar lowres_clock (~task_quota); latency begin: std::chrono::high_resolution_clock",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/connection_context.cc",
+        "quote": "_attributes.in_flight_requests.record_begin_request(h->key);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/connection_context.cc",
+        "quote": "_in_flight_request_samples.emplace_back(key, clock::now());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/connection_context.h",
+        "quote": "using clock = ss::lowres_clock;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/connection_context.h",
+        "quote": "clock::time_point recv_time;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/connection_context.cc",
+        "quote": "r.method_latency = _server.hist().auto_measure();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/utils/log_hist.h",
+        "quote": "using clock_type = std::chrono::high_resolution_clock;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/seastar/5bf36c507142f1f82cd92ca78be3adc6030f4c3f/include/seastar/core/lowres_clock.hh",
+        "quote": "This is a monotonic clock with a granularity of ~task_quota."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/bazel/repositories.bzl",
+        "quote": "url = \"https://github.com/redpanda-data/seastar/archive/5bf36c507142f1f82cd92ca78be3adc6030f4c3f.tar.gz\","
+       }
+      ],
+      "note": "recv_time is taken right after the request header is parsed and kept (up to 5 samples per connection) while the request is in flight; the latency measurement starts when the request's resources are reserved and feeds the latency histograms. Both stay in broker memory."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/fetch.cc",
+        "quote": "fetch_response::partition_response resp;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/fetch.cc",
+        "quote": "resp.high_watermark = res.high_watermark;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/fetch.cc",
+        "quote": "resp.records = batch_reader(std::move(res).release_data());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/schemata/fetch_response.json",
+        "quote": "{ \"name\": \"Records\", \"type\": \"records\", \"versions\": \"0+\", \"nullableVersions\": \"0+\", \"about\": \"The record data.\"}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/wire.h",
+        "quote": "w.write(int64_t(batch.header().producer_id));"
+       }
+      ],
+      "note": "The fetch handler fills each partition response from the read result and the records from the log as written; neither the request's receipt time nor a send time is put into the response or the batch header."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/schemata/fetch_response.json",
+        "quote": "\"about\": \"The duration in milliseconds for which the request was throttled due to a quota violation, or zero if the request did not violate any quota.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/wire.h",
+        "quote": "w.write(int64_t(batch.header().first_timestamp.value()));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/fetch.cc",
+        "quote": "resp.records = batch_reader(std::move(res).release_data());"
+       }
+      ],
+      "note": "As in Kafka, the only duration in a fetch response is ThrottleTimeMs."
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "Admin API v2 Kafka connections (ListKafkaConnections, shown by rpk cluster connections list): for each connection a sample of up to 5 in-flight requests, each with in_flight_duration since it was received. Only while the request is in flight. Latency histograms (per handler, and for fetch and produce) are aggregate; a kafka/wire TRACE line marks each request's processing without a duration.",
+      "resolution": "in_flight_duration from the lowres clock (~task_quota)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/proto/redpanda/core/admin/v2/kafka_connections.proto",
+        "quote": "// How long the request has been in-flight since it was received"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/proto/redpanda/core/admin/v2/kafka_connections.proto",
+        "quote": "google.protobuf.Duration in_flight_duration = 2;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/proto/redpanda/core/admin/v2/kafka_connections.proto",
+        "quote": "// A sample (e.g., the 5 latest) of the currently in-flight requests"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/connection_context.cc",
+        "quote": "proto_req.set_in_flight_duration(absl::FromChrono(now - req.recv_time));"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "one at a time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/fetch.h",
+        "quote": "using fetch_handler = single_stage_handler<"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/response.h",
+        "quote": "* Single stage method is a helper to execute whole request in foreground."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/connection_context.h",
+        "quote": "* processing is done in foreground (the first phase is the one that is"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/connection_context.h",
+        "quote": "* background allowing multiple concurrent produce/offset_commit"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/connection_context.cc",
+        "quote": "co_await process_one_request();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/connection_context.cc",
+        "quote": "auto dispatch = co_await ss::coroutine::as_future("
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/fetch.h",
+        "quote": "return data.max_wait_ms;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/fetch.cc",
+        "quote": "deadline = model::timeout_clock::now() + delay.value();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/config/configuration.cc",
+        "quote": "\"The backend is signaled when a partition has new data, so Redpanda does \""
+       }
+      ],
+      "note": "A fetch waits at the broker up to max_wait_ms and, under the default non_polling strategy, is signalled when a partition gets data. Fetch is a single-stage handler, so its whole handling, wait included, is the foreground stage that the connection's read loop awaits before reading the next request: one fetch per connection at a time (produce and offset_commit can pipeline)."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/connection_context.cc",
+       "read": "The connection records each request's arrival on its in-flight samples (lowres_clock) after parsing the header; it stays in broker memory.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "Apache Pulsar",
+   "group": "A",
+   "version": "5.0.1",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/gradle.properties",
+     "quote": "version=5.0.1"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/pom.xml",
+     "quote": "<version>3.1.1.1</version>"
+    }
+   ],
+   "version_note": "Pulsar v5.0.1 (released 2026-10-26, marked latest). The KoP mode is coded at KoP v3.1.1.1; see that mode's note.",
+   "modes": [
+    {
+     "mode": "consumer (flow permits)",
+     "Q0": {
+      "fields": [
+       "CommandMessage: consumer_id, message_id, redelivery_count, ack_set, consumer_epoch",
+       "MessageIdData: ledgerId, entryId, partition, batch_index, ack_set, batch_size, first_chunk_message_id",
+       "BrokerEntryMetadata (only when the broker exposes it): broker_timestamp, index",
+       "MessageMetadata: producer_name, sequence_id, publish_time, properties, replicated_from, partition_key, replicate_to, compression, uncompressed_size, num_messages_in_batch, event_time, encryption_keys, encryption_algo, encryption_param, schema_version, partition_key_b64_encoded, ordering_key, deliver_at_time, marker_type, txnid_least_bits, txnid_most_bits, highest_sequence_id, null_value, uuid, num_chunks_from_msg, total_chunk_msg_size, chunk_id, null_partition_key, compacted_batch_indexes, schema_id, entry_hash_min, entry_hash_max",
+       "SingleMessageMetadata (each message of a batch): properties, partition_key, payload_size, compacted_out, event_time, partition_key_b64_encoded, ordering_key, sequence_id, null_value, null_partition_key",
+       "payload",
+       "client Message: getPublishTime, getEventTime, getBrokerPublishTime, getIndex, getRedeliveryCount, getMessageId, getSequenceId, getProducerName, key, properties, ..."
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message CommandMessage { required uint64 consumer_id = 1; required MessageIdData message_id = 2; optional uint32 redelivery_count = 3 [default = 0]; repeated int64 ack_set = 4; optional uint64 consumer_epoch = 5; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message BrokerEntryMetadata { optional uint64 broker_timestamp = 1; optional uint64 index = 2; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message MessageMetadata { required string producer_name = 1; required uint64 sequence_id = 2; required uint64 publish_time = 3; repeated KeyValue properties = 4;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "optional uint64 event_time = 12 [default = 0];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message SingleMessageMetadata { repeated KeyValue properties = 1; optional string partition_key = 2; required int32 payload_size = 3;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/PulsarCommandSenderImpl.java",
+        "quote": "ByteBuf metadataAndPayload = entry.getDataBuffer();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/ServerCnx.java",
+        "quote": "BaseCommand command = Commands.newMessageCommand(consumerId, ledgerId, entryId, partition, redeliveryCount,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/ServerCnx.java",
+        "quote": "Commands.copyMetadataAndPayload(metadataAndPayload, payloadSize, out);"
+       }
+      ],
+      "note": "The broker writes a CommandMessage (built by Commands.newMessageCommand) followed by the stored entry: optional BrokerEntryMetadata, MessageMetadata, and the payload (SingleMessageMetadata per message when batched)."
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "BrokerEntryMetadata.broker_timestamp",
+      "resolution": "ms",
+      "setting": "broker setting brokerEntryMetadataInterceptors including org.apache.pulsar.common.intercept.AppendBrokerTimestampMetadataInterceptor (default: no interceptors)",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker-common/src/main/java/org/apache/pulsar/broker/ServiceConfiguration.java",
+        "quote": "private Set<String> brokerEntryMetadataInterceptors = new HashSet<>();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/common/intercept/AppendBrokerTimestampMetadataInterceptor.java",
+        "quote": "return brokerMetadata.setBrokerTimestamp(System.currentTimeMillis());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/intercept/ManagedLedgerInterceptorImpl.java",
+        "quote": "op.setData(Commands.addBrokerEntryMetadata(op.getData(), brokerEntryMetadataInterceptors, numberOfMessages));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-client/src/main/java/org/apache/pulsar/client/impl/ProducerImpl.java",
+        "quote": "msgMetadata.setPublishTime(client.getClientClock().millis());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-client-api/src/main/java/org/apache/pulsar/client/api/Message.java",
+        "quote": "* Get the publish time of this message. The publish time is the timestamp that a client publish the message."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/managed-ledger/src/main/java/org/apache/bookkeeper/mledger/impl/OpAddEntry.java",
+        "quote": "ml.entryCache.insert(entry);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/managed-ledger/src/main/java/org/apache/bookkeeper/mledger/impl/cache/RangeCacheEntryWrapper.java",
+        "quote": "entryWrapper.timestampNanos = System.nanoTime();"
+       }
+      ],
+      "note": "With the interceptor, the broker stamps each entry (one per message or producer batch) with its wall clock when it adds the entry to the managed ledger; the stamp is stored with the entry. publish_time and event_time are the producer's (the broker's REST produce path alone sets publish_time from the broker's clock). Internally, an entry cached on write for tailing reads (only while the ledger has active cursors) keeps its insertion time (System.nanoTime) for time-based cache eviction; that time is reset when its stay in the cache is extended and is never sent to consumers."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/PulsarCommandSenderImpl.java",
+        "quote": "|| !cnx.supportBrokerMetadata()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/PulsarCommandSenderImpl.java",
+        "quote": ".isExposingBrokerEntryMetadataToClientEnabled()) {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/PulsarCommandSenderImpl.java",
+        "quote": "Commands.skipBrokerEntryMetadataIfExist(metadataAndPayload);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker-common/src/main/java/org/apache/pulsar/broker/ServiceConfiguration.java",
+        "quote": "private boolean exposingBrokerEntryMetadataToClientEnabled = false;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/common/protocol/Commands.java",
+        "quote": "flags.setSupportsBrokerEntryMetadata(true);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-client-api/src/main/java/org/apache/pulsar/client/api/Message.java",
+        "quote": "Optional<Long> getBrokerPublishTime();"
+       }
+      ],
+      "note": "Only when a second broker setting, exposingBrokerEntryMetadataToClientEnabled (default false), is on and the client announces support (the Java client does); otherwise the broker strips the broker entry metadata before dispatch. The consumer reads it as Message.getBrokerPublishTime()."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "Consumer.lastConsumedTimestamp (latest dispatch to the consumer)",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/Consumer.java",
+        "quote": "this.lastConsumedTimestamp = System.currentTimeMillis();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/Consumer.java",
+        "quote": "final long currentTs = System.currentTimeMillis();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/Consumer.java",
+        "quote": "this.lastConsumedFlowTimestamp = currentTs;"
+       }
+      ],
+      "note": "Set at the start of each dispatch of entries to the consumer (Consumer.sendMessages), before the write; each Flow (credit) command sets lastConsumedFlowTimestamp. Both are kept per consumer only as the latest value, overwritten by the next dispatch or Flow, and neither is sent with the message."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message CommandMessage { required uint64 consumer_id = 1; required MessageIdData message_id = 2; optional uint32 redelivery_count = 3 [default = 0]; repeated int64 ack_set = 4; optional uint64 consumer_epoch = 5; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/ServerCnx.java",
+        "quote": "BaseCommand command = Commands.newMessageCommand(consumerId, ledgerId, entryId, partition, redeliveryCount,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/ServerCnx.java",
+        "quote": "Commands.copyMetadataAndPayload(metadataAndPayload, payloadSize, out);"
+       }
+      ],
+      "note": "CommandMessage carries ids, the redelivery count, the ack set and the consumer epoch; the rest of the frame is the stored entry. No dispatch or Flow time is added."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message CommandMessage { required uint64 consumer_id = 1; required MessageIdData message_id = 2; optional uint32 redelivery_count = 3 [default = 0]; repeated int64 ack_set = 4; optional uint64 consumer_epoch = 5; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "// Mark the message to be delivered at or after the specified timestamp"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "optional int64 deliver_at_time = 19;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/ServerCnx.java",
+        "quote": "BaseCommand command = Commands.newMessageCommand(consumerId, ledgerId, entryId, partition, redeliveryCount,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/ServerCnx.java",
+        "quote": "Commands.copyMetadataAndPayload(metadataAndPayload, payloadSize, out);"
+       }
+      ],
+      "note": "No delivered field is a duration measured by the broker; deliver_at_time is a time point the producer sets for delayed delivery."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "DEBUG log lines (default level info): one per entry dispatched to a consumer ('- Sending message to consumerId, msg id- with batchSize', with ledgerId and entryId), one per entry persisted ('Persisted message', with sequenceId) and one per Flow command ('Received flow from consumer permits'), each with the log line's time. Topic stats show per consumer lastConsumedTimestamp and lastConsumedFlowTimestamp (latest values only). Publish and dispatch metrics are aggregate. An entry is one message or one producer batch.",
+      "resolution": "log line time per the log4j2 pattern (%d{ISO8601_OFFSET_DATE_TIME_HHMM}); stats in ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/PulsarCommandSenderImpl.java",
+        "quote": ".log(\"- Sending message to consumerId, msg id- with batchSize\");"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/Producer.java",
+        "quote": ".log(\"Persisted message\");"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/ServerCnx.java",
+        "quote": ".log(\"Received flow from consumer permits\");"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-client-admin-api/src/main/java/org/apache/pulsar/common/policies/data/ConsumerStats.java",
+        "quote": "long getLastConsumedTimestamp();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-client-admin-api/src/main/java/org/apache/pulsar/common/policies/data/ConsumerStats.java",
+        "quote": "long getLastConsumedFlowTimestamp();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/conf/log4j2.yaml",
+        "quote": "Pattern: \"%d{ISO8601_OFFSET_DATE_TIME_HHMM} [%t] %-5level %logger{36} - %msg%equals{ %X}{ {}}{}%n\""
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/conf/log4j2.yaml",
+        "quote": "- name: \"pulsar.log.level\" value: \"info\""
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "// Max number of messages to prefetch, in addition // of any number previously specified required uint32 messagePermits = 2;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/Consumer.java",
+        "quote": "// Represents how many messages we can safely send to the consumer without"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/Consumer.java",
+        "quote": "// overflowing its receiving queue. The consumer will use Flow commands to"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/ServerCnx.java",
+        "quote": "consumer.flowPermits(flow.getMessagePermits());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/managed-ledger/src/main/java/org/apache/bookkeeper/mledger/ManagedCursor.java",
+        "quote": "* <p/>If no entries are available, the callback will not be triggered. Instead it will be registered to wait until"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/persistent/PersistentDispatcherSingleActiveConsumer.java",
+        "quote": "entriesFuture = readEntriesWithSkipOrWait(cursor, messagesToRead, bytesToRead,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-client/src/main/java/org/apache/pulsar/client/impl/conf/ConsumerConfigurationData.java",
+        "quote": "private int receiverQueueSize = 1000;"
+       }
+      ],
+      "note": "The consumer grants message permits with Flow commands (receiverQueueSize, default 1000); while permits remain, the dispatcher keeps a read waiting on the managed ledger, so an entry that arrives is dispatched at once. Credit, not a request per message."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/Consumer.java",
+       "read": "Consumer.sendMessages sets lastConsumedTimestamp = System.currentTimeMillis() at each dispatch, kept per consumer as the latest value only, and not sent.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "Flow commands grant message permits (PulsarApi.proto messagePermits; ServerCnx passes them to Consumer.flowPermits); the dispatcher sends while permits remain.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "reader",
+     "Q0": {
+      "fields": [
+       "CommandMessage: consumer_id, message_id, redelivery_count, ack_set, consumer_epoch",
+       "MessageIdData: ledgerId, entryId, partition, batch_index, ack_set, batch_size, first_chunk_message_id",
+       "BrokerEntryMetadata (only when the broker exposes it): broker_timestamp, index",
+       "MessageMetadata: producer_name, sequence_id, publish_time, properties, replicated_from, partition_key, replicate_to, compression, uncompressed_size, num_messages_in_batch, event_time, encryption_keys, encryption_algo, encryption_param, schema_version, partition_key_b64_encoded, ordering_key, deliver_at_time, marker_type, txnid_least_bits, txnid_most_bits, highest_sequence_id, null_value, uuid, num_chunks_from_msg, total_chunk_msg_size, chunk_id, null_partition_key, compacted_batch_indexes, schema_id, entry_hash_min, entry_hash_max",
+       "SingleMessageMetadata (each message of a batch): properties, partition_key, payload_size, compacted_out, event_time, partition_key_b64_encoded, ordering_key, sequence_id, null_value, null_partition_key",
+       "payload",
+       "client Message: getPublishTime, getEventTime, getBrokerPublishTime, getIndex, getRedeliveryCount, getMessageId, getSequenceId, getProducerName, key, properties, ..."
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message CommandMessage { required uint64 consumer_id = 1; required MessageIdData message_id = 2; optional uint32 redelivery_count = 3 [default = 0]; repeated int64 ack_set = 4; optional uint64 consumer_epoch = 5; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message BrokerEntryMetadata { optional uint64 broker_timestamp = 1; optional uint64 index = 2; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message MessageMetadata { required string producer_name = 1; required uint64 sequence_id = 2; required uint64 publish_time = 3; repeated KeyValue properties = 4;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "optional uint64 event_time = 12 [default = 0];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message SingleMessageMetadata { repeated KeyValue properties = 1; optional string partition_key = 2; required int32 payload_size = 3;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/PulsarCommandSenderImpl.java",
+        "quote": "ByteBuf metadataAndPayload = entry.getDataBuffer();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/ServerCnx.java",
+        "quote": "BaseCommand command = Commands.newMessageCommand(consumerId, ledgerId, entryId, partition, redeliveryCount,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/ServerCnx.java",
+        "quote": "Commands.copyMetadataAndPayload(metadataAndPayload, payloadSize, out);"
+       }
+      ],
+      "note": "The broker writes a CommandMessage (built by Commands.newMessageCommand) followed by the stored entry: optional BrokerEntryMetadata, MessageMetadata, and the payload (SingleMessageMetadata per message when batched). A Reader is a consumer on a non-durable exclusive subscription, so it receives the same frames."
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "BrokerEntryMetadata.broker_timestamp",
+      "resolution": "ms",
+      "setting": "broker setting brokerEntryMetadataInterceptors including org.apache.pulsar.common.intercept.AppendBrokerTimestampMetadataInterceptor (default: no interceptors)",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker-common/src/main/java/org/apache/pulsar/broker/ServiceConfiguration.java",
+        "quote": "private Set<String> brokerEntryMetadataInterceptors = new HashSet<>();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/common/intercept/AppendBrokerTimestampMetadataInterceptor.java",
+        "quote": "return brokerMetadata.setBrokerTimestamp(System.currentTimeMillis());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/intercept/ManagedLedgerInterceptorImpl.java",
+        "quote": "op.setData(Commands.addBrokerEntryMetadata(op.getData(), brokerEntryMetadataInterceptors, numberOfMessages));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-client/src/main/java/org/apache/pulsar/client/impl/ProducerImpl.java",
+        "quote": "msgMetadata.setPublishTime(client.getClientClock().millis());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-client-api/src/main/java/org/apache/pulsar/client/api/Message.java",
+        "quote": "* Get the publish time of this message. The publish time is the timestamp that a client publish the message."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/managed-ledger/src/main/java/org/apache/bookkeeper/mledger/impl/OpAddEntry.java",
+        "quote": "ml.entryCache.insert(entry);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/managed-ledger/src/main/java/org/apache/bookkeeper/mledger/impl/cache/RangeCacheEntryWrapper.java",
+        "quote": "entryWrapper.timestampNanos = System.nanoTime();"
+       }
+      ],
+      "note": "With the interceptor, the broker stamps each entry (one per message or producer batch) with its wall clock when it adds the entry to the managed ledger; the stamp is stored with the entry. publish_time and event_time are the producer's (the broker's REST produce path alone sets publish_time from the broker's clock). Internally, an entry cached on write for tailing reads (only while the ledger has active cursors) keeps its insertion time (System.nanoTime) for time-based cache eviction; that time is reset when its stay in the cache is extended and is never sent to consumers."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/PulsarCommandSenderImpl.java",
+        "quote": "|| !cnx.supportBrokerMetadata()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/PulsarCommandSenderImpl.java",
+        "quote": ".isExposingBrokerEntryMetadataToClientEnabled()) {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/PulsarCommandSenderImpl.java",
+        "quote": "Commands.skipBrokerEntryMetadataIfExist(metadataAndPayload);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker-common/src/main/java/org/apache/pulsar/broker/ServiceConfiguration.java",
+        "quote": "private boolean exposingBrokerEntryMetadataToClientEnabled = false;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/common/protocol/Commands.java",
+        "quote": "flags.setSupportsBrokerEntryMetadata(true);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-client-api/src/main/java/org/apache/pulsar/client/api/Message.java",
+        "quote": "Optional<Long> getBrokerPublishTime();"
+       }
+      ],
+      "note": "Only when a second broker setting, exposingBrokerEntryMetadataToClientEnabled (default false), is on and the client announces support (the Java client does); otherwise the broker strips the broker entry metadata before dispatch. The consumer reads it as Message.getBrokerPublishTime()."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "Consumer.lastConsumedTimestamp (latest dispatch to the consumer)",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/Consumer.java",
+        "quote": "this.lastConsumedTimestamp = System.currentTimeMillis();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/Consumer.java",
+        "quote": "final long currentTs = System.currentTimeMillis();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/Consumer.java",
+        "quote": "this.lastConsumedFlowTimestamp = currentTs;"
+       }
+      ],
+      "note": "Set at the start of each dispatch of entries to the consumer (Consumer.sendMessages), before the write; each Flow (credit) command sets lastConsumedFlowTimestamp. Both are kept per consumer only as the latest value, overwritten by the next dispatch or Flow, and neither is sent with the message."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message CommandMessage { required uint64 consumer_id = 1; required MessageIdData message_id = 2; optional uint32 redelivery_count = 3 [default = 0]; repeated int64 ack_set = 4; optional uint64 consumer_epoch = 5; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/ServerCnx.java",
+        "quote": "BaseCommand command = Commands.newMessageCommand(consumerId, ledgerId, entryId, partition, redeliveryCount,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/ServerCnx.java",
+        "quote": "Commands.copyMetadataAndPayload(metadataAndPayload, payloadSize, out);"
+       }
+      ],
+      "note": "CommandMessage carries ids, the redelivery count, the ack set and the consumer epoch; the rest of the frame is the stored entry. No dispatch or Flow time is added."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message CommandMessage { required uint64 consumer_id = 1; required MessageIdData message_id = 2; optional uint32 redelivery_count = 3 [default = 0]; repeated int64 ack_set = 4; optional uint64 consumer_epoch = 5; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "// Mark the message to be delivered at or after the specified timestamp"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "optional int64 deliver_at_time = 19;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/ServerCnx.java",
+        "quote": "BaseCommand command = Commands.newMessageCommand(consumerId, ledgerId, entryId, partition, redeliveryCount,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/ServerCnx.java",
+        "quote": "Commands.copyMetadataAndPayload(metadataAndPayload, payloadSize, out);"
+       }
+      ],
+      "note": "No delivered field is a duration measured by the broker; deliver_at_time is a time point the producer sets for delayed delivery."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "DEBUG log lines (default level info): one per entry dispatched to a consumer ('- Sending message to consumerId, msg id- with batchSize', with ledgerId and entryId), one per entry persisted ('Persisted message', with sequenceId) and one per Flow command ('Received flow from consumer permits'), each with the log line's time. Topic stats show per consumer lastConsumedTimestamp and lastConsumedFlowTimestamp (latest values only). Publish and dispatch metrics are aggregate. An entry is one message or one producer batch.",
+      "resolution": "log line time per the log4j2 pattern (%d{ISO8601_OFFSET_DATE_TIME_HHMM}); stats in ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/PulsarCommandSenderImpl.java",
+        "quote": ".log(\"- Sending message to consumerId, msg id- with batchSize\");"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/Producer.java",
+        "quote": ".log(\"Persisted message\");"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/ServerCnx.java",
+        "quote": ".log(\"Received flow from consumer permits\");"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-client-admin-api/src/main/java/org/apache/pulsar/common/policies/data/ConsumerStats.java",
+        "quote": "long getLastConsumedTimestamp();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-client-admin-api/src/main/java/org/apache/pulsar/common/policies/data/ConsumerStats.java",
+        "quote": "long getLastConsumedFlowTimestamp();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/conf/log4j2.yaml",
+        "quote": "Pattern: \"%d{ISO8601_OFFSET_DATE_TIME_HHMM} [%t] %-5level %logger{36} - %msg%equals{ %X}{ {}}{}%n\""
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/conf/log4j2.yaml",
+        "quote": "- name: \"pulsar.log.level\" value: \"info\""
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "// Max number of messages to prefetch, in addition // of any number previously specified required uint32 messagePermits = 2;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/Consumer.java",
+        "quote": "// Represents how many messages we can safely send to the consumer without"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/Consumer.java",
+        "quote": "// overflowing its receiving queue. The consumer will use Flow commands to"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/ServerCnx.java",
+        "quote": "consumer.flowPermits(flow.getMessagePermits());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/managed-ledger/src/main/java/org/apache/bookkeeper/mledger/ManagedCursor.java",
+        "quote": "* <p/>If no entries are available, the callback will not be triggered. Instead it will be registered to wait until"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/persistent/PersistentDispatcherSingleActiveConsumer.java",
+        "quote": "entriesFuture = readEntriesWithSkipOrWait(cursor, messagesToRead, bytesToRead,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-client/src/main/java/org/apache/pulsar/client/impl/ReaderImpl.java",
+        "quote": "consumerConfiguration.setSubscriptionType(SubscriptionType.Exclusive);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-client/src/main/java/org/apache/pulsar/client/impl/ReaderImpl.java",
+        "quote": "consumerConfiguration.setReceiverQueueSize(readerConfiguration.getReceiverQueueSize());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-client/src/main/java/org/apache/pulsar/client/impl/conf/ReaderConfigurationData.java",
+        "quote": "private SubscriptionMode subscriptionMode = SubscriptionMode.NonDurable;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-client/src/main/java/org/apache/pulsar/client/impl/conf/ReaderConfigurationData.java",
+        "quote": "private int receiverQueueSize = 1000;"
+       }
+      ],
+      "note": "ReaderImpl wraps a ConsumerImpl on an exclusive, by default non-durable, subscription with its own receiverQueueSize (default 1000): the same Flow permits as a consumer."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/Consumer.java",
+       "read": "A reader is served by the same Consumer class, so the same per-dispatch time is kept.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The reader is a consumer with the same Flow permits.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "Kafka protocol on Pulsar (KoP)",
+     "note": "KoP is coded at its own latest release, v3.1.1.1 (2024-01-08), which builds against Pulsar 3.1.1.1 and kafka-clients 3.4.1; the KoP repository is archived, and no KoP release targets Pulsar 5.0.x. The broker-level version of this record (5.0.1) is Pulsar's.",
+     "Q0": {
+      "fields": [
+       "batch.baseOffset",
+       "batch.length",
+       "batch.partitionLeaderEpoch",
+       "batch.magic",
+       "batch.crc",
+       "batch.attributes",
+       "batch.lastOffsetDelta",
+       "batch.baseTimestamp",
+       "batch.maxTimestamp",
+       "batch.producerId",
+       "batch.producerEpoch",
+       "batch.baseSequence",
+       "record.length",
+       "record.attributes",
+       "record.timestampDelta",
+       "record.offsetDelta",
+       "record.key",
+       "record.value",
+       "record.headers[]",
+       "ConsumerRecord (kafka-clients 3.4.1): topic, partition, offset, timestamp, timestampType, serializedKeySize, serializedValueSize, headers, key, value, leaderEpoch"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/3.4.1/clients/src/main/java/org/apache/kafka/common/record/DefaultRecordBatch.java",
+        "quote": "* BaseTimestamp => Int64 * MaxTimestamp => Int64 * ProducerId => Int64 * ProducerEpoch => Int16 * BaseSequence => Int32 * Records => [Record]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/3.4.1/clients/src/main/java/org/apache/kafka/common/record/DefaultRecord.java",
+        "quote": "* Record => * Length => Varint * Attributes => Int8 * TimestampDelta => Varlong * OffsetDelta => Varint * Key => Bytes * Value => Bytes * Headers => [HeaderKey HeaderValue]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/3.4.1/clients/src/main/java/org/apache/kafka/clients/consumer/ConsumerRecord.java",
+        "quote": "private final long timestamp; private final TimestampType timestampType;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/3.4.1/clients/src/main/resources/common/message/FetchResponse.json",
+        "quote": "{ \"name\": \"Records\", \"type\": \"records\", \"versions\": \"0+\", \"nullableVersions\": \"0+\", \"about\": \"The record data.\"}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/format/AbstractEntryFormatter.java",
+        "quote": "ByteBuf buf = byteBuf.slice(byteBuf.readerIndex(), byteBuf.readableBytes());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/format/AbstractEntryFormatter.java",
+        "quote": "ByteBufUtils.decodePulsarEntryToKafkaRecords(metadata, byteBuf, startOffset, magic);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/KafkaRequestHandler.java",
+        "quote": ".setResponses(buildFetchResponses(all))),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/pom.xml",
+        "quote": "<version>3.1.1.1</version>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/pom.xml",
+        "quote": "<pulsar.version>3.1.1.1</pulsar.version>"
+       },
+       {
+        "url": "https://api.github.com/repos/streamnative/kop",
+        "quote": "\"archived\":true"
+       }
+      ],
+      "note": "KoP answers Kafka fetches with Kafka v2 batches: an entry stored in Kafka format is sent as its Kafka batch (the Pulsar metadata before it is skipped); an entry stored in Pulsar format is rebuilt into a Kafka batch. Per partition and per response the fields are Kafka's fetch response fields."
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "entry MessageMetadata.publish_time (Kafka-format entries) or BrokerEntryMetadata.broker_timestamp",
+      "resolution": "ms",
+      "setting": "KoP entryFormat=kafka or mixed_kafka (default pulsar), or Pulsar's brokerEntryMetadataInterceptors including AppendBrokerTimestampMetadataInterceptor (KoP's docs require only AppendIndexMetadataInterceptor)",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/format/KafkaV1EntryFormatter.java",
+        "quote": "metadata.setPublishTime(System.currentTimeMillis());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/KafkaServiceConfiguration.java",
+        "quote": "private String entryFormat = \"pulsar\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/format/PulsarEntryFormatter.java",
+        "quote": "builder.getMetadataBuilder().setPublishTime(record.timestamp());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/docs/kop.md",
+        "quote": "brokerEntryMetadataInterceptors=org.apache.pulsar.common.intercept.AppendIndexMetadataInterceptor"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/common/intercept/AppendBrokerTimestampMetadataInterceptor.java",
+        "quote": "return brokerMetadata.setBrokerTimestamp(System.currentTimeMillis());"
+       }
+      ],
+      "note": "With entryFormat kafka or mixed_kafka, KoP stores the records of a produce request's partition as one entry behind Pulsar metadata whose publish_time is the broker's wall clock when it encodes them. With the default pulsar format, publish_time and event_time are the Kafka record's own timestamp (the broker's clock only when the record has none). KoP never applies LogAppendTime: only the mixed_kafka formatter validates timestamps, with CREATE_TIME."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/format/AbstractEntryFormatter.java",
+        "quote": "ByteBuf buf = byteBuf.slice(byteBuf.readerIndex(), byteBuf.readableBytes());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/format/AbstractEntryFormatter.java",
+        "quote": "ByteBufUtils.decodePulsarEntryToKafkaRecords(metadata, byteBuf, startOffset, magic);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/utils/ByteBufUtils.java",
+        "quote": "TimestampType.CREATE_TIME,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/utils/ByteBufUtils.java",
+        "quote": ": metadata.getPublishTime();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/format/KafkaMixedEntryFormatter.java",
+        "quote": "TimestampType.CREATE_TIME,"
+       }
+      ],
+      "note": "A Kafka-format entry reaches the consumer as its Kafka batch without the Pulsar metadata that holds the broker's publish_time; a Pulsar-format entry becomes a CREATE_TIME batch timed by event_time or publish_time, which for Kafka-produced records is the producer's timestamp. KoP does not use broker_timestamp."
+     },
+     "Q3": {
+      "answer": "request arrival",
+      "field": "startProcessRequestTimestamp (per request, kept until its response)",
+      "resolution": "ns (MathUtils.nowInNano)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/KafkaCommandDecoder.java",
+        "quote": "final long startProcessRequestTimestamp = MathUtils.nowInNano();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/storage/ReplicaManager.java",
+        "quote": "final long startTime = SystemTime.SYSTEM.hiResClockMs();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/storage/ReplicaManager.java",
+        "quote": "DelayedFetch delayedFetch = new DelayedFetch("
+       }
+      ],
+      "note": "The decoder takes the time when it starts processing a request and keeps it in the response callback for the request-latency stats; a fetch also notes its start (ms) to bound its wait in the delayed-fetch purgatory. Neither is sent."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/KafkaRequestHandler.java",
+        "quote": ".setResponses(buildFetchResponses(all))),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/KafkaRequestHandler.java",
+        "quote": ".setThrottleTimeMs(0)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/3.4.1/clients/src/main/resources/common/message/FetchResponse.json",
+        "quote": "{ \"name\": \"Records\", \"type\": \"records\", \"versions\": \"0+\", \"nullableVersions\": \"0+\", \"about\": \"The record data.\"}"
+       }
+      ],
+      "note": "The fetch response carries Kafka's fields only (Q0); no request or send time is added."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/KafkaRequestHandler.java",
+        "quote": ".setThrottleTimeMs(0)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/3.4.1/clients/src/main/resources/common/message/FetchResponse.json",
+        "quote": "\"about\": \"The duration in milliseconds for which the request was throttled due to a quota violation, or zero if the request did not violate any quota.\" },"
+       }
+      ],
+      "note": "KoP sets the fetch response's only duration, ThrottleTimeMs, to 0."
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "DEBUG log lines per request ('Received kafka cmd ...', with the request) and per response written ('Write kafka cmd to client.'), with the log line's time; request latency, queued latency and parse latency are aggregate stats.",
+      "resolution": "log line time per the broker's log pattern",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/KafkaCommandDecoder.java",
+        "quote": "log.debug(\"[{}] Received kafka cmd {}, the request content is: {}\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/KafkaCommandDecoder.java",
+        "quote": "log.debug(\"Write kafka cmd to client.\""
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "one at a time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/KafkaCommandDecoder.java",
+        "quote": "// Queue to make response get responseFuture in order and limit the max request size"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/KafkaCommandDecoder.java",
+        "quote": "requestQueue.put(ResponseAndRequest.of(responseFuture, kafkaHeaderAndRequest));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/KafkaServiceConfiguration.java",
+        "quote": "private int maxQueuedRequests = 500;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/storage/ReplicaManager.java",
+        "quote": "fetchPurgatory.tryCompleteElseWatch(delayedFetch, delayedFetchKeys);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/KafkaRequestHandler.java",
+        "quote": "replicaManager.tryCompleteDelayedFetch(new DelayedOperationKey.TopicPartitionOperationKey(tp));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/storage/PartitionLog.java",
+        "quote": "if (offset > logEndOffset) {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/storage/PartitionLog.java",
+        "quote": "future.complete(ReadRecordsResult.error(Errors.OFFSET_OUT_OF_RANGE, this));"
+       }
+      ],
+      "note": "Unlike Kafka, KoP keeps reading a connection while earlier requests are pending (up to maxQueuedRequests = 500, responses in order), so several fetches can wait at once, each completed by a produce to its partition. But a fetch beyond the log end is refused (OFFSET_OUT_OF_RANGE), so every waiting fetch of a partition waits at the same offset and the next message completes them all; no request can wait for the message after it. One waiting position per partition."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/KafkaCommandDecoder.java",
+       "read": "The decoder takes startProcessRequestTimestamp = MathUtils.nowInNano() as it starts on each request and keeps it in the response callback for latency stats.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "Apache BookKeeper",
+   "group": "A",
+   "version": "4.18.1",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/pom.xml",
+     "quote": "<version>4.18.1</version>"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "DistributedLog reader (as OMB driver-bookkeeper uses it)",
+     "note": "OMB's driver-bookkeeper (commit 5b1fa709) reads with the DistributedLog API (distributedlog-core-shaded 4.14.4): LogReader.readNext over read-ahead from bookies. The bookie is the server; DistributedLog's writer and reader are client libraries. Coded against BookKeeper and DistributedLog at release-4.18.1.",
+     "Q0": {
+      "fields": [
+       "ReadResponse: status, ledgerId, entryId, body, maxLAC, lacUpdateTimestamp (long-poll reads only)",
+       "entry body header: ledgerId, entryId, lastAddConfirmed, length, digest",
+       "DistributedLog record: metadata (position, flags), txid, payload length, payload",
+       "LogRecordWithDLSN (client): dlsn (log segment sequence number, entry id, slot id), sequence id, txid, payload"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-proto/src/main/proto/BookkeeperProtocol.proto",
+        "quote": "message ReadResponse { required StatusCode status = 1; required int64 ledgerId = 2; required int64 entryId = 3; optional bytes body = 4; // Piggyback LAC optional int64 maxLAC = 5; optional int64 lacUpdateTimestamp = 6; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/checksum/DigestManager.java",
+        "quote": "headersBuffer.writeLong(ledgerId);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/checksum/DigestManager.java",
+        "quote": "headersBuffer.writeLong(lastAddConfirmed);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/stream/distributedlog/protocol/src/main/java/org/apache/distributedlog/LogRecord.java",
+        "quote": "* Bytes 0 - 7 : Metadata (Long) * Bytes 8 - 15 : TxId (Long) * Bytes 16 - 19 : Payload length (Integer) * Bytes 20 - 20+payload.length-1 : Payload (Byte[])"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/stream/distributedlog/protocol/src/main/java/org/apache/distributedlog/LogRecordWithDLSN.java",
+        "quote": "private final DLSN dlsn;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/benchmark/5b1fa70951a323da26bd587174b58bb2c65b0b5c/driver-bookkeeper/src/main/java/io/openmessaging/benchmark/driver/bookkeeper/DlogBenchmarkConsumer.java",
+        "quote": "record = reader.readNext(false);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/benchmark/5b1fa70951a323da26bd587174b58bb2c65b0b5c/driver-bookkeeper/src/main/java/io/openmessaging/benchmark/driver/bookkeeper/DlogBenchmarkConsumer.java",
+        "quote": "callback.messageReceived(record.getPayload(), record.getTransactionId());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/ReadEntryProcessorV3.java",
+        "quote": "ByteBuf entryBody = requestProcessor.getBookie().readEntry(ledgerId, entryId);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/ReadEntryProcessorV3.java",
+        "quote": "readResponseBuilder.setBody(ByteBufUtil.getBytes(entryBody));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/conf/ClientConfiguration.java",
+        "quote": "return getBoolean(USE_V2_WIRE_PROTOCOL, false);"
+       }
+      ],
+      "note": "The bookie returns the stored entry (header, digest and DistributedLog's payload) in a v3 ReadResponse (v3 is the client default). OMB passes the record's payload and txid to its latency callback."
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/checksum/DigestManager.java",
+        "quote": "headersBuffer.writeLong(entryId);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/stream/distributedlog/protocol/src/main/java/org/apache/distributedlog/LogRecord.java",
+        "quote": "* Bytes 0 - 7 : Metadata (Long) * Bytes 8 - 15 : TxId (Long) * Bytes 16 - 19 : Payload length (Integer) * Bytes 20 - 20+payload.length-1 : Payload (Byte[])"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.14.4/stream/distributedlog/core/src/main/java/org/apache/distributedlog/util/TimeSequencer.java",
+        "quote": "* Time based sequencer. It generated non-decreasing transaction id using milliseconds."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.14.4/stream/distributedlog/core/src/main/java/org/apache/distributedlog/util/TimeSequencer.java",
+        "quote": "lastId = Math.max(lastId, System.currentTimeMillis());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/benchmark/5b1fa70951a323da26bd587174b58bb2c65b0b5c/driver-bookkeeper/src/main/java/io/openmessaging/benchmark/driver/bookkeeper/DlogBenchmarkProducer.java",
+        "quote": "LogRecord record = new LogRecord(sequencer.nextId(), payload);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-proto/src/main/proto/BookkeeperProtocol.proto",
+        "quote": "message ReadResponse { required StatusCode status = 1; required int64 ledgerId = 2; required int64 entryId = 3; optional bytes body = 4; // Piggyback LAC optional int64 maxLAC = 5; optional int64 lacUpdateTimestamp = 6; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/ReadEntryProcessorV3.java",
+        "quote": "ByteBuf entryBody = requestProcessor.getBookie().readEntry(ledgerId, entryId);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/ReadEntryProcessorV3.java",
+        "quote": "readResponseBuilder.setBody(ByteBufUtil.getBytes(entryBody));"
+       }
+      ],
+      "note": "A stored entry holds no time of the bookie's. The only time in a record is DistributedLog's txid, which OMB's producer sets from TimeSequencer on the writer's (producer's) clock. The bookie notes the wall-clock time when a ledger's last-add-confirmed advances only for long-poll reads waiting on it (Q4 note)."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "request arrival",
+      "field": "PacketProcessorBaseV3.enqueueNanos (per request, kept while a long poll waits)",
+      "resolution": "ns (System.nanoTime)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/PacketProcessorBaseV3.java",
+        "quote": "this.enqueueNanos = MathUtils.nowInNano();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-common/src/main/java/org/apache/bookkeeper/common/util/MathUtils.java",
+        "quote": "return System.nanoTime();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/LongPollReadEntryProcessorV3.java",
+        "quote": "class LongPollReadEntryProcessorV3 extends ReadEntryProcessorV3 implements Watcher<LastAddConfirmedUpdateNotification> {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/ReadEntryProcessorV3.java",
+        "quote": "class ReadEntryProcessorV3 extends PacketProcessorBaseV3 {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/LongPollReadEntryProcessorV3.java",
+        "quote": "lastAddConfirmedUpdateTime = Optional.of(newLACNotification.getTimestamp());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/bookie/LastAddConfirmedUpdateNotification.java",
+        "quote": "lac.timestamp = System.currentTimeMillis();"
+       }
+      ],
+      "note": "Every v3 request processor takes its enqueue time, and a long-poll read keeps its processor (with that time) while it waits; the time feeds request latency stats. A waiting long poll also notes the bookie's wall-clock time (ms) when the LAC first advances past the request's previousLAC."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-proto/src/main/proto/BookkeeperProtocol.proto",
+        "quote": "message ReadResponse { required StatusCode status = 1; required int64 ledgerId = 2; required int64 entryId = 3; optional bytes body = 4; // Piggyback LAC optional int64 maxLAC = 5; optional int64 lacUpdateTimestamp = 6; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/ReadEntryProcessorV3.java",
+        "quote": "readResponseBuilder.setBody(ByteBufUtil.getBytes(entryBody));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/LongPollReadEntryProcessorV3.java",
+        "quote": "readResponseBuilder.setLacUpdateTimestamp(lastAddConfirmedUpdateTime.get());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/client/ReadLastConfirmedAndEntryOp.java",
+        "quote": "long elapsedMicros = TimeUnit.MILLISECONDS.toMicros(System.currentTimeMillis()"
+       }
+      ],
+      "note": "The request's enqueue time is not sent. The long-poll response does carry lacUpdateTimestamp: the bookie's wall-clock ms when the LAC advanced past the request's previousLAC while the request waited (absent if it did not wait). It is neither the request's arrival nor a send time, nothing documents it, the BookKeeper client uses it only for a latency stat against its own clock, and DistributedLog's records do not carry it."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-proto/src/main/proto/BookkeeperProtocol.proto",
+        "quote": "message ReadResponse { required StatusCode status = 1; required int64 ledgerId = 2; required int64 entryId = 3; optional bytes body = 4; // Piggyback LAC optional int64 maxLAC = 5; optional int64 lacUpdateTimestamp = 6; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/ReadEntryProcessorV3.java",
+        "quote": "readResponseBuilder.setBody(ByteBufUtil.getBytes(entryBody));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/LongPollReadEntryProcessorV3.java",
+        "quote": "readResponseBuilder.setLacUpdateTimestamp(lastAddConfirmedUpdateTime.get());"
+       }
+      ],
+      "note": "No delivered field is a duration measured by the bookie; lacUpdateTimestamp is a time point (Q4 note)."
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "DEBUG log line per long-poll read that returns an entry ('ReadLAC Piggy Back reading entry', with ledgerId and entryId) and TRACE line when the LAC advances for a waiting request ('Last Add Confirmed Advanced'), with the log line's time; per-request latencies (READ_ENTRY_REQUEST, READ_ENTRY_LONG_POLL_PRE_WAIT, READ_ENTRY_LONG_POLL_WAIT, READ_ENTRY_LONG_POLL_READ) are aggregate stats.",
+      "resolution": "log line time per conf/log4j2.xml (%d{ISO8601}); stats per their histograms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/LongPollReadEntryProcessorV3.java",
+        "quote": ".log(\"ReadLAC Piggy Back reading entry\");"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/LongPollReadEntryProcessorV3.java",
+        "quote": ".attr(\"request\", request).log(\"Last Add Confirmed Advanced\");"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/bookie/BookKeeperServerStats.java",
+        "quote": "String READ_ENTRY_LONG_POLL_WAIT = \"READ_ENTRY_LONG_POLL_WAIT\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/conf/log4j2.xml",
+        "quote": "<PatternLayout pattern=\"%d{ISO8601} - %-5p - [%t:%C{1}@%L] - %m %X%n\"/>"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "one at a time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-proto/src/main/proto/BookkeeperProtocol.proto",
+        "quote": "// Used for waiting on last add confirmed update optional int64 previousLAC = 4; // Used as a timeout (in milliseconds) for the long polling request optional int64 timeOut = 5;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/stream/distributedlog/core/src/main/java/org/apache/distributedlog/impl/logsegment/BKLogSegmentEntryReader.java",
+        "quote": "private CacheEntry outstandingLongPoll;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/stream/distributedlog/core/src/main/java/org/apache/distributedlog/impl/logsegment/BKLogSegmentEntryReader.java",
+        "quote": "|| (!isLedgerClosed() && nextEntryId > getLastAddConfirmed() + 1)) {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/stream/distributedlog/core/src/main/java/org/apache/distributedlog/impl/logsegment/BKLogSegmentEntryReader.java",
+        "quote": "this.outstandingLongPoll = cacheEntry;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/stream/distributedlog/core/src/main/java/org/apache/distributedlog/impl/logsegment/BKLogSegmentEntryReader.java",
+        "quote": "getLh().asyncReadLastConfirmedAndEntry("
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/LongPollReadEntryProcessorV3.java",
+        "quote": "lastAddConfirmedUpdateTime = Optional.of(newLACNotification.getTimestamp());"
+       }
+      ],
+      "note": "Entries up to the LAC are read ahead with plain reads, several at once; the first entry past the LAC of the segment being written gets one long-poll read, which the bookie holds until the LAC advances or the timeout. One long poll per log segment reader."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/PacketProcessorBaseV3.java",
+       "read": "Every v3 request processor sets enqueueNanos on creation, and a long-poll read keeps its processor while it waits.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "Pravega",
+   "group": "A",
+   "version": "0.13.0",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/gradle.properties",
+     "quote": "pravegaVersion=0.13.0"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "reader groups",
+     "Q0": {
+      "fields": [
+       "SegmentRead (per read reply): segment, offset, atTail, endOfSegment, data, requestId",
+       "Event (framing inside the segment's bytes): type, length, data",
+       "EventRead (client): event, position, eventPointer (segment, eventStartOffset, eventLength), checkpointName, isReadCompleted"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/shared/protocol/src/main/java/io/pravega/shared/protocol/netty/WireCommands.java",
+        "quote": "final WireCommandType type = WireCommandType.SEGMENT_READ; final String segment; final long offset; final boolean atTail; //TODO: Is sometimes false when actual state is unknown. final boolean endOfSegment; final ByteBuf data; final long requestId;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/shared/protocol/src/main/java/io/pravega/shared/protocol/netty/WireCommands.java",
+        "quote": "public static final class Event implements WireCommand { final WireCommandType type = WireCommandType.EVENT; final ByteBuf data;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/client/src/main/java/io/pravega/client/stream/impl/EventReadImpl.java",
+        "quote": "private final T event; private final Position position; private final EventPointer eventPointer; private final String checkpointName; private final boolean isReadCompleted;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/client/src/main/java/io/pravega/client/stream/impl/EventPointerImpl.java",
+        "quote": "private final Segment segment; private final long eventStartOffset; private final int eventLength;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/host/src/main/java/io/pravega/segmentstore/server/host/handler/PravegaRequestProcessor.java",
+        "quote": "SegmentRead reply = new SegmentRead(segment, request.getOffset(), atTail, endOfSegment, data, request.getRequestId());"
+       }
+      ],
+      "note": "The segment store replies to ReadSegment with a SegmentRead holding the raw bytes of the segment from the requested offset; the reader splits them into events by their type-and-length framing."
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/shared/protocol/src/main/java/io/pravega/shared/protocol/netty/WireCommands.java",
+        "quote": "public static final class Event implements WireCommand { final WireCommandType type = WireCommandType.EVENT; final ByteBuf data;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/shared/protocol/src/main/java/io/pravega/shared/protocol/netty/WireCommands.java",
+        "quote": "final WireCommandType type = WireCommandType.SEGMENT_READ; final String segment; final long offset; final boolean atTail; //TODO: Is sometimes false when actual state is unknown. final boolean endOfSegment; final ByteBuf data; final long requestId;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/host/src/main/java/io/pravega/segmentstore/server/host/handler/PravegaRequestProcessor.java",
+        "quote": "SegmentRead reply = new SegmentRead(segment, request.getOffset(), atTail, endOfSegment, data, request.getRequestId());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/src/main/java/io/pravega/segmentstore/server/logs/operations/Operation.java",
+        "quote": "private long sequenceNumber;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/src/main/java/io/pravega/segmentstore/server/logs/SegmentMetadataUpdateTransaction.java",
+        "quote": "return new ImmutableDate();"
+       }
+      ],
+      "note": "An event is stored as its framed bytes in the segment; the append operation carries a sequence number, not a time. The segment store keeps only a per-segment last-modified time (segment metadata), not a per-event time."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "request arrival",
+      "field": "readSegment Timer start (per ReadSegment request)",
+      "resolution": "ns (System.nanoTime)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/host/src/main/java/io/pravega/segmentstore/server/host/handler/PravegaRequestProcessor.java",
+        "quote": "Timer timer = new Timer();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/common/src/main/java/io/pravega/common/Timer.java",
+        "quote": "this.startNanos = System.nanoTime();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/host/src/main/java/io/pravega/segmentstore/server/host/handler/PravegaRequestProcessor.java",
+        "quote": "this.statsRecorder.readComplete(timer.getElapsed());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/host/src/main/java/io/pravega/segmentstore/server/host/handler/PravegaRequestProcessor.java",
+        "quote": "nonCachedEntry.requestContent(TIMEOUT);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/src/main/java/io/pravega/segmentstore/server/reading/ReadResultEntryBase.java",
+        "quote": "// This method intentionally left blank, to be implemented by derived classes that need it."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/src/main/java/io/pravega/segmentstore/server/reading/FutureReadResultEntry.java",
+        "quote": "class FutureReadResultEntry extends ReadResultEntryBase {"
+       }
+      ],
+      "note": "readSegment starts a Timer when it takes the request and reads it for the read-latency stat once the read result is handled: for a read served from data already there, after the reply is sent; for a read parked at the tail, as soon as the future read is registered. A parked read keeps no time or deadline (FutureReadResultEntry does not override requestContent, so the 1-minute TIMEOUT is not applied). Not sent."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/shared/protocol/src/main/java/io/pravega/shared/protocol/netty/WireCommands.java",
+        "quote": "final WireCommandType type = WireCommandType.SEGMENT_READ; final String segment; final long offset; final boolean atTail; //TODO: Is sometimes false when actual state is unknown. final boolean endOfSegment; final ByteBuf data; final long requestId;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/host/src/main/java/io/pravega/segmentstore/server/host/handler/PravegaRequestProcessor.java",
+        "quote": "SegmentRead reply = new SegmentRead(segment, request.getOffset(), atTail, endOfSegment, data, request.getRequestId());"
+       }
+      ],
+      "note": "SegmentRead carries no time."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/shared/protocol/src/main/java/io/pravega/shared/protocol/netty/WireCommands.java",
+        "quote": "final WireCommandType type = WireCommandType.SEGMENT_READ; final String segment; final long offset; final boolean atTail; //TODO: Is sometimes false when actual state is unknown. final boolean endOfSegment; final ByteBuf data; final long requestId;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/shared/protocol/src/main/java/io/pravega/shared/protocol/netty/WireCommands.java",
+        "quote": "public static final class Event implements WireCommand { final WireCommandType type = WireCommandType.EVENT; final ByteBuf data;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/host/src/main/java/io/pravega/segmentstore/server/host/handler/PravegaRequestProcessor.java",
+        "quote": "SegmentRead reply = new SegmentRead(segment, request.getOffset(), atTail, endOfSegment, data, request.getRequestId());"
+       }
+      ],
+      "note": "No delivered field is a duration."
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "TRACE lines per ReadSegment ('ENTER readSegment@<nanoTime id>' and 'LEAVE ... (elapsed=<us>us)', the elapsed time until the read result is handed back) and DEBUG lines per read in the container and read index, each with the log line's time; read latency and bytes are aggregate metrics.",
+      "resolution": "elapsed in us; ENTER id in ns (System.nanoTime); log line time per the log pattern",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/host/src/main/java/io/pravega/segmentstore/server/host/handler/PravegaRequestProcessor.java",
+        "quote": "long trace = LoggerHelpers.traceEnter(log, operation, readSegment);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/host/src/main/java/io/pravega/segmentstore/server/host/handler/PravegaRequestProcessor.java",
+        "quote": "LoggerHelpers.traceLeave(log, operation, trace, readResult);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/common/src/main/java/io/pravega/common/LoggerHelpers.java",
+        "quote": "log.trace(\"LEAVE {}@{} {} (elapsed={}us).\", method, traceEnterId, args, ELAPSED_MICRO.apply(traceEnterId));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/common/src/main/java/io/pravega/common/LoggerHelpers.java",
+        "quote": "private static final Supplier<Long> CURRENT_TIME = System::nanoTime;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/src/main/java/io/pravega/segmentstore/server/containers/StreamSegmentContainer.java",
+        "quote": "logRequest(\"read\", streamSegmentName, offset, maxLength);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/src/main/java/io/pravega/segmentstore/server/containers/StreamSegmentContainer.java",
+        "quote": "log.debug(\"{}: {} {}\", this.traceObjectId, requestName, args);"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/src/main/java/io/pravega/segmentstore/server/reading/StreamSegmentReadIndex.java",
+        "quote": "* <li> Future appends. If a read operation requests data from an offset in the future, the read operation will block until"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/src/main/java/io/pravega/segmentstore/server/reading/StreamSegmentReadIndex.java",
+        "quote": "// * The segment is not sealed (we are allowed to do a future read) OR"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/src/main/java/io/pravega/segmentstore/server/reading/StreamSegmentReadIndex.java",
+        "quote": "* Creates a ReadResultEntry that is a placeholder for data that is not in memory, or in storage, which has"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/src/main/java/io/pravega/segmentstore/server/reading/FutureReadResultEntry.java",
+        "quote": "* Read Result Entry for data that is not yet available in the StreamSegment (for an offset that is beyond the"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/host/src/main/java/io/pravega/segmentstore/server/host/handler/PravegaRequestProcessor.java",
+        "quote": "segmentStore.read(segment, readSegment.getOffset(), readSize, TIMEOUT)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/shared/protocol/src/main/java/io/pravega/shared/protocol/netty/WireCommands.java",
+        "quote": "final WireCommandType type = WireCommandType.READ_SEGMENT; final String segment; final long offset; final int suggestedLength;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/client/src/main/java/io/pravega/client/segment/impl/SegmentInputStreamImpl.java",
+        "quote": "if (!receivedEndOfSegment && !receivedTruncated && updatedReadLength > 0 && outstandingRequest == null) {"
+       }
+      ],
+      "note": "The segment store parks a read at or beyond the end of an open segment until data reaches its offset, handles reads asynchronously, and matches replies by requestId, so a consumer can keep several reads waiting at successive offsets, each completed by the data that reaches its offset. Reads name byte offsets, so this keeps a read waiting for each next event only when event sizes are known (e.g. fixed-size events). The reader-group client itself keeps one outstanding read per segment."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/common/src/main/java/io/pravega/common/Timer.java",
+       "read": "readSegment starts a Timer (System.nanoTime) when it takes the request; for a read parked at the tail the timer is read when the future read is registered, so the arrival is not kept while the read waits.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/src/main/java/io/pravega/segmentstore/server/reading/StreamSegmentReadIndex.java",
+       "read": "The read index's own description says a read at an offset in the future blocks until data becomes available. Several such reads at successive offsets can wait at once; the official client keeps one read per segment.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,2270 @@
+{
+ "audited_utc": "2026-10-27",
+ "brokers": [
+  {
+   "broker": "RabbitMQ",
+   "group": "A",
+   "version": "4.4.0",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/release-notes/4.4.0.md",
+     "quote": "RabbitMQ `4.4.0` is a new feature release."
+    }
+   ],
+   "modes": [
+    {
+     "mode": "queues, AMQP 0-9-1 (basic.consume with prefetch)",
+     "Q0": {
+      "fields": [
+       "basic.deliver method: consumer-tag, delivery-tag, redelivered, exchange, routing-key",
+       "content header (basic properties): content-type, content-encoding, headers, delivery-mode, priority, correlation-id, reply-to, expiration, message-id, timestamp (seconds), type, user-id, app-id, cluster-id",
+       "body",
+       "headers the broker itself may add: x-delivery-count and x-acquired-count (quorum queues), the x-death family (dead-lettered messages), timestamp_in_ms and the timestamp property (incoming timestamp interceptor), x-routed-by (routing-node interceptor), x-opt-rabbitmq-sent-time (outgoing timestamp interceptor); every x- annotation that holds an integer is delivered as a long header"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-rabbitmq-0.9.1.json",
+        "quote": "\"arguments\": [{\"type\": \"shortstr\", \"name\": \"consumer-tag\"}, {\"type\": \"longlong\", \"name\": \"delivery-tag\"}, {\"type\": \"bit\", \"name\": \"redelivered\", \"default-value\": false}, {\"domain\": \"exchange-name\", \"name\": \"exchange\"}, {\"type\": \"shortstr\", \"name\": \"routing-key\"}], \"name\": \"deliver\"},"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-rabbitmq-0.9.1.json",
+        "quote": "\"properties\": [{\"type\": \"shortstr\", \"name\": \"content-type\"}, {\"type\": \"shortstr\", \"name\": \"content-encoding\"}, {\"type\": \"table\", \"name\": \"headers\"}, {\"type\": \"octet\", \"name\": \"delivery-mode\"}, {\"type\": \"octet\", \"name\": \"priority\"},"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-rabbitmq-0.9.1.json",
+        "quote": "{\"type\": \"shortstr\", \"name\": \"correlation-id\"}, {\"type\": \"shortstr\", \"name\": \"reply-to\"}, {\"type\": \"shortstr\", \"name\": \"expiration\"}, {\"type\": \"shortstr\", \"name\": \"message-id\"}, {\"type\": \"timestamp\", \"name\": \"timestamp\"},"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-rabbitmq-0.9.1.json",
+        "quote": "{\"type\": \"shortstr\", \"name\": \"type\"}, {\"type\": \"shortstr\", \"name\": \"user-id\"}, {\"type\": \"shortstr\", \"name\": \"app-id\"}, {\"type\": \"shortstr\", \"name\": \"cluster-id\"}]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_channel.erl",
+        "quote": "Content = outgoing_content(Mc, MsgIcptCtx), Deliver = #'basic.deliver'{consumer_tag = ConsumerTag, delivery_tag = DeliveryTag, redelivered = Redelivered, exchange = Exchange, routing_key = RoutingKey},"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_channel.erl",
+        "quote": "Mc1 = rabbit_msg_interceptor:intercept_outgoing(Mc, MsgIcptCtx), Mc2 = mc:convert(mc_amqpl, Mc1), mc:protocol_state(Mc2)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/mc_amqpl.erl",
+        "quote": "%% Add any x- annotations as headers Headers1 = maps:fold( fun (<<\"x-\", _/binary>> = Key, Val, H) when is_integer(Val) -> [{Key, long, Val} | H];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_fifo_client.erl",
+        "quote": "Msg1 = mc:set_annotation(<<\"x-acquired-count\">>, AcqCount, Msg0),"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "timestamp_in_ms header",
+      "resolution": "ms",
+      "setting": "message_interceptors.incoming.set_header_timestamp.overwrite (rabbitmq.conf); no interceptor is configured by default",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/mc.erl",
+        "quote": "Anns = ensure_received_at_timestamp(Anns2),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/mc.erl",
+        "quote": "ensure_received_at_timestamp(Anns) -> Millis = os:system_time(millisecond), Anns#{?ANN_RECEIVED_AT_TIMESTAMP => Millis}."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/include/mc.hrl",
+        "quote": "-define(ANN_RECEIVED_AT_TIMESTAMP, rts)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_msg_interceptor_timestamp.erl",
+        "quote": "Ts = mc:get_annotation(?ANN_RECEIVED_AT_TIMESTAMP, Msg0), Msg = rabbit_msg_interceptor:set_annotation(Msg0, ?KEY_INCOMING, Ts, Overwrite),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/message-interceptors.md",
+        "quote": "This interceptor adds a timestamp to each incoming message:"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/message-interceptors.md",
+        "quote": "message_interceptors.incoming.set_header_timestamp.overwrite = true"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit.erl",
+        "quote": "Interceptors = application:get_env(?MODULE, message_interceptors, []),"
+       }
+      ],
+      "note": "The broker always records rts = os:system_time(millisecond), on the receiving node's clock, when it builds the message container on receipt (mc:init), and keeps it with the message (classic queues read it for the oldest message's received timestamp). It reaches the consumer only through the incoming timestamp interceptor, which copies it into the timestamp_in_ms header (ms) and the timestamp property (s). Coded 'by configuration' because the delivered stamp needs this setting."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/message-interceptors.md",
+        "quote": "`timestamp_in_ms` header (milliseconds) for compatibility with the former"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/mc_amqpl.erl",
+        "quote": "(<<\"timestamp_in_ms\">> = Key, Val, H) when is_integer(Val) -> [{Key, long, Val} | H];"
+       }
+      ],
+      "note": "Delivered when the incoming timestamp interceptor is configured (Q1)."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "x-opt-rabbitmq-sent-time header (by configuration)",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_msg_interceptor_timestamp.erl",
+        "quote": "-define(KEY_OUTGOING, <<\"x-opt-rabbitmq-sent-time\">>)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_msg_interceptor_timestamp.erl",
+        "quote": "intercept(Msg, _Ctx, outgoing, #{outgoing := _True}) -> Ts = os:system_time(millisecond), mc:set_annotation(?KEY_OUTGOING, Ts, Msg);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_channel.erl",
+        "quote": "Mc1 = rabbit_msg_interceptor:intercept_outgoing(Mc, MsgIcptCtx), Mc2 = mc:convert(mc_amqpl, Mc1), mc:protocol_state(Mc2)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/message-interceptors.md",
+        "quote": "This interceptor timestamps messages when they are sent to clients:"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/message-interceptors.md",
+        "quote": "message_interceptors.outgoing.timestamp.enabled = true"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/message-interceptors.md",
+        "quote": "intercepted when RabbitMQ delivers a message to a client, just before it is [converted](./conversions) to the target protocol."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_channel.erl",
+        "quote": "DeliveredAt = erlang:monotonic_time(millisecond),"
+       }
+      ],
+      "note": "Only with message_interceptors.outgoing.timestamp.enabled = true (off by default; added in 4.2.0): the channel stamps os:system_time(millisecond) as it converts the message for delivery. Without it, the channel keeps only delivered_at = erlang:monotonic_time(millisecond) for each delivery that needs an ack (consumer timeouts), never delivered. In a cluster the received stamp is the publisher's node clock and the sent stamp the consumer's node clock."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/message-interceptors.md",
+        "quote": "The annotation key is `x-opt-rabbitmq-sent-time`, and its value is a timestamp in milliseconds since January 1, 1970 UTC."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/mc_amqpl.erl",
+        "quote": "%% Add any x- annotations as headers Headers1 = maps:fold( fun (<<\"x-\", _/binary>> = Key, Val, H) when is_integer(Val) -> [{Key, long, Val} | H];"
+       }
+      ],
+      "note": "Delivered as a long header when the outgoing timestamp interceptor is enabled (Q3)."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-rabbitmq-0.9.1.json",
+        "quote": "\"arguments\": [{\"type\": \"shortstr\", \"name\": \"consumer-tag\"}, {\"type\": \"longlong\", \"name\": \"delivery-tag\"}, {\"type\": \"bit\", \"name\": \"redelivered\", \"default-value\": false}, {\"domain\": \"exchange-name\", \"name\": \"exchange\"}, {\"type\": \"shortstr\", \"name\": \"routing-key\"}], \"name\": \"deliver\"},"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-rabbitmq-0.9.1.json",
+        "quote": "\"properties\": [{\"type\": \"shortstr\", \"name\": \"content-type\"}, {\"type\": \"shortstr\", \"name\": \"content-encoding\"}, {\"type\": \"table\", \"name\": \"headers\"}, {\"type\": \"octet\", \"name\": \"delivery-mode\"}, {\"type\": \"octet\", \"name\": \"priority\"},"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-rabbitmq-0.9.1.json",
+        "quote": "{\"type\": \"shortstr\", \"name\": \"correlation-id\"}, {\"type\": \"shortstr\", \"name\": \"reply-to\"}, {\"type\": \"shortstr\", \"name\": \"expiration\"}, {\"type\": \"shortstr\", \"name\": \"message-id\"}, {\"type\": \"timestamp\", \"name\": \"timestamp\"},"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-rabbitmq-0.9.1.json",
+        "quote": "{\"type\": \"shortstr\", \"name\": \"type\"}, {\"type\": \"shortstr\", \"name\": \"user-id\"}, {\"type\": \"shortstr\", \"name\": \"app-id\"}, {\"type\": \"shortstr\", \"name\": \"cluster-id\"}]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_channel.erl",
+        "quote": "Content = outgoing_content(Mc, MsgIcptCtx), Deliver = #'basic.deliver'{consumer_tag = ConsumerTag, delivery_tag = DeliveryTag, redelivered = Redelivered, exchange = Exchange, routing_key = RoutingKey},"
+       }
+      ],
+      "note": "No delivered field holds a duration. With both interceptors on, sent minus received can be computed, but no documented rule states it and the two stamps can come from different nodes' clocks; the verdict takes this pair through Q1-Q4."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "Firehose tracer (rabbitmqctl trace_on, per vhost, off at every start): a copy of every message published (routing key publish.<exchange>) and every message delivered (deliver.<queue>) is published to amq.rabbitmq.trace; the copy's headers carry no time of the event. The rabbitmq_tracing plugin logs each traced copy with a timestamp taken when it writes the log record (RFC 3339, milliseconds), so the time is the logger's, a little after the event.",
+      "resolution": "ms (rabbitmq_tracing log record)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/firehose.md",
+        "quote": "RabbitMQ has a \"firehose\" feature, where the administrator can turn on (on a per-node, per-vhost basis) an exchange to which publish- and delivery-notifications should be CCed."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/firehose.md",
+        "quote": "Traced message routing key will be either \"`publish.{exchangename}`\" (for messages entering the node), or \"`deliver.{queuename}`\" (for messages that are delivered to consumers)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_channel.erl",
+        "quote": "rabbit_trace:tap_out(Msg, ConnName, ChannelNum, Username, TraceState),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/firehose.md",
+        "quote": "provides a GUI to capture traced messages and log them in text or JSON format files."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_tracing/src/rabbit_tracing_consumer.erl",
+        "quote": "#log_record{timestamp = rabbit_mgmt_format:now_to_str(),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_management_agent/src/rabbit_mgmt_format.erl",
+        "quote": "now_to_str() -> Str = calendar:system_time_to_rfc3339(os:system_time(millisecond), [{unit, millisecond}]),"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/consumers.md",
+        "quote": "Applications can subscribe to have RabbitMQ push enqueued messages (deliveries) to them."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/consumer-prefetch.md",
+        "quote": "The following basic example in Java will receive a maximum of 10 unacknowledged messages at once:"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/consumer-prefetch.md",
+        "quote": "A value of `0` is treated as infinite, allowing any number of unacknowledged messages."
+       }
+      ],
+      "note": "basic.consume registers a subscription; the prefetch count bounds unacknowledged deliveries per consumer, a credit the consumer renews by acking. Prefetch 0 removes the bound (then standing)."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_channel.erl",
+       "read": "outgoing_content/2 runs the outgoing interceptors for basic.deliver and basic.get-ok just before the writer sends the command; rabbit_msg_interceptor_timestamp then sets x-opt-rabbitmq-sent-time to os:system_time(millisecond). The 4.2.0 release notes introduce the outgoing interceptors.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/mc_amqpl.erl",
+       "read": "Integer x- annotations become long headers when the message is converted for AMQP 0-9-1, so the stamp reaches the consumer as a header.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited protocol text and server code say what the answer says: credit, a window of unacknowledged deliveries or pending requests, a standing subscription, or, for Redis, commands pipelined behind a blocked one that the server runs as soon as it is served.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "queues, AMQP 1.0",
+     "Q0": {
+      "fields": [
+       "transfer frame: handle, delivery-id, delivery-tag, message-format, settled, more, rcv-settle-mode, state, resume, aborted, batchable",
+       "header section: durable, priority, ttl, first-acquirer, delivery-count",
+       "delivery-annotations and message-annotations; the broker adds x-exchange, x-routing-key, x-opt-deaths and any x- annotation (x-delivery-count, x-acquired-count, x-routed-by, x-opt-rabbitmq-received-time, x-opt-rabbitmq-sent-time)",
+       "properties section: message-id, user-id, to, subject, reply-to, correlation-id, content-type, content-encoding, absolute-expiry-time, creation-time, group-id, group-sequence, reply-to-group-id (as published)",
+       "application-properties, body (data, amqp-sequence or amqp-value), footer"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/transport.xml",
+        "quote": "<field name=\"handle\" type=\"handle\" mandatory=\"true\"/> <field name=\"delivery-id\" type=\"delivery-number\"/> <field name=\"delivery-tag\" type=\"delivery-tag\"/> <field name=\"message-format\" type=\"message-format\"/> <field name=\"settled\" type=\"boolean\"/>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/messaging.xml",
+        "quote": "<field name=\"durable\" type=\"boolean\"/> <field name=\"priority\" type=\"ubyte\"/> <field name=\"ttl\" type=\"milliseconds\"/> <field name=\"first-acquirer\" type=\"boolean\"/> <field name=\"delivery-count\" type=\"uint\"/>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/messaging.xml",
+        "quote": "<type name=\"message-annotations\" class=\"restricted\" source=\"annotations\" provides=\"section\">"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/messaging.xml",
+        "quote": "<field name=\"message-id\" type=\"*\" requires=\"message-id\"/> <field name=\"user-id\" type=\"binary\"/> <field name=\"to\" type=\"*\" requires=\"address\"/> <field name=\"subject\" type=\"string\"/>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/messaging.xml",
+        "quote": "<field name=\"absolute-expiry-time\" type=\"timestamp\"/> <field name=\"creation-time\" type=\"timestamp\"/> <field name=\"group-id\" type=\"string\"/>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_amqp_session.erl",
+        "quote": "Transfer = #'v1_0.transfer'{handle = ?UINT(Handle), delivery_id = ?UINT(DeliveryId), delivery_tag = {binary, Dtag}, message_format = ?UINT(?MESSAGE_FORMAT), settled = SendSettled, more = false}, Mc1 = rabbit_msg_interceptor:intercept_outgoing(Mc0, MsgIcptCtx),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/mc_amqp.erl",
+        "quote": "(<<\"x-\", _/binary>> = K, V, L) when V =/= undefined -> %% any x-* annotations get added as message annotations [{{symbol, K}, mc_util:infer_type(V)} | L];"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "x-opt-rabbitmq-received-time message annotation",
+      "resolution": "ms",
+      "setting": "message_interceptors.incoming.set_header_timestamp.overwrite (rabbitmq.conf); no interceptor is configured by default",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/mc.erl",
+        "quote": "Anns = ensure_received_at_timestamp(Anns2),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/mc.erl",
+        "quote": "ensure_received_at_timestamp(Anns) -> Millis = os:system_time(millisecond), Anns#{?ANN_RECEIVED_AT_TIMESTAMP => Millis}."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/include/mc.hrl",
+        "quote": "-define(ANN_RECEIVED_AT_TIMESTAMP, rts)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_msg_interceptor_timestamp.erl",
+        "quote": "Ts = mc:get_annotation(?ANN_RECEIVED_AT_TIMESTAMP, Msg0), Msg = rabbit_msg_interceptor:set_annotation(Msg0, ?KEY_INCOMING, Ts, Overwrite),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/message-interceptors.md",
+        "quote": "This interceptor adds a timestamp to each incoming message:"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/message-interceptors.md",
+        "quote": "message_interceptors.incoming.set_header_timestamp.overwrite = true"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit.erl",
+        "quote": "Interceptors = application:get_env(?MODULE, message_interceptors, []),"
+       }
+      ],
+      "note": "The broker always records rts (ms, receiving node's clock) on receipt; the incoming timestamp interceptor copies it into the timestamp_in_ms annotation, which an AMQP 1.0 delivery carries as x-opt-rabbitmq-received-time. Coded 'by configuration' because the delivered stamp needs this setting."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/message-interceptors.md",
+        "quote": "* AMQP 1.0 and Streams clients receive a message annotation: `x-opt-rabbitmq-received-time` (timestamp in milliseconds since January 1, 1970 UTC)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/mc_amqp.erl",
+        "quote": "(<<\"timestamp_in_ms\">>, V, L) -> [{{symbol, <<\"x-opt-rabbitmq-received-time\">>}, {timestamp, V}} | L];"
+       }
+      ],
+      "note": "Delivered when the incoming timestamp interceptor is configured (Q1)."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "x-opt-rabbitmq-sent-time message annotation (by configuration)",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_msg_interceptor_timestamp.erl",
+        "quote": "-define(KEY_OUTGOING, <<\"x-opt-rabbitmq-sent-time\">>)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_msg_interceptor_timestamp.erl",
+        "quote": "intercept(Msg, _Ctx, outgoing, #{outgoing := _True}) -> Ts = os:system_time(millisecond), mc:set_annotation(?KEY_OUTGOING, Ts, Msg);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_amqp_session.erl",
+        "quote": "Transfer = #'v1_0.transfer'{handle = ?UINT(Handle), delivery_id = ?UINT(DeliveryId), delivery_tag = {binary, Dtag}, message_format = ?UINT(?MESSAGE_FORMAT), settled = SendSettled, more = false}, Mc1 = rabbit_msg_interceptor:intercept_outgoing(Mc0, MsgIcptCtx),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/message-interceptors.md",
+        "quote": "This interceptor timestamps messages when they are sent to clients:"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/message-interceptors.md",
+        "quote": "message_interceptors.outgoing.timestamp.enabled = true"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/message-interceptors.md",
+        "quote": "intercepted when RabbitMQ delivers a message to a client, just before it is [converted](./conversions) to the target protocol."
+       }
+      ],
+      "note": "Only with message_interceptors.outgoing.timestamp.enabled = true (off by default; added in 4.2.0): the session stamps os:system_time(millisecond) as it converts the message for the transfer. The AMQP 1.0 session itself records no delivery time otherwise (no time call in rabbit_amqp_session.erl); quorum queues keep only a checkout deadline for consumer timeouts. In a cluster the received and sent stamps can come from two nodes' clocks."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/message-interceptors.md",
+        "quote": "The annotation key is `x-opt-rabbitmq-sent-time`, and its value is a timestamp in milliseconds since January 1, 1970 UTC."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/mc_amqp.erl",
+        "quote": "(<<\"x-\", _/binary>> = K, V, L) when V =/= undefined -> %% any x-* annotations get added as message annotations [{{symbol, K}, mc_util:infer_type(V)} | L];"
+       }
+      ],
+      "note": "Delivered as a message annotation when the outgoing timestamp interceptor is enabled (Q3)."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/transport.xml",
+        "quote": "<field name=\"handle\" type=\"handle\" mandatory=\"true\"/> <field name=\"delivery-id\" type=\"delivery-number\"/> <field name=\"delivery-tag\" type=\"delivery-tag\"/> <field name=\"message-format\" type=\"message-format\"/> <field name=\"settled\" type=\"boolean\"/>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/messaging.xml",
+        "quote": "<field name=\"durable\" type=\"boolean\"/> <field name=\"priority\" type=\"ubyte\"/> <field name=\"ttl\" type=\"milliseconds\"/> <field name=\"first-acquirer\" type=\"boolean\"/> <field name=\"delivery-count\" type=\"uint\"/>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/messaging.xml",
+        "quote": "<field name=\"message-id\" type=\"*\" requires=\"message-id\"/> <field name=\"user-id\" type=\"binary\"/> <field name=\"to\" type=\"*\" requires=\"address\"/> <field name=\"subject\" type=\"string\"/>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/messaging.xml",
+        "quote": "<field name=\"absolute-expiry-time\" type=\"timestamp\"/> <field name=\"creation-time\" type=\"timestamp\"/> <field name=\"group-id\" type=\"string\"/>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_amqp_session.erl",
+        "quote": "Transfer = #'v1_0.transfer'{handle = ?UINT(Handle), delivery_id = ?UINT(DeliveryId), delivery_tag = {binary, Dtag}, message_format = ?UINT(?MESSAGE_FORMAT), settled = SendSettled, more = false}, Mc1 = rabbit_msg_interceptor:intercept_outgoing(Mc0, MsgIcptCtx),"
+       }
+      ],
+      "note": "The header's ttl is the publisher's time-to-live, not a measured duration; no section carries a duration the broker measured."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "Firehose tracer (rabbitmqctl trace_on, per vhost, off at every start): a copy of every message published (routing key publish.<exchange>) and every message delivered (deliver.<queue>) is published to amq.rabbitmq.trace; the copy's headers carry no time of the event. The rabbitmq_tracing plugin logs each traced copy with a timestamp taken when it writes the log record (RFC 3339, milliseconds), so the time is the logger's, a little after the event.",
+      "resolution": "ms (rabbitmq_tracing log record)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/firehose.md",
+        "quote": "RabbitMQ has a \"firehose\" feature, where the administrator can turn on (on a per-node, per-vhost basis) an exchange to which publish- and delivery-notifications should be CCed."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/firehose.md",
+        "quote": "Traced message routing key will be either \"`publish.{exchangename}`\" (for messages entering the node), or \"`deliver.{queuename}`\" (for messages that are delivered to consumers)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_amqp_session.erl",
+        "quote": "rabbit_trace:tap_out(Msg, ConnName, ChannelNum, Username, Trace),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/firehose.md",
+        "quote": "provides a GUI to capture traced messages and log them in text or JSON format files."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_tracing/src/rabbit_tracing_consumer.erl",
+        "quote": "#log_record{timestamp = rabbit_mgmt_format:now_to_str(),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_management_agent/src/rabbit_mgmt_format.erl",
+        "quote": "now_to_str() -> Str = calendar:system_time_to_rfc3339(os:system_time(millisecond), [{unit, millisecond}]),"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/transport.xml",
+        "quote": "<field name=\"link-credit\" type=\"uint\"/>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/amqp.md",
+        "quote": "A consuming client application can dynamically adjust and prioritize how many messages it wants to receive from specific source queues."
+       }
+      ],
+      "note": "The receiver grants link credit in flow frames; the queue sends while credit remains."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_amqp_session.erl",
+       "read": "The session runs the outgoing interceptors while it builds each transfer frame, then converts the message for AMQP 1.0.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/mc_amqp.erl",
+       "read": "x- annotations are written as message annotations, so the stamp reaches the consumer.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited protocol text and server code say what the answer says: credit, a window of unacknowledged deliveries or pending requests, a standing subscription, or, for Redis, commands pipelined behind a blocked one that the server runs as soon as it is served.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "streams (stream protocol)",
+     "Q0": {
+      "fields": [
+       "Deliver frame: SubscriptionId; CommittedChunkId (version 2)",
+       "chunk header, one per chunk and shared by its messages: MagicVersion, ChunkType, NumEntries, NumRecords, Timestamp (ms), Epoch, ChunkFirstOffset, ChunkCrc, DataLength, TrailerLength, BloomSize, Reserved",
+       "per message: entry type and size, and the message bytes as stored (an AMQP 1.0 message); its offset is ChunkFirstOffset plus its position in the chunk"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/docs/PROTOCOL.adoc",
+        "quote": "Deliver => Key Version SubscriptionId CommittedOffset OsirisChunk"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/docs/PROTOCOL.adoc",
+        "quote": "OsirisChunk => MagicVersion ChunkType NumEntries NumRecords Timestamp Epoch ChunkFirstOffset ChunkCrc DataLength TrailerLength BloomSize Reserved Messages"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/docs/PROTOCOL.adoc",
+        "quote": "Messages => [Message] // a continous collection of messages, the size of the array is defined by NumEntries"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/src/rabbit_stream_reader.erl",
+        "quote": "CommittedChunkId = osiris_log:committed_chunk_id(Log), FrameBeginning = <<FrameSize:32, ?REQUEST:1, ?COMMAND_DELIVER:15, ?VERSION_2:16, SubId:8/unsigned, CommittedChunkId:64>>,"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "chunk header Timestamp",
+      "resolution": "ms, one value per chunk",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/osiris/v1.14.1/src/osiris_writer.erl",
+        "quote": "Now = erlang:system_time(millisecond),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/osiris/v1.14.1/src/osiris_writer.erl",
+        "quote": "osiris_log:write(Entries, ?CHNK_USER, Now, TrkData, Log1)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/docs/PROTOCOL.adoc",
+        "quote": "Timestamp => int64 // erlang system time in milliseconds, since epoch"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/streams.md",
+        "quote": "a timestamp value specifying the point in the stream to attach at, based on message arrival time (not application-provided timestamps)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/streams.md",
+        "quote": "Since streams are segmented into chunks that share a single timestamp, consumers attach at a chunk boundary and can receive messages published shortly before the specified timestamp."
+       }
+      ],
+      "note": "Set by the stream's writer (the leader) when it writes a batch to its log as a chunk; replicas copy the chunk, so every reader sees the leader's stamp. Messages published over AMQP with the incoming timestamp interceptor also carry x-opt-rabbitmq-received-time inside the stored message."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/docs/PROTOCOL.adoc",
+        "quote": "Deliver => Key Version SubscriptionId CommittedOffset OsirisChunk"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/docs/PROTOCOL.adoc",
+        "quote": "OsirisChunk => MagicVersion ChunkType NumEntries NumRecords Timestamp Epoch ChunkFirstOffset ChunkCrc DataLength TrailerLength BloomSize Reserved Messages"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/docs/PROTOCOL.adoc",
+        "quote": "Timestamp => int64 // erlang system time in milliseconds, since epoch"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/src/rabbit_stream_reader.erl",
+        "quote": "CommittedChunkId = osiris_log:committed_chunk_id(Log), FrameBeginning = <<FrameSize:32, ?REQUEST:1, ?COMMAND_DELIVER:15, ?VERSION_2:16, SubId:8/unsigned, CommittedChunkId:64>>,"
+       }
+      ],
+      "note": "The Deliver frame sends the stored chunk, header included, after a small frame header."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/src/rabbit_stream_reader.erl",
+        "quote": "CommittedChunkId = osiris_log:committed_chunk_id(Log), FrameBeginning = <<FrameSize:32, ?REQUEST:1, ?COMMAND_DELIVER:15, ?VERSION_2:16, SubId:8/unsigned, CommittedChunkId:64>>,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/message-interceptors.md",
+        "quote": "Messages sent over the [RabbitMQ Streams protocol](https://github.com/rabbitmq/rabbitmq-server/blob/main/deps/rabbitmq_stream/docs/PROTOCOL.adoc) are not intercepted."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/docs/PROTOCOL.adoc",
+        "quote": "Deliver => Key Version SubscriptionId CommittedOffset OsirisChunk"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/docs/PROTOCOL.adoc",
+        "quote": "OsirisChunk => MagicVersion ChunkType NumEntries NumRecords Timestamp Epoch ChunkFirstOffset ChunkCrc DataLength TrailerLength BloomSize Reserved Messages"
+       }
+      ],
+      "note": "The stream reader prefixes the stored chunk with the subscription header and sends it (sendfile); it records no time per delivery or per credit, and stream-protocol messages are not intercepted, so the outgoing timestamp interceptor does not apply."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/docs/PROTOCOL.adoc",
+        "quote": "Deliver => Key Version SubscriptionId CommittedOffset OsirisChunk"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/docs/PROTOCOL.adoc",
+        "quote": "OsirisChunk => MagicVersion ChunkType NumEntries NumRecords Timestamp Epoch ChunkFirstOffset ChunkCrc DataLength TrailerLength BloomSize Reserved Messages"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/docs/PROTOCOL.adoc",
+        "quote": "Messages => [Message] // a continous collection of messages, the size of the array is defined by NumEntries"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/src/rabbit_stream_reader.erl",
+        "quote": "CommittedChunkId = osiris_log:committed_chunk_id(Log), FrameBeginning = <<FrameSize:32, ?REQUEST:1, ?COMMAND_DELIVER:15, ?VERSION_2:16, SubId:8/unsigned, CommittedChunkId:64>>,"
+       }
+      ],
+      "note": "Only the chunk's write time is delivered; no duration."
+     },
+     "Q6": {
+      "answer": "none",
+      "what": "The firehose taps sit only in the AMQP 0-9-1 channel and the AMQP 1.0 session; the stream plugin's source (deps/rabbitmq_stream/src at v4.4.0) has no call to rabbit_trace, and its debug logs are per subscription, not per chunk or credit.",
+      "resolution": "none",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_channel.erl",
+        "quote": "rabbit_trace:tap_out(Msg, ConnName, ChannelNum, Username, TraceState),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_amqp_session.erl",
+        "quote": "rabbit_trace:tap_out(Msg, ConnName, ChannelNum, Username, Trace),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/src/rabbit_stream_reader.erl",
+        "quote": "CommittedChunkId = osiris_log:committed_chunk_id(Log), FrameBeginning = <<FrameSize:32, ?REQUEST:1, ?COMMAND_DELIVER:15, ?VERSION_2:16, SubId:8/unsigned, CommittedChunkId:64>>,"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/stream.md",
+        "quote": "A credit represents a *chunk* of messages that the broker is allowed to send to the consumer."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/stream.md",
+        "quote": "The broker subtracts a credit every time it delivers a chunk."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/docs/PROTOCOL.adoc",
+        "quote": "Credit => int16 // the number of chunks that can be sent"
+       }
+      ],
+      "note": "Credit counts chunks; a consumer that keeps credit outstanding has new chunks sent as they are written."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited protocol text and server code say what the answer says: credit, a window of unacknowledged deliveries or pending requests, a standing subscription, or, for Redis, commands pipelined behind a blocked one that the server runs as soon as it is served.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "NATS",
+   "group": "A",
+   "version": "2.15.2",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/const.go",
+     "quote": "VERSION = \"2.15.2\""
+    }
+   ],
+   "modes": [
+    {
+     "mode": "core subscriptions",
+     "Q0": {
+      "fields": [
+       "MSG: subject, sid, reply-to (optional), payload size, payload",
+       "HMSG: subject, sid, reply-to (optional), header size, total size, headers (as published), payload",
+       "the only header the server adds: Nats-Request-Info, on messages that cross a service import (requester's account and RTT, and its connection start time when shared; no per-message time)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "The `MSG` protocol message is used to deliver an application message to the client."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "`MSG <subject> <sid> [reply-to] <#bytes>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "`HMSG <subject> <sid> [reply-to] <#header bytes> <#total bytes>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "The `HMSG` message is the same as `MSG`, but extends the message payload with headers."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/nats.go",
+        "quote": "type Msg struct { Subject string Reply string Header Header Data []byte Sub *Subscription"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/client.go",
+        "quote": "func (c *client) msgHeader(subj, reply []byte, sub *subscription) []byte {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/accounts.go",
+        "quote": "const ClientInfoHdr = \"Nats-Request-Info\""
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "The `MSG` protocol message is used to deliver an application message to the client."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "`MSG <subject> <sid> [reply-to] <#bytes>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "`HMSG <subject> <sid> [reply-to] <#header bytes> <#total bytes>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "The `HMSG` message is the same as `MSG`, but extends the message payload with headers."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/nats.go",
+        "quote": "type Msg struct { Subject string Reply string Header Header Data []byte Sub *Subscription"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/client.go",
+        "quote": "func (c *client) msgHeader(subj, reply []byte, sub *subscription) []byte {"
+       }
+      ],
+      "note": "Core NATS keeps no message: the server matches each PUB to the subscriptions and writes MSG/HMSG built from the publisher's subject, reply, headers and payload (msgHeader). No receipt time is set."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "The `MSG` protocol message is used to deliver an application message to the client."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "`MSG <subject> <sid> [reply-to] <#bytes>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "`HMSG <subject> <sid> [reply-to] <#header bytes> <#total bytes>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "The `HMSG` message is the same as `MSG`, but extends the message payload with headers."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/nats.go",
+        "quote": "type Msg struct { Subject string Reply string Header Header Data []byte Sub *Subscription"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/client.go",
+        "quote": "func (c *client) msgHeader(subj, reply []byte, sub *subscription) []byte {"
+       }
+      ],
+      "note": "Outside message tracing (Q6), the delivery path (client.go deliverMsg) reads the clock only to time internal callbacks and to track reply-subject permissions; nothing is recorded per delivery."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "The `MSG` protocol message is used to deliver an application message to the client."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "`MSG <subject> <sid> [reply-to] <#bytes>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "`HMSG <subject> <sid> [reply-to] <#header bytes> <#total bytes>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "The `HMSG` message is the same as `MSG`, but extends the message payload with headers."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/nats.go",
+        "quote": "type Msg struct { Subject string Reply string Header Header Data []byte Sub *Subscription"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/client.go",
+        "quote": "func (c *client) msgHeader(subj, reply []byte, sub *subscription) []byte {"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "Message tracing (since 2.11): a message published with a Nats-Trace-Dest header makes every server it crosses publish trace events, each with a ts, to that subject: ingress on arrival and one egress per subscription it is delivered to. Protocol trace logging (trace / -V, off by default) logs every op a client sends and every MSG written to a client, with the log line's time.",
+      "resolution": "ns (trace event ts, Go time); us (trace log lines)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/msgtrace.go",
+        "quote": "Timestamp time.Time `json:\"ts\"`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/msgtrace.go",
+        "quote": "Events: append(MsgTraceEvents(nil), &MsgTraceIngress{ MsgTraceBase: MsgTraceBase{ Type: MsgTraceIngressType, Timestamp: time.Now(),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/msgtrace.go",
+        "quote": "e := &MsgTraceEgress{ MsgTraceBase: MsgTraceBase{ Type: MsgTraceEgressType, Timestamp: time.Now(),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-architecture-and-design/dc0b1c7200f0d716fdee9de1428759594538ed7d/adr/ADR-41.md",
+        "quote": "* Egress (`eg`) - The final event that indicates how the message leaves a Server"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/nats-concepts/jetstream/headers.md",
+        "quote": "The subject that will receive the Trace messages"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/opts.go",
+        "quote": "fs.BoolVar(&opts.Trace, \"V\", false, \"Enable Trace logging.\")"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/client.go",
+        "quote": "client.traceOutOp(bytesToString(mh[:len(mh)-LEN_CR_LF]), nil)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/logger/log.go",
+        "quote": "flags = log.LstdFlags | log.Lmicroseconds"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "`SUB` initiates a subscription to a subject, optionally joining a distributed queue group."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "The `MSG` protocol message is used to deliver an application message to the client."
+       }
+      ],
+      "note": "A subscription receives every matching message as it is published; there is no credit (a slow consumer is cut off, not paced)."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited protocol text and server code say what the answer says: credit, a window of unacknowledged deliveries or pending requests, a standing subscription, or, for Redis, commands pipelined behind a blocked one that the server runs as soon as it is served.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "JetStream pull consumers",
+     "Q0": {
+      "fields": [
+       "MSG/HMSG: subject (the stored message's subject), sid, reply = ack subject, headers (as stored), payload",
+       "ack subject tokens (v2, the default from 2.15): $JS.ACK.<domain>.<account hash>.<stream>.<consumer>.<num delivered>.<stream sequence>.<consumer sequence>.<timestamp>.<num pending>",
+       "delivered to the pull request's reply inbox; Nats-Pin-Id header added for pinned-client priority groups"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-architecture-and-design/dc0b1c7200f0d716fdee9de1428759594538ed7d/adr/ADR-15.md",
+        "quote": "$JS.ACK.<domain>.<account hash>.<stream name>.<consumer name>.<num delivered>.<stream sequence>.<consumer sequence>.<timestamp>.<num pending>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/consumer.go",
+        "quote": "ackReply = o.ackReply(pmsg.seq, o.dseq, dc, pmsg.ts, o.numPending())"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/jetstream/message.go",
+        "quote": "// Timestamp is the time the message was originally stored on a stream. Timestamp time.Time"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/nats.go",
+        "quote": "type Msg struct { Subject string Reply string Header Header Data []byte Sub *Subscription"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/consumer.go",
+        "quote": "pmsg.hdr = genHeader(pmsg.hdr, JSPullRequestNatsPinId, o.currentPinId)"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "stored timestamp (<timestamp> token of the ack subject)",
+      "resolution": "ns",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/filestore.go",
+        "quote": "seq, ts := fs.state.LastSeq+1, time.Now().UnixNano()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/jetstream_batching.go",
+        "quote": "esm := encodeStreamMsgAllowCompress(subject, reply, hdr, msg, mset.clseq, time.Now().UnixNano(), false)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/jetstream/message.go",
+        "quote": "// Timestamp is the time the message was originally stored on a stream. Timestamp time.Time"
+       }
+      ],
+      "note": "Set by the stream leader when it proposes the message (clustered) or by the store when it stores it (single server, file or memory). A mirror keeps its origin's timestamp, read from the origin's ack subject. The server's clock, nanoseconds since the epoch."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/consumer.go",
+        "quote": "ackReply = o.ackReply(pmsg.seq, o.dseq, dc, pmsg.ts, o.numPending())"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-architecture-and-design/dc0b1c7200f0d716fdee9de1428759594538ed7d/adr/ADR-15.md",
+        "quote": "$JS.ACK.<domain>.<account hash>.<stream name>.<consumer name>.<num delivered>.<stream sequence>.<consumer sequence>.<timestamp>.<num pending>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/jetstream/message.go",
+        "quote": "Timestamp: time.Unix(0, int64(parser.ParseNum(tokens[parser.AckTimestampSeqTokenPos]))),"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "request arrival",
+      "field": "pull request arrival (waitingRequest.received), not delivered",
+      "resolution": "ns",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/consumer.go",
+        "quote": "received time.Time"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/consumer.go",
+        "quote": "wr.received = time.Now()"
+       }
+      ],
+      "note": "Kept with each pull request while it waits; the consumer uses it to track its last activity and for interest checks. Unless the ack policy is none, the server also records each delivery's send time (Pending.Timestamp, ns) for ack wait. Neither is delivered."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-architecture-and-design/dc0b1c7200f0d716fdee9de1428759594538ed7d/adr/ADR-15.md",
+        "quote": "$JS.ACK.<domain>.<account hash>.<stream name>.<consumer name>.<num delivered>.<stream sequence>.<consumer sequence>.<timestamp>.<num pending>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/consumer.go",
+        "quote": "ackReply = o.ackReply(pmsg.seq, o.dseq, dc, pmsg.ts, o.numPending())"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/jetstream/message.go",
+        "quote": "// Timestamp is the time the message was originally stored on a stream. Timestamp time.Time"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/nats.go",
+        "quote": "type Msg struct { Subject string Reply string Header Header Data []byte Sub *Subscription"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/consumer.go",
+        "quote": "pmsg.hdr = genHeader(pmsg.hdr, JSPullRequestNatsPinId, o.currentPinId)"
+       }
+      ],
+      "note": "The ack subject carries counts, sequences and the store timestamp; the only header added at delivery is Nats-Pin-Id."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-architecture-and-design/dc0b1c7200f0d716fdee9de1428759594538ed7d/adr/ADR-15.md",
+        "quote": "$JS.ACK.<domain>.<account hash>.<stream name>.<consumer name>.<num delivered>.<stream sequence>.<consumer sequence>.<timestamp>.<num pending>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/consumer.go",
+        "quote": "ackReply = o.ackReply(pmsg.seq, o.dseq, dc, pmsg.ts, o.numPending())"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/jetstream/message.go",
+        "quote": "// Timestamp is the time the message was originally stored on a stream. Timestamp time.Time"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/nats.go",
+        "quote": "type Msg struct { Subject string Reply string Header Header Data []byte Sub *Subscription"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/consumer.go",
+        "quote": "pmsg.hdr = genHeader(pmsg.hdr, JSPullRequestNatsPinId, o.currentPinId)"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "Protocol trace logging (trace / -V, off by default) logs every op a client sends (pull requests and acks are PUBs to $JS subjects) and every MSG written to a client, with the log line's time. Message tracing (Nats-Trace-Dest) records the message's arrival (ingress) and its store into the stream (js event), but the server disables the trace header on the stored copy, so a consumer's delivery is not traced.",
+      "resolution": "us (trace log lines); ns (trace events, arrival and store only)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/opts.go",
+        "quote": "fs.BoolVar(&opts.Trace, \"V\", false, \"Enable Trace logging.\")"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/client.go",
+        "quote": "client.traceOutOp(bytesToString(mh[:len(mh)-LEN_CR_LF]), nil)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/logger/log.go",
+        "quote": "flags = log.LstdFlags | log.Lmicroseconds"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "// If message is delivered, we need to disable the message trace headers // to prevent a trace event to be generated when a stored message // is delivered to a consumer and routed."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-architecture-and-design/dc0b1c7200f0d716fdee9de1428759594538ed7d/adr/ADR-41.md",
+        "quote": "* JetStream (`js`) - Indicates the message reached a JetStream Stream"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/nats-concepts/jetstream/consumers.md",
+        "quote": "MaxWaiting | The maximum number of waiting pull requests."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/jetstream_api.go",
+        "quote": "const JSWaitQueueDefaultMax = 512"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/nats-concepts/jetstream/consumers.md",
+        "quote": "For pull consumers, client-driven message delivery creates implicit one-to-one flow control with subscribers."
+       }
+      ],
+      "note": "A consumer can keep several pull requests (each with a batch size) waiting at the server, up to MaxWaiting (default 512)."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/consumer.go",
+       "read": "processNextMsgRequest sets wr.received = time.Now() when it creates the waiting request for an arriving pull request; nothing copies it into a delivered message.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited protocol text and server code say what the answer says: credit, a window of unacknowledged deliveries or pending requests, a standing subscription, or, for Redis, commands pipelined behind a blocked one that the server runs as soon as it is served.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "JetStream push consumers",
+     "Q0": {
+      "fields": [
+       "MSG/HMSG: subject (the stored message's subject), sid, reply = ack subject, headers (as stored), payload",
+       "ack subject tokens (v2, the default from 2.15): $JS.ACK.<domain>.<account hash>.<stream>.<consumer>.<num delivered>.<stream sequence>.<consumer sequence>.<timestamp>.<num pending>",
+       "delivered to the consumer's deliver subject; flow-control and idle-heartbeat status messages are separate, not per message"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-architecture-and-design/dc0b1c7200f0d716fdee9de1428759594538ed7d/adr/ADR-15.md",
+        "quote": "$JS.ACK.<domain>.<account hash>.<stream name>.<consumer name>.<num delivered>.<stream sequence>.<consumer sequence>.<timestamp>.<num pending>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/consumer.go",
+        "quote": "ackReply = o.ackReply(pmsg.seq, o.dseq, dc, pmsg.ts, o.numPending())"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/jetstream/message.go",
+        "quote": "// Timestamp is the time the message was originally stored on a stream. Timestamp time.Time"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/nats.go",
+        "quote": "type Msg struct { Subject string Reply string Header Header Data []byte Sub *Subscription"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "stored timestamp (<timestamp> token of the ack subject)",
+      "resolution": "ns",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/filestore.go",
+        "quote": "seq, ts := fs.state.LastSeq+1, time.Now().UnixNano()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/jetstream_batching.go",
+        "quote": "esm := encodeStreamMsgAllowCompress(subject, reply, hdr, msg, mset.clseq, time.Now().UnixNano(), false)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/jetstream/message.go",
+        "quote": "// Timestamp is the time the message was originally stored on a stream. Timestamp time.Time"
+       }
+      ],
+      "note": "Set by the stream leader when it proposes the message (clustered) or by the store when it stores it (single server, file or memory). A mirror keeps its origin's timestamp, read from the origin's ack subject. The server's clock, nanoseconds since the epoch."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/consumer.go",
+        "quote": "ackReply = o.ackReply(pmsg.seq, o.dseq, dc, pmsg.ts, o.numPending())"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-architecture-and-design/dc0b1c7200f0d716fdee9de1428759594538ed7d/adr/ADR-15.md",
+        "quote": "$JS.ACK.<domain>.<account hash>.<stream name>.<consumer name>.<num delivered>.<stream sequence>.<consumer sequence>.<timestamp>.<num pending>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/jetstream/message.go",
+        "quote": "Timestamp: time.Unix(0, int64(parser.ParseNum(tokens[parser.AckTimestampSeqTokenPos]))),"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "delivery time (Pending.Timestamp), not delivered",
+      "resolution": "ns",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/consumer.go",
+        "quote": "o.pending[sseq] = &Pending{dseq, now.UnixNano()}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/consumer.go",
+        "quote": "if ap == AckNone { o.adflr = dseq o.asflr = seq } else { o.trackPending(seq, dseq) }"
+       }
+      ],
+      "note": "Recorded per delivery for ack wait unless the ack policy is none (AckNone skips it); not delivered."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-architecture-and-design/dc0b1c7200f0d716fdee9de1428759594538ed7d/adr/ADR-15.md",
+        "quote": "$JS.ACK.<domain>.<account hash>.<stream name>.<consumer name>.<num delivered>.<stream sequence>.<consumer sequence>.<timestamp>.<num pending>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/consumer.go",
+        "quote": "ackReply = o.ackReply(pmsg.seq, o.dseq, dc, pmsg.ts, o.numPending())"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/jetstream/message.go",
+        "quote": "// Timestamp is the time the message was originally stored on a stream. Timestamp time.Time"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/nats.go",
+        "quote": "type Msg struct { Subject string Reply string Header Header Data []byte Sub *Subscription"
+       }
+      ],
+      "note": "The ack subject carries counts, sequences and the store timestamp only."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-architecture-and-design/dc0b1c7200f0d716fdee9de1428759594538ed7d/adr/ADR-15.md",
+        "quote": "$JS.ACK.<domain>.<account hash>.<stream name>.<consumer name>.<num delivered>.<stream sequence>.<consumer sequence>.<timestamp>.<num pending>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/consumer.go",
+        "quote": "ackReply = o.ackReply(pmsg.seq, o.dseq, dc, pmsg.ts, o.numPending())"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/jetstream/message.go",
+        "quote": "// Timestamp is the time the message was originally stored on a stream. Timestamp time.Time"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.go/v1.55.0/nats.go",
+        "quote": "type Msg struct { Subject string Reply string Header Header Data []byte Sub *Subscription"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "Protocol trace logging (trace / -V, off by default) logs every op a client sends (pull requests and acks are PUBs to $JS subjects) and every MSG written to a client, with the log line's time. Message tracing (Nats-Trace-Dest) records the message's arrival (ingress) and its store into the stream (js event), but the server disables the trace header on the stored copy, so a consumer's delivery is not traced.",
+      "resolution": "us (trace log lines); ns (trace events, arrival and store only)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/opts.go",
+        "quote": "fs.BoolVar(&opts.Trace, \"V\", false, \"Enable Trace logging.\")"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/client.go",
+        "quote": "client.traceOutOp(bytesToString(mh[:len(mh)-LEN_CR_LF]), nil)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/logger/log.go",
+        "quote": "flags = log.LstdFlags | log.Lmicroseconds"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "// If message is delivered, we need to disable the message trace headers // to prevent a trace event to be generated when a stored message // is delivered to a consumer and routed."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-architecture-and-design/dc0b1c7200f0d716fdee9de1428759594538ed7d/adr/ADR-41.md",
+        "quote": "* JetStream (`js`) - Indicates the message reached a JetStream Stream"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/nats-concepts/jetstream/consumers.md",
+        "quote": "For push consumers, `MaxAckPending` is the only form of flow control."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/nats-concepts/jetstream/consumers.md",
+        "quote": "Defines the maximum number of messages, without acknowledgment, that can be outstanding. Once this limit is reached, message delivery will be suspended."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/consumer.go",
+        "quote": "JsDefaultMaxAckPending = 1000"
+       }
+      ],
+      "note": "The server pushes each message as it arrives while unacknowledged deliveries stay below MaxAckPending (default 1000), a window the consumer renews by acking; with AckNone or MaxAckPending -1 there is no bound (then standing)."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/consumer.go",
+       "read": "trackPending, called from deliverMsg unless the ack policy is none, sets the pending entry's Timestamp to time.Now() at delivery.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited protocol text and server code say what the answer says: credit, a window of unacknowledged deliveries or pending requests, a standing subscription, or, for Redis, commands pipelined behind a blocked one that the server runs as soon as it is served.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "NATS Streaming",
+   "group": "A",
+   "version": "0.25.6",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+     "quote": "VERSION = \"0.25.6\""
+    }
+   ],
+   "modes": [
+    {
+     "mode": "subscriptions",
+     "Q0": {
+      "fields": [
+       "MsgProto (protobuf), published by the server to the subscription's inbox as a NATS message: sequence, subject, reply, data, timestamp (ns), redelivered, redeliveryCount, CRC32"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "message MsgProto { uint64 sequence = 1; // globally ordered sequence number for the subject's channel string subject = 2; // subject string reply = 3; // optional reply bytes data = 4; // payload"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "int64 timestamp = 5; // received timestamp: Unix time (number of nanoseconds elapsed since January 1, 1970 UTC)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "bool redelivered = 6; // Flag specifying if the message is being redelivered"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "uint32 redeliveryCount = 7; // Number of times the message has been redelivered (count currently not persisted)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "uint32 CRC32 = 10; // optional IEEE CRC32"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "b, _ := m.Marshal()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "if err := s.ncs.Publish(sub.Inbox, b); err != nil {"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "MsgProto.timestamp",
+      "resolution": "ns",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "// pubMsgToMsgProto converts a PubMsg to a MsgProto and assigns a timestamp // which is monotonic with respect to the channel."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "Timestamp: time.Now().UnixNano(),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "if c.lTimestamp > 0 && m.Timestamp < c.lTimestamp { m.Timestamp = c.lTimestamp }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "int64 timestamp = 5; // received timestamp: Unix time (number of nanoseconds elapsed since January 1, 1970 UTC)"
+       }
+      ],
+      "note": "Set when the server turns a publish into a stored message; raised to the channel's last timestamp if the clock is behind, so it never decreases within a channel."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "int64 timestamp = 5; // received timestamp: Unix time (number of nanoseconds elapsed since January 1, 1970 UTC)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "b, _ := m.Marshal()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "if err := s.ncs.Publish(sub.Inbox, b); err != nil {"
+       }
+      ],
+      "note": "The stored MsgProto, timestamp included, is marshalled and sent as is."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "ack deadline (send time + AckWait), not delivered",
+      "resolution": "ns",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "// Use current time to compute expiration time instead of m.Timestamp."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "sub.acksPending[m.Sequence] = time.Now().UnixNano() + int64(sub.ackWait)"
+       }
+      ],
+      "note": "Kept for each unacknowledged delivery as the ack deadline, the send time plus the subscription's AckWait (a redelivery adds another AckWait); the send time is not stored on its own, and none of it is delivered."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "message MsgProto { uint64 sequence = 1; // globally ordered sequence number for the subject's channel string subject = 2; // subject string reply = 3; // optional reply bytes data = 4; // payload"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "int64 timestamp = 5; // received timestamp: Unix time (number of nanoseconds elapsed since January 1, 1970 UTC)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "bool redelivered = 6; // Flag specifying if the message is being redelivered"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "uint32 redeliveryCount = 7; // Number of times the message has been redelivered (count currently not persisted)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "uint32 CRC32 = 10; // optional IEEE CRC32"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "b, _ := m.Marshal()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "if err := s.ncs.Publish(sub.Inbox, b); err != nil {"
+       }
+      ],
+      "note": "The delivered MsgProto is the stored one; it has no delivery time."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "message MsgProto { uint64 sequence = 1; // globally ordered sequence number for the subject's channel string subject = 2; // subject string reply = 3; // optional reply bytes data = 4; // payload"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "int64 timestamp = 5; // received timestamp: Unix time (number of nanoseconds elapsed since January 1, 1970 UTC)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "bool redelivered = 6; // Flag specifying if the message is being redelivered"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "uint32 redeliveryCount = 7; // Number of times the message has been redelivered (count currently not persisted)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "uint32 CRC32 = 10; // optional IEEE CRC32"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "b, _ := m.Marshal()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "if err := s.ncs.Publish(sub.Inbox, b); err != nil {"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "stan_trace (-SV, off by default) logs each publish received and each delivery (Delivering msg to subid, subject, seq), with the log line's time from the embedded NATS logger.",
+      "resolution": "us (log lines)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "s.log.Tracef(\"[Client:%s] Received message from publisher subj=%s guid=%s\", pm.ClientID, pm.Subject, pm.Guid)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "s.log.Tracef(\"[Client:%s] %s msg to subid=%d, subject=%s, seq=%d\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/nats-streaming-server.go",
+        "quote": "-SV, --stan_trace=<bool> Trace the raw STAN protocol"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "newLogger = natsdLogger.NewStdLogger(nOpts.Logtime, enableDebug, enableTrace, colors, true)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.9.24/logger/log.go",
+        "quote": "flags = log.LstdFlags | log.Lmicroseconds"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "int32 maxInFlight = 5; // Maximum inflight messages without an ack allowed"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "if !force && (ap >= sub.MaxInFlight) {"
+       }
+      ],
+      "note": "The server pushes messages to the subscription's inbox as they arrive while unacknowledged deliveries are fewer than MaxInflight; acks renew the window."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited protocol text and server code say what the answer says: credit, a window of unacknowledged deliveries or pending requests, a standing subscription, or, for Redis, commands pipelined behind a blocked one that the server runs as soon as it is served.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+       "read": "When the server sends a message to a subscription it stores the ack deadline as time.Now().UnixNano() + ackWait, with a comment that it uses the current time rather than the message's timestamp; the send time is kept only inside that deadline and is not delivered.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "NSQ",
+   "group": "A",
+   "version": "1.3.0",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/internal/version/binary.go",
+     "quote": "const Binary = \"1.3.0\""
+    }
+   ],
+   "modes": [
+    {
+     "mode": "channels (RDY credit)",
+     "Q0": {
+      "fields": [
+       "frame: size, frame type (2 = message)",
+       "message: nanosecond timestamp (int64), attempts (uint16), message ID (16 bytes), body"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsqio.github.io/379c3b493cd08dd868d4adb27274883267f7065d/_posts/2013-01-01-tcp_protocol_spec.md",
+        "quote": "FrameTypeMessage int32 = 2"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsqio.github.io/379c3b493cd08dd868d4adb27274883267f7065d/_posts/2013-01-01-tcp_protocol_spec.md",
+        "quote": "nanosecond timestamp ^^ message ID message body"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/message.go",
+        "quote": "binary.BigEndian.PutUint64(buf[:8], uint64(m.Timestamp)) binary.BigEndian.PutUint16(buf[8:10], uint16(m.Attempts))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/message.go",
+        "quote": "n, err = w.Write(m.ID[:])"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/message.go",
+        "quote": "n, err = w.Write(m.Body)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "err = p.Send(client, frameTypeMessage, buf.Bytes())"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "message timestamp",
+      "resolution": "ns",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/message.go",
+        "quote": "func NewMessage(id MessageID, body []byte) *Message { return &Message{ ID: id, Body: body, Timestamp: time.Now().UnixNano(),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "msg := NewMessage(topic.GenerateID(), messageBody)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/topic.go",
+        "quote": "chanMsg = NewMessage(msg.ID, msg.Body) chanMsg.Timestamp = msg.Timestamp"
+       }
+      ],
+      "note": "nsqd stamps a message when it receives the publish (TCP PUB/MPUB/DPUB or HTTP); each channel's copy keeps the topic message's stamp, and so do requeues and the disk queue."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/message.go",
+        "quote": "binary.BigEndian.PutUint64(buf[:8], uint64(m.Timestamp)) binary.BigEndian.PutUint16(buf[8:10], uint16(m.Attempts))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsqio.github.io/379c3b493cd08dd868d4adb27274883267f7065d/_posts/2013-01-01-tcp_protocol_spec.md",
+        "quote": "nanosecond timestamp ^^ message ID message body"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "in-flight start (deliveryTS), not delivered",
+      "resolution": "ns",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/channel.go",
+        "quote": "func (c *Channel) StartInFlightTimeout(msg *Message, clientID int64, timeout time.Duration) error { now := time.Now() msg.clientID = clientID msg.deliveryTS = now"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "subChannel.StartInFlightTimeout(msg, client.ID, msgTimeout) client.SendingMessage() err = p.SendMessage(client, msg)"
+       }
+      ],
+      "note": "Recorded just before the message is written to the client (used to bound TOUCH extensions); not delivered."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsqio.github.io/379c3b493cd08dd868d4adb27274883267f7065d/_posts/2013-01-01-tcp_protocol_spec.md",
+        "quote": "FrameTypeMessage int32 = 2"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsqio.github.io/379c3b493cd08dd868d4adb27274883267f7065d/_posts/2013-01-01-tcp_protocol_spec.md",
+        "quote": "nanosecond timestamp ^^ message ID message body"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/message.go",
+        "quote": "binary.BigEndian.PutUint64(buf[:8], uint64(m.Timestamp)) binary.BigEndian.PutUint16(buf[8:10], uint16(m.Attempts))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/message.go",
+        "quote": "n, err = w.Write(m.ID[:])"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/message.go",
+        "quote": "n, err = w.Write(m.Body)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "err = p.Send(client, frameTypeMessage, buf.Bytes())"
+       }
+      ],
+      "note": "WriteTo writes only the timestamp, attempts, ID and body."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsqio.github.io/379c3b493cd08dd868d4adb27274883267f7065d/_posts/2013-01-01-tcp_protocol_spec.md",
+        "quote": "FrameTypeMessage int32 = 2"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsqio.github.io/379c3b493cd08dd868d4adb27274883267f7065d/_posts/2013-01-01-tcp_protocol_spec.md",
+        "quote": "nanosecond timestamp ^^ message ID message body"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/message.go",
+        "quote": "binary.BigEndian.PutUint64(buf[:8], uint64(m.Timestamp)) binary.BigEndian.PutUint16(buf[8:10], uint16(m.Attempts))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/message.go",
+        "quote": "n, err = w.Write(m.ID[:])"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/message.go",
+        "quote": "n, err = w.Write(m.Body)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "err = p.Send(client, frameTypeMessage, buf.Bytes())"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "With --log-level=debug (default INFO), nsqd logs each command a client sends (RDY, FIN, REQ, PUB...) and each message it writes to a client, with the log line's time. Separately, --e2e-processing-latency-percentile keeps aggregate percentiles per channel of the time from the message timestamp to FIN.",
+      "resolution": "us (log lines); aggregate percentiles for end-to-end processing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "p.nsqd.logf(LOG_DEBUG, \"PROTOCOL(V2): [%s] %s\", client, params)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "p.nsqd.logf(LOG_DEBUG, \"PROTOCOL(V2): writing msg(%s) to client(%s) - %s\", msg.ID, client, msg.Body)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/nsqd.go",
+        "quote": "opts.Logger = log.New(os.Stderr, opts.LogPrefix, log.Ldate|log.Ltime|log.Lmicroseconds)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsqio.github.io/379c3b493cd08dd868d4adb27274883267f7065d/_posts/2012-12-01-nsqd.md",
+        "quote": "set log verbosity: debug, info, warn, error, or fatal (default INFO)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsqio.github.io/379c3b493cd08dd868d4adb27274883267f7065d/_posts/2012-12-01-nsqd.md",
+        "quote": "You can optionally configure `nsqd` to collect and emit end-to-end message processing latency for configurable percentiles using the `--e2e-processing-latency-percentile` flag."
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsqio.github.io/379c3b493cd08dd868d4adb27274883267f7065d/_posts/2013-01-01-tcp_protocol_spec.md",
+        "quote": "Update `RDY` state (indicate you are ready to receive `N` messages)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsqio.github.io/379c3b493cd08dd868d4adb27274883267f7065d/_posts/2013-01-01-tcp_protocol_spec.md",
+        "quote": "updates its `RDY` state to some # it is prepared to handle, say 100. Without any additional commands, 100 messages will be pushed to the client as they are available (each time decrementing the server-side `RDY` count for that client)."
+       }
+      ],
+      "note": "RDY is credit: nsqd pushes messages as they become available while the client's RDY count is above zero."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/channel.go",
+       "read": "StartInFlightTimeout sets msg.deliveryTS = time.Now() and is called just before the message is written to the client.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited protocol text and server code say what the answer says: credit, a window of unacknowledged deliveries or pending requests, a standing subscription, or, for Redis, commands pipelined behind a blocked one that the server runs as soon as it is served.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "Redis",
+   "group": "A",
+   "version": "8.10.3",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/version.h",
+     "quote": "#define REDIS_VERSION \"8.10.3\""
+    }
+   ],
+   "modes": [
+    {
+     "mode": "streams (XREAD / XREADGROUP)",
+     "Q0": {
+      "fields": [
+       "per stream key: its entries",
+       "per entry: entry ID (<ms>-<seq>) and the entry's field-value pairs",
+       "with XREADGROUP CLAIM (since 8.4), two more per entry: milliseconds since the entry's last delivery and its previous delivery count (0 and 0 for a new entry)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xreadgroup.json",
+        "quote": "\"description\": \"Entry without CLAIM option\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xreadgroup.json",
+        "quote": "\"description\": \"Stream id\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xreadgroup.json",
+        "quote": "\"description\": \"Array of field-value pairs\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xreadgroup.json",
+        "quote": "\"description\": \"Milliseconds elapsed since last delivery\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xreadgroup.json",
+        "quote": "\"description\": \"Delivery count (0 for new messages, 1+ for claimed messages)\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_stream.c",
+        "quote": "/* Emit a two elements array for each item. The first is * the ID, the second is an array of field-value pairs. */"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_stream.c",
+        "quote": "/* For new entries idle time and delivery count is 0. */ addReplyLongLong(c, 0); addReplyLongLong(c, 0);"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "entry ID time part",
+      "resolution": "ms",
+      "setting": "the producer passes * as the XADD ID (auto-generated); an explicit ID or the <ms>-* form carries the producer's time",
+      "default_on": null,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_stream.c",
+        "quote": "void streamNextID(streamID *last_id, streamID *new_id) { uint64_t ms = commandTimeSnapshot();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/commands/xadd.md",
+        "quote": "When Redis auto-generates an ID, the first part is the Unix time in milliseconds of the Redis instance generating the ID."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/develop/data-types/streams/_index.md",
+        "quote": "The milliseconds time part is actually the local time in the local Redis node generating the stream ID, however if the current milliseconds time happens to be smaller than the previous entry time, then the previous entry time is used instead"
+       }
+      ],
+      "note": "XADD has no default ID: the ID argument is required, and * asks the server to stamp it. The time is the command's time snapshot (taken when XADD starts; frozen inside MULTI/EXEC and scripts) and never goes below the stream's last ID."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xreadgroup.json",
+        "quote": "\"description\": \"Stream id\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_stream.c",
+        "quote": "/* Emit a two elements array for each item. The first is * the ID, the second is an array of field-value pairs. */"
+       }
+      ],
+      "note": "Every entry in an XREAD or XREADGROUP reply carries its ID."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "PEL delivery_time (XREADGROUP), not delivered",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_stream.c",
+        "quote": "/* Create a NACK entry setting the delivery count to 1 and the delivery * time to the current time. The NACK consumer will be set to the one * specified as argument of the function. */"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_stream.c",
+        "quote": "nack->delivery_time = commandTimeSnapshot();"
+       }
+      ],
+      "note": "Recorded per delivery by XREADGROUP (renewed on redelivery) and readable through XPENDING as idle time; it is the time snapshot of the command run that delivers. XREAD, and XREADGROUP with NOACK, record no delivery time."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xreadgroup.json",
+        "quote": "\"description\": \"Entry without CLAIM option\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xreadgroup.json",
+        "quote": "\"description\": \"Stream id\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xreadgroup.json",
+        "quote": "\"description\": \"Array of field-value pairs\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xreadgroup.json",
+        "quote": "\"description\": \"Milliseconds elapsed since last delivery\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xreadgroup.json",
+        "quote": "\"description\": \"Delivery count (0 for new messages, 1+ for claimed messages)\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_stream.c",
+        "quote": "/* Emit a two elements array for each item. The first is * the ID, the second is an array of field-value pairs. */"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_stream.c",
+        "quote": "/* For new entries idle time and delivery count is 0. */ addReplyLongLong(c, 0); addReplyLongLong(c, 0);"
+       }
+      ],
+      "note": "The stamp itself is never sent. With CLAIM, a reclaimed pending entry carries the milliseconds since its previous delivery (a duration from this stamp) and a new entry carries 0."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xreadgroup.json",
+        "quote": "\"description\": \"Entry without CLAIM option\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xreadgroup.json",
+        "quote": "\"description\": \"Stream id\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xreadgroup.json",
+        "quote": "\"description\": \"Array of field-value pairs\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xreadgroup.json",
+        "quote": "\"description\": \"Milliseconds elapsed since last delivery\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xreadgroup.json",
+        "quote": "\"description\": \"Delivery count (0 for new messages, 1+ for claimed messages)\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_stream.c",
+        "quote": "/* Emit a two elements array for each item. The first is * the ID, the second is an array of field-value pairs. */"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_stream.c",
+        "quote": "/* For new entries idle time and delivery count is 0. */ addReplyLongLong(c, 0); addReplyLongLong(c, 0);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/commands/xreadgroup.md",
+        "quote": "3. Milliseconds since the last time this entry was delivered"
+       }
+      ],
+      "note": "On a first delivery the CLAIM duration is the constant 0; on a reclaimed entry it is the time since its previous delivery, not its time since arrival or its wait for a request."
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "MONITOR streams every command the server processes with a timestamp, once, when the command first runs (a blocked command is not shown again when it is served). SLOWLOG keeps commands slower than slowlog-log-slower-than (default 10000 us; 0 logs every command) with a Unix time in seconds and the execution time in us; a blocked command is logged when it is unblocked. The latency monitor keeps only aggregate spikes per event (ms), off by default.",
+      "resolution": "us (MONITOR timestamp); s and us (SLOWLOG)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/commands/monitor.md",
+        "quote": "`MONITOR` is a debugging command that streams back every command processed by the Redis server."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/replication.c",
+        "quote": "gettimeofday(&tv,NULL); cmdrepr = sdscatprintf(cmdrepr,\"%ld.%06ld \",(long)tv.tv_sec,(long)tv.tv_usec);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/server.c",
+        "quote": "* Other exceptions is a client which is unblocked and retrying to process the command"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/commands/slowlog-get.md",
+        "quote": "2. The unix timestamp at which the logged command was processed. 3. The amount of time needed for its execution, in microseconds."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/server.c",
+        "quote": "/* Log the command into the Slow log if needed. * If the client is blocked we will handle slowlog when it is unblocked. */"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/config.c",
+        "quote": "createLongLongConfig(\"slowlog-log-slower-than\", NULL, MODIFIABLE_CONFIG, -1, LLONG_MAX, server.slowlog_log_slower_than, 10000, INTEGER_CONFIG, NULL, NULL),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/operate/oss_and_stack/management/optimization/latency-monitor.md",
+        "quote": "Monitoring is turned off by default (threshold set to 0)"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/networking.c",
+        "quote": "/* Immediately abort if the client is in the middle of something. */ if (c->flags & CLIENT_BLOCKED || c->flags & CLIENT_UNBLOCKED) break;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/blocked.c",
+        "quote": "/* This function is called in the beforeSleep() function of the event loop * in order to process the pending input buffer of clients that were * unblocked after a blocking operation. */"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/blocked.c",
+        "quote": "/* Process remaining data in the input buffer, unless the client * is blocked again. Actually processInputBuffer() checks that the * client is not blocked before to proceed, but things may change and * the code is conceptually more correct this way. */"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/develop/using-commands/pipelining.md",
+        "quote": "Redis pipelining is a technique for improving performance by issuing multiple commands at once without waiting for the response to each individual command."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/commands/xread.md",
+        "quote": "It is **very important** to understand that you should use the `$` ID only for the first call to `XREAD`."
+       }
+      ],
+      "note": "One XREAD/XREADGROUP BLOCK waits per connection; commands pipelined behind it wait in the connection's input buffer, and the server runs the next one as soon as the blocked one is served (before the event loop sleeps), so a consumer that keeps several XREADGROUP ... BLOCK ... > in flight always has a request at the server: one blocked, the next already in its input buffer. XREAD with $ cannot be pipelined this way ($ is resolved when each command runs)."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited protocol text and server code say what the answer says: credit, a window of unacknowledged deliveries or pending requests, a standing subscription, or, for Redis, commands pipelined behind a blocked one that the server runs as soon as it is served.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_stream.c",
+       "read": "While XREADGROUP (without NOACK) replies with an entry, it creates the entry's pending-list record with delivery_time = commandTimeSnapshot(), in ms; XREAD keeps no such record. The time reaches a client only through XPENDING's idle time, never with the entry.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "Pub/Sub",
+     "Q0": {
+      "fields": [
+       "push message: kind (message; pmessage adds the matched pattern), channel, payload"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/develop/pubsub/_index.md",
+        "quote": "The second element is the name of the originating channel, and the third argument is the actual message payload."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/develop/pubsub/_index.md",
+        "quote": "The second element is the original pattern matched, the third element is the name of the originating channel, and the last element is the actual message payload."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/pubsub.c",
+        "quote": "addReply(c,message_bulk); addReplyBulk(c,channel); if (msg) addReplyBulk(c,msg);"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/develop/pubsub/_index.md",
+        "quote": "The second element is the name of the originating channel, and the third argument is the actual message payload."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/develop/pubsub/_index.md",
+        "quote": "The second element is the original pattern matched, the third element is the name of the originating channel, and the last element is the actual message payload."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/pubsub.c",
+        "quote": "addReply(c,message_bulk); addReplyBulk(c,channel); if (msg) addReplyBulk(c,msg);"
+       }
+      ],
+      "note": "Pub/Sub keeps no message: PUBLISH writes it to each subscriber's output buffer and stores nothing, no time."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/develop/pubsub/_index.md",
+        "quote": "The second element is the name of the originating channel, and the third argument is the actual message payload."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/develop/pubsub/_index.md",
+        "quote": "The second element is the original pattern matched, the third element is the name of the originating channel, and the last element is the actual message payload."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/pubsub.c",
+        "quote": "addReply(c,message_bulk); addReplyBulk(c,channel); if (msg) addReplyBulk(c,msg);"
+       }
+      ],
+      "note": "A subscriber has no pending request, and nothing is recorded per delivery."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/develop/pubsub/_index.md",
+        "quote": "The second element is the name of the originating channel, and the third argument is the actual message payload."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/develop/pubsub/_index.md",
+        "quote": "The second element is the original pattern matched, the third element is the name of the originating channel, and the last element is the actual message payload."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/pubsub.c",
+        "quote": "addReply(c,message_bulk); addReplyBulk(c,channel); if (msg) addReplyBulk(c,msg);"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "MONITOR streams every command the server processes with a timestamp, once, when the command first runs (a blocked command is not shown again when it is served). SLOWLOG keeps commands slower than slowlog-log-slower-than (default 10000 us; 0 logs every command) with a Unix time in seconds and the execution time in us; a blocked command is logged when it is unblocked. The latency monitor keeps only aggregate spikes per event (ms), off by default. For Pub/Sub, MONITOR shows each PUBLISH; deliveries to subscribers are not commands and are not shown.",
+      "resolution": "us (MONITOR timestamp); s and us (SLOWLOG)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/commands/monitor.md",
+        "quote": "`MONITOR` is a debugging command that streams back every command processed by the Redis server."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/replication.c",
+        "quote": "gettimeofday(&tv,NULL); cmdrepr = sdscatprintf(cmdrepr,\"%ld.%06ld \",(long)tv.tv_sec,(long)tv.tv_usec);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/server.c",
+        "quote": "* Other exceptions is a client which is unblocked and retrying to process the command"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/commands/slowlog-get.md",
+        "quote": "2. The unix timestamp at which the logged command was processed. 3. The amount of time needed for its execution, in microseconds."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/server.c",
+        "quote": "/* Log the command into the Slow log if needed. * If the client is blocked we will handle slowlog when it is unblocked. */"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/config.c",
+        "quote": "createLongLongConfig(\"slowlog-log-slower-than\", NULL, MODIFIABLE_CONFIG, -1, LLONG_MAX, server.slowlog_log_slower_than, 10000, INTEGER_CONFIG, NULL, NULL),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/operate/oss_and_stack/management/optimization/latency-monitor.md",
+        "quote": "Monitoring is turned off by default (threshold set to 0)"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/develop/pubsub/_index.md",
+        "quote": "Subscribers express interest in one or more channels and only receive messages that are of interest, without knowledge of what (if any) publishers there are."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/commands/subscribe.md",
+        "quote": "Subscribes the client to the specified channels."
+       }
+      ],
+      "note": "A subscription receives every message published to its channels as it is published; there is no credit."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited protocol text and server code say what the answer says: credit, a window of unacknowledged deliveries or pending requests, a standing subscription, or, for Redis, commands pipelined behind a blocked one that the server runs as soon as it is served.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "lists (BLPOP and kin)",
+     "Q0": {
+      "fields": [
+       "BLPOP/BRPOP: key, element",
+       "BLMPOP: key, array of elements",
+       "BLMOVE/BRPOPLPUSH: element"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/blpop.json",
+        "quote": "\"description\": \"List key from which the element was popped.\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/blpop.json",
+        "quote": "\"description\": \"Value of the popped element.\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_list.c",
+        "quote": "addReplyArrayLen(c,2); addReplyBulk(c,key); addReplyBulk(c,value);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_list.c",
+        "quote": "/* We return key-name just once, and an array of elements */ addReplyArrayLen(c, 2); addReplyBulk(c, key); addListRangeReply(c, o, rangestart, rangeend, reverse);"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/blpop.json",
+        "quote": "\"description\": \"List key from which the element was popped.\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/blpop.json",
+        "quote": "\"description\": \"Value of the popped element.\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_list.c",
+        "quote": "addReplyArrayLen(c,2); addReplyBulk(c,key); addReplyBulk(c,value);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_list.c",
+        "quote": "/* We return key-name just once, and an array of elements */ addReplyArrayLen(c, 2); addReplyBulk(c, key); addListRangeReply(c, o, rangestart, rangeend, reverse);"
+       }
+      ],
+      "note": "A list element is only its value; nothing records when it was pushed."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/blpop.json",
+        "quote": "\"description\": \"List key from which the element was popped.\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/blpop.json",
+        "quote": "\"description\": \"Value of the popped element.\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_list.c",
+        "quote": "addReplyArrayLen(c,2); addReplyBulk(c,key); addReplyBulk(c,value);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_list.c",
+        "quote": "/* We return key-name just once, and an array of elements */ addReplyArrayLen(c, 2); addReplyBulk(c, key); addListRangeReply(c, o, rangestart, rangeend, reverse);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/server.h",
+        "quote": "mstime_t timeout; /* Blocking operation timeout. If UNIX current time * is > timeout then the operation timed out. */"
+       }
+      ],
+      "note": "Nothing is recorded per delivery. While it waits, a blocked client keeps only its deadline (its command's time plus the timeout, ms), and only for a finite timeout; with timeout 0 it keeps none."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/blpop.json",
+        "quote": "\"description\": \"List key from which the element was popped.\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/blpop.json",
+        "quote": "\"description\": \"Value of the popped element.\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_list.c",
+        "quote": "addReplyArrayLen(c,2); addReplyBulk(c,key); addReplyBulk(c,value);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_list.c",
+        "quote": "/* We return key-name just once, and an array of elements */ addReplyArrayLen(c, 2); addReplyBulk(c, key); addListRangeReply(c, o, rangestart, rangeend, reverse);"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "MONITOR streams every command the server processes with a timestamp, once, when the command first runs (a blocked command is not shown again when it is served). SLOWLOG keeps commands slower than slowlog-log-slower-than (default 10000 us; 0 logs every command) with a Unix time in seconds and the execution time in us; a blocked command is logged when it is unblocked. The latency monitor keeps only aggregate spikes per event (ms), off by default.",
+      "resolution": "us (MONITOR timestamp); s and us (SLOWLOG)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/commands/monitor.md",
+        "quote": "`MONITOR` is a debugging command that streams back every command processed by the Redis server."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/replication.c",
+        "quote": "gettimeofday(&tv,NULL); cmdrepr = sdscatprintf(cmdrepr,\"%ld.%06ld \",(long)tv.tv_sec,(long)tv.tv_usec);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/server.c",
+        "quote": "* Other exceptions is a client which is unblocked and retrying to process the command"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/commands/slowlog-get.md",
+        "quote": "2. The unix timestamp at which the logged command was processed. 3. The amount of time needed for its execution, in microseconds."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/server.c",
+        "quote": "/* Log the command into the Slow log if needed. * If the client is blocked we will handle slowlog when it is unblocked. */"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/config.c",
+        "quote": "createLongLongConfig(\"slowlog-log-slower-than\", NULL, MODIFIABLE_CONFIG, -1, LLONG_MAX, server.slowlog_log_slower_than, 10000, INTEGER_CONFIG, NULL, NULL),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/operate/oss_and_stack/management/optimization/latency-monitor.md",
+        "quote": "Monitoring is turned off by default (threshold set to 0)"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/networking.c",
+        "quote": "/* Immediately abort if the client is in the middle of something. */ if (c->flags & CLIENT_BLOCKED || c->flags & CLIENT_UNBLOCKED) break;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/blocked.c",
+        "quote": "/* This function is called in the beforeSleep() function of the event loop * in order to process the pending input buffer of clients that were * unblocked after a blocking operation. */"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/blocked.c",
+        "quote": "/* Process remaining data in the input buffer, unless the client * is blocked again. Actually processInputBuffer() checks that the * client is not blocked before to proceed, but things may change and * the code is conceptually more correct this way. */"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/develop/using-commands/pipelining.md",
+        "quote": "Redis pipelining is a technique for improving performance by issuing multiple commands at once without waiting for the response to each individual command."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/commands/blpop.md",
+        "quote": "because it blocks the connection when there are no elements to pop from any of the given lists."
+       }
+      ],
+      "note": "One blocking pop waits per connection; pops pipelined behind it wait in the connection's input buffer, and the server runs the next one as soon as the blocked one is served (before the event loop sleeps), so a consumer that keeps several BLPOPs in flight always has a request at the server: one blocked, the next already in its input buffer."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited protocol text and server code say what the answer says: credit, a window of unacknowledged deliveries or pending requests, a standing subscription, or, for Redis, commands pipelined behind a blocked one that the server runs as soon as it is served.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

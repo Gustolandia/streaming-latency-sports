@@ -1,0 +1,1962 @@
+{
+ "audited_utc": "2026-10-27",
+ "brokers": [
+  {
+   "broker": "Apache RocketMQ",
+   "group": "A",
+   "version": "5.5.1",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/pom.xml",
+     "quote": "<revision>5.5.1</revision>"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "pull and push consumers (long polling)",
+     "Q0": {
+      "fields": [
+       "storeSize",
+       "magic code",
+       "bodyCRC",
+       "queueId",
+       "flag",
+       "queueOffset",
+       "commitLogOffset",
+       "sysFlag",
+       "bornTimestamp (producer's clock, ms)",
+       "bornHost",
+       "storeTimestamp (broker's clock, ms)",
+       "storeHost",
+       "reconsumeTimes",
+       "preparedTransactionOffset",
+       "body",
+       "topic",
+       "properties",
+       "msgId (built by the client from storeHost and commitLogOffset)",
+       "per pull response, not per message: suggestWhichBrokerId, nextBeginOffset, minOffset, maxOffset, offsetDelta, topicSysFlag, groupSysFlag, forbiddenType"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/common/src/main/java/org/apache/rocketmq/common/message/MessageDecoder.java",
+        "quote": "// 11 STORETIMESTAMP"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/common/src/main/java/org/apache/rocketmq/common/message/MessageDecoder.java",
+        "quote": "msgExt.setStoreTimestamp(storeTimestamp);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/common/src/main/java/org/apache/rocketmq/common/message/MessageDecoder.java",
+        "quote": "// 17 properties"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/common/src/main/java/org/apache/rocketmq/common/message/MessageExt.java",
+        "quote": "private long bornTimestamp;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/remoting/src/main/java/org/apache/rocketmq/remoting/protocol/header/PullMessageResponseHeader.java",
+        "quote": "private Long nextBeginOffset;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/client/src/main/java/org/apache/rocketmq/client/impl/consumer/PullAPIWrapper.java",
+        "quote": "List<MessageExt> msgList = MessageDecoder.decodesBatch("
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/DefaultPullMessageResultHandler.java",
+        "quote": "byteBuffer.put(bb);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/DefaultPullMessageResultHandler.java",
+        "quote": "new ManyMessageTransfer(response.encodeHeader(getMessageResult.getBufferTotalSize()), getMessageResult);"
+       }
+      ],
+      "note": "The consumer decodes the message record exactly as the broker stored it: the pull path copies the stored bytes into the response or sends them from the page cache by zero copy."
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "storeTimestamp",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/store/src/main/java/org/apache/rocketmq/store/CommitLog.java",
+        "quote": "long beginLockTimestamp = this.defaultMessageStore.getSystemClock().now();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/store/src/main/java/org/apache/rocketmq/store/CommitLog.java",
+        "quote": "msg.setStoreTimestamp(beginLockTimestamp);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/store/src/main/java/org/apache/rocketmq/store/config/MessageStoreConfig.java",
+        "quote": "private boolean duplicationEnable = false;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/client/src/main/java/org/apache/rocketmq/client/impl/producer/DefaultMQProducerImpl.java",
+        "quote": "requestHeader.setBornTimestamp(System.currentTimeMillis());"
+       }
+      ],
+      "note": "Set by the commit log as it appends the message: System.currentTimeMillis() on entry to asyncPutMessage, then refreshed to the clock reading taken under the put-message lock (beginLockTimestamp) and written into the stored record. Only duplicationEnable (default false) keeps a store time the message already carries. bornTimestamp is the producer's clock."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/common/src/main/java/org/apache/rocketmq/common/message/MessageDecoder.java",
+        "quote": "msgExt.setStoreTimestamp(storeTimestamp);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/DefaultPullMessageResultHandler.java",
+        "quote": "byteBuffer.put(bb);"
+       }
+      ],
+      "note": "storeTimestamp is a field of the stored record, which the pull response carries unchanged."
+     },
+     "Q3": {
+      "answer": "request arrival",
+      "field": "suspendTimestamp of a pull request held by long polling",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/DefaultPullMessageResultHandler.java",
+        "quote": "this.brokerController.getMessageStore().now(), offset, subscriptionData, messageFilter);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/DefaultPullMessageResultHandler.java",
+        "quote": "this.brokerController.getPullRequestHoldService().suspendPullRequest(topic, queueId, pullRequest);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/longpolling/PullRequest.java",
+        "quote": "private final long suspendTimestamp;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/longpolling/PullRequestHoldService.java",
+        "quote": "if (System.currentTimeMillis() >= (request.getSuspendTimestamp() + request.getTimeoutMillis())) {"
+       }
+      ],
+      "note": "Kept only for a request that found no message and is held: the broker's clock as it suspends the request, a moment after the request arrives, kept with the request until a message or the request's suspend timeout answers it. Not delivered (Q4). A request that finds messages at once keeps no time; its processing start only feeds the aggregate GROUP_GET_LATENCY statistic."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/DefaultPullMessageResultHandler.java",
+        "quote": "byteBuffer.put(bb);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/DefaultPullMessageResultHandler.java",
+        "quote": "new ManyMessageTransfer(response.encodeHeader(getMessageResult.getBufferTotalSize()), getMessageResult);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/remoting/src/main/java/org/apache/rocketmq/remoting/protocol/header/PullMessageResponseHeader.java",
+        "quote": "private Long nextBeginOffset;"
+       }
+      ],
+      "note": "The delivery path writes no time into the message (the stored record goes out unchanged) and the pull response header carries offsets and flags only."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/common/src/main/java/org/apache/rocketmq/common/message/MessageDecoder.java",
+        "quote": "// 17 properties"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/DefaultPullMessageResultHandler.java",
+        "quote": "byteBuffer.put(bb);"
+       }
+      ],
+      "note": "No delivered field is a duration. storeTimestamp minus bornTimestamp mixes the broker's clock with the producer's."
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "Only with the RocketmqBroker logger at DEBUG: a line for each pull request received ('receive PullMessage request command'), time-stamped to the second by the default log pattern. Otherwise aggregate only: per group, topic and queue the GROUP_GET_LATENCY statistic and GROUP_GET_FALL_TIME (the broker's now minus the store time of the last message of a heap-copied pull response, latest value), and OpenTelemetry RPC latency histograms. Message trace is collected and sent by clients, not recorded by the broker.",
+      "resolution": "1 s (log lines, default pattern); ms (statistics)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/PullMessageProcessor.java",
+        "quote": "LOGGER.debug(\"receive PullMessage request command, {}\", request);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/resources/rmq.broker.logback.xml",
+        "quote": "<pattern>%d{yyy-MM-dd HH:mm:ss,GMT+8} %p %t - %m%n</pattern>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/DefaultPullMessageResultHandler.java",
+        "quote": "this.brokerController.getBrokerStatsManager().recordDiskFallBehindTime(group, topic, queueId, this.brokerController.getMessageStore().now() - storeTimestamp);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/docs/en/msg_trace/user_guide.md",
+        "quote": "Each Broker node in RocketMQ cluster used for storing message trace data that client collected and sent."
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "one at a time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/docs/en/Design_Store.md",
+        "quote": "if a pull request pulls no messages, the Broker can wait for 30 seconds, as long as new message arrives in this interval, it will be returned directly to the consumer."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/longpolling/PullRequestHoldService.java",
+        "quote": "if (newestOffset > request.getPullFromThisOffset()) {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/PullMessageProcessor.java",
+        "quote": "case OFFSET_OVERFLOW_BADLY:"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/PullMessageProcessor.java",
+        "quote": "LOGGER.info(\"the request offset: {} over flow badly, fix to {}, broker max offset: {}, consumer: {}\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/longpolling/ManyPullRequest.java",
+        "quote": "private final ArrayList<PullRequest> pullRequestList = new ArrayList<>();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/client/src/main/java/org/apache/rocketmq/client/impl/consumer/DefaultMQPushConsumerImpl.java",
+        "quote": "private static final long BROKER_SUSPEND_MAX_TIME_MILLIS = 1000 * 15;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/client/src/main/java/org/apache/rocketmq/client/impl/consumer/DefaultMQPushConsumerImpl.java",
+        "quote": "DefaultMQPushConsumerImpl.this.executePullRequestImmediately(pullRequest);"
+       }
+      ],
+      "note": "The broker holds a pull request that finds nothing (long polling) and answers it when the queue's newest offset passes the requested one. A request can wait only for the queue's next offset: one beyond it returns at once with PULL_OFFSET_MOVED. Several held requests for the same offset are all answered by the same message, so per queue one request usefully waits at a time and the next message waits for the consumer's next pull. The push consumer keeps one pull per queue, suspended up to 15 s, and sends the next when the response arrives."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/longpolling/PullRequest.java",
+       "read": "A pull request that finds nothing is suspended with the store's now() as its suspendTimestamp, kept until a message or its timeout answers it; not sent.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "pop consumption",
+     "Q0": {
+      "fields": [
+       "remoting pop: the stored message record as for pull (storeTimestamp, bornTimestamp, queueId, queueOffset, commitLogOffset, sysFlag, bornHost, storeHost, reconsumeTimes, body, topic, properties and the rest)",
+       "remoting pop response header: popTime, invisibleTime, reviveQid, restNum, startOffsetInfo, msgOffsetInfo, orderCountInfo",
+       "properties the Java client adds to each message from that header: POP_CK (startOffset, popTime, invisibleTime, reviveQid, topic, brokerName, queueId, queueOffset) and, on a first pop, 1ST_POP_TIME",
+       "5.x gRPC (SimpleConsumer through the proxy) Message: topic, user_properties, body, system_properties: tag, keys, message_id, body_digest, body_encoding, message_type, born_timestamp, born_host, store_timestamp, store_host, delivery_timestamp (scheduled messages only), receipt_handle (POP_CK plus commitLogOffset), queue_id, queue_offset, invisible_duration, delivery_attempt, message_group, trace_context, orphaned_transaction_recovery_duration, dead_letter_queue, lite_topic, priority",
+       "5.x gRPC, per receive stream: ReceiveMessageResponse.delivery_timestamp"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/remoting/src/main/java/org/apache/rocketmq/remoting/protocol/header/PopMessageResponseHeader.java",
+        "quote": "private long popTime;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/PopMessageProcessor.java",
+        "quote": "getMessageResult.addMessage(mapedBuffer);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/client/src/main/java/org/apache/rocketmq/client/impl/MQClientAPIImpl.java",
+        "quote": "MessageConst.PROPERTY_FIRST_POP_TIME, k -> String.valueOf(responseHeader.getPopTime()));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq-apis/v2.1.2/apache/rocketmq/v2/definition.proto",
+        "quote": "optional google.protobuf.Timestamp store_timestamp = 9;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq-apis/v2.1.2/apache/rocketmq/v2/definition.proto",
+        "quote": "optional string receipt_handle = 12;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq-apis/v2.1.2/apache/rocketmq/v2/service.proto",
+        "quote": "google.protobuf.Timestamp delivery_timestamp = 3;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/proxy/src/main/java/org/apache/rocketmq/proxy/grpc/v2/common/GrpcConverter.java",
+        "quote": "systemPropertiesBuilder.setReceiptHandle(handle);"
+       }
+      ],
+      "note": "The gRPC field list is SystemProperties at rocketmq-apis v2.1.2, the version the 5.5.1 proxy builds against (rocketmq-proto.version 2.1.2)."
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "storeTimestamp (store_timestamp in gRPC)",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/store/src/main/java/org/apache/rocketmq/store/CommitLog.java",
+        "quote": "long beginLockTimestamp = this.defaultMessageStore.getSystemClock().now();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/store/src/main/java/org/apache/rocketmq/store/CommitLog.java",
+        "quote": "msg.setStoreTimestamp(beginLockTimestamp);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/store/src/main/java/org/apache/rocketmq/store/config/MessageStoreConfig.java",
+        "quote": "private boolean duplicationEnable = false;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/client/src/main/java/org/apache/rocketmq/client/impl/producer/DefaultMQProducerImpl.java",
+        "quote": "requestHeader.setBornTimestamp(System.currentTimeMillis());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/proxy/src/main/java/org/apache/rocketmq/proxy/grpc/v2/common/GrpcConverter.java",
+        "quote": "systemPropertiesBuilder.setStoreTimestamp(Timestamps.fromMillis(storeTimestamp));"
+       }
+      ],
+      "note": "Set by the commit log as it appends the message: System.currentTimeMillis() on entry to asyncPutMessage, then refreshed to the clock reading taken under the put-message lock (beginLockTimestamp) and written into the stored record. Only duplicationEnable (default false) keeps a store time the message already carries. bornTimestamp is the producer's clock."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/common/src/main/java/org/apache/rocketmq/common/message/MessageDecoder.java",
+        "quote": "msgExt.setStoreTimestamp(storeTimestamp);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/proxy/src/main/java/org/apache/rocketmq/proxy/grpc/v2/common/GrpcConverter.java",
+        "quote": "systemPropertiesBuilder.setStoreTimestamp(Timestamps.fromMillis(storeTimestamp));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq-apis/v2.1.2/apache/rocketmq/v2/definition.proto",
+        "quote": "// Time-point at which the message is stored in the broker, which is absent"
+       }
+      ],
+      "note": "Remoting: in the stored record. gRPC: store_timestamp. The 5.x Java client (rocketmq-clients java-5.2.2) keeps born_timestamp in its MessageViewImpl but has no field for store_timestamp, so its users do not see it."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "popTime",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/PopMessageProcessor.java",
+        "quote": "long popTime = System.currentTimeMillis();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/PopMessageProcessor.java",
+        "quote": "responseHeader.setPopTime(popTime);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/PopMessageProcessor.java",
+        "quote": "ck.setPopTime(popTime);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/store/src/main/java/org/apache/rocketmq/store/pop/PopCheckPoint.java",
+        "quote": "return popTime + invisibleTime;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/longpolling/PopLongPollingService.java",
+        "quote": "final RemotingCommand response = processor.processRequest(request.getCtx(), request.getRemotingCommand());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/PopMessageProcessor.java",
+        "quote": "request.addExtField(BORN_TIME, String.valueOf(beginTimeMills));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/longpolling/PopLongPollingService.java",
+        "quote": "long expired = requestHeader.getBornTime() + requestHeader.getPollTime();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/proxy/src/main/java/org/apache/rocketmq/proxy/grpc/v2/consumer/ReceiveMessageResponseStreamWriter.java",
+        "quote": ".setDeliveryTimestamp(Timestamps.fromMillis(System.currentTimeMillis()))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq-apis/v2.1.2/apache/rocketmq/v2/service.proto",
+        "quote": "// The timestamp that brokers start to deliver status line or message."
+       }
+      ],
+      "note": "popTime is the broker's clock read in processRequest just before it reads the messages for the pop request that takes them: at the request's arrival when messages are waiting, and for a request held by long polling when the broker re-runs it after a message arrives. The broker keeps it in the pop checkpoint, whose revive deadline is popTime plus invisibleTime. popTime minus storeTimestamp is therefore the message's wait for the request plus the broker's own handling, never less than the wait. The request's first arrival is also kept while the request is held, as BORN_TIME (its deadline is BORN_TIME plus the poll time), and is not delivered. Through the 5.x proxy each receive stream also ends with ReceiveMessageResponse.delivery_timestamp, the proxy's clock as it completes the response; it is on the broker's clock only when the proxy runs in the broker's process. SystemProperties.delivery_timestamp is set only for scheduled messages."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/client/src/main/java/org/apache/rocketmq/client/impl/MQClientAPIImpl.java",
+        "quote": "MessageConst.PROPERTY_FIRST_POP_TIME, k -> String.valueOf(responseHeader.getPopTime()));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/client/src/main/java/org/apache/rocketmq/client/impl/MQClientAPIImpl.java",
+        "quote": "ExtraInfoUtil.buildExtraInfo(startOffsetInfo.get(queueIdKey), responseHeader.getPopTime(), responseHeader.getInvisibleTime(),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/remoting/src/main/java/org/apache/rocketmq/remoting/protocol/header/ExtraInfoUtil.java",
+        "quote": "+ MessageConst.KEY_SEPARATOR + popTime + MessageConst.KEY_SEPARATOR + invisibleTime"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/proxy/src/main/java/org/apache/rocketmq/proxy/grpc/v2/common/GrpcConverter.java",
+        "quote": "String handle = messageExt.getProperty(MessageConst.PROPERTY_POP_CK);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/proxy/src/main/java/org/apache/rocketmq/proxy/processor/ConsumerProcessor.java",
+        "quote": "return handleString + MessageConst.KEY_SEPARATOR + commitLogOffset;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/common/src/main/java/org/apache/rocketmq/common/consumer/ReceiptHandle.java",
+        "quote": "long retrieveTime = Long.parseLong(dataList.get(1));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq-clients/java-5.2.2/java/client/src/main/java/org/apache/rocketmq/client/java/impl/consumer/ConsumerImpl.java",
+        "quote": "transportDeliveryTimestamp = Timestamps.toMillis(deliveryTimestamp);"
+       }
+      ],
+      "note": "Remoting: popTime travels in the pop response header and the Java client copies it into each message's POP_CK property and, on a first pop, 1ST_POP_TIME. gRPC: popTime is the second space-separated field of receipt_handle (ReceiptHandle calls it retrieveTime); the proto presents the handle only as a receipt for acknowledgement, so reading it relies on the handle's internal format. The 5.x Java client attaches the stream's delivery_timestamp to each message as transportDeliveryTimestamp."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq-apis/v2.1.2/apache/rocketmq/v2/definition.proto",
+        "quote": "optional google.protobuf.Duration invisible_duration = 15;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/remoting/src/main/java/org/apache/rocketmq/remoting/protocol/header/PopMessageResponseHeader.java",
+        "quote": "private long popTime;"
+       }
+      ],
+      "note": "invisible_duration (invisibleTime) is the requested invisibility period, not a measured time, and no documentation gives a rule that derives the wait. The stay rests on Q1 to Q4 instead."
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "With enablePopLog (default false), the RocketmqPop log has a line for each pop request received, each request held by long polling and each held request woken by an arriving message, time-stamped to the second by the default log pattern. Otherwise aggregate statistics only, as for pull.",
+      "resolution": "1 s (log lines, default pattern)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/common/src/main/java/org/apache/rocketmq/common/BrokerConfig.java",
+        "quote": "private boolean enablePopLog = false;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/PopMessageProcessor.java",
+        "quote": "POP_LOGGER.info(\"receive PopMessage request command, {}\", request);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/longpolling/PopLongPollingService.java",
+        "quote": "POP_LOGGER.info(\"polling {}, result POLLING_SUC\", remotingCommand);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/longpolling/PopLongPollingService.java",
+        "quote": "POP_LOGGER.info(\"lock release, new msg arrive, wakeUp: {}\", popRequest);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/resources/rmq.broker.logback.xml",
+        "quote": "<pattern>%d{yyy-MM-dd HH:mm:ss,GMT+8} %p %t - %m%n</pattern>"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/common/src/main/java/org/apache/rocketmq/common/BrokerConfig.java",
+        "quote": "private int popPollingSize = 1024;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/common/src/main/java/org/apache/rocketmq/common/BrokerConfig.java",
+        "quote": "private long maxPopPollingSize = 100000;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/longpolling/PopLongPollingService.java",
+        "quote": "if (size > brokerController.getBrokerConfig().getPopPollingSize()) {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/longpolling/PopLongPollingService.java",
+        "quote": "PopRequest popRequest = pollRemotingCommands(remotingCommands);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq-apis/v2.1.2/apache/rocketmq/v2/service.proto",
+        "quote": "optional google.protobuf.Duration long_polling_timeout = 7;"
+       }
+      ],
+      "note": "The broker holds pop requests that find nothing: per topic, consumer group and queue it accepts another while it holds no more than popPollingSize (1024), up to maxPopPollingSize (100,000) in all. Each arriving message wakes one held request of each consumer group for its queue (and one held on all queues); a woken request that finds nothing is held again. A pop hands each message to one request and makes it invisible, and pop requests name no offset, so a consumer that keeps several pop or receive requests outstanding has one waiting for each arriving message."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/PopMessageProcessor.java",
+       "read": "processRequest reads popTime = System.currentTimeMillis() just before it reads messages for the pop request; a request held by long polling is re-run after a message arrives, so popTime is when the broker serves the pop.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/client/src/main/java/org/apache/rocketmq/client/impl/MQClientAPIImpl.java",
+       "read": "The pop response header carries popTime, which the client copies into each message's POP_CK and 1ST_POP_TIME properties; over gRPC it is a field of the receipt handle.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited text and code say what the answer says: byte or message credit, link credit, prefetch, a receive quota, held pop requests that each take a different message, or QoS 0 sent as it arrives.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "Apache ActiveMQ Artemis",
+   "group": "A",
+   "version": "2.57.0",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/pom.xml",
+     "quote": "<version>2.57.0</version>"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "core protocol consumers (JMS)",
+     "Q0": {
+      "fields": [
+       "consumerID",
+       "deliveryCount",
+       "messageID",
+       "address",
+       "userID",
+       "type",
+       "durable",
+       "expiration (absolute, set from the producer's clock)",
+       "timestamp (producer's clock; JMSTimestamp)",
+       "priority",
+       "properties (application properties, and broker properties such as _AMQ_INGRESS_TIMESTAMP when enabled)",
+       "body"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/wireformat/SessionReceiveMessage.java",
+        "quote": "buffer.writeLong(consumerID);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/wireformat/SessionReceiveMessage.java",
+        "quote": "buffer.writeInt(deliveryCount);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/message/impl/CoreMessage.java",
+        "quote": "timestamp = buffer.readLong();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/message/impl/CoreMessage.java",
+        "quote": "properties.decode(buffer, pools == null ? null : pools.getPropertiesDecoderPools());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/CoreSessionCallback.java",
+        "quote": "packet = new SessionReceiveMessage(consumer.getID(), ref.getMessage().toCore(coreMessageObjectPools), deliveryCount);"
+       }
+      ],
+      "note": "A core consumer receives SessionReceiveMessage: the stored core message (headers messageID, address, userID, type, durable, expiration, timestamp, priority, then the properties and the body) with the consumer id and the delivery count."
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "_AMQ_INGRESS_TIMESTAMP",
+      "resolution": "ms",
+      "setting": "address setting enable-ingress-timestamp",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/address-settings.adoc",
+        "quote": "determines whether or not the broker will add its time  to messages sent to the matching address."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/server/impl/ServerSessionImpl.java",
+        "quote": "if (server.getAddressSettingsRepository().getMatch(message.getAddress()).isEnableIngressTimestamp()) {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/settings/impl/AddressSettings.java",
+        "quote": "public static final boolean DEFAULT_ENABLE_INGRESS_TIMESTAMP = false;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/address-settings.adoc",
+        "quote": "The value will be the number of milliseconds since the https://en.wikipedia.org/wiki/Unix_time[epoch]."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/address-settings.adoc",
+        "quote": "The expiration time that will be used for messages which are using the default expiration time (i.e. `0`)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/postoffice/impl/PostOfficeImpl.java",
+        "quote": "m.setExpiration(System.currentTimeMillis() + expiration);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/address-settings.adoc",
+        "quote": "For core messages (used by the core and OpenWire protocols) the broker will add a long property named `_AMQ_INGRESS_TIMESTAMP`."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/api/core/Message.java",
+        "quote": "setBrokerProperty(HDR_INGRESS_TIMESTAMP, System.currentTimeMillis());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-jms-client/src/main/java/org/apache/activemq/artemis/jms/client/ActiveMQMessageProducer.java",
+        "quote": "jmsMessage.setJMSTimestamp(System.currentTimeMillis());"
+       }
+      ],
+      "note": "Set on arrival, in the session's send path before routing, from System.currentTimeMillis(), when the matching address setting is true (default false). The core timestamp header is the producer's clock. A second configured record: with expiry-delay set (default -1, off) a message that arrives without an expiration is given one as it is routed, the broker's clock plus the delay (max-expiry-delay and min-expiry-delay can likewise reset it), and that expiration is delivered, so a consumer that knows the delay can recover the arrival time."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/address-settings.adoc",
+        "quote": "For core messages (used by the core and OpenWire protocols) the broker will add a long property named `_AMQ_INGRESS_TIMESTAMP`."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/message/impl/CoreMessage.java",
+        "quote": "properties.decode(buffer, pools == null ? null : pools.getPropertiesDecoderPools());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/converter/CoreAmqpConverter.java",
+        "quote": "maMap.put(AMQPMessageSupport.INGRESS_TIME_MSG_ANNOTATION, message.getLongProperty(key));"
+       }
+      ],
+      "note": "A message property, delivered with the other properties; converted for an AMQP consumer it becomes the x-opt-ingress-time annotation. An expiration set from expiry-delay (Q1) is delivered in the expiration header."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/server/impl/ServerConsumerImpl.java",
+        "quote": "int packetSize = callback.sendMessage(ref, ServerConsumerImpl.this, ref.getDeliveryCount());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/CoreSessionCallback.java",
+        "quote": "packet = new SessionReceiveMessage(consumer.getID(), ref.getMessage().toCore(coreMessageObjectPools), deliveryCount);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/server/impl/ServerConsumerImpl.java",
+        "quote": "lastDeliveredTime = System.currentTimeMillis();"
+       }
+      ],
+      "note": "The delivery sends the stored message with the consumer id and delivery count; nothing on the path writes a time into it. The only clock reading at delivery is the consumer's lastDeliveredTime, which the next delivery overwrites (Q6), not a time per message."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/message/impl/CoreMessage.java",
+        "quote": "expiration = buffer.readLong();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/wireformat/SessionReceiveMessage.java",
+        "quote": "buffer.writeInt(deliveryCount);"
+       }
+      ],
+      "note": "No delivered field is a duration: expiration and timestamp are absolute times from the producer's clock."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "LoggingActiveMQServerPlugin, which logs nothing by default: LOG_SENDING_EVENTS logs each message sent to an address and routed, LOG_DELIVERING_EVENTS each delivery to a consumer and each acknowledgement, every line with the log's time stamp. Management lists each consumer's lastDeliveredTime, the latest delivery only.",
+      "resolution": "ms (log4j2 default %d pattern in the shipped log4j2.properties)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/broker-plugins.adoc",
+        "quote": "| Message is delivered to a consumer and when a message is acknowledged by a consumer."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/broker-plugins.adoc",
+        "quote": "By default the `LoggingActiveMQServerPlugin` will not log any information."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/server/plugin/impl/LoggingActiveMQServerPlugin.java",
+        "quote": "LoggingActiveMQServerPluginLogger.LOGGER.afterDeliver((message == null ? UNAVAILABLE : Long.toString(message.getMessageID())), consumer.getQueueAddress(), consumer.getQueueName(), consumer.getSessionID(), consumer.getID());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-cli/src/main/resources/org/apache/activemq/artemis/cli/commands/etc/log4j2.properties",
+        "quote": "appender.log_file.layout.pattern = %d %-5level [%logger] %msg%n"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/logging-log4j2/dd0f9d255e24e6bcc13bd2641407a409c0524803/log4j-core/src/main/java/org/apache/logging/log4j/core/pattern/NamedInstantPattern.java",
+        "quote": "DEFAULT(\"yyyy-MM-dd HH:mm:ss,SSS\"),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/management/impl/view/ConsumerField.java",
+        "quote": "LAST_DELIVERED_TIME(\"lastDeliveredTime\"),"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/flow-control.adoc",
+        "quote": "The total maximum size of messages (in bytes) that will be buffered on each consumer is determined by the `consumerWindowSize` parameter."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/flow-control.adoc",
+        "quote": "By default, the `consumerWindowSize` is set to 1 MiB (1024 * 1024 bytes) unless overridden via (xref:address-settings.adoc#address-settings[Address Settings])"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/api/core/client/ActiveMQClient.java",
+        "quote": "public static final int DEFAULT_CONSUMER_WINDOW_SIZE = 1024 * 1024;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/server/impl/ServerConsumerImpl.java",
+        "quote": "if (callback != null && !callback.hasCredits(this, ref) || checkInteger != null && checkInteger.get() <= 0) {"
+       }
+      ],
+      "note": "Credit in bytes: the broker delivers while the consumer's credit lasts and debits each packet's size; -1 is unbounded and 0 buffers nothing."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited text and code say what the answer says: byte or message credit, link credit, prefetch, a receive quota, held pop requests that each take a different message, or QoS 0 sent as it arrives.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "AMQP 1.0 consumers",
+     "Q0": {
+      "fields": [
+       "header: durable, priority, ttl, first-acquirer, delivery-count",
+       "delivery-annotations",
+       "message-annotations (x-opt-ingress-time when enabled)",
+       "properties: message-id, user-id, to, subject, reply-to, correlation-id, content-type, content-encoding, absolute-expiry-time, creation-time, group-id, group-sequence, reply-to-group-id",
+       "application-properties",
+       "body: data sections, amqp-sequence sections or one amqp-value",
+       "footer",
+       "transfer frame: handle, delivery-id, delivery-tag, message-format, settled, more, rcv-settle-mode, state, resume, aborted, batchable"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "Zero or one header sections. Zero or one delivery-annotation sections. Zero or one message-annotation sections. Zero or one properties sections. Zero or one application-properties sections."
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<field name=\"ttl\" type=\"milliseconds\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<field name=\"creation-time\" type=\"timestamp\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<field name=\"delivery-tag\" type=\"delivery-tag\"/>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/proton/AMQPMessageWriter.java",
+        "quote": "final ReadableBuffer sendBuffer = amqpMessage.getSendBuffer(messageReference.getDeliveryCount(), messageReference);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPMessage.java",
+        "quote": "return getData().duplicate();"
+       }
+      ],
+      "note": "Artemis sends the stored AMQP encoding: unchanged on a first delivery, with only the header's delivery-count re-encoded on a redelivery."
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "x-opt-ingress-time (message annotation)",
+      "resolution": "ms",
+      "setting": "address setting enable-ingress-timestamp",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/address-settings.adoc",
+        "quote": "determines whether or not the broker will add its time  to messages sent to the matching address."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/server/impl/ServerSessionImpl.java",
+        "quote": "if (server.getAddressSettingsRepository().getMatch(message.getAddress()).isEnableIngressTimestamp()) {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/settings/impl/AddressSettings.java",
+        "quote": "public static final boolean DEFAULT_ENABLE_INGRESS_TIMESTAMP = false;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/address-settings.adoc",
+        "quote": "The value will be the number of milliseconds since the https://en.wikipedia.org/wiki/Unix_time[epoch]."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/address-settings.adoc",
+        "quote": "The expiration time that will be used for messages which are using the default expiration time (i.e. `0`)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/postoffice/impl/PostOfficeImpl.java",
+        "quote": "m.setExpiration(System.currentTimeMillis() + expiration);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/address-settings.adoc",
+        "quote": "For AMQP messages the broker will add a `long` _message annotation_ named `x-opt-ingress-time`."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPMessage.java",
+        "quote": "setMessageAnnotation(AMQPMessageSupport.INGRESS_TIME_MSG_ANNOTATION, System.currentTimeMillis());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPMessage.java",
+        "quote": "expiration = System.currentTimeMillis() + header.getTtl().longValue();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPMessage.java",
+        "quote": "properties.setAbsoluteExpiryTime(new Date(expiration));"
+       }
+      ],
+      "note": "Set on arrival, before routing, when the address setting is true (default false). creation-time and absolute-expiry-time are the producer's. When the producer sets a header ttl the broker also keeps an internal expiration, its clock plus the ttl, computed as it reads the message; that value is not delivered (the header ttl goes out unchanged). A second configured record: with expiry-delay set (default -1, off) a message that arrives without an expiration is given one as it is routed, the broker's clock plus the delay (max-expiry-delay and min-expiry-delay can likewise reset it), and that expiration is delivered, so a consumer that knows the delay can recover the arrival time. For AMQP it is written as properties absolute-expiry-time."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/address-settings.adoc",
+        "quote": "For AMQP messages the broker will add a `long` _message annotation_ named `x-opt-ingress-time`."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPMessage.java",
+        "quote": "return getData().duplicate();"
+       }
+      ],
+      "note": "A message annotation, part of the stored encoding that is sent. An expiration set from expiry-delay (Q1) is delivered as absolute-expiry-time."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/proton/AMQPMessageWriter.java",
+        "quote": "final ReadableBuffer sendBuffer = amqpMessage.getSendBuffer(messageReference.getDeliveryCount(), messageReference);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPMessage.java",
+        "quote": "return getData().duplicate();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPMessage.java",
+        "quote": "localHeader.setDeliveryCount(UnsignedInteger.valueOf(amqpDeliveryCount));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/server/impl/ServerConsumerImpl.java",
+        "quote": "lastDeliveredTime = System.currentTimeMillis();"
+       }
+      ],
+      "note": "A first delivery sends the stored bytes and a redelivery changes only the header's delivery-count; delivery annotations are added only for broker mirroring. As for core consumers, the only clock reading at delivery is the consumer's lastDeliveredTime."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "If this is set then a message expiration time will be computed based on the time of arrival at an intermediary."
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "the reduced ttl, so that messages will eventually die if they end up in a delivery loop."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPMessage.java",
+        "quote": "localHeader.setDeliveryCount(UnsignedInteger.valueOf(amqpDeliveryCount));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPMessage.java",
+        "quote": "return getData().duplicate();"
+       }
+      ],
+      "note": "The AMQP standard says an intermediary SHOULD forward a ttl reduced by the time since arrival. Artemis forwards the header as received (only delivery-count changes on redelivery), so the delivered ttl is the producer's and carries no time spent at the broker."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "LoggingActiveMQServerPlugin, which logs nothing by default: LOG_SENDING_EVENTS logs each message sent to an address and routed, LOG_DELIVERING_EVENTS each delivery to a consumer and each acknowledgement, every line with the log's time stamp. Management lists each consumer's lastDeliveredTime, the latest delivery only.",
+      "resolution": "ms (log4j2 default %d pattern in the shipped log4j2.properties)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/broker-plugins.adoc",
+        "quote": "| Message is delivered to a consumer and when a message is acknowledged by a consumer."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/broker-plugins.adoc",
+        "quote": "By default the `LoggingActiveMQServerPlugin` will not log any information."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/server/plugin/impl/LoggingActiveMQServerPlugin.java",
+        "quote": "LoggingActiveMQServerPluginLogger.LOGGER.afterDeliver((message == null ? UNAVAILABLE : Long.toString(message.getMessageID())), consumer.getQueueAddress(), consumer.getQueueName(), consumer.getSessionID(), consumer.getID());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-cli/src/main/resources/org/apache/activemq/artemis/cli/commands/etc/log4j2.properties",
+        "quote": "appender.log_file.layout.pattern = %d %-5level [%logger] %msg%n"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/logging-log4j2/dd0f9d255e24e6bcc13bd2641407a409c0524803/log4j-core/src/main/java/org/apache/logging/log4j/core/pattern/NamedInstantPattern.java",
+        "quote": "DEFAULT(\"yyyy-MM-dd HH:mm:ss,SSS\"),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/management/impl/view/ConsumerField.java",
+        "quote": "LAST_DELIVERED_TIME(\"lastDeliveredTime\"),"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "The link-credit variable defines the current maximum legal amount that the delivery-count can be increased by."
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "Only the receiver can independently choose a value for this field."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/proton/ProtonServerSenderContext.java",
+        "quote": "this.credits = sender.getCredit() - pending.get();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/proton/ProtonServerSenderContext.java",
+        "quote": "return credits > 0 && sender.getLocalState() != EndpointState.CLOSED;"
+       }
+      ],
+      "note": "Link credit granted by the consumer; the broker sends while credit remains."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited text and code say what the answer says: byte or message credit, link credit, prefetch, a receive quota, held pop requests that each take a different message, or QoS 0 sent as it arrives.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "Apache ActiveMQ Classic",
+   "group": "A",
+   "version": "6.4.0",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/pom.xml",
+     "quote": "<version>6.4.0</version>"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "OpenWire consumers (prefetch)",
+     "Q0": {
+      "fields": [
+       "MessageDispatch: consumerId, destination, message, redeliveryCounter",
+       "Message (OpenWire v12): producerId, destination, transactionId, originalDestination, messageId, originalTransactionId, groupID, groupSequence, correlationId, persistent, expiration, priority, replyTo, timestamp (JMSTimestamp), type, content, marshalledProperties, dataStructure, targetConsumerId, compressed, redeliveryCounter, brokerPath, arrival, userID, recievedByDFBridge, droppable, cluster, brokerInTime, brokerOutTime, jmsXGroupFirstForConsumer"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/command/CommandTypes.java",
+        "quote": "byte PROTOCOL_VERSION = 12;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/openwire/v12/MessageMarshaller.java",
+        "quote": "info.setTimestamp(looseUnmarshalLong(wireFormat, dataIn));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/openwire/v12/MessageMarshaller.java",
+        "quote": "info.setArrival(looseUnmarshalLong(wireFormat, dataIn));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/openwire/v12/MessageMarshaller.java",
+        "quote": "info.setBrokerInTime(looseUnmarshalLong(wireFormat, dataIn));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/openwire/v12/MessageMarshaller.java",
+        "quote": "info.setBrokerOutTime(looseUnmarshalLong(wireFormat, dataIn));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/region/PrefetchSubscription.java",
+        "quote": "MessageDispatch md = createMessageDispatch(node, message);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/region/PrefetchSubscription.java",
+        "quote": "md.setMessage(message);"
+       }
+      ],
+      "note": "The field list is the order of the OpenWire v12 Message marshaller; the broker sends the stored Message inside a MessageDispatch."
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "brokerInTime (JMSActiveMQBrokerInTime)",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/region/RegionBroker.java",
+        "quote": "message.setBrokerInTime(System.currentTimeMillis());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-website/e318f5fd878f7a07053346b43c0ec9c8c8af4e15/src/components/classic/documentation/activemq-classic-message-properties.md",
+        "quote": "`JMSActiveMQBrokerInTime`|`long`|`0`|Time stamp (in milliseconds) for when the message arrived at the broker."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/ActiveMQSession.java",
+        "quote": "message.setJMSTimestamp(timeStamp);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/util/TimeStampingBrokerPlugin.java",
+        "quote": "message.setTimestamp(newTimeStamp);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/command/Message.java",
+        "quote": "Used to schedule the arrival time of a message to a broker."
+       }
+      ],
+      "note": "Set in RegionBroker.send as the message enters the broker, before it is routed or stored, so the stored copy keeps it. JMSTimestamp is the producer's clock unless the TimeStampingBrokerPlugin (not enabled by default) replaces it with the broker's time on arrival. arrival is a scheduling field that the broker does not set."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/openwire/v12/MessageMarshaller.java",
+        "quote": "info.setBrokerInTime(looseUnmarshalLong(wireFormat, dataIn));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/filter/PropertyExpression.java",
+        "quote": "JMS_PROPERTY_EXPRESSIONS.put(\"JMSActiveMQBrokerInTime\", new SubExpression() {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-website/e318f5fd878f7a07053346b43c0ec9c8c8af4e15/src/components/classic/documentation/activemq-classic-message-properties.md",
+        "quote": "`JMSActiveMQBrokerInTime`|`long`|`0`|Time stamp (in milliseconds) for when the message arrived at the broker."
+       }
+      ],
+      "note": "A Message field on the wire; a JMS consumer reads it as the property JMSActiveMQBrokerInTime or with getBrokerInTime()."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "brokerOutTime (JMSActiveMQBrokerOutTime)",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/region/RegionBroker.java",
+        "quote": "message.setBrokerOutTime(endTime);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/TransportConnection.java",
+        "quote": "broker.preProcessDispatch(messageDispatch);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-website/e318f5fd878f7a07053346b43c0ec9c8c8af4e15/src/components/classic/documentation/activemq-classic-message-properties.md",
+        "quote": "`JMSActiveMQBrokerOutTime`|`long`|`0`|Time stamp (in milliseconds) for when the message left the broker."
+       }
+      ],
+      "note": "Set from System.currentTimeMillis() in RegionBroker.preProcessDispatch, which TransportConnection calls for each MessageDispatch just before writing it to the transport. A message that waited for prefetch credit is stamped when it is finally dispatched."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/openwire/v12/MessageMarshaller.java",
+        "quote": "info.setBrokerOutTime(looseUnmarshalLong(wireFormat, dataIn));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/openwire/v12/MessageMarshaller.java",
+        "quote": "rc+=tightMarshalLong1(wireFormat, info.getBrokerOutTime(), bs);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/filter/PropertyExpression.java",
+        "quote": "JMS_PROPERTY_EXPRESSIONS.put(\"JMSActiveMQBrokerOutTime\", new SubExpression() {"
+       }
+      ],
+      "note": "Marshalled with the Message after preProcessDispatch sets it; a JMS consumer reads it as the property JMSActiveMQBrokerOutTime."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/openwire/v12/MessageMarshaller.java",
+        "quote": "info.setBrokerInTime(looseUnmarshalLong(wireFormat, dataIn));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/openwire/v12/MessageMarshaller.java",
+        "quote": "info.setBrokerOutTime(looseUnmarshalLong(wireFormat, dataIn));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/region/RegionBroker.java",
+        "quote": "long totalTime = endTime - message.getBrokerInTime();"
+       }
+      ],
+      "note": "No field carries a duration. The stay is brokerOutTime minus brokerInTime, two delivered stamps on the broker's clock (Q1 to Q4); the broker computes the same difference for its destination processTime statistic."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "LoggingBrokerPlugin (not enabled by default): logProducerEvents logs each message as it is sent to the broker ('Sending message'), logConsumerEvents each dispatch ('preProcessDispatch'), both off by default within the plugin; every line has the log's time stamp. JMX also gives per-destination aggregates of brokerOutTime minus brokerInTime (AverageEnqueueTime, MinEnqueueTime, MaxEnqueueTime).",
+      "resolution": "ms (log4j2 default %d pattern in the shipped log4j2.properties)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/util/LoggingBrokerPlugin.java",
+        "quote": "perDestinationsLogger.info(\"Sending message: {}\", copy);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/util/LoggingBrokerPlugin.java",
+        "quote": "LOG.info(\"preProcessDispatch: {}\", messageDispatch);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-website/e318f5fd878f7a07053346b43c0ec9c8c8af4e15/src/components/classic/documentation/logging-interceptor.md",
+        "quote": "logConsumerEvents|Events related to consuming messages|false"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/assembly/src/release/conf/log4j2.properties",
+        "quote": "appender.logfile.layout.pattern=%d | %-5p | %m | %c | %t%n%throwable{full}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/logging-log4j2/dd0f9d255e24e6bcc13bd2641407a409c0524803/log4j-core/src/main/java/org/apache/logging/log4j/core/pattern/NamedInstantPattern.java",
+        "quote": "DEFAULT(\"yyyy-MM-dd HH:mm:ss,SSS\"),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/jmx/DestinationView.java",
+        "quote": "return destination.getDestinationStatistics().getProcessTime().getAverageTime();"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-website/e318f5fd878f7a07053346b43c0ec9c8c8af4e15/src/components/classic/documentation/what-is-the-prefetch-limit-for.md",
+        "quote": "limit the maximum number of messages that can be dispatched to an individual consumer at once."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/ActiveMQPrefetchPolicy.java",
+        "quote": "public static final int DEFAULT_QUEUE_PREFETCH = 1000;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/region/PrefetchSubscription.java",
+        "quote": "return getPrefetchSize() == 0 ? prefetchExtension.get() == 0 : dispatched.size() - prefetchExtension.get() >= info.getPrefetchSize();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-website/e318f5fd878f7a07053346b43c0ec9c8c8af4e15/src/components/classic/documentation/what-is-the-prefetch-limit-for.md",
+        "quote": "Specifying a prefetch limit of zero, however, will cause the consumer to poll for messages, one at a time, instead of the message being pushed to the consumer."
+       }
+      ],
+      "note": "Prefetch is a credit in messages (1000 for queues by default); with prefetch 0 the consumer pulls one message at a time instead."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/region/RegionBroker.java",
+       "read": "RegionBroker.send sets brokerInTime = System.currentTimeMillis() as a message arrives; preProcessDispatch, which the connection calls for each dispatch just before writing it, sets brokerOutTime the same way and, with statistics on, adds the difference to the destination's process time.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/openwire/v12/MessageMarshaller.java",
+       "read": "The OpenWire marshaller writes and reads brokerOutTime with every Message, and JMS exposes it as JMSActiveMQBrokerOutTime.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited text and code say what the answer says: byte or message credit, link credit, prefetch, a receive quota, held pop requests that each take a different message, or QoS 0 sent as it arrives.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "MQTT 5.0 (OASIS standard)",
+   "group": "A",
+   "version": "5.0",
+   "version_evidence": [
+    {
+     "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+     "quote": "MQTT Version 5.0 OASIS Standard 07 March 2019"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "subscriptions, QoS 0",
+     "Q0": {
+      "fields": [
+       "fixed header: DUP, QoS, RETAIN",
+       "Topic Name",
+       "Payload Format Indicator",
+       "Message Expiry Interval",
+       "Topic Alias",
+       "Response Topic",
+       "Correlation Data",
+       "User Property",
+       "Subscription Identifier",
+       "Content Type",
+       "Payload"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "MQTT Control Packet type (3) DUP flag QoS level RETAIN"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBLISH Packet contains the following fields in the order: Topic Name, Packet Identifier, and Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Packet Identifier field is only present in PUBLISH packets where the QoS level is 1 or 2."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "1 0x01 Payload Format Indicator Byte PUBLISH, Will Properties 2 0x02 Message Expiry Interval Four Byte Integer PUBLISH, Will Properties 3 0x03 Content Type UTF-8 Encoded String PUBLISH, Will Properties"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "8 0x08 Response Topic UTF-8 Encoded String PUBLISH, Will Properties 9 0x09 Correlation Data Binary Data PUBLISH, Will Properties 11 0x0B Subscription Identifier Variable Byte Integer PUBLISH, SUBSCRIBE"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "35 0x23 Topic Alias Two Byte Integer PUBLISH"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "38 0x26 User Property UTF-8 String Pair CONNECT, CONNACK, PUBLISH"
+       }
+      ],
+      "note": "The PUBLISH packet a Server sends to a subscriber."
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "expiry deadline: arrival plus the Message Expiry Interval (no named stamp)",
+      "resolution": "s",
+      "setting": "the publisher sets a Message Expiry Interval on the PUBLISH",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "If present, the Four Byte value is the lifetime of the Application Message in seconds."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "If the Message Expiry Interval has passed and the Server has not managed to start onward delivery to a matching subscriber, then it MUST delete the copy of the message for that subscriber [MQTT-3.3.2-5]."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The PUBLISH packet sent to a Client by the Server MUST contain a Message Expiry Interval set to the received value minus the time that the Application Message has been waiting in the Server [MQTT-3.3.2-6]."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "If absent, the Application Message does not expire."
+       }
+      ],
+      "note": "The standard names no stamp, but for a message whose publisher set a Message Expiry Interval, a lifetime counted from its arrival, the Server must delete it once the interval has passed and must forward the interval less the time it has waited, so it keeps each such message's arrival or deadline to the second. Without the property the message does not expire and no time is required."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBLISH Packet contains the following fields in the order: Topic Name, Packet Identifier, and Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The PUBLISH packet sent to a Client by the Server MUST contain a Message Expiry Interval set to the received value minus the time that the Application Message has been waiting in the Server [MQTT-3.3.2-6]."
+       }
+      ],
+      "note": "No PUBLISH field carries the arrival time or the deadline; the Server forwards only the remaining interval (Q5)."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "MQTT Control Packet type (3) DUP flag QoS level RETAIN"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBLISH Packet contains the following fields in the order: Topic Name, Packet Identifier, and Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "No response is sent by the receiver and no retry is performed by the sender."
+       }
+      ],
+      "note": "QoS 0 is sent once with no acknowledgement and no retry; the standard asks for no time at delivery and the PUBLISH carries none."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "resolution": "s",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The PUBLISH packet sent to a Client by the Server MUST contain a Message Expiry Interval set to the received value minus the time that the Application Message has been waiting in the Server [MQTT-3.3.2-6]."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "If present, the Four Byte value is the lifetime of the Application Message in seconds."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Server MUST send all User Properties unaltered in a PUBLISH packet when forwarding the Application Message to a Client [MQTT-3.3.2-17]."
+       }
+      ],
+      "note": "The forwarded Message Expiry Interval is the publisher's interval less the time the message waited in the Server, in whole seconds [MQTT-3.3.2-6]. A subscriber that knows the publisher's interval (a fixed value agreed with the publisher, or repeated by it in a User Property, which the Server forwards unaltered) gets the message's whole time at the Server as the difference, to about a second. Without the property there is nothing to derive."
+     },
+     "Q6": {
+      "answer": "none",
+      "what": "The standard defines no logging, tracing or monitoring of message times; server-specific information is left to each server (a non-normative comment on $SYS/ topics). The EMQX record codes one server.",
+      "resolution": "not applicable",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "$SYS/ has been widely adopted as a prefix to topics that contain Server-specific information or control APIs"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "There is no mechanism to limit the QoS 0 publications that the Server might try to send."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "No response is sent by the receiver and no retry is performed by the sender."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "It MAY continue to send PUBLISH packets with QoS 0, or it MAY choose to suspend sending these as well."
+       }
+      ],
+      "note": "The Server sends each matching QoS 0 message as it arrives, with no credit and no acknowledgement. Only when QoS 1 or 2 messages on the same connection have used up the Receive Maximum quota may it hold back QoS 0 messages too."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q5",
+       "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+       "read": "Normative [MQTT-3.3.2-6]: the PUBLISH the Server sends carries the received Message Expiry Interval less the time the message waited in the Server, in seconds; with the publisher's interval known, the difference is the stay to the second. Only for messages whose publisher set an interval.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited text and code say what the answer says: byte or message credit, link credit, prefetch, a receive quota, held pop requests that each take a different message, or QoS 0 sent as it arrives.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "subscriptions, QoS 1 and 2",
+     "Q0": {
+      "fields": [
+       "fixed header: DUP, QoS, RETAIN",
+       "Topic Name",
+       "Packet Identifier",
+       "Payload Format Indicator",
+       "Message Expiry Interval",
+       "Topic Alias",
+       "Response Topic",
+       "Correlation Data",
+       "User Property",
+       "Subscription Identifier",
+       "Content Type",
+       "Payload"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "MQTT Control Packet type (3) DUP flag QoS level RETAIN"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBLISH Packet contains the following fields in the order: Topic Name, Packet Identifier, and Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Packet Identifier field is only present in PUBLISH packets where the QoS level is 1 or 2."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "1 0x01 Payload Format Indicator Byte PUBLISH, Will Properties 2 0x02 Message Expiry Interval Four Byte Integer PUBLISH, Will Properties 3 0x03 Content Type UTF-8 Encoded String PUBLISH, Will Properties"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "8 0x08 Response Topic UTF-8 Encoded String PUBLISH, Will Properties 9 0x09 Correlation Data Binary Data PUBLISH, Will Properties 11 0x0B Subscription Identifier Variable Byte Integer PUBLISH, SUBSCRIBE"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "35 0x23 Topic Alias Two Byte Integer PUBLISH"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "38 0x26 User Property UTF-8 String Pair CONNECT, CONNACK, PUBLISH"
+       }
+      ],
+      "note": "The PUBLISH packet a Server sends to a subscriber."
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "expiry deadline: arrival plus the Message Expiry Interval (no named stamp)",
+      "resolution": "s",
+      "setting": "the publisher sets a Message Expiry Interval on the PUBLISH",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "If present, the Four Byte value is the lifetime of the Application Message in seconds."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "If the Message Expiry Interval has passed and the Server has not managed to start onward delivery to a matching subscriber, then it MUST delete the copy of the message for that subscriber [MQTT-3.3.2-5]."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The PUBLISH packet sent to a Client by the Server MUST contain a Message Expiry Interval set to the received value minus the time that the Application Message has been waiting in the Server [MQTT-3.3.2-6]."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "If absent, the Application Message does not expire."
+       }
+      ],
+      "note": "The standard names no stamp, but for a message whose publisher set a Message Expiry Interval, a lifetime counted from its arrival, the Server must delete it once the interval has passed and must forward the interval less the time it has waited, so it keeps each such message's arrival or deadline to the second. Without the property the message does not expire and no time is required."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBLISH Packet contains the following fields in the order: Topic Name, Packet Identifier, and Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The PUBLISH packet sent to a Client by the Server MUST contain a Message Expiry Interval set to the received value minus the time that the Application Message has been waiting in the Server [MQTT-3.3.2-6]."
+       }
+      ],
+      "note": "No PUBLISH field carries the arrival time or the deadline; the Server forwards only the remaining interval (Q5)."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "MQTT Control Packet type (3) DUP flag QoS level RETAIN"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBLISH Packet contains the following fields in the order: Topic Name, Packet Identifier, and Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "Clients and Servers MUST NOT resend messages at any other time [MQTT-4.4.0-1]."
+       }
+      ],
+      "note": "The standard keeps unacknowledged QoS 1 and 2 messages in the session but asks for no time with them: a Server resends only on reconnection, so no retry timer is needed, and the PUBLISH carries no time."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "resolution": "s",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The PUBLISH packet sent to a Client by the Server MUST contain a Message Expiry Interval set to the received value minus the time that the Application Message has been waiting in the Server [MQTT-3.3.2-6]."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "If present, the Four Byte value is the lifetime of the Application Message in seconds."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Server MUST send all User Properties unaltered in a PUBLISH packet when forwarding the Application Message to a Client [MQTT-3.3.2-17]."
+       }
+      ],
+      "note": "The forwarded Message Expiry Interval is the publisher's interval less the time the message waited in the Server, in whole seconds [MQTT-3.3.2-6]. A subscriber that knows the publisher's interval (a fixed value agreed with the publisher, or repeated by it in a User Property, which the Server forwards unaltered) gets the message's whole time at the Server as the difference, to about a second. Without the property there is nothing to derive."
+     },
+     "Q6": {
+      "answer": "none",
+      "what": "The standard defines no logging, tracing or monitoring of message times; server-specific information is left to each server (a non-normative comment on $SYS/ topics). The EMQX record codes one server.",
+      "resolution": "not applicable",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "$SYS/ has been widely adopted as a prefix to topics that contain Server-specific information or control APIs"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Receive Maximum establishes a send quota which is used to limit the number of PUBLISH QOS > 0 packets which can be sent without receiving an PUBACK (for QoS 1) or PUBCOMP (for QoS 2)."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "If the Receive Maximum value is absent then its value defaults to 65,535."
+       }
+      ],
+      "note": "The Server may have at most the client's Receive Maximum (default 65,535) unacknowledged QoS 1 and 2 PUBLISH packets in flight to it: a credit, replenished by PUBACK or PUBCOMP."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q5",
+       "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+       "read": "Normative [MQTT-3.3.2-6]: the PUBLISH the Server sends carries the received Message Expiry Interval less the time the message waited in the Server, in seconds; with the publisher's interval known, the difference is the stay to the second. Only for messages whose publisher set an interval.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited text and code say what the answer says: byte or message credit, link credit, prefetch, a receive quota, held pop requests that each take a different message, or QoS 0 sent as it arrives.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "EMQX",
+   "group": "A",
+   "version": "6.3.2",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/include/emqx_release.hrl",
+     "quote": "-define(EMQX_RELEASE_EE, \"6.3.2\")."
+    }
+   ],
+   "modes": [
+    {
+     "mode": "MQTT subscriptions, QoS 0",
+     "Q0": {
+      "fields": [
+       "fixed header: DUP, QoS, RETAIN",
+       "Topic Name",
+       "properties kept by to_packet: Payload-Format-Indicator, Message-Expiry-Interval, Response-Topic, Correlation-Data, User-Property, Subscription-Identifier, Content-Type",
+       "Topic-Alias (when the subscriber allows aliases)",
+       "Payload"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "Packet = emqx_message:to_packet(PacketId, Msg2),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+        "quote": "Extra, filter_pub_props(maps:get(properties, Headers, #{}))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_frame.erl",
+        "quote": "serialize_property(?MQTT_INTERNAL_EXTRA, _, _StrictMode) ->"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+        "quote": "topic_name = Topic,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+        "quote": "packet_id = PacketId,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+        "quote": "'Message-Expiry-Interval',"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "{NPacket, NChannel} = packing_alias(Packet, Channel),"
+       }
+      ],
+      "note": "EMQX builds the outgoing PUBLISH in emqx_channel:do_deliver with emqx_message:to_packet, which keeps only the listed PUBLISH properties of the message's headers; the message's extra map rides along under an internal key that the frame serializer writes as nothing."
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "message timestamp, publish_received_at (reaches the subscriber only through a message transformation)",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_packet.erl",
+        "quote": "Msg = emqx_message:make(ClientId, QoS, Topic, Payload),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+        "quote": "timestamp = timestamp_now()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+        "quote": "erlang:system_time(millisecond)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_utils/include/emqx_message.hrl",
+        "quote": "%% Timestamp (Unit: millisecond)"
+       }
+      ],
+      "note": "Set when the channel turns a received PUBLISH into a message, before routing. Coded 'by configuration' as for RabbitMQ's received time: EMQX records the stamp for every message, and it reaches a subscriber only when a setting asks for it.",
+      "setting": "a message transformation that copies the message's timestamp (publish_received_at) into a user property; none is configured by default",
+      "default_on": false
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_message_transformation/src/emqx_message_transformation.erl",
+        "quote": "on_message_publish(Message = #message{topic = Topic}) ->"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_message_transformation/src/emqx_message_transformation.erl",
+        "quote": "publish_received_at => Message#message.timestamp,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_message_transformation/src/emqx_message_transformation.erl",
+        "quote": "put_value([<<\"user_property\">>, Key], Rendered, Context0) ->"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/rel/i18n/emqx_message_transformation_schema.hocon",
+        "quote": "\"\"\"Value or template assigned to the key.\"\"\""
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_machine/src/emqx_machine_features.erl",
+        "quote": "default_preset() -> full_preset()."
+       }
+      ],
+      "note": "Only through a message transformation, of which none is configured by default (the app is in the default full feature preset). A transformation runs on the publish hook before routing, offers the message's timestamp as publish_received_at and can set user_property.<key>, so subscribers to the same topic receive the arrival time as a User Property. Without one the PUBLISH carries no arrival time (Q0)."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_session_mem.erl",
+        "quote": "Publish = {undefined, maybe_ack(Msg)},"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_session_mem.erl",
+        "quote": "case Congested orelse QoS0Queued of"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "Packet = emqx_message:to_packet(PacketId, Msg2),"
+       }
+      ],
+      "note": "A QoS 0 message is handed to the connection as it arrives, without entering the inflight window, and no delivery time is kept for it (slow subscriptions reads the clock at its delivery but keeps only a per-subscription maximum, Q6). One that waits in the session queue during congestion keeps its queue insertion time, an enqueue time rather than a request or send time."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "resolution": "s",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "Msg1 = emqx_hooks:'message.delivered'(ClientInfo, emqx_message:update_expiry(Msg)),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+        "quote": "Interval1 = max(1, Interval - (Elapsed div 1000)),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+        "quote": "'Message-Expiry-Interval',"
+       }
+      ],
+      "note": "As the standard requires, at delivery EMQX forwards a Message-Expiry-Interval reduced by the whole seconds elapsed since the message's timestamp, never below 1. The forwarded Message Expiry Interval is the publisher's interval less the time the message waited in the Server, in whole seconds [MQTT-3.3.2-6]. A subscriber that knows the publisher's interval (a fixed value agreed with the publisher, or repeated by it in a User Property, which the Server forwards unaltered) gets the message's whole time at the Server as the difference, to about a second. Without the property there is nothing to derive."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "A log trace of a client ID or an IP address (created through the dashboard or API): a line for each MQTT packet that client sends or is sent, PUBLISH included, time-stamped in RFC 3339 to the microsecond as the line is formatted. Slow subscriptions (off by default) keeps, per client ID and topic, only the largest latency above a threshold, measured whole, internal (arrival to start of delivery) or response.",
+      "resolution": "us (trace lines); ms (slow subscriptions)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_connection.erl",
+        "quote": "?TRACE(\"MQTT\", \"mqtt_packet_received\", #{packet => Packet}),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_connection.erl",
+        "quote": "?TRACE(\"MQTT\", \"mqtt_packet_sent\", #{packet => Packet}),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_trace/emqx_trace_formatter.erl",
+        "quote": "Time = emqx_utils_calendar:now_to_rfc3339(microsecond),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_slow_subs/src/emqx_slow_subs.erl",
+        "quote": "End = emqx_message:get_header(deliver_begin_at, Msg, Now),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/rel/i18n/emqx_slow_subs_schema.hocon",
+        "quote": "The Client ID and topic of the consumer whose message latency is greater than this threshold will be recorded in the slow subscription list."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_slow_subs/src/emqx_slow_subs_schema.erl",
+        "quote": "{enable, sc(boolean(), false, enable)},"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_session_mem.erl",
+        "quote": "Publish = {undefined, maybe_ack(Msg)},"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_session_mem.erl",
+        "quote": "case Congested orelse QoS0Queued of"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/rel/i18n/emqx_schema.hocon",
+        "quote": "Note that on a congested connection, available inflight slots also limit the number of messages that may be delivered at once in response to client acknowledgments, irrespective of QoS level."
+       }
+      ],
+      "note": "A QoS 0 message is sent as it arrives, with no credit. It waits in the session queue only while the connection is congested or earlier QoS 0 messages are queued, and on a congested connection the inflight slots also limit delivery."
+     },
+     "not_determined": [
+      "Q3 for durable sessions (durable_sessions.enable, off by default): their internal delivery-time records were not examined; the PUBLISH they send is built by the same emqx_message:to_packet, so Q0, Q2 and Q4 do not change."
+     ],
+     "read_back": [
+      {
+       "question": "Q5",
+       "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+       "read": "update_expiry, called at delivery, forwards max(1, Interval - Elapsed div 1000), Elapsed counted from the message's arrival timestamp: the standard's rule, in whole seconds.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited text and code say what the answer says: byte or message credit, link credit, prefetch, a receive quota, held pop requests that each take a different message, or QoS 0 sent as it arrives.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "MQTT subscriptions, QoS 1 and 2",
+     "Q0": {
+      "fields": [
+       "fixed header: DUP, QoS, RETAIN",
+       "Topic Name",
+       "Packet Identifier",
+       "properties kept by to_packet: Payload-Format-Indicator, Message-Expiry-Interval, Response-Topic, Correlation-Data, User-Property, Subscription-Identifier, Content-Type",
+       "Topic-Alias (when the subscriber allows aliases)",
+       "Payload"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "Packet = emqx_message:to_packet(PacketId, Msg2),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+        "quote": "Extra, filter_pub_props(maps:get(properties, Headers, #{}))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_frame.erl",
+        "quote": "serialize_property(?MQTT_INTERNAL_EXTRA, _, _StrictMode) ->"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+        "quote": "topic_name = Topic,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+        "quote": "packet_id = PacketId,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+        "quote": "'Message-Expiry-Interval',"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "{NPacket, NChannel} = packing_alias(Packet, Channel),"
+       }
+      ],
+      "note": "EMQX builds the outgoing PUBLISH in emqx_channel:do_deliver with emqx_message:to_packet, which keeps only the listed PUBLISH properties of the message's headers; the message's extra map rides along under an internal key that the frame serializer writes as nothing."
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "message timestamp, publish_received_at (reaches the subscriber only through a message transformation)",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_packet.erl",
+        "quote": "Msg = emqx_message:make(ClientId, QoS, Topic, Payload),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+        "quote": "timestamp = timestamp_now()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+        "quote": "erlang:system_time(millisecond)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_utils/include/emqx_message.hrl",
+        "quote": "%% Timestamp (Unit: millisecond)"
+       }
+      ],
+      "note": "Set when the channel turns a received PUBLISH into a message, before routing. Coded 'by configuration' as for RabbitMQ's received time: EMQX records the stamp for every message, and it reaches a subscriber only when a setting asks for it.",
+      "setting": "a message transformation that copies the message's timestamp (publish_received_at) into a user property; none is configured by default",
+      "default_on": false
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_message_transformation/src/emqx_message_transformation.erl",
+        "quote": "on_message_publish(Message = #message{topic = Topic}) ->"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_message_transformation/src/emqx_message_transformation.erl",
+        "quote": "publish_received_at => Message#message.timestamp,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_message_transformation/src/emqx_message_transformation.erl",
+        "quote": "put_value([<<\"user_property\">>, Key], Rendered, Context0) ->"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/rel/i18n/emqx_message_transformation_schema.hocon",
+        "quote": "\"\"\"Value or template assigned to the key.\"\"\""
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_machine/src/emqx_machine_features.erl",
+        "quote": "default_preset() -> full_preset()."
+       }
+      ],
+      "note": "Only through a message transformation, of which none is configured by default (the app is in the default full feature preset). A transformation runs on the publish hook before routing, offers the message's timestamp as publish_received_at and can set user_property.<key>, so subscribers to the same topic receive the arrival time as a User Property. Without one the PUBLISH carries no arrival time (Q0)."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "deliver_begin_at header; inflight insertion time",
+      "resolution": "ms; ns",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_session_mem.erl",
+        "quote": "MarkedMsg = mark_begin_deliver(Msg),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_session_mem.erl",
+        "quote": "emqx_message:set_header(deliver_begin_at, erlang:system_time(millisecond), Msg)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_session_mem.erl",
+        "quote": "InsertTsNano = erlang:system_time(nanosecond),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_session_mem.erl",
+        "quote": "timestamp = erlang:convert_time_unit(InsertTsNano, nanosecond, millisecond)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/rel/i18n/emqx_slow_subs_schema.hocon",
+        "quote": "`internal`: The time from when the message arrives at the EMQX (the EMQX gets the message from the receive-buffer) to when the message begins to be delivered (the EMQX attempts to write the message to the send-buffer)."
+       }
+      ],
+      "note": "When a QoS 1 or 2 message enters the session's inflight window to be written to the client, the in-memory session sets the header deliver_begin_at (ms) and an inflight insertion time (ns), kept with the inflight entry until acknowledged; slow subscriptions documents it as when the message begins to be delivered. Not delivered (Q4). Coded for the in-memory session; durable sessions are off by default."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "Packet = emqx_message:to_packet(PacketId, Msg2),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+        "quote": "Extra, filter_pub_props(maps:get(properties, Headers, #{}))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_frame.erl",
+        "quote": "serialize_property(?MQTT_INTERNAL_EXTRA, _, _StrictMode) ->"
+       }
+      ],
+      "note": "to_packet sends only the listed PUBLISH properties: deliver_begin_at is a header, not one of them, and the insertion times sit in the extra map, which is not serialized. A message transformation runs at publish, before these exist."
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "resolution": "s",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "Msg1 = emqx_hooks:'message.delivered'(ClientInfo, emqx_message:update_expiry(Msg)),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+        "quote": "Interval1 = max(1, Interval - (Elapsed div 1000)),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+        "quote": "'Message-Expiry-Interval',"
+       }
+      ],
+      "note": "As the standard requires, at delivery EMQX forwards a Message-Expiry-Interval reduced by the whole seconds elapsed since the message's timestamp, never below 1. The forwarded Message Expiry Interval is the publisher's interval less the time the message waited in the Server, in whole seconds [MQTT-3.3.2-6]. A subscriber that knows the publisher's interval (a fixed value agreed with the publisher, or repeated by it in a User Property, which the Server forwards unaltered) gets the message's whole time at the Server as the difference, to about a second. Without the property there is nothing to derive."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "A log trace of a client ID or an IP address (created through the dashboard or API): a line for each MQTT packet that client sends or is sent, PUBLISH included, time-stamped in RFC 3339 to the microsecond as the line is formatted. Slow subscriptions (off by default) keeps, per client ID and topic, only the largest latency above a threshold, measured whole, internal (arrival to start of delivery) or response.",
+      "resolution": "us (trace lines); ms (slow subscriptions)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_connection.erl",
+        "quote": "?TRACE(\"MQTT\", \"mqtt_packet_received\", #{packet => Packet}),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_connection.erl",
+        "quote": "?TRACE(\"MQTT\", \"mqtt_packet_sent\", #{packet => Packet}),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_trace/emqx_trace_formatter.erl",
+        "quote": "Time = emqx_utils_calendar:now_to_rfc3339(microsecond),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_slow_subs/src/emqx_slow_subs.erl",
+        "quote": "End = emqx_message:get_header(deliver_begin_at, Msg, Now),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/rel/i18n/emqx_slow_subs_schema.hocon",
+        "quote": "The Client ID and topic of the consumer whose message latency is greater than this threshold will be recorded in the slow subscription list."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_slow_subs/src/emqx_slow_subs_schema.erl",
+        "quote": "{enable, sc(boolean(), false, enable)},"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/rel/i18n/emqx_schema.hocon",
+        "quote": "Maximum number of QoS 1 and QoS 2 messages that are allowed to be delivered simultaneously before completing the acknowledgment. If an MQTT 5 client advertises a smaller Receive Maximum during connection setup, that limit is used."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "erlang:min(Received, MaxInflightConfig)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_session_mem.erl",
+        "quote": "false ?= emqx_inflight:is_full(Inflight0),"
+       }
+      ],
+      "note": "QoS 1 and 2 messages go out while the inflight window has room: the smaller of max_inflight (default 32) and the client's Receive Maximum; the rest wait in the session queue."
+     },
+     "not_determined": [
+      "Q3 for durable sessions (durable_sessions.enable, off by default): their internal delivery-time records were not examined; the PUBLISH they send is built by the same emqx_message:to_packet, so Q0, Q2 and Q4 do not change."
+     ],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_session_mem.erl",
+       "read": "When a QoS 1 or 2 message enters the inflight window to be written, the session sets the header deliver_begin_at (ms) and an inflight insertion time (ns); neither is in the PUBLISH.",
+       "agrees": true
+      },
+      {
+       "question": "Q5",
+       "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+       "read": "update_expiry, called at delivery, forwards max(1, Interval - Elapsed div 1000), Elapsed counted from the message's arrival timestamp: the standard's rule, in whole seconds.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "(the Q7 evidence of this mode)",
+       "read": "The cited text and code say what the answer says: byte or message credit, link credit, prefetch, a receive quota, held pop requests that each take a different message, or QoS 0 sent as it arrives.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

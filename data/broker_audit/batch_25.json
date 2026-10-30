@@ -1,0 +1,3120 @@
+{
+ "audited_utc": "2026-10-29",
+ "brokers": [
+  {
+   "broker": "PostgreSQL LISTEN/NOTIFY",
+   "group": "C",
+   "kind": "database queue",
+   "version": "REL_18_6",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/configure.ac",
+     "quote": "AC_INIT([PostgreSQL], [18.6], [pgsql-bugs@lists.postgresql.org]"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "Hacker News",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "LISTEN subscription",
+     "Q0": {
+      "fields": [
+       "channel name",
+       "process ID of the notifying server process",
+       "payload string"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/doc/src/sgml/ref/notify.sgml",
+        "quote": "The information passed to the client for a notification event includes the notification channel name, the notifying session's server process <acronym>PID</acronym>, and the payload string, which is an empty string if it has not been specified."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/src/backend/commands/async.c",
+        "quote": "pq_beginmessage(&buf, PqMsg_NotificationResponse); pq_sendint32(&buf, srcPid); pq_sendstring(&buf, channel); pq_sendstring(&buf, payload); pq_endmessage(&buf);"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/src/backend/commands/async.c",
+        "quote": "typedef struct AsyncQueueEntry { int length; /* total allocated length of entry */ Oid dboid; /* sender's database OID */ TransactionId xid; /* sender's XID */ int32 srcPid; /* sender's PID */ char data[NAMEDATALEN + NOTIFY_PAYLOAD_MAX_LENGTH]; } AsyncQueueEntry;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/src/backend/commands/async.c",
+        "quote": "pq_beginmessage(&buf, PqMsg_NotificationResponse); pq_sendint32(&buf, srcPid); pq_sendstring(&buf, channel); pq_sendstring(&buf, payload); pq_endmessage(&buf);"
+       }
+      ],
+      "note": "Judgment call: the queue entry holds the sender's XID but no time, and the XID is not delivered. With track_commit_timestamp on, the server records the commit time of transactions, but that is a time kept for the transaction, not a stamp in the notification queue entry."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/doc/src/sgml/ref/notify.sgml",
+        "quote": "The information passed to the client for a notification event includes the notification channel name, the notifying session's server process <acronym>PID</acronym>, and the payload string, which is an empty string if it has not been specified."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/src/backend/commands/async.c",
+        "quote": "pq_beginmessage(&buf, PqMsg_NotificationResponse); pq_sendint32(&buf, srcPid); pq_sendstring(&buf, channel); pq_sendstring(&buf, payload); pq_endmessage(&buf);"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/doc/src/sgml/ref/notify.sgml",
+        "quote": "The information passed to the client for a notification event includes the notification channel name, the notifying session's server process <acronym>PID</acronym>, and the payload string, which is an empty string if it has not been specified."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/src/backend/commands/async.c",
+        "quote": "pq_beginmessage(&buf, PqMsg_NotificationResponse); pq_sendint32(&buf, srcPid); pq_sendstring(&buf, channel); pq_sendstring(&buf, payload); pq_endmessage(&buf);"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/doc/src/sgml/config.sgml",
+        "quote": "Record commit time of transactions. This parameter can only be set at server start. The default value is <literal>off</literal>."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/doc/src/sgml/ref/listen.sgml",
+        "quote": "all the sessions currently listening on that notification channel are notified, and each will in turn notify its connected client application."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q1",
+       "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/src/backend/commands/async.c",
+       "read": "The notification queue entry holds the length, database OID, sender's XID, sender's PID and the channel and payload but no time field, and the delivered NotificationResponse carries only the PID, channel and payload, so no time is recorded or sent for the notification itself.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/doc/src/sgml/ref/listen.sgml",
+       "read": "When NOTIFY is invoked every session listening on the channel is notified and passes the notification to its client application, with no request or credit per notification.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "NOTIFY command",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "command tag NOTIFY"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/src/include/tcop/cmdtaglist.h",
+        "quote": "PG_CMDTAG(CMDTAG_NOTIFY, \"NOTIFY\", false, false, false)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/doc/src/sgml/protocol.sgml",
+        "quote": "The command tag. This is usually a single word that identifies which SQL command was completed."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/src/include/tcop/cmdtaglist.h",
+        "quote": "PG_CMDTAG(CMDTAG_NOTIFY, \"NOTIFY\", false, false, false)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/doc/src/sgml/protocol.sgml",
+        "quote": "The command tag. This is usually a single word that identifies which SQL command was completed."
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/src/include/tcop/cmdtaglist.h",
+        "quote": "PG_CMDTAG(CMDTAG_NOTIFY, \"NOTIFY\", false, false, false)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/doc/src/sgml/protocol.sgml",
+        "quote": "The command tag. This is usually a single word that identifies which SQL command was completed."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/src/include/tcop/cmdtaglist.h",
+        "quote": "PG_CMDTAG(CMDTAG_NOTIFY, \"NOTIFY\", false, false, false)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/doc/src/sgml/protocol.sgml",
+        "quote": "The command tag. This is usually a single word that identifies which SQL command was completed."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "pg_notify function",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "result of type void",
+       "command tag"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/src/include/catalog/pg_proc.dat",
+        "quote": "proname => 'pg_notify', proisstrict => 'f', provolatile => 'v', proparallel => 'r', prorettype => 'void', proargtypes => 'text text', prosrc => 'pg_notify'"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/doc/src/sgml/protocol.sgml",
+        "quote": "The command tag. This is usually a single word that identifies which SQL command was completed."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/src/include/catalog/pg_proc.dat",
+        "quote": "proname => 'pg_notify', proisstrict => 'f', provolatile => 'v', proparallel => 'r', prorettype => 'void', proargtypes => 'text text', prosrc => 'pg_notify'"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/doc/src/sgml/protocol.sgml",
+        "quote": "The command tag. This is usually a single word that identifies which SQL command was completed."
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/src/include/catalog/pg_proc.dat",
+        "quote": "proname => 'pg_notify', proisstrict => 'f', provolatile => 'v', proparallel => 'r', prorettype => 'void', proargtypes => 'text text', prosrc => 'pg_notify'"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/doc/src/sgml/protocol.sgml",
+        "quote": "The command tag. This is usually a single word that identifies which SQL command was completed."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/src/include/catalog/pg_proc.dat",
+        "quote": "proname => 'pg_notify', proisstrict => 'f', provolatile => 'v', proparallel => 'r', prorettype => 'void', proargtypes => 'text text', prosrc => 'pg_notify'"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/doc/src/sgml/protocol.sgml",
+        "quote": "The command tag. This is usually a single word that identifies which SQL command was completed."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Hatchet",
+   "group": "C",
+   "kind": "job-queue server",
+   "version": "v0.114.2",
+   "version_evidence": [
+    {
+     "url": "https://github.com/hatchet-dev/hatchet/releases/tag/v0.114.2",
+     "quote": "v0.114.2"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list avelino/awesome-go",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "worker stream, task by task (START_STEP_RUN)",
+     "Q0": {
+      "fields": [
+       "tenant id",
+       "workflow run id",
+       "get group key run id",
+       "job id",
+       "job name",
+       "job run id",
+       "task id",
+       "task external run id",
+       "action id",
+       "action type",
+       "action payload",
+       "task name",
+       "retry count",
+       "additional metadata",
+       "child workflow index",
+       "child workflow key",
+       "parent workflow run id",
+       "priority",
+       "workflow id",
+       "workflow version id",
+       "durable task invocation count",
+       "triggering event external id",
+       "triggering event key",
+       "batch id",
+       "batch size",
+       "batch index",
+       "batch start payload",
+       "batch key",
+       "task inserted at (set only for the engine's own operator worker)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "rpc Listen(WorkerListenRequest) returns (stream AssignedAction) {} // ListenV2 is like listen, but implementation does not include heartbeats."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "message AssignedAction { // the tenant id string tenant_id = 1; // the workflow run id (optional) string workflow_run_id = 2; // the get group key run id (optional) string get_group_key_run_id = 3; // the job id string job_id = 4;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "// the job name string job_name = 5; // the job run id string job_run_id = 6; // the task id string task_id = 7; // the task external run id string task_run_external_id = 8; // the action id string action_id = 9; // the action type ActionType action_type = 10;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "// the action payload string action_payload = 11; // the task name string task_name = 12; // the count number of the retry attempt int32 retry_count = 13; // (optional) additional metadata set on the workflow optional string additional_metadata = 14;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "// (optional) the child workflow index (if this is a child workflow) optional int32 child_workflow_index = 15; // (optional) the child workflow key (if this is a child workflow) optional string child_workflow_key = 16;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "(if this is a child workflow) optional string parent_workflow_run_id = 17; // (optional) the priority of the run int32 priority = 18; // (optional) the workflow id optional string workflow_id = 19; // (optional) the workflow version id optional string workflow_version_id = 20;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "optional int32 durable_task_invocation_count = 21; // (optional) the external id of the event that triggered this workflow run (if any) optional string triggering_event_external_id = 22;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "// (optional) the key of the event that triggered this workflow run (if any) optional string triggering_event_key = 23; // (optional) the batch identifier if this task is part of a batch optional string batchId = 24;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "// (optional) the total number of tasks in the batch optional int32 batchSize = 25; // (optional) the index of the task within the batch optional int32 batchIndex = 26;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "// (optional) payload for starting a batch execution optional BatchStartPayload batchStartPayload = 27; // (optional) the partition key used for batching optional string batchKey = 28;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "// (optional) inserted_at of the assigned task. The DAG operator uses this to prune durable log partitions. optional google.protobuf.Timestamp task_inserted_at = 29; }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/sql/schema/v1-core.sql",
+        "quote": "CREATE TABLE v1_task ( id bigint GENERATED ALWAYS AS IDENTITY, inserted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, tenant_id UUID NOT NULL, queue TEXT NOT NULL,"
+       }
+      ],
+      "field": "inserted_at",
+      "resolution": "us"
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/internal/services/dispatcher/subscribed_worker_v1.go",
+        "quote": "func (worker *subscribedWorker) setOperatorTaskInsertedAt(action *contracts.AssignedAction, task *sqlcv1.V1Task) { if worker.handler == nil || task == nil || !task.InsertedAt.Valid { return } action.TaskInsertedAt = timestamppb.New(task.InsertedAt.Time) }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/internal/services/dispatcher/subscribed_worker_v1.go",
+        "quote": "if worker.handler != nil { return worker.sendToWorkerWithOperator(ctx, action) } return worker.sendToWorkerWithStream(ctx, action) }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "// (optional) inserted_at of the assigned task. The DAG operator uses this to prune durable log partitions. optional google.protobuf.Timestamp task_inserted_at = 29; }"
+       }
+      ],
+      "note": "Judgment call: the message has a task_inserted_at field, but the engine sets it only when the receiving worker is its own operator handler; a worker on the gRPC stream is sent no inserted-at time."
+     },
+     "Q3": {
+      "answer": "send time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/internal/services/scheduler/v1/scheduler.go",
+        "quote": "EventType: sqlcv1.V1EventTypeOlapASSIGNED, EventTimestamp: time.Now(),"
+       }
+      ],
+      "note": "The ASSIGNED event is stamped when the scheduler assigns the task to a worker slot, before the dispatcher writes the action to the worker's stream; it is kept in the monitoring tables."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/internal/services/dispatcher/subscribed_worker_v1.go",
+        "quote": "func (worker *subscribedWorker) setOperatorTaskInsertedAt(action *contracts.AssignedAction, task *sqlcv1.V1Task) { if worker.handler == nil || task == nil || !task.InsertedAt.Valid { return } action.TaskInsertedAt = timestamppb.New(task.InsertedAt.Time) }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/internal/services/dispatcher/subscribed_worker_v1.go",
+        "quote": "if worker.handler != nil { return worker.sendToWorkerWithOperator(ctx, action) } return worker.sendToWorkerWithStream(ctx, action) }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "// the action payload string action_payload = 11; // the task name string task_name = 12; // the count number of the retry attempt int32 retry_count = 13; // (optional) additional metadata set on the workflow optional string additional_metadata = 14;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "(if this is a child workflow) optional string parent_workflow_run_id = 17; // (optional) the priority of the run int32 priority = 18; // (optional) the workflow id optional string workflow_id = 19; // (optional) the workflow version id optional string workflow_version_id = 20;"
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "message AssignedAction { // the tenant id string tenant_id = 1; // the workflow run id (optional) string workflow_run_id = 2; // the get group key run id (optional) string get_group_key_run_id = 3; // the job id string job_id = 4;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "// the job name string job_name = 5; // the job run id string job_run_id = 6; // the task id string task_id = 7; // the task external run id string task_run_external_id = 8; // the action id string action_id = 9; // the action type ActionType action_type = 10;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "// the action payload string action_payload = 11; // the task name string task_name = 12; // the count number of the retry attempt int32 retry_count = 13; // (optional) additional metadata set on the workflow optional string additional_metadata = 14;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "// (optional) the child workflow index (if this is a child workflow) optional int32 child_workflow_index = 15; // (optional) the child workflow key (if this is a child workflow) optional string child_workflow_key = 16;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "(if this is a child workflow) optional string parent_workflow_run_id = 17; // (optional) the priority of the run int32 priority = 18; // (optional) the workflow id optional string workflow_id = 19; // (optional) the workflow version id optional string workflow_version_id = 20;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "optional int32 durable_task_invocation_count = 21; // (optional) the external id of the event that triggered this workflow run (if any) optional string triggering_event_external_id = 22;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "// (optional) the key of the event that triggered this workflow run (if any) optional string triggering_event_key = 23; // (optional) the batch identifier if this task is part of a batch optional string batchId = 24;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "// (optional) the total number of tasks in the batch optional int32 batchSize = 25; // (optional) the index of the task within the batch optional int32 batchIndex = 26;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "// (optional) payload for starting a batch execution optional BatchStartPayload batchStartPayload = 27; // (optional) the partition key used for batching optional string batchKey = 28;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "// (optional) inserted_at of the assigned task. The DAG operator uses this to prune durable log partitions. optional google.protobuf.Timestamp task_inserted_at = 29; }"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per message",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/sql/schema/v1-olap.sql",
+        "quote": "task_id BIGINT NOT NULL, task_inserted_at TIMESTAMPTZ NOT NULL, event_type v1_event_type_olap NOT NULL, workflow_id UUID NOT NULL, event_timestamp TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, readable_status v1_readable_status_olap NOT NULL"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/frontend/docs/content/docs/v1/workers.mdx",
+        "quote": "Every worker has a fixed number of **slots** that control how many tasks it can run concurrently, which can be configured with the `slots` option on the worker."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/frontend/docs/content/docs/v1/workers.mdx",
+        "quote": "Any additional tasks wait in the queue until a slot opens up."
+       }
+      ],
+      "note": "Judgment call: a worker's slots are a fixed capacity set at registration and the engine assigns a task only while a slot is free; the worker sends no request per message."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q2",
+       "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/internal/services/dispatcher/subscribed_worker_v1.go",
+       "read": "The assigned action has a task_inserted_at field, but setOperatorTaskInsertedAt returns at once unless the worker is the engine's own operator handler, and the action has no other broker time field, so a worker on the gRPC stream is sent no inserted-at time.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/internal/services/scheduler/v1/scheduler.go",
+       "read": "The scheduler stamps an ASSIGNED task event with time.Now() when it assigns the task to a worker slot, and the dispatcher stamps a SENT_TO_WORKER event with time.Now().UTC() when it sends the task run to the worker; both are task events kept for the account and not sent to the worker.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/frontend/docs/content/docs/v1/workers.mdx",
+       "read": "A worker has a fixed number of slots set on the worker, the engine assigns a task only while a slot is free, extra tasks wait in the queue until a slot opens, and the worker sends no request per message.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "worker stream, batch start (START_BATCH)",
+     "Q0": {
+      "fields": [
+       "all the fields of a task action",
+       "batch start payload: trigger reason, trigger time, expected size"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "// (optional) the total number of tasks in the batch optional int32 batchSize = 25; // (optional) the index of the task within the batch optional int32 batchIndex = 26;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "// (optional) payload for starting a batch execution optional BatchStartPayload batchStartPayload = 27; // (optional) the partition key used for batching optional string batchKey = 28;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "message BatchStartPayload { string triggerReason = 1; google.protobuf.Timestamp triggerTime = 2; int32 expectedSize = 3; }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/sql/schema/v1-core.sql",
+        "quote": "CREATE TABLE v1_task ( id bigint GENERATED ALWAYS AS IDENTITY, inserted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, tenant_id UUID NOT NULL, queue TEXT NOT NULL,"
+       }
+      ],
+      "field": "inserted_at",
+      "resolution": "us"
+     },
+     "Q2": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "message BatchStartPayload { string triggerReason = 1; google.protobuf.Timestamp triggerTime = 2; int32 expectedSize = 3; }"
+       }
+      ],
+      "note": "not reached: the JSON of the batch items sent as the action payload was not read."
+     },
+     "Q3": {
+      "answer": "send time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/internal/services/scheduler/v1/scheduler.go",
+        "quote": "triggeredAt := meta.TriggeredAt if triggeredAt.IsZero() { triggeredAt = time.Now().UTC() } batchSize := len(group)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/internal/services/dispatcher/dispatcher.go",
+        "quote": "triggerTime := payload.TriggerTime if triggerTime.IsZero() { triggerTime = time.Now().UTC() } expectedSize := payload.ExpectedSize"
+       }
+      ],
+      "note": "The trigger time is the scheduler's time of assigning the batch to a worker, taken from the engine's clock."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "message BatchStartPayload { string triggerReason = 1; google.protobuf.Timestamp triggerTime = 2; int32 expectedSize = 3; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/internal/services/dispatcher/dispatcher.go",
+        "quote": "triggerTime := payload.TriggerTime if triggerTime.IsZero() { triggerTime = time.Now().UTC() } expectedSize := payload.ExpectedSize"
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+        "quote": "message BatchStartPayload { string triggerReason = 1; google.protobuf.Timestamp triggerTime = 2; int32 expectedSize = 3; }"
+       }
+      ],
+      "note": "not reached: the JSON of the batch items sent as the action payload was not read."
+     },
+     "Q6": {
+      "answer": "per message",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/sql/schema/v1-olap.sql",
+        "quote": "task_id BIGINT NOT NULL, task_inserted_at TIMESTAMPTZ NOT NULL, event_type v1_event_type_olap NOT NULL, workflow_id UUID NOT NULL, event_timestamp TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, readable_status v1_readable_status_olap NOT NULL"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/frontend/docs/content/docs/v1/workers.mdx",
+        "quote": "Every worker has a fixed number of **slots** that control how many tasks it can run concurrently, which can be configured with the `slots` option on the worker."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/frontend/docs/content/docs/v1/workers.mdx",
+        "quote": "Any additional tasks wait in the queue until a slot opens up."
+       }
+      ],
+      "note": "Judgment call: a worker's slots are a fixed capacity set at registration and the engine assigns a task only while a slot is free; the worker sends no request per message."
+     },
+     "not_determined": [
+      "Q2",
+      "Q5"
+     ],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/internal/services/scheduler/v1/scheduler.go",
+       "read": "In the batch scheduler's flush, at the point where the group is assigned to a worker, triggeredAt is set to time.Now().UTC() (the flushed state), the scheduler and dispatcher pass it on and fall back to time.Now() only if it is zero, so the trigger time is the engine's clock at the batch's assignment to the worker, just before the dispatcher sends the action.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/dispatcher/dispatcher.proto",
+       "read": "The dispatcher builds BatchStartPayload with TriggerTime from that value and sends it to the worker in the batchStartPayload field of the START_BATCH action.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/frontend/docs/content/docs/v1/workers.mdx",
+       "read": "The batch scheduler needs one free worker slot for the whole batch and a worker's slots are a fixed capacity set on the worker, so the worker holds slot credit and sends no request per message.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "gRPC TriggerWorkflowRun",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "external id of the run"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/v1/workflows.proto",
+        "quote": "rpc TriggerWorkflowRun(TriggerWorkflowRunRequest) returns (TriggerWorkflowRunResponse);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/v1/workflows.proto",
+        "quote": "message TriggerWorkflowRunResponse { string external_id = 1; }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/v1/workflows.proto",
+        "quote": "message TriggerWorkflowRunResponse { string external_id = 1; }"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/v1/workflows.proto",
+        "quote": "message TriggerWorkflowRunResponse { string external_id = 1; }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/v1/workflows.proto",
+        "quote": "message TriggerWorkflowRunResponse { string external_id = 1; }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "gRPC EventsService.Push",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "tenant id",
+       "event id",
+       "key",
+       "payload",
+       "event timestamp",
+       "additional metadata"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/api-contracts/events/events.proto",
+        "quote": "service EventsService { rpc Push(PushEventRequest) returns (Event) {}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/internal/services/ingestor/server.go",
+        "quote": "return &contracts.Event{ TenantId: tenantId, EventId: eventId, Key: e.Key, Payload: string(e.Data), EventTimestamp: timestamppb.New(e.CreatedAt.Time), AdditionalMetadata: additionalMeta, }, nil }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/internal/services/ingestor/server.go",
+        "quote": "return &contracts.Event{ TenantId: tenantId, EventId: eventId, Key: e.Key, Payload: string(e.Data), EventTimestamp: timestamppb.New(e.CreatedAt.Time), AdditionalMetadata: additionalMeta, }, nil }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/internal/services/ingestor/server.go",
+        "quote": "event, err := i.IngestEvent(ctx, tenant, req.Key, []byte(req.Payload), additionalMeta, req.Priority, req.Scope, nil)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/internal/services/ingestor/ingestor_v1.go",
+        "quote": "now := time.Now().UTC() tenantId := tenant.ID for _, event := range eventOpts { e := &sqlcv1.Event{ ID: event.EventExternalId, CreatedAt: sqlchelpers.TimestampFromTime(now), UpdatedAt: sqlchelpers.TimestampFromTime(now),"
+       }
+      ],
+      "which": "receive time",
+      "resolution": "ns",
+      "note": "Judgment call: Push calls IngestEvent, which was not read in full; the event it returns is built with CreatedAt from the engine's own clock, and the request's event_timestamp is not passed to it. The resolution is that of the protobuf timestamp."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/internal/services/ingestor/server.go",
+        "quote": "event, err := i.IngestEvent(ctx, tenant, req.Key, []byte(req.Payload), additionalMeta, req.Priority, req.Scope, nil)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/internal/services/ingestor/server.go",
+        "quote": "return &contracts.Event{ TenantId: tenantId, EventId: eventId, Key: e.Key, Payload: string(e.Data), EventTimestamp: timestamppb.New(e.CreatedAt.Time), AdditionalMetadata: additionalMeta, }, nil }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/internal/services/ingestor/server.go",
+        "quote": "return &contracts.Event{ TenantId: tenantId, EventId: eventId, Key: e.Key, Payload: string(e.Data), EventTimestamp: timestamppb.New(e.CreatedAt.Time), AdditionalMetadata: additionalMeta, }, nil }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/hatchet-dev/hatchet/v0.114.2/internal/services/ingestor/server.go",
+       "read": "Push returns the event built by toEvent with EventTimestamp taken from CreatedAt, which ingest sets to time.Now().UTC() for every event, and the request's own event_timestamp is never passed on.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "AMQP 0-9-1",
+   "group": "C",
+   "kind": "standard",
+   "version": "0-9-1",
+   "version_evidence": [
+    {
+     "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+     "quote": "<amqp major = \"0\" minor = \"9\" revision = \"1\" port = \"5672\" comment = \"AMQ Protocol version 0-9-1\">"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "Wikipedia (de): Advanced Message Queuing Protocol",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "basic.consume (pushed basic.deliver)",
+     "Q0": {
+      "fields": [
+       "consumer tag",
+       "delivery tag",
+       "redelivered flag",
+       "exchange",
+       "routing key",
+       "content type",
+       "content encoding",
+       "headers table",
+       "delivery mode",
+       "priority",
+       "correlation id",
+       "reply-to",
+       "expiration",
+       "message id",
+       "timestamp",
+       "type",
+       "user id",
+       "app id",
+       "body"
+      ],
+      "evidence": [
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<method name = \"deliver\" content = \"1\" index = \"60\" label = \"notify the client of a consumer message\"> <doc> This method delivers a message to the client, via a consumer."
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<chassis name = \"client\" implement = \"MUST\" /> <field name = \"consumer-tag\" domain = \"consumer-tag\" /> <field name = \"delivery-tag\" domain = \"delivery-tag\" /> <field name = \"redelivered\" domain = \"redelivered\" /> <field name = \"exchange\" domain = \"exchange-name\">"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<field name = \"content-type\" domain = \"shortstr\" label = \"MIME content type\" /> <!-- MIME typing --> <field name = \"content-encoding\" domain = \"shortstr\" label = \"MIME content encoding\" />"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<field name = \"headers\" domain = \"table\" label = \"message header field table\" /> <!-- For queues that implement persistence --> <field name = \"delivery-mode\" domain = \"octet\" label = \"non-persistent (1) or persistent (2)\" />"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<field name = \"priority\" domain = \"octet\" label = \"message priority, 0 to 9\" /> <!-- For application use, no formal behaviour --> <field name = \"correlation-id\" domain = \"sho"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<field name = \"reply-to\" domain = \"shortstr\" label = \"address to reply to\" /> <!-- For implementation use, no formal behaviour --> <field name = \"expiration\" domain = \"shortstr\" label = \"message expiration specification\" />"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<field name = \"message-id\" domain = \"shortstr\" label = \"application message identifier\" /> <!-- For application use, no formal behaviour --> <field name = \"timestamp\" domain = \"timestamp\" label = \"message timestamp\" />"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<field name = \"type\" domain = \"shortstr\" label = \"message type name\" /> <!-- For application use, no formal behaviour --> <field name = \"user-id\" domain = \"shortstr\" label = \"creating user id\" />"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<field name = \"app-id\" domain = \"shortstr\" label = \"creating application id\" />"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<field name = \"message-id\" domain = \"shortstr\" label = \"application message identifier\" /> <!-- For application use, no formal behaviour --> <field name = \"timestamp\" domain = \"timestamp\" label = \"message timestamp\" />"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<chassis name = \"client\" implement = \"MUST\" /> <field name = \"consumer-tag\" domain = \"consumer-tag\" /> <field name = \"delivery-tag\" domain = \"delivery-tag\" /> <field name = \"redelivered\" domain = \"redelivered\" /> <field name = \"exchange\" domain = \"exchange-name\">"
+       }
+      ],
+      "note": "The standard sets no broker stamp: the timestamp property is marked 'For application use, no formal behaviour', so no MUST or SHOULD asks the broker to record a time."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<method name = \"deliver\" content = \"1\" index = \"60\" label = \"notify the client of a consumer message\"> <doc> This method delivers a message to the client, via a consumer."
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<chassis name = \"client\" implement = \"MUST\" /> <field name = \"consumer-tag\" domain = \"consumer-tag\" /> <field name = \"delivery-tag\" domain = \"delivery-tag\" /> <field name = \"redelivered\" domain = \"redelivered\" /> <field name = \"exchange\" domain = \"exchange-name\">"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<field name = \"reply-to\" domain = \"shortstr\" label = \"address to reply to\" /> <!-- For implementation use, no formal behaviour --> <field name = \"expiration\" domain = \"shortstr\" label = \"message expiration specification\" />"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<chassis name = \"client\" implement = \"MUST\" /> <field name = \"consumer-tag\" domain = \"consumer-tag\" /> <field name = \"delivery-tag\" domain = \"delivery-tag\" /> <field name = \"redelivered\" domain = \"redelivered\" /> <field name = \"exchange\" domain = \"exchange-name\">"
+       }
+      ],
+      "note": "The expiration property is marked 'For implementation use, no formal behaviour': the standard does not ask the broker to reduce it."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<method name = \"deliver\" content = \"1\" index = \"60\" label = \"notify the client of a consumer message\"> <doc> This method delivers a message to the client, via a consumer."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<method name = \"consume\" synchronous = \"1\" index = \"20\" label = \"start a queue consumer\"> <doc> This method asks the server to start a \"consumer\", which is a transient request for messages from a specific queue."
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "it is currently meaningful only for the server. </doc> <chassis name = \"server\" implement = \"MUST\" />"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "Specifies a prefetch window in terms of whole messages. This field may be used in combination with the prefetch-size field; a message will only be sent in advance if both prefetch windows (and those at the channel and connection level) allow it."
+       }
+      ],
+      "note": "Basic.qos is a server MUST; the prefetch window limits the messages sent in advance to a consumer."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+       "read": "Basic.qos is a server MUST, and its prefetch-size and prefetch-count give a window that limits the messages sent in advance to a consumer (the server MUST NOT send more), so the consumer holds a credit that acknowledgments renew; the window is ignored only when no-ack is set.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "basic.get (synchronous poll)",
+     "Q0": {
+      "fields": [
+       "delivery tag",
+       "redelivered flag",
+       "exchange",
+       "routing key",
+       "message count",
+       "content type",
+       "content encoding",
+       "headers table",
+       "delivery mode",
+       "priority",
+       "correlation id",
+       "reply-to",
+       "expiration",
+       "message id",
+       "timestamp",
+       "type",
+       "user id",
+       "app id",
+       "body"
+      ],
+      "evidence": [
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<chassis name = \"client\" implement = \"MAY\" /> <field name = \"delivery-tag\" domain = \"delivery-tag\" /> <field name = \"redelivered\" domain = \"redelivered\" /> <field name = \"exchange\" domain = \"exchange-name\">"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "</doc> </field> <field name = \"message-count\" domain = \"message-count\" /> </method> <method name = \"get-empty\" synchronous = \"1\" index = \"72\" label = \"indicate no messages available\">"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<field name = \"content-type\" domain = \"shortstr\" label = \"MIME content type\" /> <!-- MIME typing --> <field name = \"content-encoding\" domain = \"shortstr\" label = \"MIME content encoding\" />"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<field name = \"headers\" domain = \"table\" label = \"message header field table\" /> <!-- For queues that implement persistence --> <field name = \"delivery-mode\" domain = \"octet\" label = \"non-persistent (1) or persistent (2)\" />"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<field name = \"priority\" domain = \"octet\" label = \"message priority, 0 to 9\" /> <!-- For application use, no formal behaviour --> <field name = \"correlation-id\" domain = \"sho"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<field name = \"reply-to\" domain = \"shortstr\" label = \"address to reply to\" /> <!-- For implementation use, no formal behaviour --> <field name = \"expiration\" domain = \"shortstr\" label = \"message expiration specification\" />"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<field name = \"message-id\" domain = \"shortstr\" label = \"application message identifier\" /> <!-- For application use, no formal behaviour --> <field name = \"timestamp\" domain = \"timestamp\" label = \"message timestamp\" />"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<field name = \"type\" domain = \"shortstr\" label = \"message type name\" /> <!-- For application use, no formal behaviour --> <field name = \"user-id\" domain = \"shortstr\" label = \"creating user id\" />"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<field name = \"app-id\" domain = \"shortstr\" label = \"creating application id\" />"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<field name = \"message-id\" domain = \"shortstr\" label = \"application message identifier\" /> <!-- For application use, no formal behaviour --> <field name = \"timestamp\" domain = \"timestamp\" label = \"message timestamp\" />"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<chassis name = \"client\" implement = \"MAY\" /> <field name = \"delivery-tag\" domain = \"delivery-tag\" /> <field name = \"redelivered\" domain = \"redelivered\" /> <field name = \"exchange\" domain = \"exchange-name\">"
+       }
+      ],
+      "note": "The standard sets no broker stamp: the timestamp property is marked 'For application use, no formal behaviour', so no MUST or SHOULD asks the broker to record a time."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<chassis name = \"client\" implement = \"MAY\" /> <field name = \"delivery-tag\" domain = \"delivery-tag\" /> <field name = \"redelivered\" domain = \"redelivered\" /> <field name = \"exchange\" domain = \"exchange-name\">"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "</doc> </field> <field name = \"message-count\" domain = \"message-count\" /> </method> <method name = \"get-empty\" synchronous = \"1\" index = \"72\" label = \"indicate no messages available\">"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<field name = \"reply-to\" domain = \"shortstr\" label = \"address to reply to\" /> <!-- For implementation use, no formal behaviour --> <field name = \"expiration\" domain = \"shortstr\" label = \"message expiration specification\" />"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<chassis name = \"client\" implement = \"MAY\" /> <field name = \"delivery-tag\" domain = \"delivery-tag\" /> <field name = \"redelivered\" domain = \"redelivered\" /> <field name = \"exchange\" domain = \"exchange-name\">"
+       }
+      ],
+      "note": "The expiration property is marked 'For implementation use, no formal behaviour': the standard does not ask the broker to reduce it."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<method name = \"get\" synchronous = \"1\" index = \"70\" label = \"direct access to a queue\"> <doc> This method provides a direct access to the messages in a queue using a synchronous dialogue"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<method name = \"get\" synchronous = \"1\" index = \"70\" label = \"direct access to a queue\"> <doc> This method provides a direct access to the messages in a queue using a synchronous dialogue"
+       },
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "This method tells the client that the queue has no messages available"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": []
+    }
+   ],
+   "producers": [
+    {
+     "interface": "basic.publish",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "distributed to any active consumers when the transaction, if any, is committed. </doc> <chassis name = \"server\" implement = \"MUST\" /> <!-- Deprecated: \"ticket\", must be zero --> <field name = \"reserved-1\" type = \"short\" reserved = \"1\" />"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "publish in a transaction (tx.commit)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "none (commit-ok has no fields)"
+      ],
+      "evidence": [
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<method name = \"commit-ok\" synchronous = \"1\" index = \"21\" label = \"confirm a successful commit\"> <doc> This method confirms to the client that the commit succeeded."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<method name = \"commit-ok\" synchronous = \"1\" index = \"21\" label = \"confirm a successful commit\"> <doc> This method confirms to the client that the commit succeeded."
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<method name = \"commit-ok\" synchronous = \"1\" index = \"21\" label = \"confirm a successful commit\"> <doc> This method confirms to the client that the commit succeeded."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.rabbitmq.com/resources/specs/amqp0-9-1.xml",
+        "quote": "<method name = \"commit-ok\" synchronous = \"1\" index = \"21\" label = \"confirm a successful commit\"> <doc> This method confirms to the client that the commit succeeded."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Durable Streams",
+   "group": "C",
+   "kind": "standard",
+   "version": "v0.3.0 (protocol draft 1.0)",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+     "quote": "# DRAFT: The Durable Streams Protocol **Document:** Durable Streams Protocol **Version:** 1.0 **Date:** 2025-01-XX **Author:** ElectricSQL"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "Hacker News",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "catch-up read (GET offset)",
+     "Q0": {
+      "fields": [
+       "bytes of the stream from the offset",
+       "Content-Type",
+       "Stream-Next-Offset",
+       "Stream-Up-To-Date",
+       "ETag",
+       "Cache-Control",
+       "Stream-Cursor (optional)",
+       "Stream-Closed"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "### 5.6. Read Stream - Catch-up #### Request ``` GET {stream-url}?offset=<offset> ``` Where `{stream-url}` is the URL of the stream. Returns bytes starting from the specified offset"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "`Content-Type: <stream-content-type>`: The stream's content type - `Stream-Next-Offset: <offset>`: The tail offset"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "Derived from TTL/expiry (see Section 9) - `ETag: {internal_stream_id}:{start_offset}:{end_offset}` - Entity tag for cache validation - `Stream-Cursor: <cursor>` (optional for catch-up, required for live modes)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "`Stream-Next-Offset: <offset>` - The next offset to read from (for subsequent requests) - `Stream-Up-To-Date: true` - **MUST** be present and set to `true` when the response includes all data available in the stream at the time the response was generated"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "`Content-Type: <stream-content-type>`: The stream's content type - `Stream-Next-Offset: <offset>`: The tail offset"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "Derived from TTL/expiry (see Section 9) - `ETag: {internal_stream_id}:{start_offset}:{end_offset}` - Entity tag for cache validation - `Stream-Cursor: <cursor>` (optional for catch-up, required for live modes)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "`Stream-Next-Offset: <offset>` - The next offset to read from (for subsequent requests) - `Stream-Up-To-Date: true` - **MUST** be present and set to `true` when the response includes all data available in the stream at the time the response was generated"
+       }
+      ],
+      "note": "Standard: no MUST or SHOULD asks for a time. Offsets are opaque and may not be interpreted, and the stream expiry is a property of the stream, not of a message."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "`Content-Type: <stream-content-type>`: The stream's content type - `Stream-Next-Offset: <offset>`: The tail offset"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "Derived from TTL/expiry (see Section 9) - `ETag: {internal_stream_id}:{start_offset}:{end_offset}` - Entity tag for cache validation - `Stream-Cursor: <cursor>` (optional for catch-up, required for live modes)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "`Stream-Next-Offset: <offset>` - The next offset to read from (for subsequent requests) - `Stream-Up-To-Date: true` - **MUST** be present and set to `true` when the response includes all data available in the stream at the time the response was generated"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "`Content-Type: <stream-content-type>`: The stream's content type - `Stream-Next-Offset: <offset>`: The tail offset"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "Derived from TTL/expiry (see Section 9) - `ETag: {internal_stream_id}:{start_offset}:{end_offset}` - Entity tag for cache validation - `Stream-Cursor: <cursor>` (optional for catch-up, required for live modes)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "`Stream-Next-Offset: <offset>` - The next offset to read from (for subsequent requests) - `Stream-Up-To-Date: true` - **MUST** be present and set to `true` when the response includes all data available in the stream at the time the response was generated"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "### 5.6. Read Stream - Catch-up #### Request ``` GET {stream-url}?offset=<offset> ``` Where `{stream-url}` is the URL of the stream. Returns bytes starting from the specified offset"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "### 5.6. Read Stream - Catch-up #### Request ``` GET {stream-url}?offset=<offset> ``` Where `{stream-url}` is the URL of the stream. Returns bytes starting from the specified offset"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": []
+    },
+    {
+     "mode": "long-poll read (GET live=long-poll)",
+     "Q0": {
+      "fields": [
+       "bytes of the stream from the offset",
+       "Content-Type",
+       "Stream-Next-Offset",
+       "Stream-Up-To-Date",
+       "ETag",
+       "Cache-Control",
+       "Stream-Cursor",
+       "Stream-Closed"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "`200 OK`: Data became available within the timeout - `204 No Content`: Timeout expired with no new data"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "#### Response Headers (on 200) - Same as catch-up reads (Section 5.6), plus: - `Stream-Cursor: <cursor>`: Servers **MUST** include this header."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "`Content-Type: <stream-content-type>`: The stream's content type - `Stream-Next-Offset: <offset>`: The tail offset"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "Derived from TTL/expiry (see Section 9) - `ETag: {internal_stream_id}:{start_offset}:{end_offset}` - Entity tag for cache validation - `Stream-Cursor: <cursor>` (optional for catch-up, required for live modes)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "`Stream-Next-Offset: <offset>` - The next offset to read from (for subsequent requests) - `Stream-Up-To-Date: true` - **MUST** be present and set to `true` when the response includes all data available in the stream at the time the response was generated"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "#### Response Headers (on 200) - Same as catch-up reads (Section 5.6), plus: - `Stream-Cursor: <cursor>`: Servers **MUST** include this header."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "`Stream-Next-Offset: <offset>` - The next offset to read from (for subsequent requests) - `Stream-Up-To-Date: true` - **MUST** be present and set to `true` when the response includes all data available in the stream at the time the response was generated"
+       }
+      ],
+      "note": "Standard: no MUST or SHOULD asks for a time. Offsets are opaque and may not be interpreted."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "#### Response Headers (on 200) - Same as catch-up reads (Section 5.6), plus: - `Stream-Cursor: <cursor>`: Servers **MUST** include this header."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "`Stream-Next-Offset: <offset>` - The next offset to read from (for subsequent requests) - `Stream-Up-To-Date: true` - **MUST** be present and set to `true` when the response includes all data available in the stream at the time the response was generated"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "#### Response Headers (on 200) - Same as catch-up reads (Section 5.6), plus: - `Stream-Cursor: <cursor>`: Servers **MUST** include this header."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "`Stream-Next-Offset: <offset>` - The next offset to read from (for subsequent requests) - `Stream-Up-To-Date: true` - **MUST** be present and set to `true` when the response includes all data available in the stream at the time the response was generated"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "If no data is available at the specified offset, the server waits up to a timeout for new data to arrive. This enables efficient live tailing without constant polling."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "one at a time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "If no data is available at the specified offset, the server waits up to a timeout for new data to arrive. This enables efficient live tailing without constant polling."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "`200 OK`: Data became available within the timeout - `204 No Content`: Timeout expired with no new data"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": []
+    },
+    {
+     "mode": "SSE read (GET live=sse)",
+     "Q0": {
+      "fields": [
+       "data event: bytes of the stream",
+       "control event: streamNextOffset",
+       "streamCursor",
+       "upToDate",
+       "streamClosed"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "### 5.8. Read Stream - Live (SSE) #### Request ``` GET {stream-url}?offset=<offset>&live=sse ``` Where `{stream-url}` is the URL of the stream. Returns data as a Server-Sent Events (SSE) stream."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "- `control`: Emitted after every data event - **MUST** include `streamNextOffset`. See Section 10.1. - **MUST** include `streamCursor` when the stream is open."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "Format: JSON object with offset, cursor (when applicable), up-to-date status, and optionally closed status. Field names use camelCase: `streamNextOffset`, `streamCursor`, `upToDate`, and `streamClosed`."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "- `control`: Emitted after every data event - **MUST** include `streamNextOffset`. See Section 10.1. - **MUST** include `streamCursor` when the stream is open."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "Format: JSON object with offset, cursor (when applicable), up-to-date status, and optionally closed status. Field names use camelCase: `streamNextOffset`, `streamCursor`, `upToDate`, and `streamClosed`."
+       }
+      ],
+      "note": "Standard: no MUST or SHOULD asks for a time. Offsets are opaque and may not be interpreted."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "- `control`: Emitted after every data event - **MUST** include `streamNextOffset`. See Section 10.1. - **MUST** include `streamCursor` when the stream is open."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "Format: JSON object with offset, cursor (when applicable), up-to-date status, and optionally closed status. Field names use camelCase: `streamNextOffset`, `streamCursor`, `upToDate`, and `streamClosed`."
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "- `control`: Emitted after every data event - **MUST** include `streamNextOffset`. See Section 10.1. - **MUST** include `streamCursor` when the stream is open."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "Format: JSON object with offset, cursor (when applicable), up-to-date status, and optionally closed status. Field names use camelCase: `streamNextOffset`, `streamCursor`, `upToDate`, and `streamClosed`."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "### 5.8. Read Stream - Live (SSE) #### Request ``` GET {stream-url}?offset=<offset>&live=sse ``` Where `{stream-url}` is the URL of the stream. Returns data as a Server-Sent Events (SSE) stream."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "### 5.8. Read Stream - Live (SSE) #### Request ``` GET {stream-url}?offset=<offset>&live=sse ``` Where `{stream-url}` is the URL of the stream. Returns data as a Server-Sent Events (SSE) stream."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+       "read": "One GET with live=sse returns a Server-Sent Events stream on which the server sends data events, with no request or credit per message.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "append (POST)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "status 204, or 200 with producer headers",
+       "Stream-Next-Offset",
+       "Stream-Closed when the stream is closed"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "#### Response Headers (on success) - `Stream-Next-Offset: <offset>`: The new tail offset after the append - `Stream-Closed: true`: Present when the stream is now closed"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "#### Response Codes - `204 No Content`: Append successful (or stream already closed when closing idempotently)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "#### Response Codes (with Producer Headers) - `200 OK`: Append successful (new data) - `204 No Content`: Duplicate append (idempotent success, data already exists)"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "#### Response Headers (on success) - `Stream-Next-Offset: <offset>`: The new tail offset after the append - `Stream-Closed: true`: Present when the stream is now closed"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "#### Response Codes - `204 No Content`: Append successful (or stream already closed when closing idempotently)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "**MUST NOT** use schemes (such as raw UTC timestamps) that can produce duplicate or non-monotonic offsets. Time-based identifiers like ULIDs, which combine timestamps with random components to guarantee uniqueness and monotonicity, are acceptable."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "1. **Opaque**: Clients **MUST NOT** interpret offset structure or meaning"
+       }
+      ],
+      "note": "Offsets are opaque; the standard allows a time-based offset (such as a ULID) but does not require one."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "#### Response Headers (on success) - `Stream-Next-Offset: <offset>`: The new tail offset after the append - `Stream-Closed: true`: Present when the stream is now closed"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "#### Response Codes - `204 No Content`: Append successful (or stream already closed when closing idempotently)"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "#### Response Headers (on success) - `Stream-Next-Offset: <offset>`: The new tail offset after the append - `Stream-Closed: true`: Present when the stream is now closed"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/durable-streams/durable-streams/v0.3.0/PROTOCOL.md",
+        "quote": "#### Response Codes - `204 No Content`: Append successful (or stream already closed when closing idempotently)"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "MQTT-SN",
+   "group": "C",
+   "kind": "standard",
+   "version": "1.2",
+   "version_evidence": [
+    {
+     "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+     "quote": "Version 1.2 Andy Stanford-Clark and Hong Linh Truong"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "Wikipedia (en): MQTT",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "subscription (PUBLISH from the gateway)",
+     "Q0": {
+      "fields": [
+       "length",
+       "message type",
+       "flags (DUP, QoS, retain, topic id type)",
+       "topic id",
+       "message id",
+       "data"
+      ],
+      "evidence": [
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "5.4.12 PUBLISH Length MsgType Flags TopicId MsgId Data (octet 0) (1) (2) (3-4) (5-6) (7:n) Table 16: PUBLISH Message This message is used by both clients and gateways to publish data for a certain topic."
+       },
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "– QoS: same as MQTT, contains the QoS level for this PUBLISH message. – Retain: same as MQTT, contains the Retain"
+       },
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "– TopicIdType: indicates the type of the topic id contained in the TopicId"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "5.4.12 PUBLISH Length MsgType Flags TopicId MsgId Data (octet 0) (1) (2) (3-4) (5-6) (7:n) Table 16: PUBLISH Message This message is used by both clients and gateways to publish data for a certain topic."
+       },
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "– QoS: same as MQTT, contains the QoS level for this PUBLISH message. – Retain: same as MQTT, contains the Retain"
+       },
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "– TopicIdType: indicates the type of the topic id contained in the TopicId"
+       }
+      ],
+      "note": "Standard: no MUST or SHOULD asks the gateway to record or send a time."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "5.4.12 PUBLISH Length MsgType Flags TopicId MsgId Data (octet 0) (1) (2) (3-4) (5-6) (7:n) Table 16: PUBLISH Message This message is used by both clients and gateways to publish data for a certain topic."
+       },
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "– QoS: same as MQTT, contains the QoS level for this PUBLISH message. – Retain: same as MQTT, contains the Retain"
+       },
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "– TopicIdType: indicates the type of the topic id contained in the TopicId"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "5.4.12 PUBLISH Length MsgType Flags TopicId MsgId Data (octet 0) (1) (2) (3-4) (5-6) (7:n) Table 16: PUBLISH Message This message is used by both clients and gateways to publish data for a certain topic."
+       },
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "– QoS: same as MQTT, contains the QoS level for this PUBLISH message. – Retain: same as MQTT, contains the Retain"
+       },
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "– TopicIdType: indicates the type of the topic id contained in the TopicId"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "5.4.12 PUBLISH Length MsgType Flags TopicId MsgId Data (octet 0) (1) (2) (3-4) (5-6) (7:n) Table 16: PUBLISH Message This message is used by both clients and gateways to publish data for a certain topic."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "The SUBSCRIBE message is used by a client to subscribe to a certain topic name."
+       },
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "5.4.12 PUBLISH Length MsgType Flags TopicId MsgId Data (octet 0) (1) (2) (3-4) (5-6) (7:n) Table 16: PUBLISH Message This message is used by both clients and gateways to publish data for a certain topic."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+       "read": "After a SUBSCRIBE the gateway sends PUBLISH messages for the topic, and the client sends no request or credit per message.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "sleeping client wake-up (PINGREQ)",
+     "Q0": {
+      "fields": [
+       "length",
+       "message type",
+       "flags (DUP, QoS, retain, topic id type)",
+       "topic id",
+       "message id",
+       "data"
+      ],
+      "evidence": [
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "5.4.12 PUBLISH Length MsgType Flags TopicId MsgId Data (octet 0) (1) (2) (3-4) (5-6) (7:n) Table 16: PUBLISH Message This message is used by both clients and gateways to publish data for a certain topic."
+       },
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "– QoS: same as MQTT, contains the QoS level for this PUBLISH message. – Retain: same as MQTT, contains the Retain"
+       },
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "– TopicIdType: indicates the type of the topic id contained in the TopicId"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "5.4.12 PUBLISH Length MsgType Flags TopicId MsgId Data (octet 0) (1) (2) (3-4) (5-6) (7:n) Table 16: PUBLISH Message This message is used by both clients and gateways to publish data for a certain topic."
+       },
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "– QoS: same as MQTT, contains the QoS level for this PUBLISH message. – Retain: same as MQTT, contains the Retain"
+       },
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "– TopicIdType: indicates the type of the topic id contained in the TopicId"
+       }
+      ],
+      "note": "Standard: no MUST or SHOULD asks the gateway to record or send a time."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "5.4.12 PUBLISH Length MsgType Flags TopicId MsgId Data (octet 0) (1) (2) (3-4) (5-6) (7:n) Table 16: PUBLISH Message This message is used by both clients and gateways to publish data for a certain topic."
+       },
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "– QoS: same as MQTT, contains the QoS level for this PUBLISH message. – Retain: same as MQTT, contains the Retain"
+       },
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "– TopicIdType: indicates the type of the topic id contained in the TopicId"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "5.4.12 PUBLISH Length MsgType Flags TopicId MsgId Data (octet 0) (1) (2) (3-4) (5-6) (7:n) Table 16: PUBLISH Message This message is used by both clients and gateways to publish data for a certain topic."
+       },
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "– QoS: same as MQTT, contains the QoS level for this PUBLISH message. – Retain: same as MQTT, contains the Retain"
+       },
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "– TopicIdType: indicates the type of the topic id contained in the TopicId"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "will buffer messages destined to them for later delivery when they wake up."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "will buffer messages destined to them for later delivery when they wake up."
+       },
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "If the server/gateway has buffered messages for the client, it will sends these messages to the client."
+       },
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "a PINGRESP message is sent by a gateway to inform a sleeping client that it has no more buffered messages for that client"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": []
+    }
+   ],
+   "producers": [
+    {
+     "interface": "PUBLISH with QoS 0 or -1",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "5.4.13 PUBACK Length MsgType TopicId MsgId ReturnCode (octet 0) (1) (2,3) (4,5) (6) Table 17: PUBACK message The PUBACK message is sent by a gateway or a client as an acknowledgment to the receipt and processing of a PUBLISH message in case of QoS levels 1 or 2."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "PUBLISH with QoS 1 or 2 (PUBACK)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "length",
+       "message type",
+       "topic id",
+       "message id",
+       "return code"
+      ],
+      "evidence": [
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "5.4.13 PUBACK Length MsgType TopicId MsgId ReturnCode (octet 0) (1) (2,3) (4,5) (6) Table 17: PUBACK message The PUBACK message is sent by a gateway or a client as an acknowledgment to the receipt and processing of a PUBLISH message in case of QoS levels 1 or 2."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "5.4.13 PUBACK Length MsgType TopicId MsgId ReturnCode (octet 0) (1) (2,3) (4,5) (6) Table 17: PUBACK message The PUBACK message is sent by a gateway or a client as an acknowledgment to the receipt and processing of a PUBLISH message in case of QoS levels 1 or 2."
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "5.4.13 PUBACK Length MsgType TopicId MsgId ReturnCode (octet 0) (1) (2,3) (4,5) (6) Table 17: PUBACK message The PUBACK message is sent by a gateway or a client as an acknowledgment to the receipt and processing of a PUBLISH message in case of QoS levels 1 or 2."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.oasis-open.org/committees/download.php/66091/MQTT-SN_spec_v1.2.pdf",
+        "quote": "5.4.13 PUBACK Length MsgType TopicId MsgId ReturnCode (octet 0) (1) (2,3) (4,5) (6) Table 17: PUBACK message The PUBACK message is sent by a gateway or a client as an acknowledgment to the receipt and processing of a PUBLISH message in case of QoS levels 1 or 2."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "OpenMessaging",
+   "group": "C",
+   "kind": "standard",
+   "version": "2.1.0-pubsub",
+   "version_evidence": [
+    {
+     "url": "https://github.com/openmessaging/openmessaging-java/releases/tag/2.1.0-pubsub",
+     "quote": "2.1.0-pubsub"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "CNCF landscape: Streaming & Messaging",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "push consumer (MessageListener)",
+     "Q0": {
+      "fields": [
+       "topic",
+       "body",
+       "user properties",
+       "system properties: tag, key, message id, sharding key, reconsume times, born timestamp, born host, start deliver time, consume offset, partition"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public class Message implements Serializable { private static final long serialVersionUID = -1385924226856188094L; protected Properties systemProperties; private String topic; private Properties userProperties; private byte[] body;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "static public class SystemPropKey { public static final String TAG = \"__TAG\"; public static final String KEY = \"__KEY\"; public static final String MSGID = \"__MSGID\"; public static final String SHARDINGKEY = \"__SHARDINGKEY\"; public static final String RECONSUMETIMES = \"__RECONSUMETIMES\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public static final String BORNTIMESTAMP = \"__BORNTIMESTAMP\"; public static final String BORNHOST = \"__BORNHOST\"; public static final String STARTDELIVERTIME = \"__STARTDELIVERTIME\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public static final String CONSUMEOFFSET = \"__CONSUMEOFFSET\"; public static final String PARTITION = \"__PARTITION\"; } }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/MessageListener.java",
+        "quote": "Action consume(final Message message, final ConsumeContext context);"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "static public class SystemPropKey { public static final String TAG = \"__TAG\"; public static final String KEY = \"__KEY\"; public static final String MSGID = \"__MSGID\"; public static final String SHARDINGKEY = \"__SHARDINGKEY\"; public static final String RECONSUMETIMES = \"__RECONSUMETIMES\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public static final String BORNTIMESTAMP = \"__BORNTIMESTAMP\"; public static final String BORNHOST = \"__BORNHOST\"; public static final String STARTDELIVERTIME = \"__STARTDELIVERTIME\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public static final String CONSUMEOFFSET = \"__CONSUMEOFFSET\"; public static final String PARTITION = \"__PARTITION\"; } }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public long getBornTimestamp() { String pro = this.getSystemProperties(SystemPropKey.BORNTIMESTAMP); if (pro != null) { return Long.parseLong(pro); } return 0L; } public void setBornTimestamp(final long value) { putSystemProperties(SystemPropKey.BORNTIMESTAMP, String.valueOf(value)); }"
+       }
+      ],
+      "note": "Standard: no MUST or SHOULD asks the broker to record a time. BORNTIMESTAMP has a setter on the message and the API does not say the broker sets it; this version has no store-time key."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "static public class SystemPropKey { public static final String TAG = \"__TAG\"; public static final String KEY = \"__KEY\"; public static final String MSGID = \"__MSGID\"; public static final String SHARDINGKEY = \"__SHARDINGKEY\"; public static final String RECONSUMETIMES = \"__RECONSUMETIMES\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public static final String BORNTIMESTAMP = \"__BORNTIMESTAMP\"; public static final String BORNHOST = \"__BORNHOST\"; public static final String STARTDELIVERTIME = \"__STARTDELIVERTIME\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public static final String CONSUMEOFFSET = \"__CONSUMEOFFSET\"; public static final String PARTITION = \"__PARTITION\"; } }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public class Message implements Serializable { private static final long serialVersionUID = -1385924226856188094L; protected Properties systemProperties; private String topic; private Properties userProperties; private byte[] body;"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "static public class SystemPropKey { public static final String TAG = \"__TAG\"; public static final String KEY = \"__KEY\"; public static final String MSGID = \"__MSGID\"; public static final String SHARDINGKEY = \"__SHARDINGKEY\"; public static final String RECONSUMETIMES = \"__RECONSUMETIMES\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public static final String BORNTIMESTAMP = \"__BORNTIMESTAMP\"; public static final String BORNHOST = \"__BORNHOST\"; public static final String STARTDELIVERTIME = \"__STARTDELIVERTIME\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public static final String CONSUMEOFFSET = \"__CONSUMEOFFSET\"; public static final String PARTITION = \"__PARTITION\"; } }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public class Message implements Serializable { private static final long serialVersionUID = -1385924226856188094L; protected Properties systemProperties; private String topic; private Properties userProperties; private byte[] body;"
+       }
+      ],
+      "note": "START_DELIVER_TIME is a delivery time asked for by the sender, not a duration the broker reduces."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Consumer.java",
+        "quote": "void subscribe(final String topic, final String subExpression, final MessageListener listener);"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Consumer.java",
+        "quote": "void subscribe(final String topic, final String subExpression, final MessageListener listener);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/MessageListener.java",
+        "quote": "Action consume(final Message message, final ConsumeContext context);"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Consumer.java",
+       "read": "Consumer.subscribe registers a MessageListener whose consume method the client library calls for each message, with no request or credit from the application.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "pull consumer (PullConsumer.poll)",
+     "Q0": {
+      "fields": [
+       "list of messages with the same fields as the push consumer"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/PullConsumer.java",
+        "quote": "topics or partitions before polling for data. * * @param timeout in millisecond * @return */ List<Message> poll(long timeout);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public class Message implements Serializable { private static final long serialVersionUID = -1385924226856188094L; protected Properties systemProperties; private String topic; private Properties userProperties; private byte[] body;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "static public class SystemPropKey { public static final String TAG = \"__TAG\"; public static final String KEY = \"__KEY\"; public static final String MSGID = \"__MSGID\"; public static final String SHARDINGKEY = \"__SHARDINGKEY\"; public static final String RECONSUMETIMES = \"__RECONSUMETIMES\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public static final String BORNTIMESTAMP = \"__BORNTIMESTAMP\"; public static final String BORNHOST = \"__BORNHOST\"; public static final String STARTDELIVERTIME = \"__STARTDELIVERTIME\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public static final String CONSUMEOFFSET = \"__CONSUMEOFFSET\"; public static final String PARTITION = \"__PARTITION\"; } }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "static public class SystemPropKey { public static final String TAG = \"__TAG\"; public static final String KEY = \"__KEY\"; public static final String MSGID = \"__MSGID\"; public static final String SHARDINGKEY = \"__SHARDINGKEY\"; public static final String RECONSUMETIMES = \"__RECONSUMETIMES\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public static final String BORNTIMESTAMP = \"__BORNTIMESTAMP\"; public static final String BORNHOST = \"__BORNHOST\"; public static final String STARTDELIVERTIME = \"__STARTDELIVERTIME\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public static final String CONSUMEOFFSET = \"__CONSUMEOFFSET\"; public static final String PARTITION = \"__PARTITION\"; } }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public long getBornTimestamp() { String pro = this.getSystemProperties(SystemPropKey.BORNTIMESTAMP); if (pro != null) { return Long.parseLong(pro); } return 0L; } public void setBornTimestamp(final long value) { putSystemProperties(SystemPropKey.BORNTIMESTAMP, String.valueOf(value)); }"
+       }
+      ],
+      "note": "Standard: no MUST or SHOULD asks the broker to record a time. BORNTIMESTAMP has a setter on the message and the API does not say the broker sets it; this version has no store-time key."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/PullConsumer.java",
+        "quote": "topics or partitions before polling for data. * * @param timeout in millisecond * @return */ List<Message> poll(long timeout);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "static public class SystemPropKey { public static final String TAG = \"__TAG\"; public static final String KEY = \"__KEY\"; public static final String MSGID = \"__MSGID\"; public static final String SHARDINGKEY = \"__SHARDINGKEY\"; public static final String RECONSUMETIMES = \"__RECONSUMETIMES\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public static final String BORNTIMESTAMP = \"__BORNTIMESTAMP\"; public static final String BORNHOST = \"__BORNHOST\"; public static final String STARTDELIVERTIME = \"__STARTDELIVERTIME\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public static final String CONSUMEOFFSET = \"__CONSUMEOFFSET\"; public static final String PARTITION = \"__PARTITION\"; } }"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/PullConsumer.java",
+        "quote": "topics or partitions before polling for data. * * @param timeout in millisecond * @return */ List<Message> poll(long timeout);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "static public class SystemPropKey { public static final String TAG = \"__TAG\"; public static final String KEY = \"__KEY\"; public static final String MSGID = \"__MSGID\"; public static final String SHARDINGKEY = \"__SHARDINGKEY\"; public static final String RECONSUMETIMES = \"__RECONSUMETIMES\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public static final String BORNTIMESTAMP = \"__BORNTIMESTAMP\"; public static final String BORNHOST = \"__BORNHOST\"; public static final String STARTDELIVERTIME = \"__STARTDELIVERTIME\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Message.java",
+        "quote": "public static final String CONSUMEOFFSET = \"__CONSUMEOFFSET\"; public static final String PARTITION = \"__PARTITION\"; } }"
+       }
+      ],
+      "note": "START_DELIVER_TIME is a delivery time asked for by the sender, not a duration the broker reduces."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/PullConsumer.java",
+        "quote": "topics or partitions before polling for data. * * @param timeout in millisecond * @return */ List<Message> poll(long timeout);"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/PullConsumer.java",
+        "quote": "topics or partitions before polling for data. * * @param timeout in millisecond * @return */ List<Message> poll(long timeout);"
+       }
+      ],
+      "note": "The doc comment gives only '@param timeout in millisecond'; it does not say whether poll waits for a message."
+     },
+     "not_determined": [
+      "Q6",
+      "Q7"
+     ],
+     "read_back": []
+    }
+   ],
+   "producers": [
+    {
+     "interface": "Producer.send",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "message id",
+       "topic"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Producer.java",
+        "quote": "SendResult send(final Message message);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/SendResult.java",
+        "quote": "public class SendResult { private String messageId; private String topic; public String getMessageId() { return messageId; } public void setMessageId(String messageId) { this.messageId = messageId; } public String getTopic() { return topic; }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/SendResult.java",
+        "quote": "public class SendResult { private String messageId; private String topic; public String getMessageId() { return messageId; } public void setMessageId(String messageId) { this.messageId = messageId; } public String getTopic() { return topic; }"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/SendResult.java",
+        "quote": "public class SendResult { private String messageId; private String topic; public String getMessageId() { return messageId; } public void setMessageId(String messageId) { this.messageId = messageId; } public String getTopic() { return topic; }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/SendResult.java",
+        "quote": "public class SendResult { private String messageId; private String topic; public String getMessageId() { return messageId; } public void setMessageId(String messageId) { this.messageId = messageId; } public String getTopic() { return topic; }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "Producer.sendOneway",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openmessaging/openmessaging-java/2.1.0-pubsub/openmessaging-api/src/main/java/io/openmessaging/api/Producer.java",
+        "quote": "The calling thread doesn't care about the * send result and also have no context to get the result. * * @param message a message will be sent. */ void sendOneway(final Message message);"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "WAMP",
+   "group": "C",
+   "kind": "standard",
+   "version": "Internet-Draft published 3 July 2026",
+   "version_evidence": [
+    {
+     "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+     "quote": "Internet-Draft: WAMP Published: 3 July 2026 Intended Status: Experimental Expires: 4 January 2027"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list fffaraz/awesome-cpp",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "subscription (EVENT)",
+     "Q0": {
+      "fields": [
+       "subscription id",
+       "publication id",
+       "details dictionary (publisher, publisher_authid, publisher_authrole, topic, trustlevel, ppt_* keys)",
+       "arguments list (optional)",
+       "arguments keywords (optional)"
+      ],
+      "evidence": [
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "3.4.2.7. EVENT Event dispatched by Broker to Subscribers for subscriptions the event was matching. ¶ [EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id, Details|dict] [EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id, Details|dict, PUBLISH.Arguments|list]"
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "[EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id, Details|dict, PUBLISH.Arguments|list, PUBLISH.ArgumentsKw|dict"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "Instead of complex QoS for message delivery, a Broker may provide Event History ."
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "Event History saves events published to discrete subscriptions, in the chronological order received by the broker."
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "The Broker implementation may allow for configuration of event history on a per-topic or per-topic-pattern basis."
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "must indicate HELLO.roles.broker.features.event_history = true , must announce the role HELLO.roles.callee , and must provide the meta procedures described below."
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "The arguments payload field returned by the above RPC uses the same schema: an array of Event objects containing an additional timestamp string attribute in RFC3339 format."
+       }
+      ],
+      "field": "timestamp",
+      "resolution": "ms",
+      "note": "Judgment call: the time is kept only by the optional event history feature (a broker may provide it, and may allow per-topic configuration). A broker that implements it must provide the meta procedure whose events carry the router's timestamp, so the record is required once the feature exists."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "3.4.2.7. EVENT Event dispatched by Broker to Subscribers for subscriptions the event was matching. ¶ [EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id, Details|dict] [EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id, Details|dict, PUBLISH.Arguments|list]"
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "[EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id, Details|dict, PUBLISH.Arguments|list, PUBLISH.ArgumentsKw|dict"
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "\"timestamp\": \"yyyy-MM-ddThh:mm:ss.SSSZ\", // string with event date/time in RFC3339 format \"subscription\": 2342423, // The subscription ID of the event \"publication\": 32445235, // The original publication ID of the event \"details\": {},"
+       }
+      ],
+      "note": "The timestamp is returned only by the history meta procedure, not in the EVENT message."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "3.4.2.7. EVENT Event dispatched by Broker to Subscribers for subscriptions the event was matching. ¶ [EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id, Details|dict] [EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id, Details|dict, PUBLISH.Arguments|list]"
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "[EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id, Details|dict, PUBLISH.Arguments|list, PUBLISH.ArgumentsKw|dict"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "3.4.2.7. EVENT Event dispatched by Broker to Subscribers for subscriptions the event was matching. ¶ [EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id, Details|dict] [EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id, Details|dict, PUBLISH.Arguments|list]"
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "[EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id, Details|dict, PUBLISH.Arguments|list, PUBLISH.ArgumentsKw|dict"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "3.4.2.7. EVENT Event dispatched by Broker to Subscribers for subscriptions the event was matching. ¶ [EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id, Details|dict] [EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id, Details|dict, PUBLISH.Arguments|list]"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "3.4.2.7. EVENT Event dispatched by Broker to Subscribers for subscriptions the event was matching. ¶ [EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id, Details|dict] [EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id, Details|dict, PUBLISH.Arguments|list]"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q1",
+       "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+       "read": "Event history is an optional broker feature (a broker may provide it, with per-topic configuration), and a broker that implements it must provide the meta procedure that returns each event with a timestamp in RFC 3339, so the record exists only where the feature is provided.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+       "read": "The broker dispatches an EVENT to each subscriber of a matching subscription, and the subscriber sends no request or credit per event.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "event history retrieval (wamp.subscription.get_events)",
+     "Q0": {
+      "fields": [
+       "timestamp",
+       "subscription id",
+       "publication id",
+       "details",
+       "args (may be omitted)",
+       "kwargs (may be omitted)"
+      ],
+      "evidence": [
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "The arguments payload field returned by the above RPC uses the same schema: an array of Event objects containing an additional timestamp string attribute in RFC3339 format."
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "\"timestamp\": \"yyyy-MM-ddThh:mm:ss.SSSZ\", // string with event date/time in RFC3339 format \"subscription\": 2342423, // The subscription ID of the event \"publication\": 32445235, // The original publication ID of the event \"details\": {},"
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "\"details\": {}, // The original details of the event \"args\": [], // The original list arguments payload of the event. May be ommited \"kwargs\": {} // The original key-value arguments payload of the event. May be ommited } ]"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "Instead of complex QoS for message delivery, a Broker may provide Event History ."
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "Event History saves events published to discrete subscriptions, in the chronological order received by the broker."
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "The Broker implementation may allow for configuration of event history on a per-topic or per-topic-pattern basis."
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "must indicate HELLO.roles.broker.features.event_history = true , must announce the role HELLO.roles.callee , and must provide the meta procedures described below."
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "The arguments payload field returned by the above RPC uses the same schema: an array of Event objects containing an additional timestamp string attribute in RFC3339 format."
+       }
+      ],
+      "field": "timestamp",
+      "resolution": "ms",
+      "note": "Judgment call: event history is an optional feature (a broker may provide it) with per-topic configuration; a broker that implements it must provide the meta procedure whose events carry the router's timestamp. The standard calls the stored order 'the chronological order received by the broker'."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "The arguments payload field returned by the above RPC uses the same schema: an array of Event objects containing an additional timestamp string attribute in RFC3339 format."
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "\"timestamp\": \"yyyy-MM-ddThh:mm:ss.SSSZ\", // string with event date/time in RFC3339 format \"subscription\": 2342423, // The subscription ID of the event \"publication\": 32445235, // The original publication ID of the event \"details\": {},"
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "When a router in an IoT system is deployed off-grid and is not synchronized to an NTP server, it's possible for the timestamps to jump backwards when the router's wall clock time or time zone is manually adjusted."
+       }
+      ],
+      "note": "Delivered in the reply to the history call, not with the EVENT; the draft ties the timestamp to the router's wall clock."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "\"timestamp\": \"yyyy-MM-ddThh:mm:ss.SSSZ\", // string with event date/time in RFC3339 format \"subscription\": 2342423, // The subscription ID of the event \"publication\": 32445235, // The original publication ID of the event \"details\": {},"
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "\"details\": {}, // The original details of the event \"args\": [], // The original list arguments payload of the event. May be ommited \"kwargs\": {} // The original key-value arguments payload of the event. May be ommited } ]"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "\"timestamp\": \"yyyy-MM-ddThh:mm:ss.SSSZ\", // string with event date/time in RFC3339 format \"subscription\": 2342423, // The subscription ID of the event \"publication\": 32445235, // The original publication ID of the event \"details\": {},"
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "\"details\": {}, // The original details of the event \"args\": [], // The original list arguments payload of the event. May be ommited \"kwargs\": {} // The original key-value arguments payload of the event. May be ommited } ]"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "A Caller can request message history by calling the Broker meta procedure ¶ wamp.subscription.get_events ¶ With payload: ¶ Arguments = [subscription|id] ."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "A Caller can request message history by calling the Broker meta procedure ¶ wamp.subscription.get_events ¶ With payload: ¶ Arguments = [subscription|id] ."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q1",
+       "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+       "read": "Event history is an optional broker feature (a broker may provide it, with per-topic configuration), and a broker that implements it must provide wamp.subscription.get_events, whose events carry a timestamp string in RFC 3339 that the standard says may jump backwards on a router not synchronized to NTP.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "PUBLISH (unacknowledged, the default)",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "and the Broker will not respond, whether the publication was successful indeed or not. This behavior can be changed with the option PUBLISH.Options.acknowledge|bool (see below)."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "PUBLISH with acknowledge = true (PUBLISHED)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "request id",
+       "publication id"
+      ],
+      "evidence": [
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "the Broker replies by sending a PUBLISHED message to the Publisher: ¶ [PUBLISHED, PUBLISH.Request|id, Publication|id] ¶ where ¶ PUBLISH.Request is the ID from the original publication request. ¶ Publication is an ID chosen by the Broker for the publication."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "the Broker replies by sending a PUBLISHED message to the Publisher: ¶ [PUBLISHED, PUBLISH.Request|id, Publication|id] ¶ where ¶ PUBLISH.Request is the ID from the original publication request. ¶ Publication is an ID chosen by the Broker for the publication."
+       },
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "IDs in the global scope MUST be drawn randomly from a uniform distribution over the complete range [1, 2^53]"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "the Broker replies by sending a PUBLISHED message to the Publisher: ¶ [PUBLISHED, PUBLISH.Request|id, Publication|id] ¶ where ¶ PUBLISH.Request is the ID from the original publication request. ¶ Publication is an ID chosen by the Broker for the publication."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://wamp-proto.org/wamp_latest_ietf.html",
+        "quote": "the Broker replies by sending a PUBLISHED message to the Publisher: ¶ [PUBLISHED, PUBLISH.Request|id, Publication|id] ¶ where ¶ PUBLISH.Request is the ID from the original publication request. ¶ Publication is an ID chosen by the Broker for the publication."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "WS-Notification (WS-BrokeredNotification)",
+   "group": "C",
+   "kind": "standard",
+   "version": "1.3 (OASIS Standard, 1 October 2006)",
+   "version_evidence": [
+    {
+     "url": "https://docs.oasis-open.org/wsn/wsn-ws_base_notification-1.3-spec-os.htm",
+     "quote": "Web Services Base Notification 1.3 (WS-BaseNotification) OASIS Standard, 1 October 2006"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "Apache Software Foundation projects",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "push (Notify to a NotificationConsumer)",
+     "Q0": {
+      "fields": [
+       "subscription reference (optional)",
+       "topic (optional)",
+       "producer reference (optional)",
+       "message (any XML content)",
+       "extension elements of other namespaces"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:element name=\"Notify\" > <xsd:complexType> <xsd:sequence> <xsd:element ref=\"wsnt:NotificationMessage\" minOccurs=\"1\" maxOccurs=\"unbounded\" /> <xsd:any namespace=\"##other\" processContents=\"lax\" minOccurs=\"0\" maxOccurs=\"unbounded\"/> </xsd:sequence> </xsd:complexType> </xsd:element>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:complexType name=\"NotificationMessageHolderType\" > <xsd:sequence> <xsd:element ref=\"wsnt:SubscriptionReference\" minOccurs=\"0\" maxOccurs=\"1\" /> <xsd:element ref=\"wsnt:Topic\" minOccurs=\"0\" maxOccurs=\"1\" />"
+       },
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:element ref=\"wsnt:ProducerReference\" minOccurs=\"0\" maxOccurs=\"1\" /> <xsd:element name=\"Message\"> <xsd:complexType> <xsd:sequence> <xsd:any namespace=\"##any\" processContents=\"lax\" minOccurs=\"1\" maxOccurs=\"1\"/> </xsd:sequence> </xsd:complexType> </xsd:element> </xsd:sequence>"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:element name=\"Notify\" > <xsd:complexType> <xsd:sequence> <xsd:element ref=\"wsnt:NotificationMessage\" minOccurs=\"1\" maxOccurs=\"unbounded\" /> <xsd:any namespace=\"##other\" processContents=\"lax\" minOccurs=\"0\" maxOccurs=\"unbounded\"/> </xsd:sequence> </xsd:complexType> </xsd:element>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:complexType name=\"NotificationMessageHolderType\" > <xsd:sequence> <xsd:element ref=\"wsnt:SubscriptionReference\" minOccurs=\"0\" maxOccurs=\"1\" /> <xsd:element ref=\"wsnt:Topic\" minOccurs=\"0\" maxOccurs=\"1\" />"
+       },
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:element ref=\"wsnt:ProducerReference\" minOccurs=\"0\" maxOccurs=\"1\" /> <xsd:element name=\"Message\"> <xsd:complexType> <xsd:sequence> <xsd:any namespace=\"##any\" processContents=\"lax\" minOccurs=\"1\" maxOccurs=\"1\"/> </xsd:sequence> </xsd:complexType> </xsd:element> </xsd:sequence>"
+       }
+      ],
+      "note": "Standard: no MUST or SHOULD asks the broker for a time. The schemas allow extension elements, but none is defined for a time."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:element name=\"Notify\" > <xsd:complexType> <xsd:sequence> <xsd:element ref=\"wsnt:NotificationMessage\" minOccurs=\"1\" maxOccurs=\"unbounded\" /> <xsd:any namespace=\"##other\" processContents=\"lax\" minOccurs=\"0\" maxOccurs=\"unbounded\"/> </xsd:sequence> </xsd:complexType> </xsd:element>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:complexType name=\"NotificationMessageHolderType\" > <xsd:sequence> <xsd:element ref=\"wsnt:SubscriptionReference\" minOccurs=\"0\" maxOccurs=\"1\" /> <xsd:element ref=\"wsnt:Topic\" minOccurs=\"0\" maxOccurs=\"1\" />"
+       },
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:element ref=\"wsnt:ProducerReference\" minOccurs=\"0\" maxOccurs=\"1\" /> <xsd:element name=\"Message\"> <xsd:complexType> <xsd:sequence> <xsd:any namespace=\"##any\" processContents=\"lax\" minOccurs=\"1\" maxOccurs=\"1\"/> </xsd:sequence> </xsd:complexType> </xsd:element> </xsd:sequence>"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:element name=\"Notify\" > <xsd:complexType> <xsd:sequence> <xsd:element ref=\"wsnt:NotificationMessage\" minOccurs=\"1\" maxOccurs=\"unbounded\" /> <xsd:any namespace=\"##other\" processContents=\"lax\" minOccurs=\"0\" maxOccurs=\"unbounded\"/> </xsd:sequence> </xsd:complexType> </xsd:element>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:complexType name=\"NotificationMessageHolderType\" > <xsd:sequence> <xsd:element ref=\"wsnt:SubscriptionReference\" minOccurs=\"0\" maxOccurs=\"1\" /> <xsd:element ref=\"wsnt:Topic\" minOccurs=\"0\" maxOccurs=\"1\" />"
+       },
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:element ref=\"wsnt:ProducerReference\" minOccurs=\"0\" maxOccurs=\"1\" /> <xsd:element name=\"Message\"> <xsd:complexType> <xsd:sequence> <xsd:any namespace=\"##any\" processContents=\"lax\" minOccurs=\"1\" maxOccurs=\"1\"/> </xsd:sequence> </xsd:complexType> </xsd:element> </xsd:sequence>"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/wsn/wsn-ws_base_notification-1.3-spec-os.htm",
+        "quote": "A NotificationConsumer is an endpoint, represented by a WS-Addressing endpoint reference, designated to receive Notifications produced by a NotificationProducer as a result of a subscript"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/wsn/wsn-ws_base_notification-1.3-spec-os.htm",
+        "quote": "A NotificationConsumer is an endpoint, represented by a WS-Addressing endpoint reference, designated to receive Notifications produced by a NotificationProducer as a result of a subscript"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://docs.oasis-open.org/wsn/wsn-ws_base_notification-1.3-spec-os.htm",
+       "read": "A NotificationConsumer is an endpoint designated to receive the notifications a producer sends as a result of a subscription, with no request or credit from the consumer.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "pull point (GetMessages)",
+     "Q0": {
+      "fields": [
+       "zero or more notification messages: subscription reference (optional), topic (optional), producer reference (optional), message"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:element name=\"GetMessagesResponse\"> <xsd:complexType> <xsd:sequence> <xsd:element ref=\"wsnt:NotificationMessage\" minOccurs=\"0\" maxOccurs=\"unbounded\" />"
+       },
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:complexType name=\"NotificationMessageHolderType\" > <xsd:sequence> <xsd:element ref=\"wsnt:SubscriptionReference\" minOccurs=\"0\" maxOccurs=\"1\" /> <xsd:element ref=\"wsnt:Topic\" minOccurs=\"0\" maxOccurs=\"1\" />"
+       },
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:element ref=\"wsnt:ProducerReference\" minOccurs=\"0\" maxOccurs=\"1\" /> <xsd:element name=\"Message\"> <xsd:complexType> <xsd:sequence> <xsd:any namespace=\"##any\" processContents=\"lax\" minOccurs=\"1\" maxOccurs=\"1\"/> </xsd:sequence> </xsd:complexType> </xsd:element> </xsd:sequence>"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:element name=\"GetMessagesResponse\"> <xsd:complexType> <xsd:sequence> <xsd:element ref=\"wsnt:NotificationMessage\" minOccurs=\"0\" maxOccurs=\"unbounded\" />"
+       },
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:complexType name=\"NotificationMessageHolderType\" > <xsd:sequence> <xsd:element ref=\"wsnt:SubscriptionReference\" minOccurs=\"0\" maxOccurs=\"1\" /> <xsd:element ref=\"wsnt:Topic\" minOccurs=\"0\" maxOccurs=\"1\" />"
+       },
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:element ref=\"wsnt:ProducerReference\" minOccurs=\"0\" maxOccurs=\"1\" /> <xsd:element name=\"Message\"> <xsd:complexType> <xsd:sequence> <xsd:any namespace=\"##any\" processContents=\"lax\" minOccurs=\"1\" maxOccurs=\"1\"/> </xsd:sequence> </xsd:complexType> </xsd:element> </xsd:sequence>"
+       }
+      ],
+      "note": "Standard: no MUST or SHOULD asks the broker for a time. The schemas allow extension elements, but none is defined for a time."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:element name=\"GetMessagesResponse\"> <xsd:complexType> <xsd:sequence> <xsd:element ref=\"wsnt:NotificationMessage\" minOccurs=\"0\" maxOccurs=\"unbounded\" />"
+       },
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:complexType name=\"NotificationMessageHolderType\" > <xsd:sequence> <xsd:element ref=\"wsnt:SubscriptionReference\" minOccurs=\"0\" maxOccurs=\"1\" /> <xsd:element ref=\"wsnt:Topic\" minOccurs=\"0\" maxOccurs=\"1\" />"
+       },
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:element ref=\"wsnt:ProducerReference\" minOccurs=\"0\" maxOccurs=\"1\" /> <xsd:element name=\"Message\"> <xsd:complexType> <xsd:sequence> <xsd:any namespace=\"##any\" processContents=\"lax\" minOccurs=\"1\" maxOccurs=\"1\"/> </xsd:sequence> </xsd:complexType> </xsd:element> </xsd:sequence>"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:element name=\"GetMessagesResponse\"> <xsd:complexType> <xsd:sequence> <xsd:element ref=\"wsnt:NotificationMessage\" minOccurs=\"0\" maxOccurs=\"unbounded\" />"
+       },
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:complexType name=\"NotificationMessageHolderType\" > <xsd:sequence> <xsd:element ref=\"wsnt:SubscriptionReference\" minOccurs=\"0\" maxOccurs=\"1\" /> <xsd:element ref=\"wsnt:Topic\" minOccurs=\"0\" maxOccurs=\"1\" />"
+       },
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:element ref=\"wsnt:ProducerReference\" minOccurs=\"0\" maxOccurs=\"1\" /> <xsd:element name=\"Message\"> <xsd:complexType> <xsd:sequence> <xsd:any namespace=\"##any\" processContents=\"lax\" minOccurs=\"1\" maxOccurs=\"1\"/> </xsd:sequence> </xsd:complexType> </xsd:element> </xsd:sequence>"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:element name=\"GetMessages\"> <xsd:complexType> <xsd:sequence> <xsd:element name=\"MaximumNumber\" type=\"xsd:nonNegativeInteger\" minOccurs=\"0\"/>"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/wsn/b-2.xsd",
+        "quote": "<xsd:element name=\"GetMessages\"> <xsd:complexType> <xsd:sequence> <xsd:element name=\"MaximumNumber\" type=\"xsd:nonNegativeInteger\" minOccurs=\"0\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/wsn/wsn-ws_base_notification-1.3-spec-os.htm",
+        "quote": "A response is generated without waiting for messages to be accumulated by the PullPoint."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": []
+    }
+   ],
+   "producers": [
+    {
+     "interface": "Notify to a NotificationBroker (one way)",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/wsn/bw-2.wsdl",
+        "quote": "Notify( NotificationMessage (SubscriptionReference, TopicExpression, ProducerReference, Message)* returns: n/a (one way)"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Fireworq",
+   "group": "C",
+   "kind": "job-queue server",
+   "version": "v1.5.0",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/version.go",
+     "quote": "Version = \"1.5.0\""
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "Hacker News",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "HTTP push to a worker",
+     "Q0": {
+      "fields": [
+       "payload (request body)",
+       "Content-Type header (always application/json)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/README.md",
+        "quote": "When Fireworq gets ready to grab this job, it will `POST` the `payload` to the `url`."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/dispatcher/worker/http.go",
+        "quote": "req, err := http.NewRequest( \"POST\", job.URL(), strings.NewReader(job.Payload()), )"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/dispatcher/worker/http.go",
+        "quote": "req.Header.Add(\"Content-Type\", \"application/json\")"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/data/jobqueue/mysql/query/insert_job.sql",
+        "quote": "INSERT INTO `{{.JobQueue}}` (next_try, created_at, retry_count, retry_delay, fail_count, category, url, payload, timeout) VALUES (FLOOR(UNIX_TIMESTAMP(CURRENT_TIME(3)) * 1000) + ?, FLOOR(UNIX_TIMESTAMP(CURRENT_TIME(3)) * 1000), ?, ?, ?, ?, ?, ?, ?)"
+       }
+      ],
+      "field": "created_at",
+      "resolution": "ms"
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/README.md",
+        "quote": "When Fireworq gets ready to grab this job, it will `POST` the `payload` to the `url`."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/dispatcher/worker/http.go",
+        "quote": "req, err := http.NewRequest( \"POST\", job.URL(), strings.NewReader(job.Payload()), )"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/dispatcher/worker/http.go",
+        "quote": "req.Header.Add(\"Content-Type\", \"application/json\")"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/data/jobqueue/mysql/query/launch_jobs.sql",
+        "quote": "UPDATE `{{.JobQueue}}` SET status = 'grabbed', grabber_id = CONNECTION_ID()"
+       }
+      ],
+      "note": "next_try is the earliest time a job may be grabbed (the push time plus run_after, or the failure time plus the retry delay), not a send time; the grab records no time."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/README.md",
+        "quote": "When Fireworq gets ready to grab this job, it will `POST` the `payload` to the `url`."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/dispatcher/worker/http.go",
+        "quote": "req, err := http.NewRequest( \"POST\", job.URL(), strings.NewReader(job.Payload()), )"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/dispatcher/worker/http.go",
+        "quote": "req.Header.Add(\"Content-Type\", \"application/json\")"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per message",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/doc/api.md",
+        "quote": "\"id\": 4, \"category\": \"test\", \"url\": \"http://example.com/\", \"status\": \"grabbed\", \"created_at\": \"2017-06-26T00:51:54.537+09:00\", \"next_try\": \"2017-06-26T01:03:34.537+09:00\", \"timeout\": 0, \"fail_count\": 0, \"max_retries\": 0, \"retry_delay\": 0"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/README.md",
+        "quote": "When Fireworq gets ready to grab this job, it will `POST` the `payload` to the `url`."
+       }
+      ],
+      "note": "The worker sends no request; the broker POSTs each job to the job's own url."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/README.md",
+       "read": "Fireworq posts each job's payload to the job's own url when it is ready to grab the job, and the worker sends no request or credit.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "POST /job/{category}",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "id",
+       "queue_name",
+       "category",
+       "url",
+       "payload",
+       "run_after",
+       "timeout",
+       "retry_delay",
+       "max_retries"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/web/job.go",
+        "quote": "type IncomingJob struct { CategoryField string `json:\"category\"` URLField string `json:\"url\"` PayloadField json.RawMessage `json:\"payload\"` payloadField string RunAfterField uint `json:\"run_after\"` // seconds"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/web/job.go",
+        "quote": "TimeoutField uint `json:\"timeout\"` // seconds RetryDelayField uint `json:\"retry_delay\"` // seconds MaxRetriesField uint `json:\"max_retries\"` } // PushResult describes a job pushed to a queue. type PushResult struct { ID uint64 `json:\"id\"` QueueName string `json:\"queue_name\"` IncomingJob }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/web/job.go",
+        "quote": "type IncomingJob struct { CategoryField string `json:\"category\"` URLField string `json:\"url\"` PayloadField json.RawMessage `json:\"payload\"` payloadField string RunAfterField uint `json:\"run_after\"` // seconds"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/web/job.go",
+        "quote": "TimeoutField uint `json:\"timeout\"` // seconds RetryDelayField uint `json:\"retry_delay\"` // seconds MaxRetriesField uint `json:\"max_retries\"` } // PushResult describes a job pushed to a queue. type PushResult struct { ID uint64 `json:\"id\"` QueueName string `json:\"queue_name\"` IncomingJob }"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/web/job.go",
+        "quote": "type IncomingJob struct { CategoryField string `json:\"category\"` URLField string `json:\"url\"` PayloadField json.RawMessage `json:\"payload\"` payloadField string RunAfterField uint `json:\"run_after\"` // seconds"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/web/job.go",
+        "quote": "TimeoutField uint `json:\"timeout\"` // seconds RetryDelayField uint `json:\"retry_delay\"` // seconds MaxRetriesField uint `json:\"max_retries\"` } // PushResult describes a job pushed to a queue. type PushResult struct { ID uint64 `json:\"id\"` QueueName string `json:\"queue_name\"` IncomingJob }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/web/job.go",
+        "quote": "type IncomingJob struct { CategoryField string `json:\"category\"` URLField string `json:\"url\"` PayloadField json.RawMessage `json:\"payload\"` payloadField string RunAfterField uint `json:\"run_after\"` // seconds"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fireworq/fireworq/v1.5.0/web/job.go",
+        "quote": "TimeoutField uint `json:\"timeout\"` // seconds RetryDelayField uint `json:\"retry_delay\"` // seconds MaxRetriesField uint `json:\"max_retries\"` } // PushResult describes a job pushed to a queue. type PushResult struct { ID uint64 `json:\"id\"` QueueName string `json:\"queue_name\"` IncomingJob }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  }
+ ]
+}

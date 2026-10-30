@@ -488,6 +488,303 @@
       }
      ]
     }
+   ],
+   "producers": [
+    {
+     "interface": "remoting send, synchronous or asynchronous (SEND_MESSAGE, SEND_MESSAGE_V2, SEND_BATCH_MESSAGE)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "response RemotingCommand: code, language, version, opaque, flag, remark, extFields",
+       "SendMessageResponseHeader (in extFields): msgId, queueId, queueOffset, transactionId, batchUniqId, recallHandle",
+       "the client's SendResult: sendStatus, msgId (the producer's unique key), offsetMsgId (the broker's msgId), messageQueue, queueOffset, transactionId, regionId, traceOn, recallHandle"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/remoting/src/main/java/org/apache/rocketmq/remoting/protocol/RemotingCommand.java",
+        "quote": "private int code; private LanguageCode language = LanguageCode.JAVA; private int version = 0; private int opaque = requestId.getAndIncrement(); private int flag = 0; private String remark; private HashMap<String, String> extFields;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/remoting/src/main/java/org/apache/rocketmq/remoting/protocol/header/SendMessageResponseHeader.java",
+        "quote": "@CFNotNull private String msgId; @CFNotNull private Integer queueId; @CFNotNull private Long queueOffset; private String transactionId; private String batchUniqId; private String recallHandle;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/SendMessageProcessor.java",
+        "quote": "responseHeader.setMsgId(putMessageResult.getAppendMessageResult().getMsgId()); responseHeader.setQueueId(queueIdInt); responseHeader.setQueueOffset(putMessageResult.getAppendMessageResult().getLogicsOffset());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/client/src/main/java/org/apache/rocketmq/client/producer/SendResult.java",
+        "quote": "private SendStatus sendStatus; private String msgId; private MessageQueue messageQueue; private long queueOffset; private String transactionId; private String offsetMsgId; private String regionId; private boolean traceOn = true; private byte[] rawRespBody; private String recallHandle;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/client/src/main/java/org/apache/rocketmq/client/impl/MQClientAPIImpl.java",
+        "quote": "SendResult sendResult = new SendResult(sendStatus, uniqMsgId, responseHeader.getMsgId(), messageQueue, responseHeader.getQueueOffset()); sendResult.setTransactionId(responseHeader.getTransactionId()); sendResult.setRecallHandle(responseHeader.getRecallHandle());"
+       }
+      ],
+      "note": "The broker's msgId names the store host and the message's commit-log offset."
+     },
+     "P1": {
+      "answer": "by configuration",
+      "field": "recallHandle: Base64 of 'v1 topic brokerName timestamp messageId', whose timestamp is the timer message's delivery time plus 1 ms",
+      "resolution": "the timer precision, timerPrecisionMs (default 1000 ms; 100, 200 or 500 ms by setting)",
+      "which": "receive time",
+      "setting": "the producer sends a single (not batched) timer message with a relative delay, Message.setDelayTimeSec or setDelayTimeMs (properties TIMER_DELAY_SEC or TIMER_DELAY_MS); not with an absolute delivery time (TIMER_DELIVER_MS, the producer's clock) or a delay level",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/remoting/src/main/java/org/apache/rocketmq/remoting/protocol/header/SendMessageResponseHeader.java",
+        "quote": "@CFNotNull private String msgId; @CFNotNull private Integer queueId; @CFNotNull private Long queueOffset; private String transactionId; private String batchUniqId; private String recallHandle;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/SendMessageProcessor.java",
+        "quote": "if (RequestCode.SEND_BATCH_MESSAGE == request.getCode() || RequestCode.CONSUMER_SEND_MSG_BACK == request.getCode()) { return; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/SendMessageProcessor.java",
+        "quote": "String timestampStr = msg.getProperty(MessageConst.PROPERTY_TIMER_OUT_MS);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/SendMessageProcessor.java",
+        "quote": "timestampStr = String.valueOf(Long.parseLong(timestampStr) + 1); // consider of floor"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/SendMessageProcessor.java",
+        "quote": "String recallHandle = RecallMessageHandle.HandleV1.buildHandle(realTopic, brokerController.getBrokerConfig().getBrokerName(), timestampStr, MessageClientIDSetter.getUniqID(msg)); responseHeader.setRecallHandle(recallHandle);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/BrokerController.java",
+        "quote": "return \"handleScheduleMessage\"; } @Override public PutMessageResult executeBeforePutMessage(MessageExt msg) { if (msg instanceof MessageExtBrokerInner) { return HookUtils.handleScheduleMessage(BrokerController.this, (MessageExtBrokerInner) msg); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/util/HookUtils.java",
+        "quote": "deliverMs = System.currentTimeMillis() + Long.parseLong(msg.getProperty(MessageConst.PROPERTY_TIMER_DELAY_SEC)) * 1000;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/util/HookUtils.java",
+        "quote": "deliverMs = System.currentTimeMillis() + Long.parseLong(msg.getProperty(MessageConst.PROPERTY_TIMER_DELAY_MS));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/util/HookUtils.java",
+        "quote": "deliverMs = Long.parseLong(msg.getProperty(MessageConst.PROPERTY_TIMER_DELIVER_MS));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/util/HookUtils.java",
+        "quote": "if (deliverMs % timerPrecisionMs == 0) { deliverMs -= timerPrecisionMs; } else { deliverMs = deliverMs / timerPrecisionMs * timerPrecisionMs; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/util/HookUtils.java",
+        "quote": "MessageAccessor.putProperty(msg, MessageConst.PROPERTY_TIMER_OUT_MS, deliverMs + \"\");"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/store/src/main/java/org/apache/rocketmq/store/config/MessageStoreConfig.java",
+        "quote": "private int timerPrecisionMs = 1000;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/store/src/main/java/org/apache/rocketmq/store/config/MessageStoreConfig.java",
+        "quote": "int[] candidates = {100, 200, 500, 1000};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/store/src/main/java/org/apache/rocketmq/store/config/MessageStoreConfig.java",
+        "quote": "private boolean timerWheelEnable = true;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/common/src/main/java/org/apache/rocketmq/common/producer/RecallMessageHandle.java",
+        "quote": "* handle to recall a message, only support delay message for now * v1 pattern like this: * version topic brokerName timestamp messageId * use Base64 to encode it"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/common/src/main/java/org/apache/rocketmq/common/producer/RecallMessageHandle.java",
+        "quote": "String rawString = String.join(SEPARATOR, VERSION_1, topic, brokerName, timestampStr, messageId); return Base64.getUrlEncoder().encodeToString(rawString.getBytes(UTF_8));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/common/src/main/java/org/apache/rocketmq/common/message/Message.java",
+        "quote": "public void setDelayTimeSec(long sec) { this.putProperty(MessageConst.PROPERTY_TIMER_DELAY_SEC, String.valueOf(sec)); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/common/src/main/java/org/apache/rocketmq/common/message/Message.java",
+        "quote": "public void setDelayTimeMs(long timeMs) { this.putProperty(MessageConst.PROPERTY_TIMER_DELAY_MS, String.valueOf(timeMs)); }"
+       }
+      ],
+      "note": "Judgment call. For a relative delay, the broker computes the delivery time from its own wall clock as it handles the send (a hook run before the message is stored): its clock plus the delay, rounded down to the timer precision (one precision step down when it falls exactly on one). The recall handle returned in the response carries that value plus 1 ms, so a producer that knows its delay can decode the broker's clock at the send's handling, to within one timer step (1 s by default). The time is kept as a deadline computed from the receive time by the requested delay, the reading applied to deadlines elsewhere. Every other send result carries no broker time: the store timestamp the broker holds in the append result (and delivers to consumers) is not put in the response."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/remoting/src/main/java/org/apache/rocketmq/remoting/protocol/header/SendMessageResponseHeader.java",
+        "quote": "@CFNotNull private String msgId; @CFNotNull private Integer queueId; @CFNotNull private Long queueOffset; private String transactionId; private String batchUniqId; private String recallHandle;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/SendMessageProcessor.java",
+        "quote": "responseHeader.setMsgId(putMessageResult.getAppendMessageResult().getMsgId()); responseHeader.setQueueId(queueIdInt); responseHeader.setQueueOffset(putMessageResult.getAppendMessageResult().getLogicsOffset());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/remoting/src/main/java/org/apache/rocketmq/remoting/protocol/RemotingCommand.java",
+        "quote": "private int code; private LanguageCode language = LanguageCode.JAVA; private int version = 0; private int opaque = requestId.getAndIncrement(); private int flag = 0; private String remark; private HashMap<String, String> extFields;"
+       }
+      ],
+      "note": "No field carries the time the response was sent."
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/remoting/src/main/java/org/apache/rocketmq/remoting/protocol/header/SendMessageResponseHeader.java",
+        "quote": "@CFNotNull private String msgId; @CFNotNull private Integer queueId; @CFNotNull private Long queueOffset; private String transactionId; private String batchUniqId; private String recallHandle;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/processor/SendMessageProcessor.java",
+        "quote": "responseHeader.setMsgId(putMessageResult.getAppendMessageResult().getMsgId()); responseHeader.setQueueId(queueIdInt); responseHeader.setQueueOffset(putMessageResult.getAppendMessageResult().getLogicsOffset());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/remoting/src/main/java/org/apache/rocketmq/remoting/protocol/RemotingCommand.java",
+        "quote": "private int code; private LanguageCode language = LanguageCode.JAVA; private int version = 0; private int opaque = requestId.getAndIncrement(); private int flag = 0; private String remark; private HashMap<String, String> extFields;"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/util/HookUtils.java",
+       "read": "transformTimerMessage, run as a put-message hook before the store, sets deliverMs to System.currentTimeMillis() plus the TIMER_DELAY_SEC or TIMER_DELAY_MS delay (or to the producer's absolute TIMER_DELIVER_MS) and, when it lies in the future, rounds it down to timerPrecisionMs (one step down when exact) and keeps it as TIMER_OUT_MS; SendMessageProcessor.attachRecallHandle returns, for a single non-retry message with TIMER_OUT_MS, a recall handle whose timestamp is that value plus 1. With a relative delay the handle carries the broker's clock at the hook plus the delay, to within one timer step (100 to 1000 ms, 1000 by default); the code states the moment and the length, as readings 2 and 4 require.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "interface": "remoting send, oneway",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/client/src/main/java/org/apache/rocketmq/client/impl/MQClientAPIImpl.java",
+        "quote": "case ONEWAY: this.remotingClient.invokeOneway(addr, request, timeoutMillis); return null;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/remoting/src/main/java/org/apache/rocketmq/remoting/netty/NettyRemotingAbstract.java",
+        "quote": "if (request.isOnewayRPC()) {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/remoting/src/main/java/org/apache/rocketmq/remoting/netty/NettyRemotingAbstract.java",
+        "quote": "return; } response.setOpaque(request.getOpaque()); response.markResponseType();"
+       }
+      ],
+      "note": "For a oneway request the broker writes no response."
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "gRPC SendMessage (proxy)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "SendMessageResponse: status, entries[]",
+       "Status: code, message",
+       "SendResultEntry: status, message_id, transaction_id, offset, recall_handle"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/pom.xml",
+        "quote": "<rocketmq-proto.version>2.1.2</rocketmq-proto.version>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq-apis/v2.1.2/apache/rocketmq/v2/service.proto",
+        "quote": "repeated SendResultEntry entries = 2; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq-apis/v2.1.2/apache/rocketmq/v2/definition.proto",
+        "quote": "message Status { Code code = 1; string message = 2; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq-apis/v2.1.2/apache/rocketmq/v2/service.proto",
+        "quote": "message SendResultEntry { Status status = 1; string message_id = 2; string transaction_id = 3; int64 offset = 4; // Unique handle to identify message to recall, support delay message for now. string recall_handle = 5; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/proxy/src/main/java/org/apache/rocketmq/proxy/grpc/v2/producer/SendMessageActivity.java",
+        "quote": ".setOffset(result.getQueueOffset()) .setMessageId(StringUtils.defaultString(result.getMsgId())) .setTransactionId(StringUtils.defaultString(result.getTransactionId())) .setRecallHandle(StringUtils.defaultString(result.getRecallHandle())) .build();"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq-apis/v2.1.2/apache/rocketmq/v2/service.proto",
+        "quote": "message SendResultEntry { Status status = 1; string message_id = 2; string transaction_id = 3; int64 offset = 4; // Unique handle to identify message to recall, support delay message for now. string recall_handle = 5; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/proxy/src/main/java/org/apache/rocketmq/proxy/grpc/v2/producer/SendMessageActivity.java",
+        "quote": ".setOffset(result.getQueueOffset()) .setMessageId(StringUtils.defaultString(result.getMsgId())) .setTransactionId(StringUtils.defaultString(result.getTransactionId())) .setRecallHandle(StringUtils.defaultString(result.getRecallHandle())) .build();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/proxy/src/main/java/org/apache/rocketmq/proxy/grpc/v2/producer/SendMessageActivity.java",
+        "quote": "long deliveryTimestampMs = Timestamps.toMillis(deliveryTimestamp);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/proxy/src/main/java/org/apache/rocketmq/proxy/grpc/v2/producer/SendMessageActivity.java",
+        "quote": "MessageAccessor.putProperty(messageWithHeader, MessageConst.PROPERTY_TIMER_DELIVER_MS, timestampString);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/broker/src/main/java/org/apache/rocketmq/broker/util/HookUtils.java",
+        "quote": "deliverMs = Long.parseLong(msg.getProperty(MessageConst.PROPERTY_TIMER_DELIVER_MS));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/store/src/main/java/org/apache/rocketmq/store/AppendMessageResult.java",
+        "quote": "// Message storage timestamp private long storeTimestamp;"
+       }
+      ],
+      "note": "Over gRPC a timer message carries an absolute delivery timestamp from the producer, which the proxy stores as TIMER_DELIVER_MS; the recall handle's time is therefore the producer's, rounded down to the timer precision, and holds no broker time. The store timestamp is not returned."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq-apis/v2.1.2/apache/rocketmq/v2/service.proto",
+        "quote": "message SendResultEntry { Status status = 1; string message_id = 2; string transaction_id = 3; int64 offset = 4; // Unique handle to identify message to recall, support delay message for now. string recall_handle = 5; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/proxy/src/main/java/org/apache/rocketmq/proxy/grpc/v2/producer/SendMessageActivity.java",
+        "quote": ".setOffset(result.getQueueOffset()) .setMessageId(StringUtils.defaultString(result.getMsgId())) .setTransactionId(StringUtils.defaultString(result.getTransactionId())) .setRecallHandle(StringUtils.defaultString(result.getRecallHandle())) .build();"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq-apis/v2.1.2/apache/rocketmq/v2/service.proto",
+        "quote": "message SendResultEntry { Status status = 1; string message_id = 2; string transaction_id = 3; int64 offset = 4; // Unique handle to identify message to recall, support delay message for now. string recall_handle = 5; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/proxy/src/main/java/org/apache/rocketmq/proxy/grpc/v2/producer/SendMessageActivity.java",
+        "quote": ".setOffset(result.getQueueOffset()) .setMessageId(StringUtils.defaultString(result.getMsgId())) .setTransactionId(StringUtils.defaultString(result.getTransactionId())) .setRecallHandle(StringUtils.defaultString(result.getRecallHandle())) .build();"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/apache/rocketmq/rocketmq-all-5.5.1/proxy/src/main/java/org/apache/rocketmq/proxy/grpc/v2/producer/SendMessageActivity.java",
+       "read": "Over gRPC the proxy takes only an absolute delivery timestamp from the producer and stores it as TIMER_DELIVER_MS (a user property may not use a system key, such as the delay keys), so the recall handle's time is the producer's, rounded down; SendResultEntry holds status, message_id, transaction_id, offset and recall_handle, with no broker time.",
+       "agrees": true
+      }
+     ]
+    }
    ]
   },
   {
@@ -811,8 +1108,54 @@
       "note": "A message annotation, part of the stored encoding that is sent. An expiration set from expiry-delay (Q1) is delivered as absolute-expiry-time."
      },
      "Q3": {
-      "answer": "no",
+      "answer": "send time",
+      "field": "the broker's clock as a delivery converts a message stored in core form, sent as properties absolute-expiry-time less header ttl (only for such messages that carry an expiration)",
+      "resolution": "ms",
       "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/proton/AMQPMessageWriter.java",
+        "quote": "final AMQPMessage amqpMessage = CoreAmqpConverter.checkAMQP(messageReference.getMessage(), null);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/proton/AMQPMessageWriter.java",
+        "quote": "An writer of AMQP (non-large) messages or messages which will convert any non-AMQP message to AMQP before writing the * encoded bytes into the AMQP sender."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/proton/DefaultSenderController.java",
+        "quote": "if (message instanceof AMQPMessage) { selected = isLarge ? largeMessageWriter : standardMessageWriter; } else if (coreTunnelingEnabled) { selected = isLarge ? coreLargeMessageWriter : coreMessageWriter; } else { selected = standardMessageWriter; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/proton/DefaultSenderController.java",
+        "quote": "// If the remote receiver says it can accept tunneled core then that's what we will send them"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/converter/CoreAmqpConverter.java",
+        "quote": "return fromCore(message.toCore(), storageManager);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/converter/CoreAmqpConverter.java",
+        "quote": "long expiration = message.getExpiration(); if (expiration != 0) { long ttl = expiration - System.currentTimeMillis(); if (ttl < 0) { ttl = 1; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/converter/CoreAmqpConverter.java",
+        "quote": "header.setTtl(new UnsignedInteger((int) ttl));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/converter/CoreAmqpConverter.java",
+        "quote": "properties.setAbsoluteExpiryTime(new Date(expiration));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/qpid-proton-j/0.35.0/proton-j/src/main/java/org/apache/qpid/proton/amqp/UnsignedInteger.java",
+        "quote": "public long longValue() { return ((long) _underlying) & 0xFFFFFFFFl; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/address-settings.adoc",
+        "quote": "For core messages (used by the core and OpenWire protocols) the broker will add a long property named `_AMQ_INGRESS_TIMESTAMP`."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-mqtt-protocol/src/main/java/org/apache/activemq/artemis/core/protocol/mqtt/MQTTUtil.java",
+        "quote": "CoreMessage message = new CoreMessage(id, mqttPublishMessage.fixedHeader().remainingLength(), session.getCoreMessageObjectPools());"
+       },
        {
         "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/proton/AMQPMessageWriter.java",
         "quote": "final ReadableBuffer sendBuffer = amqpMessage.getSendBuffer(messageReference.getDeliveryCount(), messageReference);"
@@ -830,22 +1173,126 @@
         "quote": "lastDeliveredTime = System.currentTimeMillis();"
        }
       ],
-      "note": "A first delivery sends the stored bytes and a redelivery changes only the header's delivery-count; delivery annotations are added only for broker mirroring. As for core consumers, the only clock reading at delivery is the consumer's lastDeliveredTime."
+      "note": "Judgment: this widens the reading on deadlines to a pair of delivered fields. Every message not stored as an AMQP message (core and OpenWire messages, and MQTT publishes, which Artemis stores as core messages) goes to an AMQP receiver through AMQPMessageWriter, which converts it afresh at every delivery (CoreAmqpConverter.checkAMQP, then fromCore; nothing caches the result, and a redelivery converts again). For such a message with an expiration, fromCore writes header ttl = expiration less System.currentTimeMillis() and properties absolute-expiry-time = expiration, so absolute-expiry-time less ttl is the broker's clock as that delivery is converted, just before the encoded message is handed to the AMQP sender, in ms, whoever set the expiration. It fails when the expiration has already passed (ttl is then 1), when the ttl reaches 2^32 ms, about 49.7 days (the cast keeps the low 32 bits of the unsigned field), for a message without an expiration (neither field is written), for a message published over AMQP (its stored encoding is sent, only delivery-count changed on a redelivery), and when the receiving link offers core-message tunneling (core messages then go unconverted). Besides this, the only clock reading at delivery is the consumer's lastDeliveredTime, kept as the latest value (Q6).",
+      "corrected_in_amendment_1": {
+       "from": "no",
+       "why": "At every delivery to an AMQP receiver Artemis converts each message not stored as AMQP and, when it has an expiration, writes header ttl = expiration less the broker's clock beside absolute-expiry-time = expiration, so the delivered pair gives the broker's clock at that delivery to the millisecond."
+      }
      },
      "Q4": {
-      "answer": "not applicable",
-      "evidence": []
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/converter/CoreAmqpConverter.java",
+        "quote": "header.setTtl(new UnsignedInteger((int) ttl));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/converter/CoreAmqpConverter.java",
+        "quote": "properties.setAbsoluteExpiryTime(new Date(expiration));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPStandardMessage.java",
+        "quote": "if (header != null) { encoder.writeObject(header); } if (daMap != null) { encoder.writeObject(new DeliveryAnnotations(daMap)); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPStandardMessage.java",
+        "quote": "if (properties != null) { encoder.writeObject(properties); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/proton/AMQPMessageWriter.java",
+        "quote": "protonSender.send(sendBuffer);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/proton/AMQPMessageWriter.java",
+        "quote": "final ReadableBuffer sendBuffer = amqpMessage.getSendBuffer(messageReference.getDeliveryCount(), messageReference);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPMessage.java",
+        "quote": "if (localHeader == null) { if (deliveryCount > 1) { localHeader = new Header(); } } else { localHeader = new Header(header); }"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<field name=\"ttl\" type=\"milliseconds\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<field name=\"absolute-expiry-time\" type=\"timestamp\"/>"
+       }
+      ],
+      "note": "Both fields go out in the message the converter encodes (AMQPStandardMessage.createMessage writes the header and the properties) and the writer hands to the AMQP sender; a redelivery re-encodes a copy of that header with only delivery-count changed. The consumer reads the header's ttl and the properties' absolute-expiry-time and subtracts. Only for the messages and conditions in Q3's note.",
+      "corrected_in_amendment_1": {
+       "from": "not applicable",
+       "why": "The ttl and absolute-expiry-time that give the send time (Q3) are both in the encoded message the broker sends."
+      }
      },
      "Q5": {
-      "answer": "no",
+      "answer": "derivable stay",
+      "field": "header ttl, reduced at each delivery to the time left before an expiration the broker set from its own clock",
+      "resolution": "ms",
       "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/converter/CoreAmqpConverter.java",
+        "quote": "long expiration = message.getExpiration(); if (expiration != 0) { long ttl = expiration - System.currentTimeMillis(); if (ttl < 0) { ttl = 1; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/converter/CoreAmqpConverter.java",
+        "quote": "header.setTtl(new UnsignedInteger((int) ttl));"
+       },
        {
         "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
         "quote": "If this is set then a message expiration time will be computed based on the time of arrival at an intermediary."
        },
        {
         "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
-        "quote": "the reduced ttl, so that messages will eventually die if they end up in a delivery loop."
+        "quote": "the transmitted message's header SHOULD contain a ttl that is computed as the difference between the current time and the formerly computed message expiration time, i.e., the reduced ttl, so that messages will eventually die if they end up in a delivery loop."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-mqtt-protocol/src/main/java/org/apache/activemq/artemis/core/protocol/mqtt/MQTTPublishManager.java",
+        "quote": "Message serverMessage = MQTTUtil.createServerMessageFromByteBuf(session, address, message);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-mqtt-protocol/src/main/java/org/apache/activemq/artemis/core/protocol/mqtt/MQTTUtil.java",
+        "quote": "long time = System.currentTimeMillis(); message.setTimestamp(time); Integer messageExpiryInterval = getProperty(Integer.class, properties, PUBLICATION_EXPIRY_INTERVAL);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-mqtt-protocol/src/main/java/org/apache/activemq/artemis/core/protocol/mqtt/MQTTUtil.java",
+        "quote": "if (messageExpiryInterval != null) { message.setExpiration(time + (messageExpiryInterval * 1000)); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/postoffice/impl/PostOfficeImpl.java",
+        "quote": "if (settings != null) { applyExpiryDelay(message, settings); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/postoffice/impl/PostOfficeImpl.java",
+        "quote": "if (message.getExpiration() == 0) { // only override the expiration on messages where the expiration hasn't been set by the user setExpiration(message, expirationOverride); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/postoffice/impl/PostOfficeImpl.java",
+        "quote": "private static void setExpiration(Message m, long expiration) { m.setExpiration(System.currentTimeMillis() + expiration); m.reencode(); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/settings/impl/AddressSettings.java",
+        "quote": "public static final long DEFAULT_EXPIRY_DELAY = -1;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/settings/impl/AddressSettings.java",
+        "quote": "public static final long DEFAULT_MIN_EXPIRY_DELAY = -1;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/settings/impl/AddressSettings.java",
+        "quote": "public static final long DEFAULT_MAX_EXPIRY_DELAY = -1;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/message-expiry.adoc",
+        "quote": "There are multiple address-settings which you can use to modify the expiry delay for incoming messages:"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/message-expiry.adoc",
+        "quote": "This value is measured in milliseconds. The default is `-1` (i.e. disabled)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPMessage.java",
+        "quote": "// We are overriding expiration with an Absolute expiration time so any // previous Header based TTL also needs to be removed. if (header != null) { header.setTtl(null); }"
        },
        {
         "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPMessage.java",
@@ -856,7 +1303,11 @@
         "quote": "return getData().duplicate();"
        }
       ],
-      "note": "The AMQP standard says an intermediary SHOULD forward a ttl reduced by the time since arrival. Artemis forwards the header as received (only delivery-count changes on redelivery), so the delivered ttl is the producer's and carries no time spent at the broker."
+      "note": "Coded as an expiry the broker reduces, with the reduction rule from the code: at each delivery of a message stored in core form, ttl = expiration less the broker's clock (CoreAmqpConverter; Q3). It is a stay only where the broker itself set the expiration from its own clock, as a known length L after the message reached it: (1) an MQTT 5.0 publish that carries a Message Expiry Interval, a choice of the publisher (MQTTUtil, run as the PUBLISH arrives, sets the message's timestamp and its expiration, time + interval x 1000, from one clock reading; L is the interval in ms); (2) the address settings expiry-delay (for messages without an expiration), max-expiry-delay or min-expiry-delay, all -1 (off) by default, applied as the message is routed on arrival (L is the delay). L less the delivered ttl is then the message's time at the broker up to that delivery, in ms on the broker's clock; the consumer must know L (agreed, or repeated in an application property) and which case applied. It does not hold when the producer set the expiration from its own clock (for example a core or OpenWire producer's time to live), and never for messages published over AMQP: they go out with the publisher's header, and when the broker sets their expiration it removes the header ttl and writes only absolute-expiry-time. The edge cases of Q3 apply (ttl 1 for a passed expiration; 32 bits), and an MQTT interval above 2,147,483 s overflows the int product in MQTTUtil.",
+      "corrected_in_amendment_1": {
+       "from": "no",
+       "why": "For messages stored in core form Artemis writes at each AMQP delivery a ttl reduced to the time left before the expiration, so where the broker set that expiration as its own clock plus a known interval or delay (an MQTT 5.0 Message Expiry Interval, or expiry-delay, min-expiry-delay or max-expiry-delay) the interval less the ttl is the stay in milliseconds."
+      }
      },
      "Q6": {
       "answer": "per message",
@@ -918,8 +1369,362 @@
        "url": "(the Q7 evidence of this mode)",
        "read": "The cited text and code say what the answer says: byte or message credit, link credit, prefetch, a receive quota, held pop requests that each take a different message, or QoS 0 sent as it arrives.",
        "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/converter/CoreAmqpConverter.java",
+       "read": "Changed from no by the amendment 1 correction. AMQPMessageWriter.writeBytes calls CoreAmqpConverter.checkAMQP on every delivery; for a message not stored as AMQP, fromCore builds a new AMQP message each time and, when the message has an expiration, sets header ttl to the expiration less System.currentTimeMillis() (1 if already past) and absolute-expiry-time to the expiration, so their difference is the broker's clock at that delivery, in ms.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPStandardMessage.java",
+       "read": "Changed from not applicable by the amendment 1 correction. createMessage encodes the converter's header and properties into the buffer that the writer hands to the AMQP sender; on a redelivery AMQPMessage re-encodes a copy of that header with only delivery-count changed.",
+       "agrees": true
+      },
+      {
+       "question": "Q5",
+       "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-mqtt-protocol/src/main/java/org/apache/activemq/artemis/core/protocol/mqtt/MQTTUtil.java",
+       "read": "Changed from no by the amendment 1 correction. MQTTUtil.createServerMessage, run as an MQTT PUBLISH arrives, sets the message's timestamp and, with a Message Expiry Interval, its expiration to that clock reading plus the interval in ms; PostOfficeImpl likewise sets expiration = routing time plus expiry-delay, max-expiry-delay or min-expiry-delay (all off by default). With the ttl reduced at each AMQP delivery, the known interval or delay less the delivered ttl is the stay in ms.",
+       "agrees": true
       }
      ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "core protocol send, acknowledged (blocking send, or asynchronous send with a confirmation window)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet header: length, type, channel ID",
+       "blocking send: NullResponseMessage (NullResponseMessage_V2 adds correlationID)",
+       "confirmation window: PacketsConfirmedMessage: commandID (the last confirmed command), sent each time confirmationWindowSize bytes have been received"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/PacketImpl.java",
+        "quote": "// The standard header fields buffer.writeInt(0); // The length gets filled in at the end buffer.writeByte(type); buffer.writeLong(channelID);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/wireformat/NullResponseMessage_V2.java",
+        "quote": "private long correlationID;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/wireformat/NullResponseMessage_V2.java",
+        "quote": "buffer.writeLong(correlationID);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/protocol/core/ServerSessionPacketHandler.java",
+        "quote": "NullResponseMessage response = poolNullResponse.borrow(); // this should be already set by the channel too, but let's do it just in case response.setCorrelationID(packet.getCorrelationID());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/protocol/core/ServerSessionPacketHandler.java",
+        "quote": "requiresResponse = message.isRequiresResponse(); this.session.send(EmbedMessageUtil.extractEmbedded(message.getMessage(), storageManager), this.direct, producers.get(message.getSenderID())); if (requiresResponse) { response = createNullResponseMessage(packet); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/wireformat/PacketsConfirmedMessage.java",
+        "quote": "private int commandID;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/wireformat/PacketsConfirmedMessage.java",
+        "quote": "buffer.writeInt(commandID);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/ChannelImpl.java",
+        "quote": "if (receivedBytes >= confWindowSize) { receivedBytes = 0; final Packet confirmed = new PacketsConfirmedMessage(lastConfirmedCommandID.get());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/send-guarantees.adoc",
+        "quote": "blockOnDurableSend:: If this is set to `true` then all calls to send for durable messages on non-transacted sessions will block until the message has reached the server, and a response has been sent back. The default value is `true`."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/send-guarantees.adoc",
+        "quote": "To enable asynchronous send acknowledgements you must make sure `confirmationWindowSize` is set to a positive integer value, e.g. 10MiB"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/api/core/client/ActiveMQClient.java",
+        "quote": "public static final boolean DEFAULT_BLOCK_ON_DURABLE_SEND = true;"
+       }
+      ],
+      "note": "A JMS client blocks on durable sends by default (blockOnDurableSend true); a SendAcknowledgementHandler receives confirmations only with a positive confirmationWindowSize (default -1)."
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/wireformat/NullResponseMessage_V2.java",
+        "quote": "private long correlationID;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/wireformat/NullResponseMessage_V2.java",
+        "quote": "buffer.writeLong(correlationID);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/protocol/core/ServerSessionPacketHandler.java",
+        "quote": "NullResponseMessage response = poolNullResponse.borrow(); // this should be already set by the channel too, but let's do it just in case response.setCorrelationID(packet.getCorrelationID());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/wireformat/PacketsConfirmedMessage.java",
+        "quote": "private int commandID;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/wireformat/PacketsConfirmedMessage.java",
+        "quote": "buffer.writeInt(commandID);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/PacketImpl.java",
+        "quote": "// The standard header fields buffer.writeInt(0); // The length gets filled in at the end buffer.writeByte(type); buffer.writeLong(channelID);"
+       }
+      ],
+      "note": "With the address setting enable-ingress-timestamp the broker stamps each message's arrival for consumers (Q1 of the consumer modes); the response carries only a correlation id or a command id."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/wireformat/NullResponseMessage_V2.java",
+        "quote": "private long correlationID;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/wireformat/NullResponseMessage_V2.java",
+        "quote": "buffer.writeLong(correlationID);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/wireformat/PacketsConfirmedMessage.java",
+        "quote": "private int commandID;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/wireformat/PacketsConfirmedMessage.java",
+        "quote": "buffer.writeInt(commandID);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/PacketImpl.java",
+        "quote": "// The standard header fields buffer.writeInt(0); // The length gets filled in at the end buffer.writeByte(type); buffer.writeLong(channelID);"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/wireformat/NullResponseMessage_V2.java",
+        "quote": "private long correlationID;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/wireformat/NullResponseMessage_V2.java",
+        "quote": "buffer.writeLong(correlationID);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/wireformat/PacketsConfirmedMessage.java",
+        "quote": "private int commandID;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/wireformat/PacketsConfirmedMessage.java",
+        "quote": "buffer.writeInt(commandID);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/core/protocol/core/impl/PacketImpl.java",
+        "quote": "// The standard header fields buffer.writeInt(0); // The length gets filled in at the end buffer.writeByte(type); buffer.writeLong(channelID);"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "core protocol send, asynchronous without a confirmation window",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/api/core/client/ActiveMQClient.java",
+        "quote": "public static final boolean DEFAULT_BLOCK_ON_NON_DURABLE_SEND = false;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-core-client/src/main/java/org/apache/activemq/artemis/api/core/client/ActiveMQClient.java",
+        "quote": "public static final int DEFAULT_CONFIRMATION_WINDOW_SIZE = -1;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-server/src/main/java/org/apache/activemq/artemis/core/protocol/core/ServerSessionPacketHandler.java",
+        "quote": "requiresResponse = message.isRequiresResponse(); this.session.send(EmbedMessageUtil.extractEmbedded(message.getMessage(), storageManager), this.direct, producers.get(message.getSenderID())); if (requiresResponse) { response = createNullResponseMessage(packet); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/docs/user-manual/send-guarantees.adoc",
+        "quote": "To enable asynchronous send acknowledgements you must make sure `confirmationWindowSize` is set to a positive integer value, e.g. 10MiB"
+       }
+      ],
+      "note": "Non-durable sends are asynchronous by default (blockOnNonDurableSend false) and the confirmation window is off by default (-1), so such a send gets no answer."
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "AMQP 1.0, unsettled transfers (disposition)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "disposition frame: role, first, last, settled, state, batchable",
+       "state: accepted, rejected (error), or in a transaction transactional-state (txn-id, outcome)"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<type name=\"disposition\" class=\"composite\" source=\"list\" provides=\"frame\"> <descriptor name=\"amqp:disposition:list\" code=\"0x00000000:0x00000015\"/> <field name=\"role\" type=\"role\" mandatory=\"true\"/> <field name=\"first\" type=\"delivery-number\" mandatory=\"true\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<field name=\"last\" type=\"delivery-number\"/> <field name=\"settled\" type=\"boolean\" default=\"false\"/> <field name=\"state\" type=\"*\" requires=\"delivery-state\"/> <field name=\"batchable\" type=\"boolean\" default=\"false\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<type name=\"accepted\" class=\"composite\" source=\"list\" provides=\"delivery-state, outcome\"> <descriptor name=\"amqp:accepted:list\" code=\"0x00000000:0x00000024\"/> </type>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<descriptor name=\"amqp:rejected:list\" code=\"0x00000000:0x00000025\"/> <field name=\"error\" type=\"error\"/> </type>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPSessionCallback.java",
+        "quote": "serverSession.send(transaction, address, routingType, message, directDeliver, receiver.getName(), false, routingContext);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPSessionCallback.java",
+        "quote": "delivery.disposition(Accepted.getInstance());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPSessionCallback.java",
+        "quote": "txAccepted.setOutcome(Accepted.getInstance()); txAccepted.setTxnId(((TransactionalState) delivery.getRemoteState()).getTxnId());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPSessionCallback.java",
+        "quote": "Rejected rejected = new Rejected(); rejected.setError(condition);"
+       }
+      ],
+      "note": "After the message is routed and stored the broker sets the outcome and settles the delivery."
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<type name=\"disposition\" class=\"composite\" source=\"list\" provides=\"frame\"> <descriptor name=\"amqp:disposition:list\" code=\"0x00000000:0x00000015\"/> <field name=\"role\" type=\"role\" mandatory=\"true\"/> <field name=\"first\" type=\"delivery-number\" mandatory=\"true\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<field name=\"last\" type=\"delivery-number\"/> <field name=\"settled\" type=\"boolean\" default=\"false\"/> <field name=\"state\" type=\"*\" requires=\"delivery-state\"/> <field name=\"batchable\" type=\"boolean\" default=\"false\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<type name=\"accepted\" class=\"composite\" source=\"list\" provides=\"delivery-state, outcome\"> <descriptor name=\"amqp:accepted:list\" code=\"0x00000000:0x00000024\"/> </type>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPSessionCallback.java",
+        "quote": "delivery.disposition(Accepted.getInstance());"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<type name=\"disposition\" class=\"composite\" source=\"list\" provides=\"frame\"> <descriptor name=\"amqp:disposition:list\" code=\"0x00000000:0x00000015\"/> <field name=\"role\" type=\"role\" mandatory=\"true\"/> <field name=\"first\" type=\"delivery-number\" mandatory=\"true\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<field name=\"last\" type=\"delivery-number\"/> <field name=\"settled\" type=\"boolean\" default=\"false\"/> <field name=\"state\" type=\"*\" requires=\"delivery-state\"/> <field name=\"batchable\" type=\"boolean\" default=\"false\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<type name=\"accepted\" class=\"composite\" source=\"list\" provides=\"delivery-state, outcome\"> <descriptor name=\"amqp:accepted:list\" code=\"0x00000000:0x00000024\"/> </type>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPSessionCallback.java",
+        "quote": "delivery.disposition(Accepted.getInstance());"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<type name=\"disposition\" class=\"composite\" source=\"list\" provides=\"frame\"> <descriptor name=\"amqp:disposition:list\" code=\"0x00000000:0x00000015\"/> <field name=\"role\" type=\"role\" mandatory=\"true\"/> <field name=\"first\" type=\"delivery-number\" mandatory=\"true\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<field name=\"last\" type=\"delivery-number\"/> <field name=\"settled\" type=\"boolean\" default=\"false\"/> <field name=\"state\" type=\"*\" requires=\"delivery-state\"/> <field name=\"batchable\" type=\"boolean\" default=\"false\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<type name=\"accepted\" class=\"composite\" source=\"list\" provides=\"delivery-state, outcome\"> <descriptor name=\"amqp:accepted:list\" code=\"0x00000000:0x00000024\"/> </type>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/artemis-protocols/artemis-amqp-protocol/src/main/java/org/apache/activemq/artemis/protocol/amqp/broker/AMQPSessionCallback.java",
+        "quote": "delivery.disposition(Accepted.getInstance());"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "AMQP 1.0, pre-settled transfers",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "For example if the sending application settles the delivery before sending it, this results in an at-most-once guarantee."
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "If this delivery makes it to the receiver, the receiver clearly has no obligation to respond with updates of the receiver's delivery state, as they would be meaningless and ignored by the sender."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-artemis/2.57.0/pom.xml",
+        "quote": "<proton.version>0.35.0</proton.version>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/qpid-proton-j/0.35.0/proton-j/src/main/java/org/apache/qpid/proton/engine/impl/DeliveryImpl.java",
+        "quote": "public void disposition(final DeliveryState state) { _deliveryState = state; if(!_remoteSettled && !_settled) { addToTransportWorkList(); } }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/qpid-proton-j/0.35.0/proton-j/src/main/java/org/apache/qpid/proton/engine/impl/DeliveryImpl.java",
+        "quote": "if(!_remoteSettled) { addToTransportWorkList(); } else { _transportDelivery.settled(); }"
+       }
+      ],
+      "note": "Artemis's AMQP engine, proton-j 0.35.0, queues no disposition for a delivery the sender has already settled."
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
     }
    ]
   },
@@ -1149,6 +1954,652 @@
        "agrees": true
       }
      ]
+    },
+    {
+     "mode": "AMQP 1.0 consumers",
+     "added_in_amendment_1": true,
+     "Q0": {
+      "fields": [
+       "transfer frame: handle, delivery-id, delivery-tag, message-format, settled, more, rcv-settle-mode, state, resume, aborted, batchable",
+       "a message kept in AMQP form (published over AMQP under the default native transformer, or the raw one): its stored encoding as published (header, delivery-annotations, message-annotations, properties, application-properties, body, footer), with the header's delivery-count re-encoded on a redelivery",
+       "any other message, built at each dispatch by the JMS mapping: header: durable, priority, ttl, delivery-count, first-acquirer",
+       "delivery-annotations (from stored JMS_AMQP_DA_ properties)",
+       "message-annotations: x-opt-jms-dest, x-opt-jms-reply-to, and annotations stored as JMS_AMQP_MA_ properties",
+       "properties: message-id, user-id, to, subject, reply-to, correlation-id, content-type, content-encoding, absolute-expiry-time, creation-time, group-id, group-sequence, reply-to-group-id",
+       "application-properties: the message's other properties (scheduling properties removed; ActiveMqDataStructureType for advisory messages)",
+       "body: one data, amqp-value or amqp-sequence section",
+       "footer (from stored JMS_AMQP_FOOTER_ properties)"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "Zero or one header sections. Zero or one delivery-annotation sections. Zero or one message-annotation sections. Zero or one properties sections. Zero or one application-properties sections."
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<field name=\"delivery-tag\" type=\"delivery-tag\"/>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/protocol/AmqpSender.java",
+        "quote": "private final OutboundTransformer outboundTransformer = new AutoOutboundTransformer();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/protocol/AmqpSender.java",
+        "quote": "jms.setRedeliveryCounter(md.getRedeliveryCounter()); jms.setReadOnlyBody(true); final EncodedMessage amqp = outboundTransformer.transform(jms);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/protocol/AmqpSender.java",
+        "quote": "currentDelivery = getEndpoint().delivery(tag, 0, tag.length); } currentDelivery.setContext(md); currentDelivery.setMessageFormat((int) amqp.getMessageFormat());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/AutoOutboundTransformer.java",
+        "quote": "if (message.getBooleanProperty(JMS_AMQP_NATIVE)) { if (message instanceof BytesMessage) { return AMQPNativeOutboundTransformer.transform(this, (ActiveMQBytesMessage) message); } else { return null; } } else { return transformer.transform(message); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/AmqpWireFormatFactory.java",
+        "quote": "private String transformer = InboundTransformer.TRANSFORMER_NATIVE;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-website/e318f5fd878f7a07053346b43c0ec9c8c8af4e15/src/components/classic/documentation/amqp.md",
+        "quote": "`native`|(**Default**) Wraps the bytes of the AMQP message into a JMS `BytesMessage` and maps the headers of the AMQP message to headers on the JMS message."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/AMQPNativeOutboundTransformer.java",
+        "quote": "Binary encodedMessage = getBinaryFromMessageBody(message);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/AMQPNativeOutboundTransformer.java",
+        "quote": "amqp.getHeader().setDeliveryCount(new UnsignedInteger(count));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "header.setDurable(true);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "header.setDeliveryCount(UnsignedInteger.valueOf(deliveryCount));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "header.setFirstAcquirer((boolean) TypeConversionSupport.convert(value, Boolean.class));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "daMap.put(Symbol.valueOf(name), value);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "maMap.put(JMS_DEST_TYPE_MSG_ANNOTATION, destinationType(destination));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "encoder.setByteBuffer(buffer); if (header != null) { encoder.writeObject(header); } if (daMap != null) { encoder.writeObject(new DeliveryAnnotations(daMap)); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "if (maMap != null) { encoder.writeObject(new MessageAnnotations(maMap)); } if (properties != null) { encoder.writeObject(properties); } if (apMap != null) { encoder.writeObject(new ApplicationProperties(apMap)); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "} else if (key.startsWith(AMQ_SCHEDULED_MESSAGE_PREFIX )) { // strip off the scheduled message properties continue; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "apMap.put(\"ActiveMqDataStructureType\", data.getClass().getSimpleName());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "if (footerMap != null) { encoder.writeObject(new Footer(footerMap)); } return new EncodedMessage(messageFormat, buffer.getArray(), 0, buffer.getArrayLength());"
+       }
+      ],
+      "note": "By default an AMQP publish is kept in AMQP form: the transport's wire format factory sets the native transformer (the documentation calls it the default; AmqpWireFormat's own field default, jms, is replaced by the factory's), which wraps the message's bytes in a BytesMessage and copies its headers to the JMS headers for the broker's own use. At each dispatch AmqpSender passes the message through AutoOutboundTransformer: a message kept in AMQP form is sent as its stored encoding, and any other message (published over OpenWire, STOMP or MQTT, or over AMQP with transport.transformer=jms) is built afresh by JMSMappingOutboundTransformer. The OpenWire fields brokerInTime, brokerOutTime, arrival and brokerPath are not mapped."
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "properties creation-time, written from the message's timestamp, which is the broker's clock on arrival for a message published over MQTT, over STOMP without a timestamp header, or restamped by the TimeStampingBrokerPlugin",
+      "resolution": "ms",
+      "setting": "the producer's choice (publishing over MQTT, or over STOMP without a timestamp header), or the broker plugin timeStampingBrokerPlugin (not enabled by default) for messages that carry a timestamp",
+      "default_on": null,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-mqtt/src/main/java/org/apache/activemq/transport/mqtt/MQTTProtocolConverter.java",
+        "quote": "msg.setTimestamp(System.currentTimeMillis());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-stomp/src/main/java/org/apache/activemq/transport/stomp/FrameTranslator.java",
+        "quote": "o = headers.remove(Stomp.Headers.Message.TIMESTAMP); if (o != null) { msg.setJMSTimestamp(Long.parseLong((String)o)); } else { msg.setJMSTimestamp(System.currentTimeMillis()); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/util/TimeStampingBrokerPlugin.java",
+        "quote": "if (message.getTimestamp() > 0 && !isDestinationDLQ(message) &&"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/util/TimeStampingBrokerPlugin.java",
+        "quote": "long oldExpiration = message.getExpiration(); long newTimeStamp = System.currentTimeMillis(); long timeToLive = zeroExpirationOverride; long oldTimestamp = message.getTimestamp(); if (oldExpiration > 0) { timeToLive = oldExpiration - oldTimestamp; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/util/TimeStampingBrokerPlugin.java",
+        "quote": "if (timeToLive > 0 && expiration > 0) { message.setExpiration(expiration); } message.setTimestamp(newTimeStamp);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/util/TimeStampingBrokerPlugin.java",
+        "quote": "This plugin * is not enabled in the default ActiveMQ configuration."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-website/e318f5fd878f7a07053346b43c0ec9c8c8af4e15/src/components/classic/documentation/timestampplugin.md",
+        "quote": "The TimeStampPlugin is a Broker interceptor which updates a JMS Client's time stamp on the message with a broker time stamp."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-website/e318f5fd878f7a07053346b43c0ec9c8c8af4e15/src/components/classic/documentation/timestampplugin.md",
+        "quote": "By default this plugin is _not_ enabled in ActiveMQ."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "long timeStamp = message.getTimestamp(); if (timeStamp != 0) { if (properties == null) { properties = new Properties(); } properties.setCreationTime(new Date(timeStamp)); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/region/RegionBroker.java",
+        "quote": "message.setBrokerInTime(System.currentTimeMillis());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/AMQPRawInboundTransformer.java",
+        "quote": "final long now = System.currentTimeMillis(); result.setTimestamp(now);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/InboundTransformer.java",
+        "quote": "if (properties.getCreationTime() != null) { jms.setTimestamp(properties.getCreationTime().getTime()); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/InboundTransformer.java",
+        "quote": "if (ttl != jakarta.jms.Message.DEFAULT_TIME_TO_LIVE) { jms.setExpiration(System.currentTimeMillis() + ttl); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/ActiveMQSession.java",
+        "quote": "long expiration = 0L; long timeStamp = System.currentTimeMillis(); if (timeToLive > 0) { expiration = timeToLive + timeStamp; }"
+       }
+      ],
+      "note": "Judgment: three routes put the broker's arrival time in a message's timestamp, which the JMS mapping delivers as creation-time: an MQTT publish (always), a STOMP send without a timestamp header, and any message that carries a timestamp under the TimeStampingBrokerPlugin (off by default). Coded by configuration, as a stamp delivered by a choice of the producer or a setting; default_on is null because MQTT and STOMP publishers need no setting while the plugin is off by default. An OpenWire producer's timestamp is its own clock. brokerInTime, which RegionBroker.send sets for every message (Q1 of the OpenWire mode), is kept but not mapped into the AMQP message. An AMQP publish without creation-time also gets the broker's clock as its timestamp (AMQPRawInboundTransformer), but under the default native transformer it is sent in its own encoding, so an AMQP consumer does not see it. A second configured record: with transport.transformer=jms (not the default), an AMQP publish with a header ttl and no absolute-expiry-time is given expiration = the broker's clock on arrival plus that ttl, delivered as absolute-expiry-time, so a consumer that knows the publisher's ttl recovers the arrival time; under the native transformer the same deadline is kept for expiry but not sent."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "long timeStamp = message.getTimestamp(); if (timeStamp != 0) { if (properties == null) { properties = new Properties(); } properties.setCreationTime(new Date(timeStamp)); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "if (maMap != null) { encoder.writeObject(new MessageAnnotations(maMap)); } if (properties != null) { encoder.writeObject(properties); } if (apMap != null) { encoder.writeObject(new ApplicationProperties(apMap)); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/protocol/AmqpSender.java",
+        "quote": "jms.setRedeliveryCounter(md.getRedeliveryCounter()); jms.setReadOnlyBody(true); final EncodedMessage amqp = outboundTransformer.transform(jms);"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<field name=\"creation-time\" type=\"timestamp\"/>"
+       }
+      ],
+      "note": "creation-time is in the properties section the JMS mapping writes for every message it converts; an expiration set from the broker's clock (Q1's second record) goes out as absolute-expiry-time."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "the broker's clock as each dispatch is converted, sent as properties absolute-expiry-time less header ttl (only for converted messages that carry an expiration)",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/TransportConnection.java",
+        "quote": "broker.preProcessDispatch(messageDispatch);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/AmqpTransportFilter.java",
+        "quote": "final Command command = (Command) o; lock.lock(); try { protocolConverter.onActiveMQCommand(command); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/protocol/AmqpConnection.java",
+        "quote": "sender.onMessageDispatch(dispatch);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/protocol/AmqpSender.java",
+        "quote": "jms.setRedeliveryCounter(md.getRedeliveryCounter()); jms.setReadOnlyBody(true); final EncodedMessage amqp = outboundTransformer.transform(jms);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/AutoOutboundTransformer.java",
+        "quote": "if (message.getBooleanProperty(JMS_AMQP_NATIVE)) { if (message instanceof BytesMessage) { return AMQPNativeOutboundTransformer.transform(this, (ActiveMQBytesMessage) message); } else { return null; } } else { return transformer.transform(message); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "long expiration = message.getExpiration(); if (expiration != 0) { long ttl = expiration - System.currentTimeMillis(); if (ttl < 0) { ttl = 1; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "header.setTtl(new UnsignedInteger((int) ttl));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "properties.setAbsoluteExpiryTime(new Date(expiration));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/qpid-proton-j/0.35.0/proton-j/src/main/java/org/apache/qpid/proton/amqp/UnsignedInteger.java",
+        "quote": "public long longValue() { return ((long) _underlying) & 0xFFFFFFFFl; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/region/RegionBroker.java",
+        "quote": "message.setBrokerOutTime(endTime);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/AMQPNativeOutboundTransformer.java",
+        "quote": "Binary encodedMessage = getBinaryFromMessageBody(message);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/AMQPNativeOutboundTransformer.java",
+        "quote": "amqp.getHeader().setDeliveryCount(new UnsignedInteger(count));"
+       }
+      ],
+      "note": "Judgment, the same widening of the reading on deadlines to a pair of delivered fields as in Q3 of Artemis's AMQP mode: AmqpSender converts each dispatch as it hands it to the AMQP engine (onMessageDispatch, then pumpOutbound and AutoOutboundTransformer). For a message the JMS mapping converts that has an expiration, it writes header ttl = expiration less System.currentTimeMillis() and properties absolute-expiry-time = expiration, so absolute-expiry-time less ttl is the broker's clock at that dispatch, in ms, whoever set the expiration. By default this covers every message published over OpenWire, STOMP or MQTT that carries an expiration (an OpenWire producer's time to live, STOMP's expires header); with transport.transformer=jms it also covers AMQP publishes. It fails when the expiration has already passed (ttl 1), when the ttl reaches 2^32 ms, about 49.7 days (the cast keeps the low 32 bits), for a message without an expiration, and for a message kept in AMQP form (sent in its stored encoding, delivery-count updated on a redelivery). brokerOutTime, which RegionBroker.preProcessDispatch sets on every dispatch just before the transport converts it, is kept on the message but not mapped into the AMQP message."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "header.setTtl(new UnsignedInteger((int) ttl));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "properties.setAbsoluteExpiryTime(new Date(expiration));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "encoder.setByteBuffer(buffer); if (header != null) { encoder.writeObject(header); } if (daMap != null) { encoder.writeObject(new DeliveryAnnotations(daMap)); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "if (maMap != null) { encoder.writeObject(new MessageAnnotations(maMap)); } if (properties != null) { encoder.writeObject(properties); } if (apMap != null) { encoder.writeObject(new ApplicationProperties(apMap)); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/protocol/AmqpSender.java",
+        "quote": "currentDelivery = getEndpoint().delivery(tag, 0, tag.length); } currentDelivery.setContext(md); currentDelivery.setMessageFormat((int) amqp.getMessageFormat());"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<field name=\"ttl\" type=\"milliseconds\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<field name=\"absolute-expiry-time\" type=\"timestamp\"/>"
+       }
+      ],
+      "note": "Both fields are in the message the JMS mapping encodes for that dispatch; the consumer subtracts. Only for the messages and conditions in Q3's note."
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "field": "header ttl, reduced at each dispatch to the time left before an expiration the broker set from its own clock",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "long expiration = message.getExpiration(); if (expiration != 0) { long ttl = expiration - System.currentTimeMillis(); if (ttl < 0) { ttl = 1; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+        "quote": "header.setTtl(new UnsignedInteger((int) ttl));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/InboundTransformer.java",
+        "quote": "if (properties.getAbsoluteExpiryTime() != null) { jms.setExpiration(properties.getAbsoluteExpiryTime().getTime()); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/InboundTransformer.java",
+        "quote": "if (ttl != jakarta.jms.Message.DEFAULT_TIME_TO_LIVE) { jms.setExpiration(System.currentTimeMillis() + ttl); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/AmqpWireFormatFactory.java",
+        "quote": "private String transformer = InboundTransformer.TRANSFORMER_NATIVE;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/AmqpWireFormatFactory.java",
+        "quote": "wireFormat.setTransformer(getTransformer());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-website/e318f5fd878f7a07053346b43c0ec9c8c8af4e15/src/components/classic/documentation/amqp.md",
+        "quote": "`native`|(**Default**) Wraps the bytes of the AMQP message into a JMS `BytesMessage` and maps the headers of the AMQP message to headers on the JMS message."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/protocol/AmqpReceiver.java",
+        "quote": "} else if (transformer.equalsIgnoreCase(InboundTransformer.TRANSFORMER_NATIVE)) { inboundTransformer = new AMQPNativeInboundTransformer();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/util/TimeStampingBrokerPlugin.java",
+        "quote": "long oldExpiration = message.getExpiration(); long newTimeStamp = System.currentTimeMillis(); long timeToLive = zeroExpirationOverride; long oldTimestamp = message.getTimestamp(); if (oldExpiration > 0) { timeToLive = oldExpiration - oldTimestamp; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/util/TimeStampingBrokerPlugin.java",
+        "quote": "if (timeToLive > 0 && expiration > 0) { message.setExpiration(expiration); } message.setTimestamp(newTimeStamp);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-website/e318f5fd878f7a07053346b43c0ec9c8c8af4e15/src/components/classic/documentation/timestampplugin.md",
+        "quote": "By default this plugin is _not_ enabled in ActiveMQ."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/ActiveMQSession.java",
+        "quote": "long expiration = 0L; long timeStamp = System.currentTimeMillis(); if (timeToLive > 0) { expiration = timeToLive + timeStamp; }"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "If this is set then a message expiration time will be computed based on the time of arrival at an intermediary."
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "the transmitted message's header SHOULD contain a ttl that is computed as the difference between the current time and the formerly computed message expiration time, i.e., the reduced ttl, so that messages will eventually die if they end up in a delivery loop."
+       }
+      ],
+      "note": "By configuration only, coded as an expiry the broker reduces, with the reduction rule from the code: at each dispatch the JMS mapping writes ttl = expiration less the broker's clock (Q3). It is a stay where the broker set the expiration from its own clock as a known length L after the message reached it: (1) with transport.transformer=jms (the default is native), an AMQP publish with a header ttl and no absolute-expiry-time is given expiration = the broker's clock on arrival plus that ttl, so the delivered ttl is the publisher's ttl reduced by the message's time at the broker, the reduced ttl the AMQP standard recommends (SHOULD), and L is the publisher's ttl; (2) with the TimeStampingBrokerPlugin (off by default), a message that carries a timestamp is given expiration = the broker's clock on arrival plus its old expiration less its old timestamp (for an OpenWire producer, its time to live), or plus zeroExpirationOverride when it had none, capped by ttlCeiling. L less the delivered ttl is then the stay up to that dispatch, in ms on the broker's clock; the consumer must know L (agreed, or repeated in an application property). Under the default configuration it does not hold: an AMQP publish goes out with its own header (native transformer), and an OpenWire or STOMP producer sets the expiration from its own clock. With the plugin, creation-time (Q1) and the send time (Q3) give the stay without L. The edge cases of Q3 apply."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "LoggingBrokerPlugin (not enabled by default) logs each message sent to the broker ('Sending message') and each dispatch ('preProcessDispatch') with its logProducerEvents and logConsumerEvents options (off by default), as for OpenWire consumers; on the AMQP transport, the connection logs each dispatch at TRACE ('Dispatching MessageId'), and with the transport option trace=true the FRAMES logger logs each frame sent, transfers included, at TRACE; every line has the log's time stamp. JMX gives per-destination aggregates of brokerOutTime less brokerInTime.",
+      "resolution": "ms (log4j2 default %d pattern in the shipped log4j2.properties)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/util/LoggingBrokerPlugin.java",
+        "quote": "perDestinationsLogger.info(\"Sending message: {}\", copy);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/util/LoggingBrokerPlugin.java",
+        "quote": "LOG.info(\"preProcessDispatch: {}\", messageDispatch);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-website/e318f5fd878f7a07053346b43c0ec9c8c8af4e15/src/components/classic/documentation/logging-interceptor.md",
+        "quote": "logConsumerEvents|Events related to consuming messages|false"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/protocol/AmqpConnection.java",
+        "quote": "LOG.trace(\"Dispatching MessageId: {} to consumer\", dispatch.getMessage().getMessageId());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/protocol/AmqpConnection.java",
+        "quote": "public void updateTracer() { if (amqpTransport.isTrace()) { ((TransportImpl) protonTransport).setProtocolTracer(new ProtocolTracer() {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/protocol/AmqpConnection.java",
+        "quote": "TRACE_FRAMES.trace(\"{} | SENT: {}\", AmqpConnection.this.amqpTransport.getRemoteAddress(), transportFrame.getBody());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/AmqpTransportFilter.java",
+        "quote": "public static final Logger TRACE_FRAMES = LoggerFactory.getLogger(AmqpTransportFilter.class.getPackage().getName() + \".FRAMES\");"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/assembly/src/release/conf/log4j2.properties",
+        "quote": "appender.logfile.layout.pattern=%d | %-5p | %m | %c | %t%n%throwable{full}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/logging-log4j2/dd0f9d255e24e6bcc13bd2641407a409c0524803/log4j-core/src/main/java/org/apache/logging/log4j/core/pattern/NamedInstantPattern.java",
+        "quote": "DEFAULT(\"yyyy-MM-dd HH:mm:ss,SSS\"),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/jmx/DestinationView.java",
+        "quote": "return destination.getDestinationStatistics().getProcessTime().getAverageTime();"
+       }
+      ],
+      "note": "TRACE is not the shipped level; the frame trace needs the transport option as well. The dispatch line is written as the transport receives the dispatch, just before the AMQP conversion."
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "The link-credit variable defines the current maximum legal amount that the delivery-count can be increased by."
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "Only the receiver can independently choose a value for this field."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/protocol/AmqpSession.java",
+        "quote": "consumerInfo.setPrefetchSize(senderCredit >= 0 ? senderCredit : 0);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/protocol/AmqpSender.java",
+        "quote": "final int endpointCredit = endpoint.getCredit();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/protocol/AmqpSender.java",
+        "quote": "currentCreditRequest = prefetchExtension.addAndGet(deltaToAdd);"
+       }
+      ],
+      "note": "Link credit granted by the AMQP receiver sets the consumer's prefetch when the link attaches (AmqpSession), and later grants extend it (AmqpSender.flow); the broker dispatches while credit remains."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q1",
+       "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-mqtt/src/main/java/org/apache/activemq/transport/mqtt/MQTTProtocolConverter.java",
+       "read": "The JMS mapping delivers a message's timestamp as creation-time; the broker's own clock fills that timestamp for MQTT publishes (always) and for STOMP sends without a timestamp header, and, when the TimeStampingBrokerPlugin is enabled (it is off by default), for every message that carries a timestamp, while other publishers' timestamps are kept, so the answer is by configuration.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/TransportConnection.java",
+       "read": "AmqpConnection passes each dispatch to AmqpSender.onMessageDispatch, which runs the outbound transformer at once; the JMS mapping writes ttl as expiration less System.currentTimeMillis() and absolute-expiry-time as expiration, so the two delivered fields fix the broker's clock when it hands the message to the AMQP engine, after the consumer's credit allows the dispatch.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+       "read": "The JMS mapping encodes the header with the ttl and the properties with the absolute-expiry-time into the message sent for that dispatch, so the consumer receives both and can subtract them.",
+       "agrees": true
+      },
+      {
+       "question": "Q5",
+       "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-amqp/src/main/java/org/apache/activemq/transport/amqp/message/JMSMappingOutboundTransformer.java",
+       "read": "The JMS mapping writes ttl as expiration less the broker's clock at each dispatch, after credit allows it, so the reduced ttl covers the whole wait; it gives a stay only where the broker set the expiration from its own clock plus a known length (the TimeStampingBrokerPlugin, off by default), and the AMQP-native route changes only the delivery count and sends the publisher's ttl as it was.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+       "read": "AmqpSession sets the consumer's prefetch from the link credit the receiver granted (setPrefetchSize), and AmqpSender extends it with later credit (prefetchExtension), so the broker dispatches while credit remains.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "OpenWire synchronous send (responseRequired: Response)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "Response: commandId, responseRequired, correlationId",
+       "ExceptionResponse (on failure): the same and exception"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/command/Response.java",
+        "quote": "int correlationId;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/command/BaseCommand.java",
+        "quote": "protected int commandId; protected boolean responseRequired;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/command/ExceptionResponse.java",
+        "quote": "Throwable exception;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/TransportConnection.java",
+        "quote": "if (responseRequired) { if (response == null) { response = new Response(); } response.setCorrelationId(commandId); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-website/e318f5fd878f7a07053346b43c0ec9c8c8af4e15/src/components/classic/documentation/async-sends.md",
+        "quote": "The cases that we are forced to send in sync mode are when persistent messages are being sent outside of a transaction."
+       }
+      ],
+      "note": "Persistent messages sent outside a transaction are sent synchronously by default."
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/command/Response.java",
+        "quote": "int correlationId;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/command/BaseCommand.java",
+        "quote": "protected int commandId; protected boolean responseRequired;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/TransportConnection.java",
+        "quote": "if (responseRequired) { if (response == null) { response = new Response(); } response.setCorrelationId(commandId); }"
+       }
+      ],
+      "note": "The broker stamps brokerInTime on each message for consumers, but the Response carries only the command's correlation id."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/command/Response.java",
+        "quote": "int correlationId;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/command/BaseCommand.java",
+        "quote": "protected int commandId; protected boolean responseRequired;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/TransportConnection.java",
+        "quote": "if (responseRequired) { if (response == null) { response = new Response(); } response.setCorrelationId(commandId); }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/command/Response.java",
+        "quote": "int correlationId;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/command/BaseCommand.java",
+        "quote": "protected int commandId; protected boolean responseRequired;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/TransportConnection.java",
+        "quote": "if (responseRequired) { if (response == null) { response = new Response(); } response.setCorrelationId(commandId); }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "OpenWire asynchronous send with a producer window (ProducerAck)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "ProducerAck: producerId, size (with commandId, responseRequired)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/command/ProducerAck.java",
+        "quote": "protected ProducerId producerId; protected int size;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/command/BaseCommand.java",
+        "quote": "protected int commandId; protected boolean responseRequired;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/region/Queue.java",
+        "quote": "final boolean sendProducerAck = !message.isResponseRequired() && producerInfo.getWindowSize() > 0 && !context.isInRecoveryMode();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/region/Queue.java",
+        "quote": "ProducerAck ack = new ProducerAck(producerInfo.getProducerId(), message.getSize()); context.getConnection().dispatchAsync(ack);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-website/e318f5fd878f7a07053346b43c0ec9c8c8af4e15/src/components/classic/documentation/producer-flow-control.md",
+        "quote": "The ProducerWindowSize is the maximum number of bytes of data that a producer will transmit to a broker before waiting for acknowledgment messages from the broker that it has accepted the previously sent messages."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/command/ProducerAck.java",
+        "quote": "protected ProducerId producerId; protected int size;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/region/Queue.java",
+        "quote": "ProducerAck ack = new ProducerAck(producerInfo.getProducerId(), message.getSize()); context.getConnection().dispatchAsync(ack);"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/command/ProducerAck.java",
+        "quote": "protected ProducerId producerId; protected int size;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/region/Queue.java",
+        "quote": "ProducerAck ack = new ProducerAck(producerInfo.getProducerId(), message.getSize()); context.getConnection().dispatchAsync(ack);"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-client/src/main/java/org/apache/activemq/command/ProducerAck.java",
+        "quote": "protected ProducerId producerId; protected int size;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/region/Queue.java",
+        "quote": "ProducerAck ack = new ProducerAck(producerInfo.getProducerId(), message.getSize()); context.getConnection().dispatchAsync(ack);"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "OpenWire asynchronous send without a producer window",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq-website/e318f5fd878f7a07053346b43c0ec9c8c8af4e15/src/components/classic/documentation/async-sends.md",
+        "quote": "The good news is that ActiveMQ sends message in async mode by default in several cases."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/region/Queue.java",
+        "quote": "final boolean sendProducerAck = !message.isResponseRequired() && producerInfo.getWindowSize() > 0 && !context.isInRecoveryMode();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/activemq/activemq-6.4.0/activemq-broker/src/main/java/org/apache/activemq/broker/TransportConnection.java",
+        "quote": "if (responseRequired) { if (response == null) { response = new Response(); } response.setCorrelationId(commandId); }"
+       }
+      ],
+      "note": "An asynchronous send gets a ProducerAck only when the producer sets a window size, and no Response."
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
     }
    ]
   },
@@ -1507,6 +2958,196 @@
        "agrees": true
       }
      ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "PUBLISH, QoS 0",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The receiver of a PUBLISH Packet MUST respond with the packet as determined by the QoS in the PUBLISH Packet [MQTT-3.3.4-1] ."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "QoS Level Expected Response QoS 0 None QoS 1 PUBACK packet QoS 2 PUBREC packet"
+       }
+      ],
+      "note": "The standard requires no response to a QoS 0 publish."
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "PUBLISH, QoS 1 (PUBACK)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "PUBACK: packet identifier, reason code, properties: Reason String, User Property (name-value pairs, any number); no payload"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "A PUBACK packet is the response to a PUBLISH packet with QoS 1."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "3.4.2.2.2 Reason String 31 (0x1F) Byte , Identifier of the Reason String."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "3.4.2.2.3 User Property 38 (0x26) Byte, Identifier of the User Property. Followed by UTF-8 String Pair. This property can be used to provide additional diagnostic or other information."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "3.4.3 PUBACK Payload The PUBACK packet has no Payload."
+       }
+      ],
+      "note": "Answered for a broker that follows the standard: what the standard requires a PUBACK to carry."
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "3.4.2.2.2 Reason String 31 (0x1F) Byte , Identifier of the Reason String."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "3.4.2.2.3 User Property 38 (0x26) Byte, Identifier of the User Property. Followed by UTF-8 String Pair. This property can be used to provide additional diagnostic or other information."
+       }
+      ],
+      "note": "The standard defines no time in a PUBACK and neither requires nor recommends one. A broker could put one in a User Property, whose content is free; the standard's MUSTs and SHOULDs name none."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "3.4.2.2.3 User Property 38 (0x26) Byte, Identifier of the User Property. Followed by UTF-8 String Pair. This property can be used to provide additional diagnostic or other information."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "3.4.2.2.3 User Property 38 (0x26) Byte, Identifier of the User Property. Followed by UTF-8 String Pair. This property can be used to provide additional diagnostic or other information."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "PUBLISH, QoS 2 (PUBREC, then PUBCOMP after the publisher's PUBREL)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "PUBREC: packet identifier, reason code, properties: Reason String, User Property",
+       "PUBCOMP: packet identifier, reason code, properties: Reason String, User Property"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "A PUBREC packet is the response to a PUBLISH packet with QoS 2. It is the second packet of the QoS 2 protocol exchange."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBREC Packet consists of the following fields in the order: the Packet Identifier from the PUBLISH packet that is being acknowledged, PUBREC Reason Code, and Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "3.5.2.2.2 Reason String 31 (0x1F) Byte , Identifier of the Reason String."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The PUBCOMP packet is the response to a PUBREL packet. It is the fourth and final packet of the QoS 2 protocol exchange."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBCOMP Packet contains the following fields in the order: Packet Identifier from the PUBREL packet that is being acknowledged, PUBCOMP Reason Code, and Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "3.7.2.2.2 Reason String 31 (0x1F) Byte , Identifier of the Reason String."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBREC Packet consists of the following fields in the order: the Packet Identifier from the PUBLISH packet that is being acknowledged, PUBREC Reason Code, and Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBCOMP Packet contains the following fields in the order: Packet Identifier from the PUBREL packet that is being acknowledged, PUBCOMP Reason Code, and Properties."
+       }
+      ],
+      "note": "As for PUBACK: no time is defined, required or recommended; a User Property is free content."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBREC Packet consists of the following fields in the order: the Packet Identifier from the PUBLISH packet that is being acknowledged, PUBREC Reason Code, and Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBCOMP Packet contains the following fields in the order: Packet Identifier from the PUBREL packet that is being acknowledged, PUBCOMP Reason Code, and Properties."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBREC Packet consists of the following fields in the order: the Packet Identifier from the PUBLISH packet that is being acknowledged, PUBREC Reason Code, and Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBCOMP Packet contains the following fields in the order: Packet Identifier from the PUBREL packet that is being acknowledged, PUBCOMP Reason Code, and Properties."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
     }
    ]
   },
@@ -1952,6 +3593,349 @@
        "question": "Q7",
        "url": "(the Q7 evidence of this mode)",
        "read": "The cited text and code say what the answer says: byte or message credit, link credit, prefetch, a receive quota, held pop requests that each take a different message, or QoS 0 sent as it arrives.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQTT PUBLISH, QoS 0",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "do_publish(_PacketId, Msg = #message{qos = ?QOS_0}, Channel) -> Result = emqx_broker:publish(Msg), case Result of disconnect -> handle_out(disconnect, ?RC_IMPLEMENTATION_SPECIFIC_ERROR, Channel); _ -> {ok, Channel} end;"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "QoS Level Expected Response QoS 0 None QoS 1 PUBACK packet QoS 2 PUBREC packet"
+       }
+      ],
+      "note": "EMQX publishes the message and sends nothing back."
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "MQTT PUBLISH, QoS 1 (PUBACK)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "PUBACK: packet identifier, reason code (no properties)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "handle_out(puback, {PacketId, ReasonCode}, Channel) -> Packet = ?EXT_TRACE_OUTGOING_START( basic_attrs(Channel), ?PUBACK_PACKET(PacketId, ReasonCode) ), {ok, ?REPLY_OUTGOING(Packet), Channel};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/include/emqx_mqtt.hrl",
+        "quote": "-define(PUBACK_PACKET(PacketId, ReasonCode), #mqtt_packet{ header = #mqtt_packet_header{type = ?PUBACK}, variable = #mqtt_packet_puback{ packet_id = PacketId, reason_code = ReasonCode } })."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "puback_reason_code(PacketId, Msg, [] = PubRes) -> emqx_hooks:'message.puback'(PacketId, Msg, PubRes, ?RC_NO_MATCHING_SUBSCRIBERS);"
+       }
+      ],
+      "note": "The reason code passes through the message.puback hook; it is 0x10 (no matching subscribers) when no subscription matched."
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "handle_out(puback, {PacketId, ReasonCode}, Channel) -> Packet = ?EXT_TRACE_OUTGOING_START( basic_attrs(Channel), ?PUBACK_PACKET(PacketId, ReasonCode) ), {ok, ?REPLY_OUTGOING(Packet), Channel};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/include/emqx_mqtt.hrl",
+        "quote": "-define(PUBACK_PACKET(PacketId, ReasonCode), #mqtt_packet{ header = #mqtt_packet_header{type = ?PUBACK}, variable = #mqtt_packet_puback{ packet_id = PacketId, reason_code = ReasonCode } })."
+       }
+      ],
+      "note": "EMQX's message carries its receive time (publish_received_at, ms) for consumers through a message transformation, but the PUBACK has only the packet identifier and the reason code."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "handle_out(puback, {PacketId, ReasonCode}, Channel) -> Packet = ?EXT_TRACE_OUTGOING_START( basic_attrs(Channel), ?PUBACK_PACKET(PacketId, ReasonCode) ), {ok, ?REPLY_OUTGOING(Packet), Channel};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/include/emqx_mqtt.hrl",
+        "quote": "-define(PUBACK_PACKET(PacketId, ReasonCode), #mqtt_packet{ header = #mqtt_packet_header{type = ?PUBACK}, variable = #mqtt_packet_puback{ packet_id = PacketId, reason_code = ReasonCode } })."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "handle_out(puback, {PacketId, ReasonCode}, Channel) -> Packet = ?EXT_TRACE_OUTGOING_START( basic_attrs(Channel), ?PUBACK_PACKET(PacketId, ReasonCode) ), {ok, ?REPLY_OUTGOING(Packet), Channel};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/include/emqx_mqtt.hrl",
+        "quote": "-define(PUBACK_PACKET(PacketId, ReasonCode), #mqtt_packet{ header = #mqtt_packet_header{type = ?PUBACK}, variable = #mqtt_packet_puback{ packet_id = PacketId, reason_code = ReasonCode } })."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "MQTT PUBLISH, QoS 2 (PUBREC, then PUBCOMP)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "PUBREC: packet identifier, reason code (no properties)",
+       "PUBCOMP: packet identifier, reason code (no properties)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "handle_out(pubrec, {PacketId, ReasonCode}, Channel) -> Packet = ?EXT_TRACE_OUTGOING_START( basic_attrs(Channel), ?PUBREC_PACKET(PacketId, ReasonCode) ), {ok, ?REPLY_OUTGOING(Packet), Channel};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/include/emqx_mqtt.hrl",
+        "quote": "-define(PUBREC_PACKET(PacketId, ReasonCode), #mqtt_packet{ header = #mqtt_packet_header{type = ?PUBREC}, variable = #mqtt_packet_puback{ packet_id = PacketId, reason_code = ReasonCode } })."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "handle_out(pubcomp, {PacketId, ReasonCode}, Channel) -> Packet = ?EXT_TRACE_OUTGOING_START( basic_attrs(Channel), ?PUBCOMP_PACKET(PacketId, ReasonCode) ), {ok, ?REPLY_OUTGOING(Packet), Channel};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/include/emqx_mqtt.hrl",
+        "quote": "-define(PUBCOMP_PACKET(PacketId, ReasonCode), #mqtt_packet{ header = #mqtt_packet_header{type = ?PUBCOMP}, variable = #mqtt_packet_puback{ packet_id = PacketId, reason_code = ReasonCode } })."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "handle_out(pubrec, {PacketId, ReasonCode}, Channel) -> Packet = ?EXT_TRACE_OUTGOING_START( basic_attrs(Channel), ?PUBREC_PACKET(PacketId, ReasonCode) ), {ok, ?REPLY_OUTGOING(Packet), Channel};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/include/emqx_mqtt.hrl",
+        "quote": "-define(PUBREC_PACKET(PacketId, ReasonCode), #mqtt_packet{ header = #mqtt_packet_header{type = ?PUBREC}, variable = #mqtt_packet_puback{ packet_id = PacketId, reason_code = ReasonCode } })."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "handle_out(pubcomp, {PacketId, ReasonCode}, Channel) -> Packet = ?EXT_TRACE_OUTGOING_START( basic_attrs(Channel), ?PUBCOMP_PACKET(PacketId, ReasonCode) ), {ok, ?REPLY_OUTGOING(Packet), Channel};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/include/emqx_mqtt.hrl",
+        "quote": "-define(PUBCOMP_PACKET(PacketId, ReasonCode), #mqtt_packet{ header = #mqtt_packet_header{type = ?PUBCOMP}, variable = #mqtt_packet_puback{ packet_id = PacketId, reason_code = ReasonCode } })."
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "handle_out(pubrec, {PacketId, ReasonCode}, Channel) -> Packet = ?EXT_TRACE_OUTGOING_START( basic_attrs(Channel), ?PUBREC_PACKET(PacketId, ReasonCode) ), {ok, ?REPLY_OUTGOING(Packet), Channel};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/include/emqx_mqtt.hrl",
+        "quote": "-define(PUBREC_PACKET(PacketId, ReasonCode), #mqtt_packet{ header = #mqtt_packet_header{type = ?PUBREC}, variable = #mqtt_packet_puback{ packet_id = PacketId, reason_code = ReasonCode } })."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "handle_out(pubcomp, {PacketId, ReasonCode}, Channel) -> Packet = ?EXT_TRACE_OUTGOING_START( basic_attrs(Channel), ?PUBCOMP_PACKET(PacketId, ReasonCode) ), {ok, ?REPLY_OUTGOING(Packet), Channel};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/include/emqx_mqtt.hrl",
+        "quote": "-define(PUBCOMP_PACKET(PacketId, ReasonCode), #mqtt_packet{ header = #mqtt_packet_header{type = ?PUBCOMP}, variable = #mqtt_packet_puback{ packet_id = PacketId, reason_code = ReasonCode } })."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "handle_out(pubrec, {PacketId, ReasonCode}, Channel) -> Packet = ?EXT_TRACE_OUTGOING_START( basic_attrs(Channel), ?PUBREC_PACKET(PacketId, ReasonCode) ), {ok, ?REPLY_OUTGOING(Packet), Channel};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/include/emqx_mqtt.hrl",
+        "quote": "-define(PUBREC_PACKET(PacketId, ReasonCode), #mqtt_packet{ header = #mqtt_packet_header{type = ?PUBREC}, variable = #mqtt_packet_puback{ packet_id = PacketId, reason_code = ReasonCode } })."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_channel.erl",
+        "quote": "handle_out(pubcomp, {PacketId, ReasonCode}, Channel) -> Packet = ?EXT_TRACE_OUTGOING_START( basic_attrs(Channel), ?PUBCOMP_PACKET(PacketId, ReasonCode) ), {ok, ?REPLY_OUTGOING(Packet), Channel};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/include/emqx_mqtt.hrl",
+        "quote": "-define(PUBCOMP_PACKET(PacketId, ReasonCode), #mqtt_packet{ header = #mqtt_packet_header{type = ?PUBCOMP}, variable = #mqtt_packet_puback{ packet_id = PacketId, reason_code = ReasonCode } })."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "HTTP API POST /publish and /publish/bulk",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "200: id (hex string of the message's 128-bit GUID); /publish/bulk returns one such object per message",
+       "202, 400 or 503: reason_code, message"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_management/src/emqx_mgmt_api_publish.erl",
+        "quote": "fields(publish_ok) -> [ {id, hoconsc:mk(binary(), #{ desc => ?DESC(message_id) })} ];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_management/src/emqx_mgmt_api_publish.erl",
+        "quote": "fields(publish_error) -> [ {reason_code, hoconsc:mk(integer(), #{ desc => ?DESC(reason_code), example => 16 })}, {message, hoconsc:mk(binary(), #{ desc => ?DESC(error_message), example => <<\"no_matching_subscribers\">> })} ];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_management/src/emqx_mgmt_api_publish.erl",
+        "quote": "make_publish_response(#message{id = ID}) -> #{ id => emqx_guid:to_hexstr(ID) }."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_management/src/emqx_mgmt_api_publish.erl",
+        "quote": "publish_result_to_http_reply(_Message, []) -> %% matched no subscriber {?PARTIALLY_OK, make_publish_error_response(?RC_NO_MATCHING_SUBSCRIBERS)};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_management/src/emqx_mgmt_api_publish.erl",
+        "quote": "publish_result_to_http_reply(#message{topic = <<\"$delayed/\", _/binary>>} = Message, []) -> {?ALL_IS_WELL, make_publish_response(Message)};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/rel/i18n/emqx_mgmt_api_publish.hocon",
+        "quote": "message_id.desc: \"\"\"A globally unique message ID for correlation/tracing.\"\"\""
+       }
+      ],
+      "note": "200 when the message reached at least one subscriber (or is a delayed message); 202 with reason code 16 when no subscription matched, with no id."
+     },
+     "P1": {
+      "answer": "by configuration",
+      "field": "id: its first 64 bits are the GUID's timestamp, erlang:system_time in microseconds when the API built the message",
+      "resolution": "us",
+      "which": "receive time",
+      "setting": "a condition, not a setting: the answer carries the id when the message reaches at least one subscriber (HTTP 200) or is published to a $delayed/ topic; a publish that matches no subscription is answered 202 with reason code 16 and no id, and a failed dispatch 503 without one",
+      "default_on": null,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_management/src/emqx_mgmt_api_publish.erl",
+        "quote": "make_publish_response(#message{id = ID}) -> #{ id => emqx_guid:to_hexstr(ID) }."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_management/src/emqx_mgmt_api_publish.erl",
+        "quote": "Message = emqx_message:make( ?EXT_TRACE__HTTP_API_INTERNAL_CLIENTID, QoS, Topic, Payload, #{retain => Retain}, Headers ),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_message.erl",
+        "quote": "id = emqx_guid:gen(),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_guid.erl",
+        "quote": "%% | Timestamp | NodeID + PID | Sequence | %% |<------- 64bits ------->|<--- 48bits --->|<- 16bits ->|"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_guid.erl",
+        "quote": "%% 1. Timestamp: erlang:system_time if Erlang >= R18, otherwise os:timestamp"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_guid.erl",
+        "quote": "bin({Ts, NPid, Seq}) -> <<Ts:64, NPid:48, Seq:16>>."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_guid.erl",
+        "quote": "ts() -> erlang:system_time(micro_seconds)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_guid.erl",
+        "quote": "next(NPid, Seq) -> {ts(), NPid, Seq + 1}."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_management/src/emqx_mgmt_api_publish.erl",
+        "quote": "publish(post, #{body := Body}) -> case message(Body) of {ok, Message} -> Res = emqx_mgmt:publish(Message), publish_result_to_http_reply(Message, Res);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_management/src/emqx_mgmt_api_publish.erl",
+        "quote": "true -> %% delivered to at least one subscriber OkBody = make_publish_response(Message), {?ALL_IS_WELL, OkBody};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_management/src/emqx_mgmt_api_publish.erl",
+        "quote": "publish_result_to_http_reply(_Message, []) -> %% matched no subscriber {?PARTIALLY_OK, make_publish_error_response(?RC_NO_MATCHING_SUBSCRIBERS)};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_management/src/emqx_mgmt_api_publish.erl",
+        "quote": "publish_result_to_http_reply(#message{topic = <<\"$delayed/\", _/binary>>} = Message, []) -> {?ALL_IS_WELL, make_publish_response(Message)};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/rel/i18n/emqx_mgmt_api_publish.hocon",
+        "quote": "Possible HTTP status response codes are: 200 : The message is delivered to at least one subscriber; 202 : No matched subscribers;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx/src/emqx_guid.erl",
+        "quote": "timestamp(<<Ts:64, _/binary>>) -> Ts."
+       }
+      ],
+      "note": "Judgment call. The API documents the id only as a unique message ID; the source fixes its layout: 64 bits of the broker's wall clock (Erlang system time) in microseconds, then node and process, then a sequence, and emqx_guid's timestamp/1 reads the first 64 bits back. The API handler makes the message (and its GUID) from the request before publishing it, so the first 64 bits are the broker's clock when it took the publish in. Only a 200 answer carries the id: the message reached at least one subscriber, or went to a $delayed/ topic. A publish that matched no subscription is answered 202 with reason code 16 (No matching subscribers, a success code in MQTT) and no id, and a failed dispatch 503 without one; /publish/bulk returns one object per message, with an id for each message that reached a subscriber. Since the time is not in every acknowledgment, it is coded by configuration, with that condition, under the reading on optional fields.",
+      "changed_on_read_back": {
+       "from": "always",
+       "why": "The id, and the time in it, comes only in a 200 answer; a publish that matched no subscription is acknowledged 202 without it, so the time is not in every acknowledgment and is coded by configuration with its condition."
+      }
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_management/src/emqx_mgmt_api_publish.erl",
+        "quote": "fields(publish_ok) -> [ {id, hoconsc:mk(binary(), #{ desc => ?DESC(message_id) })} ];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_management/src/emqx_mgmt_api_publish.erl",
+        "quote": "make_publish_response(#message{id = ID}) -> #{ id => emqx_guid:to_hexstr(ID) }."
+       }
+      ],
+      "note": "The JSON answer holds only the id. The HTTP server's Date header is not part of the API's documented response and is not counted, as for the HTTP services."
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_management/src/emqx_mgmt_api_publish.erl",
+        "quote": "fields(publish_ok) -> [ {id, hoconsc:mk(binary(), #{ desc => ?DESC(message_id) })} ];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_management/src/emqx_mgmt_api_publish.erl",
+        "quote": "make_publish_response(#message{id = ID}) -> #{ id => emqx_guid:to_hexstr(ID) }."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_management/src/emqx_mgmt_api_publish.erl",
+       "read": "The handler makes the message with emqx_message:make, whose GUID's first 64 bits are erlang:system_time in microseconds at that moment (emqx_guid.erl), then publishes it; a 200 answer returns the GUID as hex, but a publish that matched no subscription gets 202 with a reason code only, as the API's own description says. Changed from always to by configuration: the time is in the answer only when the message reached a subscriber or went to a $delayed/ topic.",
+       "agrees": true
+      },
+      {
+       "question": "P2",
+       "url": "https://raw.githubusercontent.com/emqx/emqx/6.3.2/apps/emqx_management/src/emqx_mgmt_api_publish.erl",
+       "read": "A 200 answer's JSON holds only the id, and no field carries the time the answer was sent. The Date header the HTTP server adds is not a broker time under reading 1, so the answer stands.",
        "agrees": true
       }
      ]

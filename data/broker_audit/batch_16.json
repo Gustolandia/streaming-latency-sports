@@ -1,0 +1,1736 @@
+{
+ "audited_utc": "2026-10-27",
+ "brokers": [
+  {
+   "broker": "Alibaba Cloud ApsaraMQ for RocketMQ (4.x series, HTTP interface)",
+   "group": "C",
+   "kind": "cloud service",
+   "version": "HTTP API 2015-06-06 (documentation retrieved 2026-10-27); SDKs mq-http-java-sdk 1.0.3.2 and mq-http-go-sdk 1.0.3; OpenAPI Ons 2019-02-14",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-java-sdk/mq-http-sdk-1.0.3.2/src/main/java/com/aliyun/mq/http/common/Constants.java",
+     "quote": "String X_HEADER_API_VERSION_VALUE = \"2015-06-06\";"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-go-sdk/1.0.3/client.go",
+     "quote": "ClientVersion = \"2015-06-06\""
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    },
+    {
+     "route": "route 1",
+     "source": "catalogs",
+     "query": "web search: Alibaba Cloud middleware products ApsaraMQ list RocketMQ Kafka RabbitMQ MQTT MNS EventBridge"
+    },
+    {
+     "route": "route 1",
+     "source": "catalogs",
+     "query": "web search: G2 Best Message Queue (MQ) Software products list (restricted to g2.com)"
+    }
+   ],
+   "note": "A copy of Apache RocketMQ coded for its HTTP interface, which delivers FirstConsumeTime and NextConsumeTime, fields Apache RocketMQ lacks. Its TCP interface and the 5.x series speak RocketMQ's own protocols and are answered by the Apache RocketMQ record.",
+   "modes": [
+    {
+     "mode": "HTTP ConsumeMessage (long polling), non-ordered messages",
+     "Q0": {
+      "fields": [
+       "HTTP 200 response: a <Messages> element with up to 16 <Message> elements; HTTP 404 with the error code MessageNotExist when no message is available",
+       "per message: MessageId, ReceiptHandle, MessageBodyMD5, MessageBody, PublishTime (ms), FirstConsumeTime (ms), NextConsumeTime (ms), ConsumedTimes, MessageTag, Properties",
+       "Properties: key:value pairs; the documented keys KEYS, __STARTDELIVERTIME (a scheduled message's delivery time, ms, set by the producer) and __TransCheckT; the SDKs also read __SHARDINGKEY, the sample shows __BORNHOST, and other keys are the producer's",
+       "response header x-mq-request-id (read by the SDKs)"
+      ],
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "Pull messages from an ApsaraMQ for RocketMQ topic over HTTP. The broker returns up to 16 messages per request in XML format."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "MessageId String Unique message ID. MessageBodyMD5 String MD5 hash of the message body. MessageBody String Message body content. ReceiptHandle String Handle for acknowledging the message."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "PublishTime String Time when the message was published. UNIX timestamp in milliseconds. FirstConsumeTime String Time when the message was first consumed. UNIX timestamp in milliseconds."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "NextConsumeTime String Time when the message becomes available for retry. UNIX timestamp in milliseconds. ConsumedTimes String Number of consumption retries. MessageTag String Message tag. Properties String Serialized message attributes in key-value format."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "KEYS String Message key. __STARTDELIVERTIME Long Scheduled delivery time for a scheduled message. UNIX timestamp in milliseconds. __TransCheckT Long Delay before the first transaction status check for a transactional message, in seconds."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "<Properties>KEYS:MessageKey|__BORNHOST:30.5.**.**|</Properties>"
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "If no messages are available, the broker returns HTTP 404 with the error code MessageNotExist ."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-java-sdk/mq-http-sdk-1.0.3.2/src/main/java/com/aliyun/mq/http/model/serialize/MessageListDeserializer.java",
+        "quote": "String publishTime = safeGetElementContent(root, Constants.PUBLISH_TIME_TAG, null);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-java-sdk/mq-http-sdk-1.0.3.2/src/main/java/com/aliyun/mq/http/model/serialize/MessageListDeserializer.java",
+        "quote": "String firstConsumeTime = safeGetElementContent(root, Constants.FIRST_CONSUME_TIME_TAG, null);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-java-sdk/mq-http-sdk-1.0.3.2/src/main/java/com/aliyun/mq/http/model/serialize/MessageListDeserializer.java",
+        "quote": "message.setMessageTag(safeGetElementContent(root, Constants.MESSAGE_TAG_TAG, null)); String properties = safeGetElementContent(root, Constants.MESSAGE_PROPERTIES, null);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-go-sdk/1.0.3/message.go",
+        "quote": "SHARDING = \"__SHARDINGKEY\""
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "StoreTimestamp (kept; returned by the message query API, not in the consumed message)",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"StoreTimestamp\":{\"description\":\"消息被服务端存储的时间戳。单位：毫秒。\",\"type\":\"integer\",\"format\":\"int64\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"BornTimestamp\":{\"description\":\"消息生成的时间戳。单位：毫秒。\",\"type\":\"integer\",\"format\":\"int64\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"OnsMessageGetByMsgId\":{\"methods\":[\"post\",\"get\"],\"schemes\":[\"http\",\"https\"],\"security\":[{\"AK\":[]}],\"operationType\":\"read\",\"deprecated\":false,\"systemTags\":{\"operationType\":\"get\"},\"parameters\":[{\"name\":\"MsgId\",\"in\":\"query\",\"schema\":{\"description\":\"需查询的消息的ID，即Message ID。\""
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-sending-messages",
+        "quote": "Request body parameters (XML) Parameter Required Description MessageBody Yes Content of the message. MessageTag No Tag for filtering and routing the message. Properties No Message properties as pipe-delimited key-value pairs."
+       }
+      ],
+      "note": "The service's OpenAPI (Ons, version 2019-02-14) returns for each stored message StoreTimestamp, the time the server stored it (ms), and BornTimestamp, the time it was generated (ms); OnsMessageGetByMsgId and the key and topic queries return them for any message by its id. An HTTP publish carries only a body, a tag and properties, so no time of the producer's enters a message published over HTTP."
+     },
+     "Q2": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "PublishTime String Time when the message was published. UNIX timestamp in milliseconds."
+       },
+       {
+        "url": "https://help.aliyun.com/zh/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "PublishTime String 消息的发送时间戳，单位：毫秒。"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-go-sdk/1.0.3/message.go",
+        "quote": "// 消息发送时间 PublishTime int64 `xml:\"PublishTime\" json:\"publish_time\"`"
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"StoreTimestamp\":{\"description\":\"消息被服务端存储的时间戳。单位：毫秒。\",\"type\":\"integer\",\"format\":\"int64\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"BornTimestamp\":{\"description\":\"消息生成的时间戳。单位：毫秒。\",\"type\":\"integer\",\"format\":\"int64\""
+       }
+      ],
+      "note": "The delivered PublishTime is defined only as the time the message was published (Chinese page: 'the message's send timestamp'; Go SDK: 'message send time'). No source says whether it is the stored message's StoreTimestamp, its BornTimestamp, or another time; the OpenAPI distinguishes the two and names neither PublishTime. A message published over HTTP carries no producer time, but one published by a TCP client carries that client's born time. If PublishTime is the store time, Q2 is yes and, with Q3 and Q4, the message carries its stay."
+     },
+     "Q3": {
+      "answer": "send time",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "FirstConsumeTime String Time when the message was first consumed. UNIX timestamp in milliseconds."
+       }
+      ],
+      "changed_on_read_back": {
+       "from": "send time",
+       "why": "NextConsumeTime less 300,000 ms is not a recorded time under reading 2: the documentation states the length of the HTTP retry interval (5 minutes for non-ordered messages) but not the moment it counts from, and its two sample responses differ (300,000 ms and 20,000 ms between FirstConsumeTime and NextConsumeTime)."
+      }
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "The broker returns one or more <Message> elements in XML. Each element contains the following fields:"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-go-sdk/1.0.3/message.go",
+        "quote": "FirstConsumeTime int64 `xml:\"FirstConsumeTime\" json:\"first_consume_time\"`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-go-sdk/1.0.3/message.go",
+        "quote": "NextConsumeTime int64 `xml:\"NextConsumeTime\" json:\"next_consume_time\"`"
+       }
+      ],
+      "note": "Both are in every consumed message, by default; FirstConsumeTime gives the first delivery's time only."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "MessageId String Unique message ID. MessageBodyMD5 String MD5 hash of the message body. MessageBody String Message body content. ReceiptHandle String Handle for acknowledging the message."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "PublishTime String Time when the message was published. UNIX timestamp in milliseconds. FirstConsumeTime String Time when the message was first consumed. UNIX timestamp in milliseconds."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "NextConsumeTime String Time when the message becomes available for retry. UNIX timestamp in milliseconds. ConsumedTimes String Number of consumption retries. MessageTag String Message tag. Properties String Serialized message attributes in key-value format."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "KEYS String Message key. __STARTDELIVERTIME Long Scheduled delivery time for a scheduled message. UNIX timestamp in milliseconds. __TransCheckT Long Delay before the first transaction status check for a transactional message, in seconds."
+       }
+      ],
+      "note": "No delivered field is a duration: ConsumedTimes is a count. FirstConsumeTime less PublishTime can be computed, but no documented rule states it and PublishTime's clock and moment are not determined (Q2)."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "With access to the account: the message query of the OpenAPI (OnsMessageGetByMsgId, OnsMessageGetByKey, OnsMessagePageQueryByTopic) returns each message's StoreTimestamp, the server's store time, and BornTimestamp; the message trace (OnsTraceGetResult) returns per message PubTime and the send's CostTime, and for each consumption SubTime (the start of consumption) and its CostTime, without saying whose clock takes them.",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"StoreTimestamp\":{\"description\":\"消息被服务端存储的时间戳。单位：毫秒。\",\"type\":\"integer\",\"format\":\"int64\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"BornTimestamp\":{\"description\":\"消息生成的时间戳。单位：毫秒。\",\"type\":\"integer\",\"format\":\"int64\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"OnsMessageGetByMsgId\":{\"methods\":[\"post\",\"get\"],\"schemes\":[\"http\",\"https\"],\"security\":[{\"AK\":[]}],\"operationType\":\"read\",\"deprecated\":false,\"systemTags\":{\"operationType\":\"get\"},\"parameters\":[{\"name\":\"MsgId\",\"in\":\"query\",\"schema\":{\"description\":\"需查询的消息的ID，即Message ID。\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"PubTime\":{\"description\":\"消息发送时间。\",\"type\":\"integer\",\"format\":\"int64\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"SubTime\":{\"description\":\"消费开始时间戳。\",\"type\":\"integer\",\"format\":\"int64\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"CostTime\":{\"description\":\"本次消费耗时，单位毫秒。\",\"type\":\"integer\""
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "Long polling ( waitseconds > 0) The broker holds the request open until a message arrives or the timeout elapses."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "waitseconds No Long polling timeout in seconds. Valid values: 0 to 30."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/send-and-subscribe-to-normal-messages-4",
+        "quote": "Concurrency : This example uses a single thread. For higher throughput, consume with multiple threads in production."
+       }
+      ],
+      "note": "A consume request with waitseconds up to 30 is held until a message arrives, and the documentation recommends consuming with several threads, each request taking its own messages (up to 16), so several requests can wait at once, as coded for SQS and Alibaba's Simple Message Queue."
+     },
+     "not_determined": [
+      "Q2"
+     ],
+     "read_back": [
+      {
+       "question": "Q1",
+       "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+       "read": "The Ons OpenAPI (api.aliyun.com, 2019-02-14) defines StoreTimestamp in its message queries as the time the server stored the message, in ms. It is an attribute of the stored message, not a trace, so reading 7 does not apply.",
+       "agrees": true
+      },
+      {
+       "question": "Q2",
+       "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+       "read": "The consume page (English and Chinese), the Go SDK's message.go and the Java SDK's Message.java define PublishTime only as the time the message was published or sent. None says whether it is the store time or the born time.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+       "read": "FirstConsumeTime comes in every consumed message (the consume page's field list; message.go). On a redelivery it is the first delivery's time, not that delivery's.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+       "read": "The consume page: a long poll (up to 30 s) is held open until a message arrives. The normal-messages page tells production consumers to use multiple threads, so several requests wait at once, each taking its own messages.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+       "read": "FirstConsumeTime is defined as the time the message was first consumed, set by the service, so the send-time answer rests on it alone and covers first deliveries only.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "HTTP ConsumeMessageOrderly (trans=order, long polling), ordered messages",
+     "Q0": {
+      "fields": [
+       "HTTP 200 response: a <Messages> element with up to 16 <Message> elements; HTTP 404 with the error code MessageNotExist when no message is available",
+       "per message: MessageId, ReceiptHandle, MessageBodyMD5, MessageBody, PublishTime (ms), FirstConsumeTime (ms), NextConsumeTime (ms), ConsumedTimes, MessageTag, Properties",
+       "Properties: key:value pairs; the documented keys KEYS, __STARTDELIVERTIME (a scheduled message's delivery time, ms, set by the producer) and __TransCheckT; the SDKs also read __SHARDINGKEY, the sample shows __BORNHOST, and other keys are the producer's",
+       "response header x-mq-request-id (read by the SDKs)",
+       "FirstConsumeTime is present but meaningless for orderly consumption (the SDKs)"
+      ],
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "Pull messages from an ApsaraMQ for RocketMQ topic over HTTP. The broker returns up to 16 messages per request in XML format."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "MessageId String Unique message ID. MessageBodyMD5 String MD5 hash of the message body. MessageBody String Message body content. ReceiptHandle String Handle for acknowledging the message."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "PublishTime String Time when the message was published. UNIX timestamp in milliseconds. FirstConsumeTime String Time when the message was first consumed. UNIX timestamp in milliseconds."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "NextConsumeTime String Time when the message becomes available for retry. UNIX timestamp in milliseconds. ConsumedTimes String Number of consumption retries. MessageTag String Message tag. Properties String Serialized message attributes in key-value format."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "KEYS String Message key. __STARTDELIVERTIME Long Scheduled delivery time for a scheduled message. UNIX timestamp in milliseconds. __TransCheckT Long Delay before the first transaction status check for a transactional message, in seconds."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "<Properties>KEYS:MessageKey|__BORNHOST:30.5.**.**|</Properties>"
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "If no messages are available, the broker returns HTTP 404 with the error code MessageNotExist ."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-java-sdk/mq-http-sdk-1.0.3.2/src/main/java/com/aliyun/mq/http/model/serialize/MessageListDeserializer.java",
+        "quote": "String publishTime = safeGetElementContent(root, Constants.PUBLISH_TIME_TAG, null);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-java-sdk/mq-http-sdk-1.0.3.2/src/main/java/com/aliyun/mq/http/model/serialize/MessageListDeserializer.java",
+        "quote": "String firstConsumeTime = safeGetElementContent(root, Constants.FIRST_CONSUME_TIME_TAG, null);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-java-sdk/mq-http-sdk-1.0.3.2/src/main/java/com/aliyun/mq/http/model/serialize/MessageListDeserializer.java",
+        "quote": "message.setMessageTag(safeGetElementContent(root, Constants.MESSAGE_TAG_TAG, null)); String properties = safeGetElementContent(root, Constants.MESSAGE_PROPERTIES, null);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-go-sdk/1.0.3/message.go",
+        "quote": "SHARDING = \"__SHARDINGKEY\""
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-java-sdk/mq-http-sdk-1.0.3.2/src/main/java/com/aliyun/mq/http/MQConsumer.java",
+        "quote": "request.setTrans(\"order\");"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-java-sdk/mq-http-sdk-1.0.3.2/src/main/java/com/aliyun/mq/http/model/Message.java",
+        "quote": "first consume time, it's meaningless for orderly consume."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "StoreTimestamp (kept; returned by the message query API, not in the consumed message)",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"StoreTimestamp\":{\"description\":\"消息被服务端存储的时间戳。单位：毫秒。\",\"type\":\"integer\",\"format\":\"int64\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"BornTimestamp\":{\"description\":\"消息生成的时间戳。单位：毫秒。\",\"type\":\"integer\",\"format\":\"int64\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"OnsMessageGetByMsgId\":{\"methods\":[\"post\",\"get\"],\"schemes\":[\"http\",\"https\"],\"security\":[{\"AK\":[]}],\"operationType\":\"read\",\"deprecated\":false,\"systemTags\":{\"operationType\":\"get\"},\"parameters\":[{\"name\":\"MsgId\",\"in\":\"query\",\"schema\":{\"description\":\"需查询的消息的ID，即Message ID。\""
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-sending-messages",
+        "quote": "Request body parameters (XML) Parameter Required Description MessageBody Yes Content of the message. MessageTag No Tag for filtering and routing the message. Properties No Message properties as pipe-delimited key-value pairs."
+       }
+      ],
+      "note": "The service's OpenAPI (Ons, version 2019-02-14) returns for each stored message StoreTimestamp, the time the server stored it (ms), and BornTimestamp, the time it was generated (ms); OnsMessageGetByMsgId and the key and topic queries return them for any message by its id. An HTTP publish carries only a body, a tag and properties, so no time of the producer's enters a message published over HTTP."
+     },
+     "Q2": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "PublishTime String Time when the message was published. UNIX timestamp in milliseconds."
+       },
+       {
+        "url": "https://help.aliyun.com/zh/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "PublishTime String 消息的发送时间戳，单位：毫秒。"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-go-sdk/1.0.3/message.go",
+        "quote": "// 消息发送时间 PublishTime int64 `xml:\"PublishTime\" json:\"publish_time\"`"
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"StoreTimestamp\":{\"description\":\"消息被服务端存储的时间戳。单位：毫秒。\",\"type\":\"integer\",\"format\":\"int64\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"BornTimestamp\":{\"description\":\"消息生成的时间戳。单位：毫秒。\",\"type\":\"integer\",\"format\":\"int64\""
+       }
+      ],
+      "note": "The delivered PublishTime is defined only as the time the message was published (Chinese page: 'the message's send timestamp'; Go SDK: 'message send time'). No source says whether it is the stored message's StoreTimestamp, its BornTimestamp, or another time; the OpenAPI distinguishes the two and names neither PublishTime. A message published over HTTP carries no producer time, but one published by a TCP client carries that client's born time. If PublishTime is the store time, Q2 is yes and, with Q3 and Q4, the message carries its stay."
+     },
+     "Q3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-java-sdk/mq-http-sdk-1.0.3.2/src/main/java/com/aliyun/mq/http/model/Message.java",
+        "quote": "first consume time, it's meaningless for orderly consume."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "Over HTTP, non-ordered messages are retried every 5 minutes, and ordered messages are retried every 1 minute."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-java-sdk/mq-http-sdk-1.0.3.2/src/main/java/com/aliyun/mq/http/MQConsumer.java",
+        "quote": "Next messages will be consumed if all of same shard are acked. Otherwise, same messages will be consumed again after NextConsumeTime."
+       }
+      ],
+      "note": "FirstConsumeTime is delivered but the SDKs call it meaningless for orderly consumption. NextConsumeTime is when an unacknowledged batch is delivered again; the documentation gives a 1-minute retry interval for ordered messages over HTTP, but no source states the moment it counts from, so it is not counted as a recorded time (the audit's reading of deadlines). Searched: the consume and retry pages, the SDKs' consumer classes and message classes in Java, Go and PHP, and the ordered-message page."
+     },
+     "Q4": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "FirstConsumeTime String Time when the message was first consumed. UNIX timestamp in milliseconds."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "NextConsumeTime String Time when the message becomes available for retry. UNIX timestamp in milliseconds."
+       }
+      ],
+      "note": "FirstConsumeTime and NextConsumeTime come with every message; whether either gives this delivery's time is not determined (Q3)."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "MessageId String Unique message ID. MessageBodyMD5 String MD5 hash of the message body. MessageBody String Message body content. ReceiptHandle String Handle for acknowledging the message."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "PublishTime String Time when the message was published. UNIX timestamp in milliseconds. FirstConsumeTime String Time when the message was first consumed. UNIX timestamp in milliseconds."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "NextConsumeTime String Time when the message becomes available for retry. UNIX timestamp in milliseconds. ConsumedTimes String Number of consumption retries. MessageTag String Message tag. Properties String Serialized message attributes in key-value format."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "KEYS String Message key. __STARTDELIVERTIME Long Scheduled delivery time for a scheduled message. UNIX timestamp in milliseconds. __TransCheckT Long Delay before the first transaction status check for a transactional message, in seconds."
+       }
+      ],
+      "note": "No delivered field is a duration: ConsumedTimes is a count. FirstConsumeTime less PublishTime can be computed, but no documented rule states it and PublishTime's clock and moment are not determined (Q2)."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "With access to the account: the message query of the OpenAPI (OnsMessageGetByMsgId, OnsMessageGetByKey, OnsMessagePageQueryByTopic) returns each message's StoreTimestamp, the server's store time, and BornTimestamp; the message trace (OnsTraceGetResult) returns per message PubTime and the send's CostTime, and for each consumption SubTime (the start of consumption) and its CostTime, without saying whose clock takes them.",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"StoreTimestamp\":{\"description\":\"消息被服务端存储的时间戳。单位：毫秒。\",\"type\":\"integer\",\"format\":\"int64\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"BornTimestamp\":{\"description\":\"消息生成的时间戳。单位：毫秒。\",\"type\":\"integer\",\"format\":\"int64\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"OnsMessageGetByMsgId\":{\"methods\":[\"post\",\"get\"],\"schemes\":[\"http\",\"https\"],\"security\":[{\"AK\":[]}],\"operationType\":\"read\",\"deprecated\":false,\"systemTags\":{\"operationType\":\"get\"},\"parameters\":[{\"name\":\"MsgId\",\"in\":\"query\",\"schema\":{\"description\":\"需查询的消息的ID，即Message ID。\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"PubTime\":{\"description\":\"消息发送时间。\",\"type\":\"integer\",\"format\":\"int64\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"SubTime\":{\"description\":\"消费开始时间戳。\",\"type\":\"integer\",\"format\":\"int64\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+        "quote": "\"CostTime\":{\"description\":\"本次消费耗时，单位毫秒。\",\"type\":\"integer\""
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/send-and-subscribe-to-ordered-messages-3",
+        "quote": "You must acknowledge all messages in a batch before the broker delivers the next batch from the same partition."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/send-and-subscribe-to-ordered-messages-3",
+        "quote": "A single call may return messages from multiple partitions."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-java-sdk/mq-http-sdk-1.0.3.2/src/main/java/com/aliyun/mq/http/MQConsumer.java",
+        "quote": "This interface is suitable for globally order and partitionally order messages, and could be used in multi-thread scenes."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "Long polling ( waitseconds > 0) The broker holds the request open until a message arrives or the timeout elapses."
+       }
+      ],
+      "note": "Judgment: several long-polling requests can wait at once (the SDK allows several threads), and a response can carry several partitions' messages; within a partition the next batch goes out only after every message of the current one is acknowledged, so the acknowledgment acts as a credit of one batch per partition, as RabbitMQ's prefetch was coded."
+     },
+     "not_determined": [
+      "Q2",
+      "Q3",
+      "Q4"
+     ],
+     "read_back": [
+      {
+       "question": "Q1",
+       "url": "https://api.aliyun.com/meta/v1/products/Ons/versions/2019-02-14/api-docs.json",
+       "read": "As for the non-ordered mode: the Ons OpenAPI defines StoreTimestamp in its message queries as the time the server stored the message, in ms.",
+       "agrees": true
+      },
+      {
+       "question": "Q2",
+       "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+       "read": "As for the non-ordered mode: PublishTime is defined only as the time the message was published or sent.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-java-sdk/mq-http-sdk-1.0.3.2/src/main/java/com/aliyun/mq/http/model/Message.java",
+       "read": "The Java, Go and PHP SDKs call FirstConsumeTime meaningless for ordered consumption. The 1-minute retry interval for ordered messages over HTTP has no stated moment it counts from (reading 2).",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+       "read": "It follows Q3: the SDKs call FirstConsumeTime meaningless for ordered consumption, and the retry interval has no stated starting moment.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/send-and-subscribe-to-ordered-messages-3",
+       "read": "The ordered-messages page: one call may return messages from several partitions, and the next batch of a partition goes out only after every message of the current batch is acknowledged. That acts as a credit of one batch per partition. The Java SDK allows several threads.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "HTTP PublishMessage (normal, ordered, scheduled, delayed and transactional half messages)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "HTTP 201 response: a <Message> element with MessageId (assigned by the broker) and MessageBodyMD5",
+       "ReceiptHandle, for transactional half messages only (the SDKs)",
+       "response header x-mq-request-id (read by the SDKs)"
+      ],
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-sending-messages",
+        "quote": "Response Success Status line: HTTP/1.1 201 Response body: Parameter Type Description MessageId String Unique ID assigned to the message by the broker. MessageBodyMD5 String MD5 hash of the message body."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-go-sdk/1.0.3/message.go",
+        "quote": "// 消息句柄只有事务消息才有 ReceiptHandle string `xml:\"ReceiptHandle\" json:\"receipt_handle\"`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-java-sdk/mq-http-sdk-1.0.3.2/src/main/java/com/aliyun/mq/http/model/serialize/TopicMessageDeserializer.java",
+        "quote": "String handle = safeGetElementContent(root, Constants.RECEIPT_HANDLE_TAG, null);"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-sending-messages",
+        "quote": "MessageId String Unique ID assigned to the message by the broker. MessageBodyMD5 String MD5 hash of the message body."
+       }
+      ],
+      "note": "The acknowledgment carries an id and a digest, no time."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-sending-messages",
+        "quote": "MessageId String Unique ID assigned to the message by the broker. MessageBodyMD5 String MD5 hash of the message body."
+       }
+      ],
+      "note": "The pages read define no time header of the API's own. The HTTP Date header of the response is not counted; if it were, it would give a send time to the second."
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-sending-messages",
+        "quote": "MessageId String Unique ID assigned to the message by the broker. MessageBodyMD5 String MD5 hash of the message body."
+       }
+      ]
+     },
+     "note": "A transactional producer commits or rolls back a half message by acknowledging its receipt handle with trans=commit or trans=rollback, and consumes half messages to check them (trans=pop); these carry the same message fields as consumption.",
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Tencent Cloud TDMQ for RocketMQ (HTTP interface)",
+   "group": "C",
+   "kind": "cloud service",
+   "version": "HTTP access compatible with the community HTTP SDK (documentation retrieved 2026-10-27); SDK mq-http-php-sdk 1.0.4 (HTTP API 2015-06-06); TencentCloud API tdmq 2020-02-17 (tencentcloud-sdk-go v1.3.202)",
+   "version_evidence": [
+    {
+     "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+     "quote": "TDMQ for RocketMQ is compatible with the community edition HTTP SDK."
+    },
+    {
+     "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+     "quote": "{ \"require\" : { \"aliyunmq/mq-http-sdk\" : \">=1.0.4\" } }"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-php-sdk/1.0.4/MQ/Constants.php",
+     "quote": "const VERSION_VALUE = \"2015-06-06\";"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "catalogs",
+     "query": "web search: Tencent Cloud TDMQ product family CKafka RocketMQ RabbitMQ Pulsar CMQ MQTT documentation"
+    },
+    {
+     "route": "route 1",
+     "source": "catalogs",
+     "query": "sub-products of TDMQ: CKafka, RocketMQ, RabbitMQ, Pulsar, MQTT, CMQ"
+    }
+   ],
+   "note": "A copy of Apache RocketMQ coded for its HTTP interface: its own HTTP page prints FirstConsumeTime and NextConsumeTime from each consumed message, fields Apache RocketMQ lacks. It accepts the community HTTP SDK that Alibaba's ApsaraMQ for RocketMQ publishes. Transactional messages are not supported over HTTP, and the HTTP page documents only non-ordered consumption.",
+   "modes": [
+    {
+     "mode": "HTTP consumeMessage (long polling)",
+     "Q0": {
+      "fields": [
+       "per message: MessageId, ReceiptHandle, MessageBodyMD5, MessageBody, PublishTime, FirstConsumeTime, NextConsumeTime, ConsumedTimes, MessageTag, Properties (the SDK's message class; the page's sample prints the four times and counts)",
+       "up to 16 messages per request"
+      ],
+      "evidence": [
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+        "quote": "TDMQ for RocketMQ is compatible with the community edition HTTP SDK."
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+        "quote": "printf ( \"MessageID:%s TAG:%s BODY:%s \\\\nPublishTime:%d, FirstConsumeTime:%d, \\\\nConsumedTimes:%d, NextConsumeTime:%d,MessageKey:%s\\\\n\" ,"
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+        "quote": "$message -> getPublishTime ( ) , $message -> getFirstConsumeTime ( ) , $message -> getConsumedTimes ( ) , $message -> getNextConsumeTime ( )"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-php-sdk/1.0.4/MQ/Traits/MessagePropertiesForConsume.php",
+        "quote": "protected $publishTime; protected $nextConsumeTime; protected $firstConsumeTime; protected $consumedTimes;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-php-sdk/1.0.4/MQ/Model/Message.php",
+        "quote": "$message = new Message( $messageId, $messageBodyMD5, $messageBody, $publishTime, $nextConsumeTime, $firstConsumeTime, $consumedTimes, $receiptHandle, $messageTag, $properties ); return $message;"
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+        "quote": "batchSize Number of messages pulled in a single batch. It supports up to 16 messages. waitSeconds Wait time in round-robin scheduling for a single pull request. It supports up to 30 seconds."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "StoreTimestamp (kept; returned by ExportRocketMQMessageDetail, not in the consumed message)",
+      "resolution": "not stated (int64 timestamp)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/TencentCloud/tencentcloud-sdk-go/v1.3.202/tencentcloud/tdmq/v20200217/models.go",
+        "quote": "// 消息存储时间戳 // 注意：此字段可能返回 null，表示取不到有效值。 StoreTimestamp *int64 `json:\"StoreTimestamp,omitnil,omitempty\" name:\"StoreTimestamp\"`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/TencentCloud/tencentcloud-sdk-go/v1.3.202/tencentcloud/tdmq/v20200217/models.go",
+        "quote": "// 消息生成时间戳 // 注意：此字段可能返回 null，表示取不到有效值。 BornTimestamp *int64 `json:\"BornTimestamp,omitnil,omitempty\" name:\"BornTimestamp\"`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/TencentCloud/tencentcloud-sdk-go/v1.3.202/tencentcloud/tdmq/v20200217/models.go",
+        "quote": "// 消息id MsgId *string `json:\"MsgId,omitnil,omitempty\" name:\"MsgId\"` // 是否包含消息体 IncludeMsgBody *bool `json:\"IncludeMsgBody,omitnil,omitempty\" name:\"IncludeMsgBody\"`"
+       }
+      ],
+      "note": "Tencent's API returns for a message, by its id, BornTimestamp ('message generated timestamp') and StoreTimestamp ('message store timestamp'). Its unit is not stated in the model."
+     },
+     "Q2": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+        "quote": "printf ( \"MessageID:%s TAG:%s BODY:%s \\\\nPublishTime:%d, FirstConsumeTime:%d, \\\\nConsumedTimes:%d, NextConsumeTime:%d,MessageKey:%s\\\\n\" ,"
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+        "quote": "$message -> getPublishTime ( ) , $message -> getFirstConsumeTime ( ) , $message -> getConsumedTimes ( ) , $message -> getNextConsumeTime ( )"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-php-sdk/1.0.4/MQ/Traits/MessagePropertiesForConsume.php",
+        "quote": "public function getPublishTime() { return $this->publishTime; }"
+       }
+      ],
+      "note": "Tencent's page prints PublishTime and does not define it; the SDK names it only. Whether it is the store time is not determined. If it is, Q2 is yes."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "NextConsumeTime less the 5-minute retry interval (every delivery); FirstConsumeTime (first delivery, by the SDK's name)",
+      "resolution": "ms (as the SDKs parse it; Tencent states no unit)",
+      "evidence": [
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+        "quote": "HTTP uses a mechanism with a fixed retry interval: Retry Interval Maximum Number of Retries 5 minutes"
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+        "quote": "If the client has not acknowledged the message by the end of the retry interval, the client will consume the message again. The message handle for each consumption is only valid within the retry interval and expires afterward."
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+        "quote": "printf ( \"MessageID:%s TAG:%s BODY:%s \\\\nPublishTime:%d, FirstConsumeTime:%d, \\\\nConsumedTimes:%d, NextConsumeTime:%d,MessageKey:%s\\\\n\" ,"
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-rocketmq/cloud-message-queue-rocketmq-4-x-series/developer-reference/operation-for-consuming-messages",
+        "quote": "NextConsumeTime String Time when the message becomes available for retry. UNIX timestamp in milliseconds."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-java-sdk/mq-http-sdk-1.0.3.2/src/main/java/com/aliyun/mq/http/MQConsumer.java",
+        "quote": "If the messages gotten by {@link #consumeMessage(int, int)} are not acked by {@link #ackMessage(List)}, they will be consumable again after 300 seconds;"
+       }
+      ],
+      "note": "Judgment. Tencent's page says each consumption's handle is valid only within the fixed 5-minute retry interval and that a message not acknowledged by its end is consumed again; NextConsumeTime is, in the HTTP interface's definition, when the message becomes available for retry. So NextConsumeTime less 5 minutes is the time of each delivery. FirstConsumeTime is named in Tencent's sample and defined only by the SDK and Alibaba's documentation (time of first consumption). Coded as send time, the weaker verdict."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+        "quote": "printf ( \"MessageID:%s TAG:%s BODY:%s \\\\nPublishTime:%d, FirstConsumeTime:%d, \\\\nConsumedTimes:%d, NextConsumeTime:%d,MessageKey:%s\\\\n\" ,"
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+        "quote": "$message -> getPublishTime ( ) , $message -> getFirstConsumeTime ( ) , $message -> getConsumedTimes ( ) , $message -> getNextConsumeTime ( )"
+       }
+      ],
+      "note": "Both come with every consumed message, as the page's sample prints them."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+        "quote": "printf ( \"MessageID:%s TAG:%s BODY:%s \\\\nPublishTime:%d, FirstConsumeTime:%d, \\\\nConsumedTimes:%d, NextConsumeTime:%d,MessageKey:%s\\\\n\" ,"
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+        "quote": "$message -> getPublishTime ( ) , $message -> getFirstConsumeTime ( ) , $message -> getConsumedTimes ( ) , $message -> getNextConsumeTime ( )"
+       }
+      ],
+      "note": "No delivered field is a duration; ConsumedTimes is a count."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "With access to the account: ExportRocketMQMessageDetail returns a message's StoreTimestamp and BornTimestamp by its id; DescribeRocketMQMsg returns its ProduceTime and consumption tracks.",
+      "resolution": "not stated",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/TencentCloud/tencentcloud-sdk-go/v1.3.202/tencentcloud/tdmq/v20200217/models.go",
+        "quote": "// 消息存储时间戳 // 注意：此字段可能返回 null，表示取不到有效值。 StoreTimestamp *int64 `json:\"StoreTimestamp,omitnil,omitempty\" name:\"StoreTimestamp\"`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/TencentCloud/tencentcloud-sdk-go/v1.3.202/tencentcloud/tdmq/v20200217/models.go",
+        "quote": "// 消息生成时间戳 // 注意：此字段可能返回 null，表示取不到有效值。 BornTimestamp *int64 `json:\"BornTimestamp,omitnil,omitempty\" name:\"BornTimestamp\"`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/TencentCloud/tencentcloud-sdk-go/v1.3.202/tencentcloud/tdmq/v20200217/models.go",
+        "quote": "// 消息id MsgId *string `json:\"MsgId,omitnil,omitempty\" name:\"MsgId\"` // 是否包含消息体 IncludeMsgBody *bool `json:\"IncludeMsgBody,omitnil,omitempty\" name:\"IncludeMsgBody\"`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/TencentCloud/tencentcloud-sdk-go/v1.3.202/tencentcloud/tdmq/v20200217/models.go",
+        "quote": "// 生产时间 ProduceTime *string `json:\"ProduceTime,omitnil,omitempty\" name:\"ProduceTime\"`"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+        "quote": "Long round-robin scheduling means that if there are no messages in the topic, the request waits on the server side."
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+        "quote": "If your business is sensitive to consumption delays, it is highly recommended to pull messages concurrently."
+       }
+      ],
+      "note": "A pull request waits up to 30 s for a message, and the page recommends pulling concurrently, so several requests can wait at once."
+     },
+     "not_determined": [
+      "Q2"
+     ],
+     "read_back": [
+      {
+       "question": "Q2",
+       "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+       "read": "The PHP SDK page (intl.cloud.tencent.com/document/product/1113/71877) prints PublishTime without defining it; the PHP SDK 1.0.4 has a getter only.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+       "read": "The same page: when the topic is empty the request waits on the server side, and it recommends pulling messages concurrently when consumption delay matters.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+       "read": "Tencent's page gives a fixed 5-minute retry interval, says a message not acknowledged by its end is consumed again and that each consumption's handle is valid only within it, but it defines neither NextConsumeTime nor FirstConsumeTime and does not say whether the interval counts from the pull request or the response; the field meanings come only from Alibaba's documentation of the same HTTP SDK (the page says the community edition HTTP SDK works unchanged), whose NextConsumeTime reading fails reading 2.",
+       "agrees": false
+      },
+      {
+       "question": "Q4",
+       "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+       "read": "It follows Q3: the page's sample prints FirstConsumeTime and NextConsumeTime for every consumed message, but Tencent defines neither, so whether either is a service time of the consumption rests on Alibaba's documentation of the same SDK.",
+       "agrees": false
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "HTTP publishMessage",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "MessageId and MessageBodyMD5 (the SDK also reads a ReceiptHandle, given only for transactional messages, which Tencent does not support over HTTP)"
+      ],
+      "evidence": [
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+        "quote": "print \"Send success. msgId is:\" . $result -> getMessageId ( ) . \", bodyMD5 is:\" . $result -> getMessageBodyMD5 ( )"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-php-sdk/1.0.4/MQ/Responses/PublishMessageResponse.php",
+        "quote": "$topicMessage->setMessageId($message->getMessageId()); $topicMessage->setMessageBodyMD5($message->getMessageBodyMD5()); $topicMessage->setReceiptHandle($message->getReceiptHandle());"
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1113/71877",
+        "quote": "Note: Transactional messages are not compatible with HTTP."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-php-sdk/1.0.4/MQ/Responses/PublishMessageResponse.php",
+        "quote": "$topicMessage->setMessageId($message->getMessageId()); $topicMessage->setMessageBodyMD5($message->getMessageBodyMD5());"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-php-sdk/1.0.4/MQ/Responses/PublishMessageResponse.php",
+        "quote": "$topicMessage->setMessageId($message->getMessageId()); $topicMessage->setMessageBodyMD5($message->getMessageBodyMD5());"
+       }
+      ],
+      "note": "The HTTP Date header is not counted."
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/aliyunmq/mq-http-php-sdk/1.0.4/MQ/Responses/PublishMessageResponse.php",
+        "quote": "$topicMessage->setMessageId($message->getMessageId()); $topicMessage->setMessageBodyMD5($message->getMessageBodyMD5());"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Alibaba Cloud ApsaraMQ for MQTT",
+   "group": "C",
+   "kind": "cloud service",
+   "version": "MQTT 3.1.1 and 5.0 (documentation of the upgraded series retrieved 2026-10-27); OpenAPI OnsMqtt 2020-04-20; mqtt-server-sdk at commit 5dfe7ee71c078db7755411806c63b5864df54a1b",
+   "version_evidence": [
+    {
+     "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/mqtt-5-0-overview",
+     "quote": "ApsaraMQ for MQTT supports both protocol versions."
+    },
+    {
+     "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+     "quote": "\"version\":\"2020-04-20\""
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    },
+    {
+     "route": "route 1",
+     "source": "catalogs",
+     "query": "web search: Alibaba Cloud middleware products ApsaraMQ list RocketMQ Kafka RabbitMQ MQTT MNS EventBridge"
+    }
+   ],
+   "note": "Coded from the developer reference of the upgraded series, the OnsMqtt OpenAPI metadata, the OASIS MQTT 3.1.1 and 5.0 standards the service says it supports, and Alibaba's server SDK. MQTT 5.0 is offered on Professional, Enterprise Platinum and Serverless instances.",
+   "modes": [
+    {
+     "mode": "MQTT 3.1.1 subscriptions, QoS 0, 1 and 2",
+     "Q0": {
+      "fields": [
+       "fixed header: MQTT Control Packet type (3), DUP flag, QoS level, RETAIN (the service supports no retained messages)",
+       "variable header: Topic Name, Packet Identifier (QoS 1 and 2)",
+       "Payload: the Application Message"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "MQTT Control Packet type (3) DUP flag QoS level RETAIN"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the following fields in the order: Topic Name, Packet Identifier."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The Payload contains the Application Message that is being published."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/mqtt-5-0-overview",
+        "quote": "ApsaraMQ for MQTT supports both protocol versions."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/mqtt-5-0-overview",
+        "quote": "ApsaraMQ for MQTT does not support: Shared subscriptions Will messages Retained messages"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "查询指定消息的发送轨迹。当消息的收发不符合预期时，您可以通过该接口查看消息的发布时间、发布客户端等详细信息，帮助您快速定位异常原因。"
+       }
+      ],
+      "changed_on_read_back": {
+       "from": "always",
+       "why": "The only per-message time the documentation shows is the send time in the publish trace, a trace entry that reading 7 counts under Q6 only; no message attribute, stored-message time or stamp on a delivered message is documented."
+      }
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "查询指定消息的投递轨迹。当消息的收发不符合预期时，您可以通过该接口查看订阅该消息的客户端、消息的投递时间等详细信息，帮助您快速定位异常原因。"
+       }
+      ],
+      "changed_on_read_back": {
+       "from": "send time",
+       "why": "The only per-message delivery time the documentation shows is the delivery time in the delivery trace, a trace entry that reading 7 counts under Q6 only; no request arrival or send time kept as message state is documented."
+      }
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "MQTT Control Packet type (3) DUP flag QoS level RETAIN"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the following fields in the order: Topic Name, Packet Identifier."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The Payload contains the Application Message that is being published."
+       }
+      ],
+      "note": "MQTT 3.1.1 has no expiry property and no duration in a PUBLISH."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "With access to the account: the console's message trace query and the OpenAPI (QueryMqttTraceMessagePublish, QueryMqttTraceMessageSubscribe, QueryMqttTraceMessageOfClient) give, per message, its send time and publishing client, and each delivery's time and receiving client (including pushes to cloud-side consumption); a query spans at most one day.",
+      "resolution": "ms (documented examples such as 2021-05-21 15:08:19.210)",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/user-guide/query-the-message-traces",
+        "quote": "If messages are not sent or received as expected, you can use the message trace query feature of ApsaraMQ for MQTT to query the traces of the messages."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/user-guide/query-the-message-traces",
+        "quote": "The maximum time span is one day."
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "\"Time\":{\"description\":\"消息的发送时间。\",\"type\":\"string\",\"example\":\"2021-05-21 15:08:19.210\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "\"Time\":{\"description\":\"消息的投递时间。\",\"type\":\"string\",\"example\":\"2021-05-25 16:46:41.274\""
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The Server uses a PUBLISH Packet to send an Application Message to each Client which has a matching subscription."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/subscription-options",
+        "quote": "QoS 0 At most once. The message may be lost. No acknowledgment or retry."
+       }
+      ],
+      "note": "A subscription receives each message as it arrives. MQTT 3.1.1 has no credit (MQTT 5.0's Receive Maximum does not exist in it), and the pages read name no in-flight limit for MQTT 3.1.1 clients; if the service caps unacknowledged QoS 1 and 2 deliveries, the answer would be credit or several, with the same verdict."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q1",
+       "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+       "read": "The publish trace query returns a message's send time as a trace entry (a message trajectory); the OpenAPI describes no message field or stored attribute that carries a time of the service.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+       "read": "The delivery trace query returns the time of each push of a message to a subscribing client as a trace entry (a message trajectory); the OpenAPI describes no stored attribute that carries it.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+       "read": "MQTT 3.1.1 defines no flow-control credit, the pages read name no in-flight limit for MQTT 3.1.1 clients (the Receive Maximum property is documented for MQTT 5.0 only), and the broker sends a PUBLISH to each matching subscription as the message arrives; the answer rests on the absence of a documented limit.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "MQTT 5.0 subscriptions, QoS 0",
+     "Q0": {
+      "fields": [
+       "fixed header: MQTT Control Packet type (3), DUP flag, QoS level, RETAIN (the service supports no retained messages)",
+       "variable header: Topic Name (or a Topic Alias, up to 30 per connection), Packet Identifier (QoS 1 and 2), Properties",
+       "Properties: Payload Format Indicator, Message Expiry Interval, Content Type, Response Topic, Correlation Data, User Properties (stored and forwarded as published), Subscription Identifier (the service declares them available), Topic Alias",
+       "Payload: the Application Message"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "MQTT Control Packet type (3) DUP flag QoS level RETAIN"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBLISH Packet contains the following fields in the order: Topic Name, Packet Identifier, and Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "1 0x01 Payload Format Indicator Byte PUBLISH, Will Properties 2 0x02 Message Expiry Interval Four Byte Integer PUBLISH, Will Properties 3 0x03 Content Type UTF-8 Encoded String PUBLISH, Will Properties"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "8 0x08 Response Topic UTF-8 Encoded String PUBLISH, Will Properties 9 0x09 Correlation Data Binary Data PUBLISH, Will Properties 11 0x0B Subscription Identifier Variable Byte Integer PUBLISH, SUBSCRIBE"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "35 0x23 Topic Alias Two Byte Integer PUBLISH"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "38 0x26 User Property UTF-8 String Pair CONNECT, CONNACK, PUBLISH"
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/mqtt-5-0-user-properties",
+        "quote": "ApsaraMQ for MQTT stores the user properties alongside the message and forwards them to all matching subscribers."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/optimized-device-cloud-interactions",
+        "quote": "Subscription Identifiers Available 1 : Subscription identifiers are supported. 0 : Subscription identifiers are not supported. 1"
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/mqtt-5-0-overview",
+        "quote": "The following ApsaraMQ for MQTT instance types support MQTT 5.0: Professional Edition Enterprise Platinum Edition Serverless instances"
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/mqtt-5-0-overview",
+        "quote": "ApsaraMQ for MQTT does not support: Shared subscriptions Will messages Retained messages"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "查询指定消息的发送轨迹。当消息的收发不符合预期时，您可以通过该接口查看消息的发布时间、发布客户端等详细信息，帮助您快速定位异常原因。"
+       }
+      ],
+      "changed_on_read_back": {
+       "from": "always",
+       "why": "The only per-message time the documentation shows is the send time in the publish trace, a trace entry that reading 7 counts under Q6 only; no message attribute, stored-message time or stamp on a delivered message is documented (the Message Expiry Interval page says only that the broker tracks the elapsed time from receipt for messages that carry an expiry interval)."
+      }
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "查询指定消息的投递轨迹。当消息的收发不符合预期时，您可以通过该接口查看订阅该消息的客户端、消息的投递时间等详细信息，帮助您快速定位异常原因。"
+       }
+      ],
+      "changed_on_read_back": {
+       "from": "send time",
+       "why": "The only per-message delivery time the documentation shows is the delivery time in the delivery trace, a trace entry that reading 7 counts under Q6 only; no request arrival or send time kept as message state is documented."
+      }
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/message-expiry-interval",
+        "quote": "The broker tracks the elapsed time from the moment it receives the message: Message delivered before expiry : The broker forwards the message to the subscriber normally."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/message-expiry-interval",
+        "quote": "The valid range is 60 to 259,200 seconds (1 minute to 3 days). Values outside this range are clamped to the nearest boundary."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The PUBLISH packet sent to a Client by the Server MUST contain a Message Expiry Interval set to the received value minus the time that the Application Message has been waiting in the Server [MQTT-3.3.2-6]."
+       }
+      ],
+      "note": "The documentation says the broker tracks the elapsed time from receipt, forwards a message normally before it expires, and clamps the interval to 60 to 259,200 s; it does not say what interval the forwarded PUBLISH carries. The standard requires the received value less the time the message waited ([MQTT-3.3.2-6]); if the service follows it, this is a derivable stay to the second, as coded for MQTT 5.0, for messages whose publisher set an interval, the subscriber knowing it and the clamping. As for Azure Event Grid's MQTT broker, not determined."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "With access to the account: the console's message trace query and the OpenAPI (QueryMqttTraceMessagePublish, QueryMqttTraceMessageSubscribe, QueryMqttTraceMessageOfClient) give, per message, its send time and publishing client, and each delivery's time and receiving client (including pushes to cloud-side consumption); a query spans at most one day.",
+      "resolution": "ms (documented examples such as 2021-05-21 15:08:19.210)",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/user-guide/query-the-message-traces",
+        "quote": "If messages are not sent or received as expected, you can use the message trace query feature of ApsaraMQ for MQTT to query the traces of the messages."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/user-guide/query-the-message-traces",
+        "quote": "The maximum time span is one day."
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "\"Time\":{\"description\":\"消息的发送时间。\",\"type\":\"string\",\"example\":\"2021-05-21 15:08:19.210\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "\"Time\":{\"description\":\"消息的投递时间。\",\"type\":\"string\",\"example\":\"2021-05-25 16:46:41.274\""
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "There is no mechanism to limit the QoS 0 publications that the Server might try to send."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/subscription-options",
+        "quote": "QoS 0 At most once. The message may be lost. No acknowledgment or retry."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q5"
+     ],
+     "read_back": [
+      {
+       "question": "Q1",
+       "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+       "read": "The publish trace query returns a message's send time as a trace entry (a message trajectory); the OpenAPI describes no message field or stored attribute that carries a time of the service.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+       "read": "The delivery trace query returns the time of each push of a message to a subscribing client as a trace entry (a message trajectory); the OpenAPI describes no stored attribute that carries it.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+       "read": "MQTT 5.0 says there is no mechanism to limit the QoS 0 publications the Server might try to send, and its send quota (MUST NOT, MQTT-4.9.0-2) binds only publications with QoS above 0; the service page lists QoS 0 as at most once, with no acknowledgment or retry.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "MQTT 5.0 subscriptions, QoS 1 and 2",
+     "Q0": {
+      "fields": [
+       "fixed header: MQTT Control Packet type (3), DUP flag, QoS level, RETAIN (the service supports no retained messages)",
+       "variable header: Topic Name (or a Topic Alias, up to 30 per connection), Packet Identifier (QoS 1 and 2), Properties",
+       "Properties: Payload Format Indicator, Message Expiry Interval, Content Type, Response Topic, Correlation Data, User Properties (stored and forwarded as published), Subscription Identifier (the service declares them available), Topic Alias",
+       "Payload: the Application Message"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "MQTT Control Packet type (3) DUP flag QoS level RETAIN"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBLISH Packet contains the following fields in the order: Topic Name, Packet Identifier, and Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "1 0x01 Payload Format Indicator Byte PUBLISH, Will Properties 2 0x02 Message Expiry Interval Four Byte Integer PUBLISH, Will Properties 3 0x03 Content Type UTF-8 Encoded String PUBLISH, Will Properties"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "8 0x08 Response Topic UTF-8 Encoded String PUBLISH, Will Properties 9 0x09 Correlation Data Binary Data PUBLISH, Will Properties 11 0x0B Subscription Identifier Variable Byte Integer PUBLISH, SUBSCRIBE"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "35 0x23 Topic Alias Two Byte Integer PUBLISH"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "38 0x26 User Property UTF-8 String Pair CONNECT, CONNACK, PUBLISH"
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/mqtt-5-0-user-properties",
+        "quote": "ApsaraMQ for MQTT stores the user properties alongside the message and forwards them to all matching subscribers."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/optimized-device-cloud-interactions",
+        "quote": "Subscription Identifiers Available 1 : Subscription identifiers are supported. 0 : Subscription identifiers are not supported. 1"
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/mqtt-5-0-overview",
+        "quote": "The following ApsaraMQ for MQTT instance types support MQTT 5.0: Professional Edition Enterprise Platinum Edition Serverless instances"
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/mqtt-5-0-overview",
+        "quote": "ApsaraMQ for MQTT does not support: Shared subscriptions Will messages Retained messages"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "查询指定消息的发送轨迹。当消息的收发不符合预期时，您可以通过该接口查看消息的发布时间、发布客户端等详细信息，帮助您快速定位异常原因。"
+       }
+      ],
+      "changed_on_read_back": {
+       "from": "always",
+       "why": "The only per-message time the documentation shows is the send time in the publish trace, a trace entry that reading 7 counts under Q6 only; no message attribute, stored-message time or stamp on a delivered message is documented (the Message Expiry Interval page says only that the broker tracks the elapsed time from receipt for messages that carry an expiry interval)."
+      }
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "查询指定消息的投递轨迹。当消息的收发不符合预期时，您可以通过该接口查看订阅该消息的客户端、消息的投递时间等详细信息，帮助您快速定位异常原因。"
+       }
+      ],
+      "changed_on_read_back": {
+       "from": "send time",
+       "why": "The only per-message delivery time the documentation shows is the delivery time in the delivery trace, a trace entry that reading 7 counts under Q6 only; no request arrival or send time kept as message state is documented."
+      }
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/message-expiry-interval",
+        "quote": "The broker tracks the elapsed time from the moment it receives the message: Message delivered before expiry : The broker forwards the message to the subscriber normally."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/message-expiry-interval",
+        "quote": "The valid range is 60 to 259,200 seconds (1 minute to 3 days). Values outside this range are clamped to the nearest boundary."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The PUBLISH packet sent to a Client by the Server MUST contain a Message Expiry Interval set to the received value minus the time that the Application Message has been waiting in the Server [MQTT-3.3.2-6]."
+       }
+      ],
+      "note": "The documentation says the broker tracks the elapsed time from receipt, forwards a message normally before it expires, and clamps the interval to 60 to 259,200 s; it does not say what interval the forwarded PUBLISH carries. The standard requires the received value less the time the message waited ([MQTT-3.3.2-6]); if the service follows it, this is a derivable stay to the second, as coded for MQTT 5.0, for messages whose publisher set an interval, the subscriber knowing it and the clamping. As for Azure Event Grid's MQTT broker, not determined."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "With access to the account: the console's message trace query and the OpenAPI (QueryMqttTraceMessagePublish, QueryMqttTraceMessageSubscribe, QueryMqttTraceMessageOfClient) give, per message, its send time and publishing client, and each delivery's time and receiving client (including pushes to cloud-side consumption); a query spans at most one day.",
+      "resolution": "ms (documented examples such as 2021-05-21 15:08:19.210)",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/user-guide/query-the-message-traces",
+        "quote": "If messages are not sent or received as expected, you can use the message trace query feature of ApsaraMQ for MQTT to query the traces of the messages."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/user-guide/query-the-message-traces",
+        "quote": "The maximum time span is one day."
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "\"Time\":{\"description\":\"消息的发送时间。\",\"type\":\"string\",\"example\":\"2021-05-21 15:08:19.210\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "\"Time\":{\"description\":\"消息的投递时间。\",\"type\":\"string\",\"example\":\"2021-05-25 16:46:41.274\""
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/optimized-device-cloud-interactions",
+        "quote": "The Receive Maximum property can be used to limit the maximum number of messages with QoS 1 or 2 that the peer client or server can send."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/optimized-device-cloud-interactions",
+        "quote": "If the number of unpublished messages in the peer client or server is equal to the specified value of the Receive Maximum property, messages whose QoS is 1 or 2 can no longer be sent."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Receive Maximum establishes a send quota which is used to limit the number of PUBLISH QOS > 0 packets which can be sent without receiving an PUBACK (for QoS 1) or PUBCOMP (for QoS 2)."
+       }
+      ],
+      "note": "The client's Receive Maximum caps unacknowledged QoS 1 and 2 deliveries: a credit renewed by PUBACK or PUBCOMP."
+     },
+     "not_determined": [
+      "Q5"
+     ],
+     "read_back": [
+      {
+       "question": "Q1",
+       "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+       "read": "The publish trace query returns a message's send time as a trace entry (a message trajectory); the OpenAPI describes no message field or stored attribute that carries a time of the service.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+       "read": "The delivery trace query returns the time of each push of a message to a subscribing client as a trace entry (a message trajectory); the OpenAPI describes no stored attribute that carries it.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/developer-reference/optimized-device-cloud-interactions",
+       "read": "The service page says the Receive Maximum property limits the QoS 1 and 2 messages the server can send (when the unacknowledged count equals it, no more can be sent), and MQTT 5.0 makes this a MUST NOT (MQTT-4.9.0-2) with PUBACK and PUBCOMP replenishing the send quota.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "server application subscription (mqtt-server-sdk, Go, over AMQP 0-9-1)",
+     "Q0": {
+      "fields": [
+       "msgId (the AMQP message-id)",
+       "MessageProperties: FirstTopic (header mqttParentTopic), SecondTopic (header mqttSecondTopic), ClientId (header clientId)",
+       "body"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/AliwareMQ/mqtt-server-sdk/5dfe7ee71c078db7755411806c63b5864df54a1b/go/server-sdk/server_consumer.go",
+        "quote": "type MessageProperties struct { FirstTopic string SecondTopic string ClientId string }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AliwareMQ/mqtt-server-sdk/5dfe7ee71c078db7755411806c63b5864df54a1b/go/server-sdk/server_consumer.go",
+        "quote": "Process(msgId string, messageProperties *MessageProperties, body []byte) error"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AliwareMQ/mqtt-server-sdk/5dfe7ee71c078db7755411806c63b5864df54a1b/go/server-sdk/server_consumer.go",
+        "quote": "err := messageListener.Process(d.MessageId, &MessageProperties{ FirstTopic: firstTopicValue, SecondTopic: secondTopicValue, ClientId: clientIdValue, }, d.Body)"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "查询指定消息的发送轨迹。当消息的收发不符合预期时，您可以通过该接口查看消息的发布时间、发布客户端等详细信息，帮助您快速定位异常原因。"
+       }
+      ],
+      "changed_on_read_back": {
+       "from": "always",
+       "why": "The only per-message time the documentation shows is the send time in the publish trace, a trace entry that reading 7 counts under Q6 only; no message attribute, stored-message time or stamp on a message delivered to a server application is documented."
+      }
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "查询指定设备在一定时间段内的消息列表。当消息的收发不符合预期时，您可以通过该接口查看消息的收发状态等轨迹信息，帮助您快速定位异常原因。"
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "**ServerPush**：推送至云端消费。"
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "消息发送的时间或被消费的时间。"
+       }
+      ],
+      "changed_on_read_back": {
+       "from": "send time",
+       "why": "The only per-message time the documentation shows for server applications is in the client message trace (QueryMqttTraceMessageOfClient), which lists actions such as ServerPush with a time described as the time the message was sent or consumed; a trace entry counts under Q6 only (reading 7), and the entry does not say whether the time is that of the push or of the consumption."
+      }
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/AliwareMQ/mqtt-server-sdk/5dfe7ee71c078db7755411806c63b5864df54a1b/go/server-sdk/server_consumer.go",
+        "quote": "type MessageProperties struct { FirstTopic string SecondTopic string ClientId string }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AliwareMQ/mqtt-server-sdk/5dfe7ee71c078db7755411806c63b5864df54a1b/go/server-sdk/server_consumer.go",
+        "quote": "Process(msgId string, messageProperties *MessageProperties, body []byte) error"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AliwareMQ/mqtt-server-sdk/5dfe7ee71c078db7755411806c63b5864df54a1b/go/server-sdk/server_consumer.go",
+        "quote": "err := messageListener.Process(d.MessageId, &MessageProperties{ FirstTopic: firstTopicValue, SecondTopic: secondTopicValue, ClientId: clientIdValue, }, d.Body)"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "With access to the account: the console's message trace query and the OpenAPI (QueryMqttTraceMessagePublish, QueryMqttTraceMessageSubscribe, QueryMqttTraceMessageOfClient) give, per message, its send time and publishing client, and each delivery's time and receiving client (including pushes to cloud-side consumption); a query spans at most one day.",
+      "resolution": "ms (documented examples such as 2021-05-21 15:08:19.210)",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/user-guide/query-the-message-traces",
+        "quote": "If messages are not sent or received as expected, you can use the message trace query feature of ApsaraMQ for MQTT to query the traces of the messages."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/apsaramq-for-mqtt/mqtt-upgraded/user-guide/query-the-message-traces",
+        "quote": "The maximum time span is one day."
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "\"Time\":{\"description\":\"消息的发送时间。\",\"type\":\"string\",\"example\":\"2021-05-21 15:08:19.210\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "\"Time\":{\"description\":\"消息的投递时间。\",\"type\":\"string\",\"example\":\"2021-05-25 16:46:41.274\""
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/AliwareMQ/mqtt-server-sdk/5dfe7ee71c078db7755411806c63b5864df54a1b/go/server-sdk/server_consumer.go",
+        "quote": "deliveries, err := channel.Consume( firstTopic, consumerTag, false, // noAck"
+       }
+      ],
+      "note": "Judgment: the SDK subscribes with basic.consume, acknowledges each delivery and sets no prefetch limit (no basic.qos call), so the subscription has no credit to run out. The service's AMQP endpoint is not documented; a server-side window would make it credit or several, with the same verdict."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q1",
+       "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+       "read": "The publish trace query returns a message's send time as a trace entry (a message trajectory); the OpenAPI describes no message field or stored attribute that carries a time of the service.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+       "read": "The client message trace lists ServerPush, pushed to cloud-side consumption, with a time described as the time the message was sent or consumed; it is a trace entry, and the OpenAPI describes no stored attribute that carries it.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/AliwareMQ/mqtt-server-sdk/5dfe7ee71c078db7755411806c63b5864df54a1b/go/server-sdk/server_consumer.go",
+       "read": "The Go server SDK calls channel.Consume with noAck false and acknowledges each delivery, and the file contains no Qos call, so no prefetch limit is set; the service's AMQP endpoint is not documented, so a window kept by the service is not excluded.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQTT PUBLISH, QoS 0",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "Table 3.4 - Expected Publish Packet response QoS Level Expected Response QoS 0 None QoS 1 PUBACK Packet QoS 2 PUBREC Packet"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "QoS Level Expected Response QoS 0 None QoS 1 PUBACK packet QoS 2 PUBREC packet"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "MQTT PUBLISH, QoS 1 (PUBACK) and QoS 2 (PUBREC, PUBCOMP)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "MQTT 3.1.1: Packet Identifier only (PUBACK, PUBREC and PUBCOMP have no payload)",
+       "MQTT 5.0: Packet Identifier, Reason Code, Properties (Reason String, User Property)"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "This contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The PUBACK Packet has no payload."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "3.4.2.2.2 Reason String 31 (0x1F) Byte , Identifier of the Reason String."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "3.4.2.2.3 User Property 38 (0x26) Byte, Identifier of the User Property. Followed by UTF-8 String Pair. This property can be used to provide additional diagnostic or other information."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBREC Packet consists of the following fields in the order: the Packet Identifier from the PUBLISH packet that is being acknowledged, PUBREC Reason Code, and Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBCOMP Packet contains the following fields in the order: Packet Identifier from the PUBREL packet that is being acknowledged, PUBCOMP Reason Code, and Properties."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the Properties."
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the Properties."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the Properties."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "OpenAPI SendMessage (server application)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "MsgId",
+       "RequestId"
+      ],
+      "evidence": [
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "\"MsgId\":{\"description\":\"消息的唯一标识，消息发送成功后服务端会返回消息ID。\""
+       },
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "从服务端应用向云消息队列 MQTT 版发送单条消息。"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "\"MsgId\":{\"description\":\"消息的唯一标识，消息发送成功后服务端会返回消息ID。\""
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "\"MsgId\":{\"description\":\"消息的唯一标识，消息发送成功后服务端会返回消息ID。\""
+       }
+      ],
+      "note": "The HTTP Date header of the API's response is not counted."
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://api.aliyun.com/meta/v1/products/OnsMqtt/versions/2020-04-20/api-docs.json",
+        "quote": "\"MsgId\":{\"description\":\"消息的唯一标识，消息发送成功后服务端会返回消息ID。\""
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "server SDK SendMessage (mqtt-server-sdk, AMQP 0-9-1 publisher confirms)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "AMQP publisher confirm (basic.ack or basic.nack), read by the SDK as Ack true or false; the SDK returns the message id it generated itself"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/AliwareMQ/mqtt-server-sdk/5dfe7ee71c078db7755411806c63b5864df54a1b/go/server-sdk/server_producer.go",
+        "quote": "if err := channel.Confirm(false); err != nil {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AliwareMQ/mqtt-server-sdk/5dfe7ee71c078db7755411806c63b5864df54a1b/go/server-sdk/server_producer.go",
+        "quote": "messageId := strings.ReplaceAll(uuid.NewString(), \"-\", \"\")"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AliwareMQ/mqtt-server-sdk/5dfe7ee71c078db7755411806c63b5864df54a1b/go/server-sdk/server_producer.go",
+        "quote": "case confirmed := <-confirms: if confirmed.Ack { return messageId, nil }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/AliwareMQ/mqtt-server-sdk/5dfe7ee71c078db7755411806c63b5864df54a1b/go/server-sdk/server_producer.go",
+        "quote": "case confirmed := <-confirms: if confirmed.Ack { return messageId, nil }"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/AliwareMQ/mqtt-server-sdk/5dfe7ee71c078db7755411806c63b5864df54a1b/go/server-sdk/server_producer.go",
+        "quote": "case confirmed := <-confirms: if confirmed.Ack { return messageId, nil }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/AliwareMQ/mqtt-server-sdk/5dfe7ee71c078db7755411806c63b5864df54a1b/go/server-sdk/server_producer.go",
+        "quote": "case confirmed := <-confirms: if confirmed.Ack { return messageId, nil }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  }
+ ]
+}

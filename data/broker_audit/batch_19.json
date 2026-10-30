@@ -1,0 +1,3773 @@
+{
+ "audited_utc": "2026-10-29",
+ "brokers": [
+  {
+   "broker": "OpenRemote",
+   "group": "C",
+   "kind": "IoT hub",
+   "version": "1.33.0",
+   "version_evidence": [
+    {
+     "url": "https://github.com/openremote/openremote/releases/tag/1.33.0",
+     "quote": "Release 1.33.0 · openremote/core · GitHub"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list awesome-selfhosted/awesome-selfhosted",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "MQTT subscriptions to attribute and asset events (event JSON)",
+     "Q0": {
+      "fields": [
+       "event type",
+       "attribute ref (asset id, attribute name)",
+       "value",
+       "deleted flag",
+       "realm",
+       "timestamp (epoch ms)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/model/src/main/java/org/openremote/model/attribute/AttributeEvent.java",
+        "quote": "protected AttributeRef ref; protected Object value; protected boolean deleted; @JsonIgnore protected String source; protected String realm;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/model/src/main/java/org/openremote/model/attribute/AttributeEvent.java",
+        "quote": "ValueUtil.JSON.setConfig(ValueUtil.JSON.getSerializationConfig().withView(Basic.class));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/model/src/main/java/org/openremote/model/event/shared/SharedEvent.java",
+        "quote": "@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = \"eventType\") public abstract class SharedEvent extends Event {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/model/src/main/java/org/openremote/model/event/Event.java",
+        "quote": "@JsonProperty public long getTimestamp() { return timestamp != null ? timestamp.toEpochMilli() : 0L; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/mqtt/DefaultMQTTHandler.java",
+        "quote": "if (ev instanceof AttributeEvent attributeEvent) { if (isValueSubscription) { publishMessage( topicExpander.apply(ev), attributeEvent.getValue().orElse(null), mqttQoS); } else { publishMessage(topicExpander.apply(ev), ev, mqttQoS); } }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/mqtt/DefaultMQTTHandler.java",
+        "quote": "if (isAssetTopic) { if (ev instanceof AssetEvent) { publishMessage(topicExpander.apply(ev), ev, mqttQoS); } }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/asset/AssetProcessingService.java",
+        "quote": "// Set event source time if not already set if (attributeEvent.getTimestamp()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/asset/AssetProcessingService.java",
+        "quote": "// Use system time if event time is in the future (clock issue) event.setTimestamp(timerService.getCurrentTimeMillis());"
+       },
+       {
+        "url": "https://docs.openremote.io/docs/user-guide/manager-apis",
+        "quote": "{realm}/{clientId}/writeattribute/{attributeName}/{assetId} - Payload: {\"value\": <VALUE>, \"timestamp\": <TIMESTAMP>} where <VALUE> is JSON of attribute value and <TIMESTAMP> is timestamp of event in epoch milliseconds"
+       },
+       {
+        "url": "https://docs.openremote.io/docs/user-guide/manager-apis",
+        "quote": "{realm}/{clientId}/writeattributevalue/{attributeName}/{assetId} - Payload: JSON of attribute value"
+       }
+      ],
+      "field": "timestamp",
+      "resolution": "ms",
+      "note": "The event's timestamp is the manager's clock when the event arrives without one (as on the writeattributevalue topic, whose payload is the value alone) and when a supplied time is in the future. On the writeattribute topic the publisher supplies the time, and the manager keeps it. No broker setting selects this; the publisher's choice of topic does."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/model/src/main/java/org/openremote/model/event/Event.java",
+        "quote": "@JsonProperty public long getTimestamp() { return timestamp != null ? timestamp.toEpochMilli() : 0L; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/mqtt/DefaultMQTTHandler.java",
+        "quote": "if (ev instanceof AttributeEvent attributeEvent) { if (isValueSubscription) { publishMessage( topicExpander.apply(ev), attributeEvent.getValue().orElse(null), mqttQoS); } else { publishMessage(topicExpander.apply(ev), ev, mqttQoS); } }"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/model/src/main/java/org/openremote/model/attribute/AttributeEvent.java",
+        "quote": "protected AttributeRef ref; protected Object value; protected boolean deleted; @JsonIgnore protected String source; protected String realm;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/mqtt/DefaultMQTTHandler.java",
+        "quote": "if (ev instanceof AttributeEvent attributeEvent) { if (isValueSubscription) { publishMessage( topicExpander.apply(ev), attributeEvent.getValue().orElse(null), mqttQoS); } else { publishMessage(topicExpander.apply(ev), ev, mqttQoS); } }"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/model/src/main/java/org/openremote/model/attribute/AttributeEvent.java",
+        "quote": "protected AttributeRef ref; protected Object value; protected boolean deleted; @JsonIgnore protected String source; protected String realm;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/mqtt/DefaultMQTTHandler.java",
+        "quote": "if (ev instanceof AttributeEvent attributeEvent) { if (isValueSubscription) { publishMessage( topicExpander.apply(ev), attributeEvent.getValue().orElse(null), mqttQoS); } else { publishMessage(topicExpander.apply(ev), ev, mqttQoS); } }"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/mqtt/DefaultMQTTHandler.java",
+        "quote": "if (ev instanceof AttributeEvent attributeEvent) { if (isValueSubscription) { publishMessage( topicExpander.apply(ev), attributeEvent.getValue().orElse(null), mqttQoS); } else { publishMessage(topicExpander.apply(ev), ev, mqttQoS); } }"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://docs.openremote.io/docs/user-guide/manager-apis",
+        "quote": "It is possible to subscribe to these events using the topic format: {realm}/{clientId}/attribute/{attributeName}/{assetId}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/mqtt/DefaultMQTTHandler.java",
+        "quote": "if (ev instanceof AttributeEvent attributeEvent) { if (isValueSubscription) { publishMessage( topicExpander.apply(ev), attributeEvent.getValue().orElse(null), mqttQoS); } else { publishMessage(topicExpander.apply(ev), ev, mqttQoS); } }"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://docs.openremote.io/docs/user-guide/manager-apis",
+       "read": "The handler publishes each attribute or asset event to the matching MQTT subscribers when it occurs, and the code shows no request or credit from the subscriber.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "MQTT subscriptions to attribute values (value only)",
+     "Q0": {
+      "fields": [
+       "value (JSON)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/mqtt/DefaultMQTTHandler.java",
+        "quote": "boolean isValueSubscription = ATTRIBUTE_VALUE_TOPIC.equalsIgnoreCase(topicTokenIndexToString(topic, 2));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/mqtt/DefaultMQTTHandler.java",
+        "quote": "if (ev instanceof AttributeEvent attributeEvent) { if (isValueSubscription) { publishMessage( topicExpander.apply(ev), attributeEvent.getValue().orElse(null), mqttQoS); } else { publishMessage(topicExpander.apply(ev), ev, mqttQoS); } }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/asset/AssetProcessingService.java",
+        "quote": "// Set event source time if not already set if (attributeEvent.getTimestamp()"
+       },
+       {
+        "url": "https://docs.openremote.io/docs/user-guide/manager-apis",
+        "quote": "{realm}/{clientId}/writeattributevalue/{attributeName}/{assetId} - Payload: JSON of attribute value"
+       }
+      ],
+      "field": "timestamp",
+      "resolution": "ms",
+      "note": "As for event subscriptions: the manager stamps an event that arrives without a time, and the stamp is kept in the event, not in this value-only message."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/mqtt/DefaultMQTTHandler.java",
+        "quote": "boolean isValueSubscription = ATTRIBUTE_VALUE_TOPIC.equalsIgnoreCase(topicTokenIndexToString(topic, 2));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/mqtt/DefaultMQTTHandler.java",
+        "quote": "if (ev instanceof AttributeEvent attributeEvent) { if (isValueSubscription) { publishMessage( topicExpander.apply(ev), attributeEvent.getValue().orElse(null), mqttQoS); } else { publishMessage(topicExpander.apply(ev), ev, mqttQoS); } }"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/mqtt/DefaultMQTTHandler.java",
+        "quote": "if (ev instanceof AttributeEvent attributeEvent) { if (isValueSubscription) { publishMessage( topicExpander.apply(ev), attributeEvent.getValue().orElse(null), mqttQoS); } else { publishMessage(topicExpander.apply(ev), ev, mqttQoS); } }"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/mqtt/DefaultMQTTHandler.java",
+        "quote": "if (ev instanceof AttributeEvent attributeEvent) { if (isValueSubscription) { publishMessage( topicExpander.apply(ev), attributeEvent.getValue().orElse(null), mqttQoS); } else { publishMessage(topicExpander.apply(ev), ev, mqttQoS); } }"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/mqtt/DefaultMQTTHandler.java",
+        "quote": "if (ev instanceof AttributeEvent attributeEvent) { if (isValueSubscription) { publishMessage( topicExpander.apply(ev), attributeEvent.getValue().orElse(null), mqttQoS); } else { publishMessage(topicExpander.apply(ev), ev, mqttQoS); } }"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/mqtt/DefaultMQTTHandler.java",
+        "quote": "boolean isValueSubscription = ATTRIBUTE_VALUE_TOPIC.equalsIgnoreCase(topicTokenIndexToString(topic, 2));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/mqtt/DefaultMQTTHandler.java",
+        "quote": "if (ev instanceof AttributeEvent attributeEvent) { if (isValueSubscription) { publishMessage( topicExpander.apply(ev), attributeEvent.getValue().orElse(null), mqttQoS); } else { publishMessage(topicExpander.apply(ev), ev, mqttQoS); } }"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/openremote/openremote/1.33.0/manager/src/main/java/org/openremote/manager/mqtt/DefaultMQTTHandler.java",
+       "read": "The same handler publishes the attribute value to the matching MQTT subscribers when the event occurs, so delivery is standing.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQTT publish to writeattribute and writeattributevalue topics (QoS 1)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet identifier"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.openremote.io/docs/user-guide/manager-apis",
+        "quote": "Another publish subscribe API, authentication requires a 'Service user' username and secret and is done using standard MQTT username and password mechanism, to connect to the broker"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "A PUBACK Packet is the response to a PUBLISH Packet with QoS level 1."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The PUBACK Packet has no payload."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The PUBACK Packet has no payload."
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The PUBACK Packet has no payload."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The PUBACK Packet has no payload."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Tencent Cloud TDMQ for MQTT",
+   "group": "C",
+   "kind": "IoT hub",
+   "version": "documentation as retrieved on 29 October 2026",
+   "version_evidence": [
+    {
+     "url": "https://intl.cloud.tencent.com/document/product/1294/76370",
+     "quote": "TDMQ for MQTT is fully compatible with the standard MQTT 3.1 , MQTT 3.1.1 , and MQTT 5.0 protocols"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "Tencent Cloud TDMQ product-series page",
+     "query": "as logged in search_log.json"
+    },
+    {
+     "route": "route 2",
+     "source": "times-first search",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "MQTT subscriptions (3.1, 3.1.1 and 5.0)",
+     "Q0": {
+      "fields": [
+       "topic name",
+       "packet identifier",
+       "QoS",
+       "DUP flag",
+       "retain flag",
+       "payload",
+       "MQTT 5.0 properties as set by the publisher or a message enhancement rule (message expiry interval, response topic, correlation data, user properties and the others the standard defines)"
+      ],
+      "evidence": [
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76370",
+        "quote": "TDMQ for MQTT is fully compatible with the standard MQTT 3.1 , MQTT 3.1.1 , and MQTT 5.0 protocols"
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76370",
+        "quote": "5.0 protocol, all standard protocol features are supported except the following: AUTH Packet"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBLISH Packet contains the following fields in the order: Topic Name, Packet Identifier, and Properties."
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76758",
+        "quote": "By setting rules, you can dynamically attach MQTT 5.0 properties to messages during publication based on configured conditions."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76447",
+        "quote": "Message Timestamp Extended field, server-side message storage time"
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76447",
+        "quote": "An MQTT message consists of three parts: system field, user property, and payload."
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76366",
+        "quote": "The Proxy parses and converts the message, then writes it into the RocketMQ Broker for persistence."
+       }
+      ],
+      "field": "Message Timestamp (server-side message storage time)",
+      "resolution": "not stated",
+      "note": "The field is documented in the data mapping of the CKafka connector, which lists it among the system fields of an MQTT message."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBLISH Packet contains the following fields in the order: Topic Name, Packet Identifier, and Properties."
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76447",
+        "quote": "Message Timestamp Extended field, server-side message storage time"
+       }
+      ],
+      "note": "The pages read place the field in the CKafka connector's mapping and do not say that an MQTT subscriber receives it."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76760",
+        "quote": "Last Push Time Time when the server last pushed the message to the client."
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76760",
+        "quote": "Message trace details the request result and timestamp for each request packet during message production and consumption."
+       }
+      ],
+      "note": "The last push time is documented only in the message trace, which counts under Q6."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76370",
+        "quote": "5.0 protocol, all standard protocol features are supported except the following: AUTH Packet"
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76758",
+        "quote": "Message Expiry Interval messageExpiryInterval Set the message expiration time in seconds."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The PUBLISH packet sent to a Client by the Server MUST contain a Message Expiry Interval set to the received value minus the time that the Application Message has been waiting in the Server"
+       }
+      ],
+      "note": "The vendor says every standard MQTT 5.0 feature is supported except those it lists (message expiry is not listed), and the standard requires the delivered interval to be the received value less the wait at the server. No page read states the reduction for this service."
+     },
+     "Q6": {
+      "answer": "per message",
+      "evidence": [
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76760",
+        "quote": "Message trace details the request result and timestamp for each request packet during message production and consumption."
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76760",
+        "quote": "Last Push Time Time when the server last pushed the message to the client."
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76760",
+        "quote": "Request Time Time when the publisher client (producer) sends a request packet to the server."
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76366",
+        "quote": "The subscribing client establishes a connection with the Proxy and specifies the subscribed topic expressions."
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76366",
+        "quote": "triggering immediate message pop. Additionally, the cache module reduces repeated extraction, improving performance and real-time message delivery."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q5"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://intl.cloud.tencent.com/document/product/1294/76366",
+       "read": "The subscribing client connects to the proxy and names its topics, and the proxy's notify module triggers the pop of new messages, so the MQTT client holds a standing subscription.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQTT publish, QoS 1 (PUBACK)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet identifier",
+       "reason code (MQTT 5.0)",
+       "properties (MQTT 5.0)"
+      ],
+      "evidence": [
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76370",
+        "quote": "TDMQ for MQTT is fully compatible with the standard MQTT 3.1 , MQTT 3.1.1 , and MQTT 5.0 protocols"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "HTTP POST publish",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "HTTP status code",
+       "X-Message-Id response header"
+      ],
+      "evidence": [
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76451",
+        "quote": "TDMQ for MQTT allows clients to publish MQTT messages via HTTP(s) POST."
+       },
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76451",
+        "quote": "X-Message-Id Message identifier from the MQTT server"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76451",
+        "quote": "X-Message-Id Message identifier from the MQTT server"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76451",
+        "quote": "X-Message-Id Message identifier from the MQTT server"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://intl.cloud.tencent.com/document/product/1294/76451",
+        "quote": "X-Message-Id Message identifier from the MQTT server"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "ThingLinks",
+   "group": "C",
+   "kind": "IoT hub",
+   "version": "v1.4.0",
+   "version_evidence": [
+    {
+     "url": "https://github.com/mqttsnet/thinglinks/releases/tag/v1.4.0",
+     "quote": "v1.4.0"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/bifromq-plugin/.thinglinks-product.env",
+     "quote": "THINGLINKS_BIFROMQ_VERSION=3.3.5"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub topic mqtt-broker",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "data bridge to sinks (the event collector's JSON for a distributed message)",
+     "Q0": {
+      "fields": [
+       "request id",
+       "fanout",
+       "tenant id",
+       "ACL rule",
+       "ver",
+       "client id",
+       "user id",
+       "channel id",
+       "address",
+       "broker",
+       "version",
+       "session type",
+       "topic",
+       "message id",
+       "qos",
+       "isRetain",
+       "isRetained",
+       "isUTF8String",
+       "content type",
+       "response topic",
+       "correlation data",
+       "user properties",
+       "timestamp (broker clock at arrival)",
+       "time (same value)",
+       "expiry interval (as published)",
+       "payload (Base64)",
+       "payload hex",
+       "original size",
+       "encoding",
+       "event type",
+       "event time (plugin wall clock, ms)",
+       "event time string",
+       "event HLC",
+       "event UTC (broker clock, ms)",
+       "success",
+       "trace id"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/bifromq-plugin/bifromq-event-collector-plugin/event-provider/src/main/java/com/mqttsnet/thinglinks/processor/mqttbroker/disthandling/DistedEventProcessor.java",
+        "quote": "data.put(\"reqId\", getSafeValue(disted.reqId(), 0L));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/bifromq-plugin/bifromq-event-collector-plugin/event-provider/src/main/java/com/mqttsnet/thinglinks/processor/mqttbroker/disthandling/DistedEventProcessor.java",
+        "quote": "data.put(\"fanout\", getSafeValue(disted.fanout(), 0));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/bifromq-plugin/bifromq-event-collector-plugin/event-provider/src/main/java/com/mqttsnet/thinglinks/processor/mqttbroker/disthandling/DistedEventProcessor.java",
+        "quote": "tenantIdOpt.ifPresent(tenantId -> data.put(CommonConstants.TENANT_ID, getSafeValue(tenantId, \"\")));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/bifromq-plugin/bifromq-event-collector-plugin/event-provider/src/main/java/com/mqttsnet/thinglinks/processor/mqttbroker/disthandling/DistedEventProcessor.java",
+        "quote": "data.put(\"address\", getSafeValue(metadataMap.get(\"address\"), \"\")); data.put(\"broker\", getSafeValue(metadataMap.get(\"broker\"), \"\"));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/bifromq-plugin/bifromq-event-collector-plugin/event-provider/src/main/java/com/mqttsnet/thinglinks/processor/mqttbroker/disthandling/DistedEventProcessor.java",
+        "quote": "data.put(\"messageId\", getSafeValue(message.getMessageId(), 0)); data.put(\"qos\", getSafeValue(message.getPubQoSValue(), 0)); data.put(\"isRetain\", getSafeValue(message.getIsRetain(), false));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/bifromq-plugin/bifromq-event-collector-plugin/event-provider/src/main/java/com/mqttsnet/thinglinks/processor/mqttbroker/disthandling/DistedEventProcessor.java",
+        "quote": "data.put(\"contentType\", getSafeValue(message.getContentType(), \"\")); data.put(\"responseTopic\", getSafeValue(message.getResponseTopic(), \"\"));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/bifromq-plugin/bifromq-event-collector-plugin/event-provider/src/main/java/com/mqttsnet/thinglinks/processor/mqttbroker/disthandling/DistedEventProcessor.java",
+        "quote": "data.put(\"timestamp\", getSafeValue(message.getTimestamp(), 0)); data.put(\"time\", getSafeValue(message.getTimestamp(), 0)); data.put(\"expiryInterval\", getSafeValue(message.getExpiryInterval(), 0));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/bifromq-plugin/bifromq-event-collector-plugin/event-provider/src/main/java/com/mqttsnet/thinglinks/processor/mqttbroker/disthandling/DistedEventProcessor.java",
+        "quote": "data.put(\"payload\", Base64.getEncoder().encodeToString(payloadBytes)); data.put(\"payloadHex\", HexUtil.encodeHexStr(payloadBytes));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/bifromq-plugin/bifromq-event-collector-plugin/event-provider/src/main/java/com/mqttsnet/thinglinks/processor/AbstractEventProcessor.java",
+        "quote": "long processTime = System.currentTimeMillis(); eventData.put(CommonConstants.EVENT_TIME, processTime);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/bifromq-plugin/bifromq-event-collector-plugin/event-provider/src/main/java/com/mqttsnet/thinglinks/processor/AbstractEventProcessor.java",
+        "quote": "eventData.put(CommonConstants.EVENT_HLC, eventHlc); eventData.put(CommonConstants.EVENT_UTC, eventUtc);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/thinglinks-cloud/thinglinks-public/thinglinks-common/src/main/java/com/mqttsnet/thinglinks/common/event/bridge/BridgeMessageEnvelope.java",
+        "quote": "第三方 Sink 收到 = 上游 BifroMQ Kafka 原字节"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-common-type/src/main/proto/commontype/TopicMessage.proto",
+        "quote": "uint64 timestamp = 4; // HLC when message arrived at broker"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/bifromq-plugin/bifromq-event-collector-plugin/event-provider/src/main/java/com/mqttsnet/thinglinks/processor/mqttbroker/disthandling/DistedEventProcessor.java",
+        "quote": "data.put(\"timestamp\", getSafeValue(message.getTimestamp(), 0)); data.put(\"time\", getSafeValue(message.getTimestamp(), 0)); data.put(\"expiryInterval\", getSafeValue(message.getExpiryInterval(), 0));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-plugin/bifromq-plugin-event-collector/src/main/java/org/apache/bifromq/plugin/eventcollector/Event.java",
+        "quote": "public long utc() { return hlc >>> 16; }"
+       }
+      ],
+      "field": "timestamp",
+      "resolution": "ms",
+      "note": "BifroMQ's message timestamp is a hybrid logical clock value (milliseconds in the upper bits) set when the message arrives at the broker."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/bifromq-plugin/bifromq-event-collector-plugin/event-provider/src/main/java/com/mqttsnet/thinglinks/processor/mqttbroker/disthandling/DistedEventProcessor.java",
+        "quote": "data.put(\"timestamp\", getSafeValue(message.getTimestamp(), 0)); data.put(\"time\", getSafeValue(message.getTimestamp(), 0)); data.put(\"expiryInterval\", getSafeValue(message.getExpiryInterval(), 0));"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-dist/bifromq-dist-server/src/main/java/org/apache/bifromq/dist/server/DistResponsePipeline.java",
+        "quote": "eventCollector.report(getLocal(Disted.class) .reqId(request.getReqId()) .messages(request.getMessagesList()) .fanout(totalFanout));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-dist/bifromq-dist-worker/src/main/java/org/apache/bifromq/dist/worker/DistWorkerCoProc.java",
+        "quote": "deliverExecutorGroup.submit(tenantId, routes, topicMsgPack); fanout.addAndGet(routes.size());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/bifromq-plugin/bifromq-event-collector-plugin/event-provider/src/main/java/com/mqttsnet/thinglinks/processor/AbstractEventProcessor.java",
+        "quote": "eventData.put(CommonConstants.EVENT_HLC, eventHlc); eventData.put(CommonConstants.EVENT_UTC, eventUtc);"
+       }
+      ],
+      "changed_on_read_back": {
+       "from": "send time",
+       "why": "The event time is the broker's clock when the distribution call reports the fan-out, after the message is handed to the delivery executors and before any write to a subscriber's connection, so it is not the time the message is sent to the subscriber."
+      }
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-dist/bifromq-dist-worker/src/main/java/org/apache/bifromq/dist/worker/DistWorkerCoProc.java",
+        "quote": "deliverExecutorGroup.submit(tenantId, routes, topicMsgPack); fanout.addAndGet(routes.size());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-mqtt/bifromq-mqtt-server/src/main/java/org/apache/bifromq/mqtt/handler/MQTTSessionHandler.java",
+        "quote": "assert unconfirmedPacketIds.size() < clientReceiveMaximum();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/bifromq-plugin/bifromq-event-collector-plugin/event-provider/src/main/java/com/mqttsnet/thinglinks/processor/mqttbroker/disthandling/DistedEventProcessor.java",
+        "quote": "data.put(\"timestamp\", getSafeValue(message.getTimestamp(), 0)); data.put(\"time\", getSafeValue(message.getTimestamp(), 0)); data.put(\"expiryInterval\", getSafeValue(message.getExpiryInterval(), 0));"
+       }
+      ],
+      "changed_on_read_back": {
+       "from": "derivable stay",
+       "why": "The JSON gives the message's arrival timestamp and the time of the fan-out report, so their difference ends at the hand-off to the delivery executors and leaves out the later wait in the subscriber's session and receive window; it does not cover the message's whole wait for the consumer."
+      }
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/bifromq-plugin/bifromq-event-collector-plugin/event-provider/src/main/java/com/mqttsnet/thinglinks/processor/mqttbroker/disthandling/DistedEventProcessor.java",
+        "quote": "data.put(\"timestamp\", getSafeValue(message.getTimestamp(), 0)); data.put(\"time\", getSafeValue(message.getTimestamp(), 0)); data.put(\"expiryInterval\", getSafeValue(message.getExpiryInterval(), 0));"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/thinglinks-cloud/thinglinks-public/thinglinks-common/src/main/java/com/mqttsnet/thinglinks/common/event/bridge/BridgeMessageEnvelope.java",
+        "quote": "第三方 Sink 收到 = 上游 BifroMQ Kafka 原字节"
+       }
+      ],
+      "note": "not reached: the sink types are not enumerated"
+     },
+     "not_determined": [
+      "Q6",
+      "Q7"
+     ],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-dist/bifromq-dist-server/src/main/java/org/apache/bifromq/dist/server/DistResponsePipeline.java",
+       "read": "The distribution pipeline reports the Disted event when the dist worker returns the fan-out counts; the worker submits the message to the delivery executors and counts the routes without waiting for delivery, and the bridge puts that event's UTC and HLC in the JSON.",
+       "agrees": true
+      },
+      {
+       "question": "Q5",
+       "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-dist/bifromq-dist-worker/src/main/java/org/apache/bifromq/dist/worker/DistWorkerCoProc.java",
+       "read": "The difference between the event UTC and the message timestamp is the time from arrival to the end of the distribution call; the session code sends a message to a subscriber only when its receive-maximum window has room, which happens after that call has reported.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "MQTT subscriptions through BifroMQ",
+     "Q0": {
+      "fields": [
+       "topic name",
+       "packet identifier",
+       "QoS",
+       "retain flag",
+       "payload",
+       "payload format indicator (MQTT 5.0)",
+       "content type (MQTT 5.0)",
+       "correlation data (MQTT 5.0)",
+       "response topic (MQTT 5.0)",
+       "message expiry interval left (MQTT 5.0, when the message has an expiry)",
+       "user properties (MQTT 5.0)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-mqtt/bifromq-mqtt-server/src/main/java/org/apache/bifromq/mqtt/handler/v5/MQTT5MessageBuilders.java",
+        "quote": "if (message.message().getIsUTF8String()) { propsBuilder.addPayloadFormatIndicator(1); } if (message.message().hasContentType()) { propsBuilder.addContentType(message.message().getContentType()); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-mqtt/bifromq-mqtt-server/src/main/java/org/apache/bifromq/mqtt/handler/v5/MQTT5MessageBuilders.java",
+        "quote": "if (message.message().hasCorrelationData()) { propsBuilder.addCorrelationData(message.message().getCorrelationData()); } if (message.message().hasResponseTopic()) { propsBuilder.addResponseTopic(message.message().getResponseTopic()); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-mqtt/bifromq-mqtt-server/src/main/java/org/apache/bifromq/mqtt/handler/v5/MQTT5MessageBuilders.java",
+        "quote": "if (message.message().getExpiryInterval() < Integer.MAX_VALUE) { long nowMs = HLC.INST.getPhysical(); long msgMs = HLC.INST.getPhysical(message.message().getTimestamp()); long elapsedMs = nowMs - msgMs; long totalMs = message.message().getExpiryInterval() * 1000L; long leftMs = totalMs - elapsedMs;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/bifromq-plugin/README.md",
+        "quote": "`bifromq-auth-provider-plugin` | MQTT client authentication/authorization (username/password, certificate, ACL) | | `bifromq-event-collector-plugin` | BifroMQ event collection, filtering, and performance monitoring |"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/bifromq-plugin/README.md",
+        "quote": "`bifromq-resource-throttler-plugin` | Multi-tenant resource allocation and rate limiting | | `bifromq-setting-provider-plugin` | Dynamic tenant-level settings configuration at runtime |"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-common-type/src/main/proto/commontype/TopicMessage.proto",
+        "quote": "uint64 timestamp = 4; // HLC when message arrived at broker"
+       }
+      ],
+      "field": "timestamp",
+      "resolution": "ms"
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-mqtt/bifromq-mqtt-server/src/main/java/org/apache/bifromq/mqtt/handler/v5/MQTT5MessageBuilders.java",
+        "quote": "if (message.message().getIsUTF8String()) { propsBuilder.addPayloadFormatIndicator(1); } if (message.message().hasContentType()) { propsBuilder.addContentType(message.message().getContentType()); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-mqtt/bifromq-mqtt-server/src/main/java/org/apache/bifromq/mqtt/handler/v5/MQTT5MessageBuilders.java",
+        "quote": "if (message.message().hasCorrelationData()) { propsBuilder.addCorrelationData(message.message().getCorrelationData()); } if (message.message().hasResponseTopic()) { propsBuilder.addResponseTopic(message.message().getResponseTopic()); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-mqtt/bifromq-mqtt-server/src/main/java/org/apache/bifromq/mqtt/handler/v5/MQTT5MessageBuilders.java",
+        "quote": "if (message.message().getExpiryInterval() < Integer.MAX_VALUE) { long nowMs = HLC.INST.getPhysical(); long msgMs = HLC.INST.getPhysical(message.message().getTimestamp()); long elapsedMs = nowMs - msgMs; long totalMs = message.message().getExpiryInterval() * 1000L; long leftMs = totalMs - elapsedMs;"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-mqtt/bifromq-mqtt-server/src/main/java/org/apache/bifromq/mqtt/handler/v5/MQTT5MessageBuilders.java",
+        "quote": "if (message.message().getIsUTF8String()) { propsBuilder.addPayloadFormatIndicator(1); } if (message.message().hasContentType()) { propsBuilder.addContentType(message.message().getContentType()); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-mqtt/bifromq-mqtt-server/src/main/java/org/apache/bifromq/mqtt/handler/v5/MQTT5MessageBuilders.java",
+        "quote": "if (message.message().hasCorrelationData()) { propsBuilder.addCorrelationData(message.message().getCorrelationData()); } if (message.message().hasResponseTopic()) { propsBuilder.addResponseTopic(message.message().getResponseTopic()); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-mqtt/bifromq-mqtt-server/src/main/java/org/apache/bifromq/mqtt/handler/v5/MQTT5MessageBuilders.java",
+        "quote": "if (message.message().getExpiryInterval() < Integer.MAX_VALUE) { long nowMs = HLC.INST.getPhysical(); long msgMs = HLC.INST.getPhysical(message.message().getTimestamp()); long elapsedMs = nowMs - msgMs; long totalMs = message.message().getExpiryInterval() * 1000L; long leftMs = totalMs - elapsedMs;"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-mqtt/bifromq-mqtt-server/src/main/java/org/apache/bifromq/mqtt/handler/v5/MQTT5MessageBuilders.java",
+        "quote": "if (message.message().getExpiryInterval() < Integer.MAX_VALUE) { long nowMs = HLC.INST.getPhysical(); long msgMs = HLC.INST.getPhysical(message.message().getTimestamp()); long elapsedMs = nowMs - msgMs; long totalMs = message.message().getExpiryInterval() * 1000L; long leftMs = totalMs - elapsedMs;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/thinglinks-cloud/thinglinks-broker/thinglinks-broker-biz/src/main/java/com/mqttsnet/thinglinks/broker/downlink/MqttDownlinkSender.java",
+        "quote": ".setExpirySeconds(Optional.ofNullable(command.getExpirySeconds()).orElse(\"3600\"));"
+       }
+      ],
+      "resolution": "s",
+      "note": "Only for a message that has an expiry. The delivered interval is the published one less the time since arrival, so a subscriber that knows the published interval can derive the stay. ThingLinks sets 3600 s on downlink commands unless the caller gives another."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-mqtt/bifromq-mqtt-server/src/main/java/org/apache/bifromq/mqtt/handler/v5/MQTT5MessageBuilders.java",
+        "quote": "if (message.message().getExpiryInterval() < Integer.MAX_VALUE) { long nowMs = HLC.INST.getPhysical(); long msgMs = HLC.INST.getPhysical(message.message().getTimestamp()); long elapsedMs = nowMs - msgMs; long totalMs = message.message().getExpiryInterval() * 1000L; long leftMs = totalMs - elapsedMs;"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/thinglinks-cloud/thinglinks-broker/thinglinks-broker-biz/src/main/java/com/mqttsnet/thinglinks/broker/downlink/MqttDownlinkSender.java",
+        "quote": "按 topic 路由到订阅设备"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q5",
+       "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-mqtt/bifromq-mqtt-server/src/main/java/org/apache/bifromq/mqtt/handler/v5/MQTT5MessageBuilders.java",
+       "read": "BifroMQ builds each outgoing MQTT 5 PUBLISH at the write, after the receive-maximum check, and sets the delivered expiry to the published interval less the time since the message's arrival timestamp, rounded up to the second, so the stay is the published interval minus the delivered one for a message that has an expiry.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/thinglinks-cloud/thinglinks-broker/thinglinks-broker-biz/src/main/java/com/mqttsnet/thinglinks/broker/downlink/MqttDownlinkSender.java",
+       "read": "The downlink sender publishes by topic through BifroMQ to subscribed devices, a standing subscription with no per-message request or credit from the consumer.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQTT PUBLISH through BifroMQ (QoS 1 and 2)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet identifier",
+       "reason code (MQTT 5.0)",
+       "reason string (MQTT 5.0)",
+       "user properties (MQTT 5.0)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-mqtt/bifromq-mqtt-server/src/main/java/org/apache/bifromq/mqtt/handler/v5/MQTT5MessageBuilders.java",
+        "quote": "public static final class PubAckBuilder { private final boolean includeProblemInfo; private int packetId; private MQTT5PubAckReasonCode reasonCode; private String reasonString; private UserProperties userProps;"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-mqtt/bifromq-mqtt-server/src/main/java/org/apache/bifromq/mqtt/handler/v5/MQTT5MessageBuilders.java",
+        "quote": "public static final class PubAckBuilder { private final boolean includeProblemInfo; private int packetId; private MQTT5PubAckReasonCode reasonCode; private String reasonString; private UserProperties userProps;"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-mqtt/bifromq-mqtt-server/src/main/java/org/apache/bifromq/mqtt/handler/v5/MQTT5MessageBuilders.java",
+        "quote": "public static final class PubAckBuilder { private final boolean includeProblemInfo; private int packetId; private MQTT5PubAckReasonCode reasonCode; private String reasonString; private UserProperties userProps;"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bifromq/v4.0.0-incubating/bifromq-mqtt/bifromq-mqtt-server/src/main/java/org/apache/bifromq/mqtt/handler/v5/MQTT5MessageBuilders.java",
+        "quote": "public static final class PubAckBuilder { private final boolean includeProblemInfo; private int packetId; private MQTT5PubAckReasonCode reasonCode; private String reasonString; private UserProperties userProps;"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "downlink command published by the platform to the broker",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "content of the published message"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/thinglinks-cloud/thinglinks-broker/thinglinks-broker-biz/src/main/java/com/mqttsnet/thinglinks/broker/mqtt/service/MqttBrokerService.java",
+        "quote": "Publishes a message to a specified topic and returns the content if successful."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/thinglinks-cloud/thinglinks-broker/thinglinks-broker-biz/src/main/java/com/mqttsnet/thinglinks/broker/mqtt/service/MqttBrokerService.java",
+        "quote": "Publishes a message to a specified topic and returns the content if successful."
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/thinglinks-cloud/thinglinks-broker/thinglinks-broker-biz/src/main/java/com/mqttsnet/thinglinks/broker/mqtt/service/MqttBrokerService.java",
+        "quote": "Publishes a message to a specified topic and returns the content if successful."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mqttsnet/thinglinks/v1.4.0/thinglinks-cloud/thinglinks-broker/thinglinks-broker-biz/src/main/java/com/mqttsnet/thinglinks/broker/mqtt/service/MqttBrokerService.java",
+        "quote": "Publishes a message to a specified topic and returns the content if successful."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "ThingsBoard",
+   "group": "C",
+   "kind": "IoT hub",
+   "version": "v4.4.0.1",
+   "version_evidence": [
+    {
+     "url": "https://github.com/thingsboard/thingsboard/releases/tag/v4.4.0.1",
+     "quote": "v4.4.0.1"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list HQarroum/awesome-iot",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "WebSocket API subscriptions (entity data and telemetry updates)",
+     "Q0": {
+      "fields": [
+       "entity id (type and id)",
+       "key",
+       "value",
+       "ts (epoch ms)"
+      ],
+      "evidence": [
+       {
+        "url": "https://thingsboard.io/docs/reference/websocket-api/",
+        "quote": "\"latest\" : { \"ATTRIBUTE\" : { \"active\" : { \"ts\" : 1704067200000 , \"value\" : \" true \" } }, \"TIME_SERIES\" : { \"temperature\" : { \"ts\" : 1704067260000 , \"value\" : \" 42.5 \" } } }"
+       },
+       {
+        "url": "https://thingsboard.io/docs/reference/websocket-api/",
+        "quote": "Subsequent real-time updates arrive in the update field"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://thingsboard.io/docs/user-guide/telemetry/",
+        "quote": "Timestamp — Unix epoch in milliseconds; auto-assigned by the server if not provided by the device"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/thingsboard/thingsboard/v4.4.0.1/rule-engine/rule-engine-components/src/main/java/org/thingsboard/rule/engine/telemetry/TbMsgTimeseriesNode.java",
+        "quote": "public static long computeTs(TbMsg msg, boolean ignoreMetadataTs) { return ignoreMetadataTs ? System.currentTimeMillis() : msg.getMetaDataTs(); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/thingsboard/thingsboard/v4.4.0.1/rule-engine/rule-engine-components/src/main/java/org/thingsboard/rule/engine/telemetry/TbMsgTimeseriesNode.java",
+        "quote": "long ts = computeTs(msg, config.isUseServerTs());"
+       }
+      ],
+      "field": "ts",
+      "resolution": "ms",
+      "note": "The server assigns the timestamp when the device sends none. The save time series rule node's useServerTs option makes the server's clock the timestamp even when the device sends one."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://thingsboard.io/docs/reference/websocket-api/",
+        "quote": "\"latest\" : { \"ATTRIBUTE\" : { \"active\" : { \"ts\" : 1704067200000 , \"value\" : \" true \" } }, \"TIME_SERIES\" : { \"temperature\" : { \"ts\" : 1704067260000 , \"value\" : \" 42.5 \" } } }"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://thingsboard.io/docs/reference/websocket-api/",
+        "quote": "\"latest\" : { \"ATTRIBUTE\" : { \"active\" : { \"ts\" : 1704067200000 , \"value\" : \" true \" } }, \"TIME_SERIES\" : { \"temperature\" : { \"ts\" : 1704067260000 , \"value\" : \" 42.5 \" } } }"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://thingsboard.io/docs/reference/websocket-api/",
+        "quote": "\"latest\" : { \"ATTRIBUTE\" : { \"active\" : { \"ts\" : 1704067200000 , \"value\" : \" true \" } }, \"TIME_SERIES\" : { \"temperature\" : { \"ts\" : 1704067260000 , \"value\" : \" 42.5 \" } } }"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://thingsboard.io/docs/reference/websocket-api/",
+        "quote": "\"latest\" : { \"ATTRIBUTE\" : { \"active\" : { \"ts\" : 1704067200000 , \"value\" : \" true \" } }, \"TIME_SERIES\" : { \"temperature\" : { \"ts\" : 1704067260000 , \"value\" : \" 42.5 \" } } }"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://thingsboard.io/docs/reference/websocket-api/",
+        "quote": "Use it to subscribe to telemetry updates, entity data changes, alarm events, and notifications — all pushed instantly without polling."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://thingsboard.io/docs/reference/websocket-api/",
+       "read": "The page says a client subscribes once and updates are pushed instantly without polling, so delivery is standing.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "MQTT device subscriptions (shared attribute updates and server-side RPC requests)",
+     "Q0": {
+      "fields": [
+       "server-side RPC request: method, request id (in the topic), params",
+       "shared attribute update: the changed keys and values"
+      ],
+      "evidence": [
+       {
+        "url": "https://thingsboard.io/docs/reference/mqtt-api/",
+        "quote": "message RpcRequestMsg { optional string method = 1 ; optional int32 requestId = 2 ; optional string params = 3 ; }"
+       },
+       {
+        "url": "https://thingsboard.io/docs/reference/mqtt-api/",
+        "quote": "Subscribe to shared attribute updates v2/a v1/devices/me/attributes"
+       },
+       {
+        "url": "https://thingsboard.io/docs/reference/mqtt-api/",
+        "quote": "Subscribe to server-side RPC v2/r/req/+ v1/devices/me/rpc/request/+"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://thingsboard.io/docs/reference/mqtt-api/",
+        "quote": "message RpcRequestMsg { optional string method = 1 ; optional int32 requestId = 2 ; optional string params = 3 ; }"
+       }
+      ],
+      "note": "not reached"
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://thingsboard.io/docs/reference/mqtt-api/",
+        "quote": "message RpcRequestMsg { optional string method = 1 ; optional int32 requestId = 2 ; optional string params = 3 ; }"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://thingsboard.io/docs/reference/mqtt-api/",
+        "quote": "message RpcRequestMsg { optional string method = 1 ; optional int32 requestId = 2 ; optional string params = 3 ; }"
+       }
+      ],
+      "note": "not reached"
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://thingsboard.io/docs/reference/mqtt-api/",
+        "quote": "message RpcRequestMsg { optional string method = 1 ; optional int32 requestId = 2 ; optional string params = 3 ; }"
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://thingsboard.io/docs/reference/mqtt-api/",
+        "quote": "message RpcRequestMsg { optional string method = 1 ; optional int32 requestId = 2 ; optional string params = 3 ; }"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://thingsboard.io/docs/reference/mqtt-api/",
+        "quote": "message RpcRequestMsg { optional string method = 1 ; optional int32 requestId = 2 ; optional string params = 3 ; }"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://thingsboard.io/docs/reference/mqtt-api/",
+        "quote": "Subscribe to shared attribute updates v2/a v1/devices/me/attributes"
+       },
+       {
+        "url": "https://thingsboard.io/docs/reference/mqtt-api/",
+        "quote": "Subscribe to server-side RPC v2/r/req/+ v1/devices/me/rpc/request/+"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q1",
+      "Q3",
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://thingsboard.io/docs/reference/mqtt-api/",
+       "read": "A device subscribes to the attribute and RPC request topics and the platform publishes to them as updates and requests occur, with no per-message request or credit.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQTT publish of telemetry and attributes (QoS 1)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet identifier"
+      ],
+      "evidence": [
+       {
+        "url": "https://thingsboard.io/docs/reference/mqtt-api/",
+        "quote": "Protocol MQTT v3.1, v3.1.1, v5.0 QoS 0 (at most once) · 1 (at least once)"
+       },
+       {
+        "url": "https://thingsboard.io/docs/reference/mqtt-api/",
+        "quote": "Enable this option to send a PUBACK acknowledgment instead, so the device stays connected."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "A PUBACK Packet is the response to a PUBLISH Packet with QoS level 1."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The PUBACK Packet has no payload."
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The PUBACK Packet has no payload."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The PUBACK Packet has no payload."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Thingspeak",
+   "group": "C",
+   "kind": "IoT hub",
+   "version": "documentation as archived by the Wayback Machine in 2025 and 2026",
+   "version_evidence": [
+    {
+     "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/mqtt-basics.html",
+     "quote": "has an MQTT broker at the URL mqtt3.thingspeak.com and port 1883"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list HQarroum/awesome-iot",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "MQTT subscriptions to a channel feed (QoS 0)",
+     "Q0": {
+      "fields": [
+       "channel_id",
+       "created_at (ISO 8601, to the second)",
+       "entry_id",
+       "field1 to field8",
+       "latitude",
+       "longitude",
+       "elevation",
+       "status"
+      ],
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/use-desktop-mqtt-client-to-publish-to-a-channel.html",
+        "quote": "{\"channel_id\":33301,\"created_at\":\"2021-04-29T19:45:43Z\",\"entry_id\":23, \"field1\":\"45\",\"field2\":\"60\",\"field3\":null,\"field4\":null,\"field5\":null, \"field6\":null,\"field7\":null,\"field8\":null,\"latitude\":null,\"longitude\":null, \"elevation\":null,\"status\":\"MQTTPUBLISH\"}"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/use-desktop-mqtt-client-to-publish-to-a-channel.html",
+        "quote": "{\"channel_id\":33301,\"created_at\":\"2021-04-29T19:45:43Z\",\"entry_id\":23, \"field1\":\"45\",\"field2\":\"60\",\"field3\":null,\"field4\":null,\"field5\":null, \"field6\":null,\"field7\":null,\"field8\":null,\"latitude\":null,\"longitude\":null, \"elevation\":null,\"status\":\"MQTTPUBLISH\"}"
+       },
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/use-desktop-mqtt-client-to-publish-to-a-channel.html",
+        "quote": "Topic: channels/33301/publishQoS: 0 field1=45&field2=60&status=MQTTPUBLISH"
+       },
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/publishtoachannelfeed.html",
+        "quote": "created_at Date of feed entry in ISO 8601 format. For example: created_at=2014-12-31 23:59:59"
+       }
+      ],
+      "field": "created_at",
+      "resolution": "s",
+      "note": "The publisher may set created_at in its payload. The documented example publishes without it and the delivered message has it, so the server supplies it otherwise. The pages do not say that this is the receipt time."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/use-desktop-mqtt-client-to-publish-to-a-channel.html",
+        "quote": "{\"channel_id\":33301,\"created_at\":\"2021-04-29T19:45:43Z\",\"entry_id\":23, \"field1\":\"45\",\"field2\":\"60\",\"field3\":null,\"field4\":null,\"field5\":null, \"field6\":null,\"field7\":null,\"field8\":null,\"latitude\":null,\"longitude\":null, \"elevation\":null,\"status\":\"MQTTPUBLISH\"}"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/use-desktop-mqtt-client-to-publish-to-a-channel.html",
+        "quote": "{\"channel_id\":33301,\"created_at\":\"2021-04-29T19:45:43Z\",\"entry_id\":23, \"field1\":\"45\",\"field2\":\"60\",\"field3\":null,\"field4\":null,\"field5\":null, \"field6\":null,\"field7\":null,\"field8\":null,\"latitude\":null,\"longitude\":null, \"elevation\":null,\"status\":\"MQTTPUBLISH\"}"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/use-desktop-mqtt-client-to-publish-to-a-channel.html",
+        "quote": "{\"channel_id\":33301,\"created_at\":\"2021-04-29T19:45:43Z\",\"entry_id\":23, \"field1\":\"45\",\"field2\":\"60\",\"field3\":null,\"field4\":null,\"field5\":null, \"field6\":null,\"field7\":null,\"field8\":null,\"latitude\":null,\"longitude\":null, \"elevation\":null,\"status\":\"MQTTPUBLISH\"}"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/use-desktop-mqtt-client-to-publish-to-a-channel.html",
+        "quote": "{\"channel_id\":33301,\"created_at\":\"2021-04-29T19:45:43Z\",\"entry_id\":23, \"field1\":\"45\",\"field2\":\"60\",\"field3\":null,\"field4\":null,\"field5\":null, \"field6\":null,\"field7\":null,\"field8\":null,\"latitude\":null,\"longitude\":null, \"elevation\":null,\"status\":\"MQTTPUBLISH\"}"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/mqtt-basics.html",
+        "quote": "The MQTT broker responds to a successful subscription request with a SUBACK message and relays any new data posted to the subscribed"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/mqtt-basics.html",
+       "read": "The page says the broker answers a successful subscription with a SUBACK and relays any new data posted to the subscribed channel, at QoS 0 only, so delivery is standing with no per-message request or credit.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "TalkBack command queue, execute call with a JSON or XML response (pull)",
+     "Q0": {
+      "fields": [
+       "command_string",
+       "created_at",
+       "executed_at",
+       "id",
+       "position"
+      ],
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/executetalkbackcommand.html",
+        "quote": "{ \"command_string\": \"OPENDOOR\", \"created_at\": \"2018-12-29T17:53:40-05:00\", \"executed_at\": \"2018-12-30T17:53:40-05:00\", \"id\": 2448500, \"position\": null }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/executetalkbackcommand.html",
+        "quote": "{ \"command_string\": \"OPENDOOR\", \"created_at\": \"2018-12-29T17:53:40-05:00\", \"executed_at\": \"2018-12-30T17:53:40-05:00\", \"id\": 2448500, \"position\": null }"
+       },
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/addtalkbackcommand.html",
+        "quote": "{ \"id\": 2448500, \"command_string\": \"OPENDOOR\", \"position\": 5, \"executed_at\": null, \"created_at\": \"2016-08-29T15:12:36Z\" }"
+       }
+      ],
+      "field": "created_at",
+      "resolution": "s",
+      "note": "The add call shows created_at in its response and takes no created_at input, so the server sets it."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/executetalkbackcommand.html",
+        "quote": "{ \"command_string\": \"OPENDOOR\", \"created_at\": \"2018-12-29T17:53:40-05:00\", \"executed_at\": \"2018-12-30T17:53:40-05:00\", \"id\": 2448500, \"position\": null }"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/executetalkbackcommand.html",
+        "quote": "{ \"command_string\": \"OPENDOOR\", \"created_at\": \"2018-12-29T17:53:40-05:00\", \"executed_at\": \"2018-12-30T17:53:40-05:00\", \"id\": 2448500, \"position\": null }"
+       },
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/gettalkbackcommand.html",
+        "quote": "{ \"command_string\": \"OPENDOOR\", \"created_at\": \"2013-12-29T17:53:40-05:00\", \"executed_at\": null, \"id\": 2448500, \"position\": 5 }"
+       }
+      ],
+      "changed_on_read_back": {
+       "from": "request arrival",
+       "why": "No page says whether executed_at is stamped when the execute request arrives or when the reply is sent, so the moment is not settled."
+      }
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/executetalkbackcommand.html",
+        "quote": "{ \"command_string\": \"OPENDOOR\", \"created_at\": \"2018-12-29T17:53:40-05:00\", \"executed_at\": \"2018-12-30T17:53:40-05:00\", \"id\": 2448500, \"position\": null }"
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/executetalkbackcommand.html",
+        "quote": "{ \"command_string\": \"OPENDOOR\", \"created_at\": \"2018-12-29T17:53:40-05:00\", \"executed_at\": \"2018-12-30T17:53:40-05:00\", \"id\": 2448500, \"position\": null }"
+       }
+      ],
+      "resolution": "s",
+      "note": "executed_at less created_at, both on the server's clock, runs from the command's arrival to executed_at, which marks either the execute request's arrival or the reply's send (Q3 is not determined). The values in the page's example are illustrative.",
+      "changed_on_read_back": {
+       "from": "derivable wait",
+       "why": "Q3 was changed on read-back to 'not determined': no page says whether executed_at marks the execute request's arrival or the reply's send, so the duration is coded as the weaker of the two, a stay.",
+       "at": "integration, 30 October 2026"
+      }
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/executetalkbackcommand.html",
+        "quote": "{ \"command_string\": \"OPENDOOR\", \"created_at\": \"2018-12-29T17:53:40-05:00\", \"executed_at\": \"2018-12-30T17:53:40-05:00\", \"id\": 2448500, \"position\": null }"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/executetalkbackcommand.html",
+        "quote": "Response OPENDOOR If there are no commands left to execute, the response body is empty."
+       }
+      ],
+      "note": "An execute call returns at once, with an empty body when no command is left."
+     },
+     "not_determined": [
+      "Q3",
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/executetalkbackcommand.html",
+       "read": "The execute page shows executed_at set in the response and the get and add pages show it null for a queued command; none of the TalkBack pages, the MathWorks Answers thread or the API catalogue entry defines the moment it is stamped.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/executetalkbackcommand.html",
+       "read": "The JSON and XML responses to the execute call carry executed_at next to created_at; what the time marks is the open point recorded under Q3.",
+       "agrees": true
+      },
+      {
+       "question": "Q5",
+       "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/executetalkbackcommand.html",
+       "read": "The execute call's JSON and XML responses carry created_at and executed_at, both set by the server; which moment executed_at marks is the open point under Q3.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "TalkBack command queue, execute call with a text response (the default)",
+     "Q0": {
+      "fields": [
+       "command_string"
+      ],
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/executetalkbackcommand.html",
+        "quote": "Response OPENDOOR If there are no commands left to execute, the response body is empty."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/gettalkbackcommand.html",
+        "quote": "{ \"command_string\": \"OPENDOOR\", \"created_at\": \"2013-12-29T17:53:40-05:00\", \"executed_at\": null, \"id\": 2448500, \"position\": 5 }"
+       },
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/addtalkbackcommand.html",
+        "quote": "{ \"id\": 2448500, \"command_string\": \"OPENDOOR\", \"position\": 5, \"executed_at\": null, \"created_at\": \"2016-08-29T15:12:36Z\" }"
+       }
+      ],
+      "field": "created_at",
+      "resolution": "s",
+      "note": "The record of the command keeps created_at; the text response does not carry it."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/executetalkbackcommand.html",
+        "quote": "Response OPENDOOR If there are no commands left to execute, the response body is empty."
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/executetalkbackcommand.html",
+        "quote": "{ \"command_string\": \"OPENDOOR\", \"created_at\": \"2018-12-29T17:53:40-05:00\", \"executed_at\": \"2018-12-30T17:53:40-05:00\", \"id\": 2448500, \"position\": null }"
+       },
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/gettalkbackcommand.html",
+        "quote": "{ \"command_string\": \"OPENDOOR\", \"created_at\": \"2013-12-29T17:53:40-05:00\", \"executed_at\": null, \"id\": 2448500, \"position\": 5 }"
+       }
+      ],
+      "changed_on_read_back": {
+       "from": "request arrival",
+       "why": "The recorded time is the same executed_at as for the JSON response, and no page says whether it is stamped when the execute request arrives or when the reply is sent."
+      }
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/executetalkbackcommand.html",
+        "quote": "Response OPENDOOR If there are no commands left to execute, the response body is empty."
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/executetalkbackcommand.html",
+        "quote": "Response OPENDOOR If there are no commands left to execute, the response body is empty."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/executetalkbackcommand.html",
+        "quote": "Response OPENDOOR If there are no commands left to execute, the response body is empty."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/executetalkbackcommand.html",
+        "quote": "Response OPENDOOR If there are no commands left to execute, the response body is empty."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q3",
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/executetalkbackcommand.html",
+       "read": "The execute page shows executed_at set in the JSON response and the get page shows it null for a queued command; none of the TalkBack pages defines the moment it is stamped, and the text response does not carry it.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQTT publish to a channel (QoS 0 only)",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/mqtt-basics.html",
+        "quote": "means that your client does not receive an acknowledgment when you publish to a ThingSpeak channel."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "TalkBack add command (HTTP POST)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "id",
+       "command_string",
+       "position",
+       "executed_at",
+       "created_at"
+      ],
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/addtalkbackcommand.html",
+        "quote": "{ \"id\": 2448500, \"command_string\": \"OPENDOOR\", \"position\": 5, \"executed_at\": null, \"created_at\": \"2016-08-29T15:12:36Z\" }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/addtalkbackcommand.html",
+        "quote": "{ \"id\": 2448500, \"command_string\": \"OPENDOOR\", \"position\": 5, \"executed_at\": null, \"created_at\": \"2016-08-29T15:12:36Z\" }"
+       }
+      ],
+      "which": "receive time",
+      "resolution": "s",
+      "note": "created_at is in the response and is not an input of the add call. The page does not state that it is the time the request is received."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/addtalkbackcommand.html",
+        "quote": "{ \"id\": 2448500, \"command_string\": \"OPENDOOR\", \"position\": 5, \"executed_at\": null, \"created_at\": \"2016-08-29T15:12:36Z\" }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/addtalkbackcommand.html",
+        "quote": "{ \"id\": 2448500, \"command_string\": \"OPENDOOR\", \"position\": 5, \"executed_at\": null, \"created_at\": \"2016-08-29T15:12:36Z\" }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://web.archive.org/web/2025/https://www.mathworks.com/help/thingspeak/addtalkbackcommand.html",
+       "read": "The JSON and XML responses to the add call carry created_at, but the default text response is the command id alone, so the time is not in every acknowledgment, and the page does not say whether created_at is the time the request is received or the time the command is stored.",
+       "agrees": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "Bevywise CrystalMQ (MQTTRoute)",
+   "group": "C",
+   "kind": "broker",
+   "version": "documentation as retrieved on 29 October 2026",
+   "version_evidence": [
+    {
+     "url": "https://css.bevywise.com/mqtt-broker/help.html",
+     "quote": "MQTT Versions Supported : MQTT 3.1 MQTT 3.1.1 MQTT 5"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list awesome-mqtt/awesome-mqtt",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "MQTT subscriptions (3.1, 3.1.1 and 5)",
+     "Q0": {
+      "fields": [
+       "topic name",
+       "packet identifier",
+       "QoS",
+       "DUP flag",
+       "retain flag",
+       "payload",
+       "MQTT 5 properties as set by the publisher"
+      ],
+      "evidence": [
+       {
+        "url": "https://css.bevywise.com/mqtt-broker/help.html",
+        "quote": "MQTT Versions Supported : MQTT 3.1 MQTT 3.1.1 MQTT 5"
+       },
+       {
+        "url": "https://css.bevywise.com/mqtt-broker/help.html",
+        "quote": "Topic-based Messaging: CrystalMQ uses a topic-based messaging model where messages are published to specific topics, allowing subscribers to receive only relevant data based on their subscriptions."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBLISH Packet contains the following fields in the order: Topic Name, Packet Identifier, and Properties."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://css.bevywise.com/mqtt-broker/help.html",
+        "quote": "Database which stores data received and sent by broker (if SQLITE is selected as data storage option)"
+       }
+      ],
+      "note": "not reached: the help names no time kept for a message"
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBLISH Packet contains the following fields in the order: Topic Name, Packet Identifier, and Properties."
+       },
+       {
+        "url": "https://css.bevywise.com/mqtt-broker/help.html",
+        "quote": "Topic-based Messaging: CrystalMQ uses a topic-based messaging model where messages are published to specific topics, allowing subscribers to receive only relevant data based on their subscriptions."
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://css.bevywise.com/mqtt-broker/help.html",
+        "quote": "Database which stores data received and sent by broker (if SQLITE is selected as data storage option)"
+       }
+      ],
+      "note": "not reached"
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBLISH Packet contains the following fields in the order: Topic Name, Packet Identifier, and Properties."
+       },
+       {
+        "url": "https://css.bevywise.com/mqtt-broker/help.html",
+        "quote": "Topic-based Messaging: CrystalMQ uses a topic-based messaging model where messages are published to specific topics, allowing subscribers to receive only relevant data based on their subscriptions."
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://css.bevywise.com/mqtt-broker/help.html",
+        "quote": "MQTT 5 introduces the concept of session and message expiry. Clients can set session expiry intervals, allowing the broker to clean up disconnected client sessions after a specified period."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The PUBLISH packet sent to a Client by the Server MUST contain a Message Expiry Interval set to the received value minus the time that the Application Message has been waiting in the Server"
+       }
+      ],
+      "note": "The help says MQTT 5 brings message expiry but describes only session expiry. It does not say that the delivered interval is the published one less the wait at the broker, which the standard requires."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://css.bevywise.com/mqtt-broker/help.html",
+        "quote": "Database which stores data received and sent by broker (if SQLITE is selected as data storage option)"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://css.bevywise.com/mqtt-broker/help.html",
+        "quote": "Topic-based Messaging: CrystalMQ uses a topic-based messaging model where messages are published to specific topics, allowing subscribers to receive only relevant data based on their subscriptions."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q1",
+      "Q3",
+      "Q5",
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://css.bevywise.com/mqtt-broker/help.html",
+       "read": "The help page describes topic-based delivery to subscribers on their subscriptions, with Receive Maximum as the usual MQTT 5 window, so delivery is standing.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQTT publish (QoS 1 and 2)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet identifier",
+       "reason code (MQTT 5)",
+       "properties (MQTT 5)"
+      ],
+      "evidence": [
+       {
+        "url": "https://css.bevywise.com/mqtt-broker/help.html",
+        "quote": "QoS Handling: CrystalMQ supports different Quality of Service (QoS) levels (0, 1, 2)"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Coreflux",
+   "group": "C",
+   "kind": "broker",
+   "version": "documentation v2.22 as retrieved on 29 October 2026",
+   "version_evidence": [
+    {
+     "url": "https://docs.coreflux.org/",
+     "quote": "Coreflux Documentation home page v2.22"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "Reddit r/IOT",
+     "query": "as logged in search_log.json"
+    },
+    {
+     "route": "route 2",
+     "source": "times-first search",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "MQTT subscriptions (MQTT 3.1.1 and 5)",
+     "Q0": {
+      "fields": [
+       "topic name",
+       "packet identifier",
+       "QoS",
+       "DUP flag",
+       "retain flag",
+       "payload",
+       "MQTT 5 properties as set by the publisher"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.coreflux.org/latest/mqtt-broker/protocol",
+        "quote": "The broker forwards the message to all subscribers of that topic."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBLISH Packet contains the following fields in the order: Topic Name, Packet Identifier, and Properties."
+       },
+       {
+        "url": "https://docs.coreflux.org/latest/lot-language/models/overview",
+        "quote": "ADD STRING \"last_update\" WITH TIMESTAMP \"UTC\" Produces: { \"equipment_id\" : \"PUMP001\" , \"status\" : \"RUNNING\" , \"runtime_hours\" : 1250 , \"last_update\" : \"2025-10-25T14:30:15Z\" }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://docs.coreflux.org/latest/lot-language/models/overview",
+        "quote": "ADD STRING \"last_update\" WITH TIMESTAMP \"UTC\" Produces: { \"equipment_id\" : \"PUMP001\" , \"status\" : \"RUNNING\" , \"runtime_hours\" : 1250 , \"last_update\" : \"2025-10-25T14:30:15Z\" }"
+       }
+      ],
+      "field": "a LoT model field declared WITH TIMESTAMP (UTC or ISO)",
+      "resolution": "s",
+      "note": "A time stamped by LoT logic that the broker runs (a model or an action). The pages read show no time added to a message that is published without LoT."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://docs.coreflux.org/latest/lot-language/models/overview",
+        "quote": "ADD STRING \"last_update\" WITH TIMESTAMP \"UTC\" Produces: { \"equipment_id\" : \"PUMP001\" , \"status\" : \"RUNNING\" , \"runtime_hours\" : 1250 , \"last_update\" : \"2025-10-25T14:30:15Z\" }"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.coreflux.org/latest/mqtt-broker/protocol",
+        "quote": "The broker forwards the message to all subscribers of that topic."
+       }
+      ],
+      "note": "not reached"
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBLISH Packet contains the following fields in the order: Topic Name, Packet Identifier, and Properties."
+       },
+       {
+        "url": "https://docs.coreflux.org/latest/lot-language/models/overview",
+        "quote": "ADD STRING \"last_update\" WITH TIMESTAMP \"UTC\" Produces: { \"equipment_id\" : \"PUMP001\" , \"status\" : \"RUNNING\" , \"runtime_hours\" : 1250 , \"last_update\" : \"2025-10-25T14:30:15Z\" }"
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.coreflux.org/latest/mqtt-broker/protocol",
+        "quote": "The broker forwards the message to all subscribers of that topic."
+       }
+      ],
+      "note": "not reached: the pages read do not mention message expiry"
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.coreflux.org/latest/mqtt-broker/protocol",
+        "quote": "The broker forwards the message to all subscribers of that topic."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://docs.coreflux.org/latest/mqtt-broker/protocol",
+        "quote": "The broker forwards the message to all subscribers of that topic."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q3",
+      "Q5",
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://docs.coreflux.org/latest/mqtt-broker/protocol",
+       "read": "The page says the broker forwards the message to all subscribers of the topic, so delivery is standing.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQTT publish, QoS 1 and 2",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet identifier",
+       "reason code (MQTT 5)",
+       "properties (MQTT 5)"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.coreflux.org/latest/mqtt-broker/protocol",
+        "quote": "Acknowledgment PUBACK from broker"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "MQTT publish, QoS 0",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://docs.coreflux.org/latest/mqtt-broker/protocol",
+        "quote": "Fire and forget. The message is sent once with no acknowledgment."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Crossbar.io",
+   "group": "C",
+   "kind": "broker",
+   "version": "v26_10_1",
+   "version_evidence": [
+    {
+     "url": "https://github.com/crossbario/crossbar/releases/tag/v26_10_1",
+     "quote": "v26_10_1"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub topic broker (supplementary)",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "WAMP subscriptions (EVENT messages)",
+     "Q0": {
+      "fields": [
+       "subscription id",
+       "publication id",
+       "args and kwargs (the payload)",
+       "publisher session id, auth id and auth role (when disclosed)",
+       "topic (for pattern subscriptions)",
+       "transaction hash",
+       "forward_for",
+       "retained flag (on retained events)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/broker.py",
+        "quote": "msg = message.Event( subscription.id, publication, args=publish.args, kwargs=publish.kwargs, publisher=publisher, publisher_authid=publisher_authid, publisher_authrole=publisher_authrole, topic=topic, transaction_hash=publish.transaction_hash, forward_for=forward_for, )"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/broker.py",
+        "quote": "publisher_authrole=retained_event.publisher_authrole, retained=True,"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/docs/Event-History.rst",
+        "quote": "a store on the realm ``realm1`` which resides in memory, and which stores the last 1000 events for the topic ``com.example.oncounter``."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/realmstore.py",
+        "quote": "evt = { \"time_ns\": time_ns(), \"realm\": session._realm, \"session_id\": session._session_id, \"authid\": session._authid, \"authrole\": session._authrole, \"publication\": publication_id, \"topic\": publish.topic, \"args\": publish.args, \"kwargs\": publish.kwargs, }"
+       }
+      ],
+      "field": "time_ns",
+      "resolution": "ns",
+      "note": "The router takes the time only when a realm store keeps event history for the topic. The stamp is kept in the store and is not part of the EVENT message."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/broker.py",
+        "quote": "msg = message.Event( subscription.id, publication, args=publish.args, kwargs=publish.kwargs, publisher=publisher, publisher_authid=publisher_authid, publisher_authrole=publisher_authrole, topic=topic, transaction_hash=publish.transaction_hash, forward_for=forward_for, )"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/broker.py",
+        "quote": "msg = message.Event( subscription.id, publication, args=publish.args, kwargs=publish.kwargs, publisher=publisher, publisher_authid=publisher_authid, publisher_authrole=publisher_authrole, topic=topic, transaction_hash=publish.transaction_hash, forward_for=forward_for, )"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/broker.py",
+        "quote": "msg = message.Event( subscription.id, publication, args=publish.args, kwargs=publish.kwargs, publisher=publisher, publisher_authid=publisher_authid, publisher_authrole=publisher_authrole, topic=topic, transaction_hash=publish.transaction_hash, forward_for=forward_for, )"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/broker.py",
+        "quote": "msg = message.Event( subscription.id, publication, args=publish.args, kwargs=publish.kwargs, publisher=publisher, publisher_authid=publisher_authid, publisher_authrole=publisher_authrole, topic=topic, transaction_hash=publish.transaction_hash, forward_for=forward_for, )"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/broker.py",
+        "quote": "msg = message.Event( subscription.id, publication, args=publish.args, kwargs=publish.kwargs, publisher=publisher, publisher_authid=publisher_authid, publisher_authrole=publisher_authrole, topic=topic, transaction_hash=publish.transaction_hash, forward_for=forward_for, )"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/broker.py",
+       "read": "The router builds an EVENT message for each subscription of the topic and sends it to the subscriber, with no request or credit from the subscriber.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "event history call (wamp.subscription.get_events)",
+     "Q0": {
+      "fields": [
+       "time_ns",
+       "realm",
+       "session id",
+       "authid",
+       "authrole",
+       "publication id",
+       "topic",
+       "args",
+       "kwargs"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/realmstore.py",
+        "quote": "evt = { \"time_ns\": time_ns(), \"realm\": session._realm, \"session_id\": session._session_id, \"authid\": session._authid, \"authrole\": session._authrole, \"publication\": publication_id, \"topic\": publish.topic, \"args\": publish.args, \"kwargs\": publish.kwargs, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/realmstore.py",
+        "quote": "res.append(self._event_store[publication_id])"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/docs/Event-History.rst",
+        "quote": "a store on the realm ``realm1`` which resides in memory, and which stores the last 1000 events for the topic ``com.example.oncounter``."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/realmstore.py",
+        "quote": "evt = { \"time_ns\": time_ns(), \"realm\": session._realm, \"session_id\": session._session_id, \"authid\": session._authid, \"authrole\": session._authrole, \"publication\": publication_id, \"topic\": publish.topic, \"args\": publish.args, \"kwargs\": publish.kwargs, }"
+       }
+      ],
+      "field": "time_ns",
+      "resolution": "ns",
+      "note": "The event store is configured per realm and topic. The time is taken when the router stores the event, in its handling of the publish."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/realmstore.py",
+        "quote": "evt = { \"time_ns\": time_ns(), \"realm\": session._realm, \"session_id\": session._session_id, \"authid\": session._authid, \"authrole\": session._authrole, \"publication\": publication_id, \"topic\": publish.topic, \"args\": publish.args, \"kwargs\": publish.kwargs, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/realmstore.py",
+        "quote": "res.append(self._event_store[publication_id])"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/realmstore.py",
+        "quote": "evt = { \"time_ns\": time_ns(), \"realm\": session._realm, \"session_id\": session._session_id, \"authid\": session._authid, \"authrole\": session._authrole, \"publication\": publication_id, \"topic\": publish.topic, \"args\": publish.args, \"kwargs\": publish.kwargs, }"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/realmstore.py",
+        "quote": "evt = { \"time_ns\": time_ns(), \"realm\": session._realm, \"session_id\": session._session_id, \"authid\": session._authid, \"authrole\": session._authrole, \"publication\": publication_id, \"topic\": publish.topic, \"args\": publish.args, \"kwargs\": publish.kwargs, }"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/realmstore.py",
+        "quote": "evt = { \"time_ns\": time_ns(), \"realm\": session._realm, \"session_id\": session._session_id, \"authid\": session._authid, \"authrole\": session._authrole, \"publication\": publication_id, \"topic\": publish.topic, \"args\": publish.args, \"kwargs\": publish.kwargs, }"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/service.py",
+        "quote": "@wamp.register(\"wamp.subscription.get_events\") def subscription_get_events(self, subscription_id, limit=10, details=None): \"\"\" Return history of events for given subscription."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/docs/Event-History.rst",
+        "quote": "session.call('wamp.subscription.get_events', [subcriptionID, 20])"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": []
+    }
+   ],
+   "producers": [
+    {
+     "interface": "WAMP PUBLISH with acknowledgment requested",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "publish request id",
+       "publication id"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/broker.py",
+        "quote": "reply = message.Published(publish.request, publication)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/broker.py",
+        "quote": "# new ID for the publication # publication = util.id()"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/broker.py",
+        "quote": "reply = message.Published(publish.request, publication)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/broker.py",
+        "quote": "# new ID for the publication # publication = util.id()"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/broker.py",
+        "quote": "reply = message.Published(publish.request, publication)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/broker.py",
+        "quote": "# new ID for the publication # publication = util.id()"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/broker.py",
+        "quote": "reply = message.Published(publish.request, publication)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/crossbario/crossbar/v26_10_1/src/crossbar/router/broker.py",
+        "quote": "# new ID for the publication # publication = util.id()"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "ejabberd",
+   "group": "C",
+   "kind": "broker",
+   "version": "26.09",
+   "version_evidence": [
+    {
+     "url": "https://github.com/processone/ejabberd/releases/tag/26.09",
+     "quote": "Release 26.09 · processone/ejabberd · GitHub"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list awesome-selfhosted/awesome-selfhosted",
+     "query": "as logged in search_log.json"
+    },
+    {
+     "route": "route 2",
+     "source": "times-first search",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "XMPP messages stored offline and delivered at login (mod_offline)",
+     "Q0": {
+      "fields": [
+       "the message stanza as sent (from, to, id, type, body and payloads)",
+       "delay element: stamp and the server's address as from"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_offline.erl",
+        "quote": "Pkt1 = xmpp:set_from_to(Pkt, From, To), Pkt2 = add_delay_info(Pkt1, LServer, R#offline_msg.timestamp), {route, Pkt2}"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_offline.erl",
+        "quote": "TimeStamp = erlang:timestamp(), Expire = find_x_expire(TimeStamp, Packet), OffMsg = #offline_msg{us = {LUser, LServer}, timestamp = TimeStamp, expire = Expire, from = From, to = To, packet = Packet}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_offline.erl",
+        "quote": "Pkt1 = xmpp:set_from_to(Pkt, From, To), Pkt2 = add_delay_info(Pkt1, LServer, R#offline_msg.timestamp), {route, Pkt2}"
+       }
+      ],
+      "field": "offline message timestamp (the delay stamp)",
+      "resolution": "us",
+      "note": "Needs the module mod_offline. Only a message stored offline gets the stamp; the routing of a message to an online recipient was not read."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_offline.erl",
+        "quote": "Pkt1 = xmpp:set_from_to(Pkt, From, To), Pkt2 = add_delay_info(Pkt1, LServer, R#offline_msg.timestamp), {route, Pkt2}"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_offline.erl",
+        "quote": "Pkt1 = xmpp:set_from_to(Pkt, From, To), Pkt2 = add_delay_info(Pkt1, LServer, R#offline_msg.timestamp), {route, Pkt2}"
+       }
+      ],
+      "note": "The stamp is the time of storage; the code read keeps no delivery time."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_offline.erl",
+        "quote": "Pkt1 = xmpp:set_from_to(Pkt, From, To), Pkt2 = add_delay_info(Pkt1, LServer, R#offline_msg.timestamp), {route, Pkt2}"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_offline.erl",
+        "quote": "TimeStamp = erlang:timestamp(), Expire = find_x_expire(TimeStamp, Packet), OffMsg = #offline_msg{us = {LUser, LServer}, timestamp = TimeStamp, expire = Expire, from = From, to = To, packet = Packet}"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_offline.erl",
+        "quote": "Pkt1 = xmpp:set_from_to(Pkt, From, To), Pkt2 = add_delay_info(Pkt1, LServer, R#offline_msg.timestamp), {route, Pkt2}"
+       }
+      ],
+      "note": "The stored messages are routed to the session at login; the code read shows no request."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_offline.erl",
+       "read": "The login hook routes the stored messages to the session with a delay stamp and no request from the client, so this path is standing.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "XMPP archive queries (mod_mam, XEP-0313)",
+     "Q0": {
+      "fields": [
+       "the archived message stanza",
+       "forwarded wrapper with a delay element: stamp (archive time) and the server's address as from",
+       "archive id (microseconds of the server clock)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mam.erl",
+        "quote": "Delay = #delay{stamp = TS, from = jid:make(LServer)}, {ok, #forwarded{sub_els = [Pkt4], delay = Delay}}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mam.erl",
+        "quote": "make_id() -> erlang:system_time(microsecond)."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mam.erl",
+        "quote": "make_id() -> erlang:system_time(microsecond)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mam.erl",
+        "quote": "Delay = #delay{stamp = TS, from = jid:make(LServer)}, {ok, #forwarded{sub_els = [Pkt4], delay = Delay}}"
+       }
+      ],
+      "field": "archive timestamp (forwarded delay stamp) and archive id",
+      "resolution": "us",
+      "note": "Needs the module mod_mam and archiving enabled for the user."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mam.erl",
+        "quote": "Delay = #delay{stamp = TS, from = jid:make(LServer)}, {ok, #forwarded{sub_els = [Pkt4], delay = Delay}}"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mam.erl",
+        "quote": "Delay = #delay{stamp = TS, from = jid:make(LServer)}, {ok, #forwarded{sub_els = [Pkt4], delay = Delay}}"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mam.erl",
+        "quote": "Delay = #delay{stamp = TS, from = jid:make(LServer)}, {ok, #forwarded{sub_els = [Pkt4], delay = Delay}}"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mam.erl",
+        "quote": "make_id() -> erlang:system_time(microsecond)."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mam.erl",
+        "quote": "Delay = #delay{stamp = TS, from = jid:make(LServer)}, {ok, #forwarded{sub_els = [Pkt4], delay = Delay}}"
+       }
+      ],
+      "note": "An archive query is answered from the store; the code read shows no waiting."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": []
+    },
+    {
+     "mode": "MQTT subscriptions (mod_mqtt, MQTT 3.1.1 and 5.0)",
+     "Q0": {
+      "fields": [
+       "topic",
+       "packet identifier",
+       "QoS",
+       "DUP flag",
+       "retain flag",
+       "payload",
+       "MQTT 5 properties, with the message expiry interval replaced by the time left"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/include/mqtt.hrl",
+        "quote": "retain = false :: boolean(), topic :: binary(), payload :: binary(), properties = #{} :: properties(), meta = #{} :: map()})"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mqtt_session.erl",
+        "quote": "Left = ExpiryTime - unix_time(), if Left > 0 -> Props1 = Props#{message_expiry_interval => Left}"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mqtt_session.erl",
+        "quote": "MessageExpiry = maps:get(message_expiry_interval, Props, ?MAX_UINT32), ExpiryTime = min(unix_time() + MessageExpiry, ?MAX_UINT32)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mqtt_session.erl",
+        "quote": "unix_time() -> erlang:system_time(second)."
+       }
+      ],
+      "field": "expiry deadline: the second of arrival plus the publisher's message expiry interval",
+      "resolution": "s",
+      "note": "The setting is the publisher's Message Expiry Interval property (MQTT 5.0). Without it the deadline is the maximum value and the arrival second is not kept."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mqtt_session.erl",
+        "quote": "Left = ExpiryTime - unix_time(), if Left > 0 -> Props1 = Props#{message_expiry_interval => Left}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/include/mqtt.hrl",
+        "quote": "retain = false :: boolean(), topic :: binary(), payload :: binary(), properties = #{} :: properties(), meta = #{} :: map()})"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/include/mqtt.hrl",
+        "quote": "retain = false :: boolean(), topic :: binary(), payload :: binary(), properties = #{} :: properties(), meta = #{} :: map()})"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mqtt_session.erl",
+        "quote": "Left = ExpiryTime - unix_time(), if Left > 0 -> Props1 = Props#{message_expiry_interval => Left}"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mqtt_session.erl",
+        "quote": "Left = ExpiryTime - unix_time(), if Left > 0 -> Props1 = Props#{message_expiry_interval => Left}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mqtt_session.erl",
+        "quote": "MessageExpiry = maps:get(message_expiry_interval, Props, ?MAX_UINT32), ExpiryTime = min(unix_time() + MessageExpiry, ?MAX_UINT32)"
+       }
+      ],
+      "resolution": "s",
+      "note": "Only for a message published with an expiry interval. The delivered interval is the deadline less the current second, so a subscriber that knows the published interval gets the stay."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mqtt.erl",
+        "quote": "route(Mod, LServer, Pkt, ExpiryTime) -> route(Mod, LServer, Pkt, ExpiryTime, Pkt#publish.topic, 0)."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mqtt.erl",
+        "quote": "route(Mod, LServer, Pkt, ExpiryTime) -> route(Mod, LServer, Pkt, ExpiryTime, Pkt#publish.topic, 0)."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q5",
+       "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mqtt_session.erl",
+       "read": "The deadline is set at publish as the current second plus the publisher's interval, and the session recomputes the delivered interval as deadline less the current second each time it sends or resends a packet from its queue, so the published interval minus the delivered one is the stay including the wait for the single in-flight slot, to the second, for a message published with an expiry to an MQTT 5.0 subscriber.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_mqtt.erl",
+       "read": "The router sends each published packet to the subscribed sessions with no request or credit from the consumer, so delivery is standing.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQTT PUBLISH, QoS 1 and 2",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet identifier",
+       "reason code",
+       "properties"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/include/mqtt.hrl",
+        "quote": "-record(puback, {id :: non_neg_integer(), code = success :: reason_code(), properties = #{} :: properties()})"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/include/mqtt.hrl",
+        "quote": "-record(puback, {id :: non_neg_integer(), code = success :: reason_code(), properties = #{} :: properties()})"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/include/mqtt.hrl",
+        "quote": "-record(puback, {id :: non_neg_integer(), code = success :: reason_code(), properties = #{} :: properties()})"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/include/mqtt.hrl",
+        "quote": "-record(puback, {id :: non_neg_integer(), code = success :: reason_code(), properties = #{} :: properties()})"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "XMPP message with stream management (XEP-0198)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "h: the count of stanzas the server has handled"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_stream_mgmt.erl",
+        "quote": "handle_r(#{mgmt_xmlns := Xmlns, mgmt_stanzas_in := H} = State) -> Res = #sm_a{xmlns = Xmlns, h = H}, send(State, Res)."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_stream_mgmt.erl",
+        "quote": "handle_r(#{mgmt_xmlns := Xmlns, mgmt_stanzas_in := H} = State) -> Res = #sm_a{xmlns = Xmlns, h = H}, send(State, Res)."
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_stream_mgmt.erl",
+        "quote": "handle_r(#{mgmt_xmlns := Xmlns, mgmt_stanzas_in := H} = State) -> Res = #sm_a{xmlns = Xmlns, h = H}, send(State, Res)."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/processone/ejabberd/26.09/src/mod_stream_mgmt.erl",
+        "quote": "handle_r(#{mgmt_xmlns := Xmlns, mgmt_stanzas_in := H} = State) -> Res = #sm_a{xmlns = Xmlns, h = H}, send(State, Res)."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "FairCom Edge",
+   "group": "C",
+   "kind": "broker",
+   "version": "documentation last updated 27 October 2026",
+   "version_evidence": [
+    {
+     "url": "https://faircom.helpjuice.com/en_US/event-streaming-api-actions/getmessagesfrommqtopic",
+     "quote": "October 27th, 2026"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "Wikipedia (en): Comparison of MQTT implementations",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "MQ API getMessagesFromMqTopic and getMessagesFromMqApiSession (JSON API, pull)",
+     "Q0": {
+      "fields": [
+       "messages[]: binaryFormat, contentType, correlationData, expirySeconds, payload, responseTopic, retain, userProperties",
+       "with includeMessageMetadata true: id, timestamp, error, log",
+       "with includeMqttProperties, includeTransformFields or includeOtherFields true: the MQTT properties, transform fields or other fields of the integration table"
+      ],
+      "evidence": [
+       {
+        "url": "https://faircom.helpjuice.com/en_US/event-streaming-api-actions/getmessagesfrommqtopic",
+        "quote": "\"binaryFormat\" \"contentType\" \"correlationData\" \"expirySeconds\" \"payload\" \"responseTopic\" \"retain\" \"userProperties\""
+       },
+       {
+        "url": "https://faircom.helpjuice.com/en_US/event-streaming-api-actions/getmessagesfrommqtopic",
+        "quote": "The \"includeMessageMetadata\" property includes the message's \"id\" , \"timestamp\" , \"error\" , and \"log\" properties when set to true ."
+       },
+       {
+        "url": "https://faircom.helpjuice.com/en_US/event-streaming-api-actions/getmessagesfrommqapisession",
+        "quote": "The \"includeMessageMetadata\" property includes the message's \"id\" , \"timestamp\" , \"error\" , and \"log\" properties when set to true ."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://faircom.helpjuice.com/en_US/edge/faircom-edge-concepts-overview",
+        "quote": "current UTC time is recorded in the \"create_ts\" field."
+       },
+       {
+        "url": "https://faircom.helpjuice.com/en_US/edge/faircom-edge-concepts-overview",
+        "quote": "The server automatically populates its value with a millisecond-precision UTC date and time when a record is inserted."
+       },
+       {
+        "url": "https://faircom.helpjuice.com/en_US/edge/faircom-edge-concepts-overview",
+        "quote": "In FairCom Edge, a topic is mapped to one integration table. Each MQTT message inserts a record into the appropriate integration table."
+       },
+       {
+        "url": "https://faircom.helpjuice.com/en_US/mq-concepts/mq-event-streaming-concepts",
+        "quote": "An event server automatically generates the event's unique identifier and timestamp when receiving the event."
+       }
+      ],
+      "field": "create_ts of the integration table record, returned as the message's timestamp",
+      "resolution": "ms",
+      "note": "The server sets create_ts when it inserts the record for each MQTT message. No page read names create_ts as the source of the timestamp the API returns, so that link is read from the two statements together."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://faircom.helpjuice.com/en_US/event-streaming-api-actions/getmessagesfrommqtopic",
+        "quote": "The \"includeMessageMetadata\" property includes the message's \"id\" , \"timestamp\" , \"error\" , and \"log\" properties when set to true ."
+       },
+       {
+        "url": "https://faircom.helpjuice.com/en_US/event-streaming-api-actions/getmessagesfrommqapisession",
+        "quote": "The \"includeMessageMetadata\" property includes the message's \"id\" , \"timestamp\" , \"error\" , and \"log\" properties when set to true ."
+       }
+      ],
+      "note": "Only when the request sets includeMessageMetadata to true (the default is false), read as a choice the consumer makes per request."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://faircom.helpjuice.com/en_US/event-streaming-api-actions/getmessagesfrommqtopic",
+        "quote": "\"binaryFormat\" \"contentType\" \"correlationData\" \"expirySeconds\" \"payload\" \"responseTopic\" \"retain\" \"userProperties\""
+       },
+       {
+        "url": "https://faircom.helpjuice.com/en_US/event-streaming-api-actions/getmessagesfrommqtopic",
+        "quote": "The \"includeMessageMetadata\" property includes the message's \"id\" , \"timestamp\" , \"error\" , and \"log\" properties when set to true ."
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://faircom.helpjuice.com/en_US/event-streaming-api-actions/getmessagesfrommqtopic",
+        "quote": "\"binaryFormat\" \"contentType\" \"correlationData\" \"expirySeconds\" \"payload\" \"responseTopic\" \"retain\" \"userProperties\""
+       },
+       {
+        "url": "https://faircom.helpjuice.com/en_US/event-streaming-api-actions/getmessagesfrommqtopic",
+        "quote": "The \"includeMessageMetadata\" property includes the message's \"id\" , \"timestamp\" , \"error\" , and \"log\" properties when set to true ."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://faircom.helpjuice.com/en_US/edge/faircom-edge-concepts-overview",
+        "quote": "In FairCom Edge, a topic is mapped to one integration table. Each MQTT message inserts a record into the appropriate integration table."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://faircom.helpjuice.com/en_US/event-streaming-api-actions/getmessagesfrommqtopic",
+        "quote": "The number of returned messages will be equal to or less than this maximum."
+       }
+      ],
+      "note": "The action page has no waiting property; a call returns up to maxMessages messages."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": []
+    },
+    {
+     "mode": "MQTT subscriptions (MQTT 3.1, 3.1.1 and 5)",
+     "Q0": {
+      "fields": [
+       "topic name",
+       "packet identifier",
+       "QoS",
+       "DUP flag",
+       "retain flag",
+       "payload",
+       "MQTT 5 properties as set by the publisher"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBLISH Packet contains the following fields in the order: Topic Name, Packet Identifier, and Properties."
+       },
+       {
+        "url": "https://faircom.helpjuice.com/en_US/edge/faircom-edge-concepts-overview",
+        "quote": "(MQTT 5) The publisher can specify a string that identifies the type of content in the MQTT payload"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://faircom.helpjuice.com/en_US/edge/faircom-edge-concepts-overview",
+        "quote": "current UTC time is recorded in the \"create_ts\" field."
+       },
+       {
+        "url": "https://faircom.helpjuice.com/en_US/edge/faircom-edge-concepts-overview",
+        "quote": "The server automatically populates its value with a millisecond-precision UTC date and time when a record is inserted."
+       },
+       {
+        "url": "https://faircom.helpjuice.com/en_US/edge/faircom-edge-concepts-overview",
+        "quote": "In FairCom Edge, a topic is mapped to one integration table. Each MQTT message inserts a record into the appropriate integration table."
+       }
+      ],
+      "field": "create_ts of the integration table record",
+      "resolution": "ms"
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBLISH Packet contains the following fields in the order: Topic Name, Packet Identifier, and Properties."
+       },
+       {
+        "url": "https://faircom.helpjuice.com/en_US/edge/faircom-edge-concepts-overview",
+        "quote": "In FairCom Edge, a topic is mapped to one integration table. Each MQTT message inserts a record into the appropriate integration table."
+       }
+      ],
+      "note": "The time is kept in the integration table and returned by the MQ API; no page read says that it is added to a delivered MQTT message."
+     },
+     "Q3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://faircom.helpjuice.com/en_US/mq-concepts/mq-event-streaming-concepts",
+        "quote": "Messaging uses the pub/sub model, where applications publish messages to a message broker and subscribe to topics on the broker to receive each message published on those topics."
+       }
+      ],
+      "note": "not reached"
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBLISH Packet contains the following fields in the order: Topic Name, Packet Identifier, and Properties."
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://faircom.helpjuice.com/en_US/event-streaming-api-actions/getmessagesfrommqtopic",
+        "quote": "\"binaryFormat\" \"contentType\" \"correlationData\" \"expirySeconds\" \"payload\" \"responseTopic\" \"retain\" \"userProperties\""
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBLISH Packet contains the following fields in the order: Topic Name, Packet Identifier, and Properties."
+       }
+      ],
+      "note": "not reached: the MQ API shows an expirySeconds field, and no page read says how the MQTT 5 interval is delivered."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://faircom.helpjuice.com/en_US/edge/faircom-edge-concepts-overview",
+        "quote": "In FairCom Edge, a topic is mapped to one integration table. Each MQTT message inserts a record into the appropriate integration table."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://faircom.helpjuice.com/en_US/mq-concepts/mq-event-streaming-concepts",
+        "quote": "Messaging uses the pub/sub model, where applications publish messages to a message broker and subscribe to topics on the broker to receive each message published on those topics."
+       },
+       {
+        "url": "https://faircom.helpjuice.com/en_US/mq-concepts/mq-event-streaming-concepts",
+        "quote": "A message broker streams messages using real-time push notifications, fast delivery, and guaranteed delivery."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q3",
+      "Q5",
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://faircom.helpjuice.com/en_US/mq-concepts/mq-event-streaming-concepts",
+       "read": "The page says subscribers receive each published message by push from the broker, so delivery is standing.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQTT PUBLISH, QoS 1 and 2",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet identifier",
+       "reason code (MQTT 5)",
+       "properties (MQTT 5)"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the"
+       },
+       {
+        "url": "https://faircom.helpjuice.com/en_US/edge/faircom-edge-concepts-overview",
+        "quote": "(MQTT 5) The publisher can specify a string that identifies the type of content in the MQTT payload"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "MQ API publishMessagesToMq (JSON API)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "result (empty)",
+       "errorCode",
+       "errorMessage",
+       "authToken"
+      ],
+      "evidence": [
+       {
+        "url": "https://faircom.helpjuice.com/en_US/event-streaming-api-actions/publishmessagestomq",
+        "quote": "Response example Success { \"result\": {}, \"errorCode\": 0, \"errorMessage\": \"\", \"authToken\": \"replaceWithAuthTokenFromCreateSession\" }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://faircom.helpjuice.com/en_US/event-streaming-api-actions/publishmessagestomq",
+        "quote": "Response example Success { \"result\": {}, \"errorCode\": 0, \"errorMessage\": \"\", \"authToken\": \"replaceWithAuthTokenFromCreateSession\" }"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://faircom.helpjuice.com/en_US/event-streaming-api-actions/publishmessagestomq",
+        "quote": "Response example Success { \"result\": {}, \"errorCode\": 0, \"errorMessage\": \"\", \"authToken\": \"replaceWithAuthTokenFromCreateSession\" }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://faircom.helpjuice.com/en_US/event-streaming-api-actions/publishmessagestomq",
+        "quote": "Response example Success { \"result\": {}, \"errorCode\": 0, \"errorMessage\": \"\", \"authToken\": \"replaceWithAuthTokenFromCreateSession\" }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "hmq",
+   "group": "C",
+   "kind": "broker",
+   "version": "v1.5.10",
+   "version_evidence": [
+    {
+     "url": "https://github.com/fhmq/hmq/releases/tag/v1.5.10",
+     "quote": "v1.5.10"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub topic broker (supplementary)",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "MQTT subscriptions at QoS 0",
+     "Q0": {
+      "fields": [
+       "topic name",
+       "retain flag",
+       "payload"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/broker.go",
+        "quote": "if err := s.client.WriterPacket(packet); err != nil {"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the following fields in the order: Topic Name, Packet Identifier."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/README.md",
+        "quote": "Supports QOS 0 and 1"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/client.go",
+        "quote": "cost := c.broker.Publish(&bridge.Elements{ ClientID: c.info.clientID, Username: c.info.username, Action: bridge.Publish, Timestamp: time.Now().Unix(), Payload: string(packet.Payload), Topic: topic, })"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/plugins/bridge/bridge.go",
+        "quote": "type Elements struct { ClientID string `json:\"clientid\"` Username string `json:\"username\"` Topic string `json:\"topic\"` Payload string `json:\"payload\"` Timestamp int64 `json:\"ts\"` Size int32 `json:\"size\"` Action string `json:\"action\"` }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/README.md",
+        "quote": "\"plugins\": { \"auth\": \"authhttp\", \"bridge\": \"kafka\" }"
+       }
+      ],
+      "field": "ts of the bridge element (Unix seconds)",
+      "resolution": "s",
+      "note": "The setting is plugins.bridge (kafka). The stamp goes to the bridge and is not kept with the message."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/broker.go",
+        "quote": "if err := s.client.WriterPacket(packet); err != nil {"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the following fields in the order: Topic Name, Packet Identifier."
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/comm.go",
+        "quote": "case QosAtLeastOnce, QosExactlyOnce: sub.client.inflightMu.Lock() sub.client.inflight[packet.MessageID] = &inflightElem{status: Publish, packet: packet, timestamp: time.Now().Unix()} sub.client.inflightMu.Unlock() err := sub.client.WriterPacket(packet)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/broker.go",
+        "quote": "if err := s.client.WriterPacket(packet); err != nil {"
+       }
+      ],
+      "note": "The broker keeps no send time for QoS 0; the in-flight record is made only for QoS 1 and 2."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/broker.go",
+        "quote": "if err := s.client.WriterPacket(packet); err != nil {"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the following fields in the order: Topic Name, Packet Identifier."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/broker.go",
+        "quote": "if err := s.client.WriterPacket(packet); err != nil {"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/broker.go",
+        "quote": "if err := s.client.WriterPacket(packet); err != nil {"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/broker.go",
+       "read": "The publish function writes the packet to each subscriber's connection at once, so delivery is standing.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "MQTT subscriptions at QoS 1 and 2",
+     "Q0": {
+      "fields": [
+       "topic name",
+       "packet identifier",
+       "QoS",
+       "DUP flag",
+       "retain flag",
+       "payload"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/broker.go",
+        "quote": "if err := s.client.WriterPacket(packet); err != nil {"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the following fields in the order: Topic Name, Packet Identifier."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/comm.go",
+        "quote": "case QosAtLeastOnce, QosExactlyOnce: sub.client.inflightMu.Lock() sub.client.inflight[packet.MessageID] = &inflightElem{status: Publish, packet: packet, timestamp: time.Now().Unix()} sub.client.inflightMu.Unlock() err := sub.client.WriterPacket(packet)"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/client.go",
+        "quote": "cost := c.broker.Publish(&bridge.Elements{ ClientID: c.info.clientID, Username: c.info.username, Action: bridge.Publish, Timestamp: time.Now().Unix(), Payload: string(packet.Payload), Topic: topic, })"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/plugins/bridge/bridge.go",
+        "quote": "type Elements struct { ClientID string `json:\"clientid\"` Username string `json:\"username\"` Topic string `json:\"topic\"` Payload string `json:\"payload\"` Timestamp int64 `json:\"ts\"` Size int32 `json:\"size\"` Action string `json:\"action\"` }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/README.md",
+        "quote": "\"plugins\": { \"auth\": \"authhttp\", \"bridge\": \"kafka\" }"
+       }
+      ],
+      "field": "ts of the bridge element (Unix seconds)",
+      "resolution": "s",
+      "note": "The setting is plugins.bridge (kafka). The stamp goes to the bridge and is not kept with the message."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/broker.go",
+        "quote": "if err := s.client.WriterPacket(packet); err != nil {"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the following fields in the order: Topic Name, Packet Identifier."
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "send time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/comm.go",
+        "quote": "case QosAtLeastOnce, QosExactlyOnce: sub.client.inflightMu.Lock() sub.client.inflight[packet.MessageID] = &inflightElem{status: Publish, packet: packet, timestamp: time.Now().Unix()} sub.client.inflightMu.Unlock() err := sub.client.WriterPacket(packet)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/comm.go",
+        "quote": "now := time.Now().Unix() for _, infEle := range toRetryEle { age := now - infEle.timestamp if age >= retryInterval {"
+       }
+      ],
+      "note": "The broker keeps, in memory, the Unix second at which it sends each QoS 1 or 2 message to a subscriber, for its retry timer. It is not delivered."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/broker.go",
+        "quote": "if err := s.client.WriterPacket(packet); err != nil {"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the following fields in the order: Topic Name, Packet Identifier."
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/broker.go",
+        "quote": "if err := s.client.WriterPacket(packet); err != nil {"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the following fields in the order: Topic Name, Packet Identifier."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/comm.go",
+        "quote": "case QosAtLeastOnce, QosExactlyOnce: sub.client.inflightMu.Lock() sub.client.inflight[packet.MessageID] = &inflightElem{status: Publish, packet: packet, timestamp: time.Now().Unix()} sub.client.inflightMu.Unlock() err := sub.client.WriterPacket(packet)"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/broker.go",
+        "quote": "if err := s.client.WriterPacket(packet); err != nil {"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/broker.go",
+       "read": "The publish function writes the packet to each subscriber's connection at once and keeps it in an in-flight table for retry, with no request or credit from the consumer.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/comm.go",
+       "read": "For a QoS 1 or 2 message the publish function stores the current Unix second in the in-flight entry just before writing the packet to the subscriber and uses it for the retry timer, so the send time is kept to the second and is not delivered.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "Kafka bridge (plugin kafka: JSON elements the broker sends to Kafka)",
+     "Q0": {
+      "fields": [
+       "clientid",
+       "username",
+       "topic",
+       "payload",
+       "ts (Unix seconds)",
+       "size",
+       "action"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/plugins/bridge/bridge.go",
+        "quote": "type Elements struct { ClientID string `json:\"clientid\"` Username string `json:\"username\"` Topic string `json:\"topic\"` Payload string `json:\"payload\"` Timestamp int64 `json:\"ts\"` Size int32 `json:\"size\"` Action string `json:\"action\"` }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/client.go",
+        "quote": "cost := c.broker.Publish(&bridge.Elements{ ClientID: c.info.clientID, Username: c.info.username, Action: bridge.Publish, Timestamp: time.Now().Unix(), Payload: string(packet.Payload), Topic: topic, })"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/client.go",
+        "quote": "cost := c.broker.Publish(&bridge.Elements{ ClientID: c.info.clientID, Username: c.info.username, Action: bridge.Publish, Timestamp: time.Now().Unix(), Payload: string(packet.Payload), Topic: topic, })"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/plugins/bridge/bridge.go",
+        "quote": "type Elements struct { ClientID string `json:\"clientid\"` Username string `json:\"username\"` Topic string `json:\"topic\"` Payload string `json:\"payload\"` Timestamp int64 `json:\"ts\"` Size int32 `json:\"size\"` Action string `json:\"action\"` }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/README.md",
+        "quote": "\"plugins\": { \"auth\": \"authhttp\", \"bridge\": \"kafka\" }"
+       }
+      ],
+      "field": "ts",
+      "resolution": "s",
+      "note": "The setting is plugins.bridge (kafka). The time is taken when the broker processes the publish."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/plugins/bridge/bridge.go",
+        "quote": "type Elements struct { ClientID string `json:\"clientid\"` Username string `json:\"username\"` Topic string `json:\"topic\"` Payload string `json:\"payload\"` Timestamp int64 `json:\"ts\"` Size int32 `json:\"size\"` Action string `json:\"action\"` }"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/client.go",
+        "quote": "cost := c.broker.Publish(&bridge.Elements{ ClientID: c.info.clientID, Username: c.info.username, Action: bridge.Publish, Timestamp: time.Now().Unix(), Payload: string(packet.Payload), Topic: topic, })"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/plugins/bridge/bridge.go",
+        "quote": "type Elements struct { ClientID string `json:\"clientid\"` Username string `json:\"username\"` Topic string `json:\"topic\"` Payload string `json:\"payload\"` Timestamp int64 `json:\"ts\"` Size int32 `json:\"size\"` Action string `json:\"action\"` }"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/plugins/bridge/bridge.go",
+        "quote": "type Elements struct { ClientID string `json:\"clientid\"` Username string `json:\"username\"` Topic string `json:\"topic\"` Payload string `json:\"payload\"` Timestamp int64 `json:\"ts\"` Size int32 `json:\"size\"` Action string `json:\"action\"` }"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/plugins/bridge/bridge.go",
+        "quote": "type Elements struct { ClientID string `json:\"clientid\"` Username string `json:\"username\"` Topic string `json:\"topic\"` Payload string `json:\"payload\"` Timestamp int64 `json:\"ts\"` Size int32 `json:\"size\"` Action string `json:\"action\"` }"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/plugins/bridge/bridge.go",
+        "quote": "type Elements struct { ClientID string `json:\"clientid\"` Username string `json:\"username\"` Topic string `json:\"topic\"` Payload string `json:\"payload\"` Timestamp int64 `json:\"ts\"` Size int32 `json:\"size\"` Action string `json:\"action\"` }"
+       }
+      ],
+      "note": "not reached: the consumer reads from Kafka, not from the broker"
+     },
+     "not_determined": [
+      "Q6",
+      "Q7"
+     ],
+     "read_back": []
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQTT PUBLISH, QoS 1",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "message identifier"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/client.go",
+        "quote": "case QosAtLeastOnce: puback := packets.NewControlPacket(packets.Puback).(*packets.PubackPacket) puback.MessageID = packet.MessageID"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "A PUBACK Packet is the response to a PUBLISH Packet with QoS level 1."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/client.go",
+        "quote": "case QosAtLeastOnce: puback := packets.NewControlPacket(packets.Puback).(*packets.PubackPacket) puback.MessageID = packet.MessageID"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/client.go",
+        "quote": "case QosAtLeastOnce: puback := packets.NewControlPacket(packets.Puback).(*packets.PubackPacket) puback.MessageID = packet.MessageID"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/client.go",
+        "quote": "case QosAtLeastOnce: puback := packets.NewControlPacket(packets.Puback).(*packets.PubackPacket) puback.MessageID = packet.MessageID"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "MQTT PUBLISH, QoS 0",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/fhmq/hmq/v1.5.10/broker/client.go",
+        "quote": "switch packet.Qos { case QosAtMostOnce: c.ProcessPublishMessage(packet) case QosAtLeastOnce:"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  }
+ ]
+}

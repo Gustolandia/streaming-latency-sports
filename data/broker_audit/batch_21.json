@@ -1,0 +1,2375 @@
+{
+ "audited_utc": "2026-10-29",
+ "brokers": [
+  {
+   "broker": "ZeroC IceStorm",
+   "group": "C",
+   "kind": "broker",
+   "version": "v3.8.3",
+   "version_evidence": [
+    {
+     "url": "https://github.com/zeroc-ice/ice/releases/tag/v3.8.3",
+     "quote": "v3.8.3"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "Wikipedia (de): Kategorie:Middleware",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "subscriber proxy (oneway, twoway or batch delivery)",
+     "Q0": {
+      "fields": [
+       "operation name",
+       "operation mode",
+       "encoded input parameters",
+       "request context"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/zeroc-ice/ice/v3.8.3/cpp/src/IceStorm/IceStormInternal.ice",
+        "quote": "struct EventData { /// The operation name. string op; /// The operation mode. Ice::OperationMode mode; /// The encoded data for the operation's input parameters. Ice::ByteSeq data; /// The Ice::Current::Context data from the originating request. Ice::Context context; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/zeroc-ice/ice/v3.8.3/cpp/src/IceStorm/Subscriber.cpp",
+        "quote": "_obj->ice_invokeAsync( e.op, e.mode, e.data, nullptr, [self](exception_ptr ex) { self->error(true, ex); }, [self, isSent](bool sentSynchronously) { isSent->set_value(sentSynchronously); if (!sentSynchronously) { self->sentAsynchronously(); } }, e.context);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/zeroc-ice/ice/v3.8.3/cpp/src/IceStorm/Subscriber.cpp",
+        "quote": "for (const auto& e : v) { _obj->ice_invoke(e.op, e.mode, e.data, dummy, e.context); }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/zeroc-ice/ice/v3.8.3/cpp/src/IceStorm/IceStormInternal.ice",
+        "quote": "struct EventData { /// The operation name. string op; /// The operation mode. Ice::OperationMode mode; /// The encoded data for the operation's input parameters. Ice::ByteSeq data; /// The Ice::Current::Context data from the originating request. Ice::Context context; }"
+       }
+      ]
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/zeroc-ice/ice/v3.8.3/cpp/src/IceStorm/IceStormInternal.ice",
+        "quote": "struct EventData { /// The operation name. string op; /// The operation mode. Ice::OperationMode mode; /// The encoded data for the operation's input parameters. Ice::ByteSeq data; /// The Ice::Current::Context data from the originating request. Ice::Context context; }"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/zeroc-ice/ice/v3.8.3/cpp/src/IceStorm/IceStormInternal.ice",
+        "quote": "struct EventData { /// The operation name. string op; /// The operation mode. Ice::OperationMode mode; /// The encoded data for the operation's input parameters. Ice::ByteSeq data; /// The Ice::Current::Context data from the originating request. Ice::Context context; }"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "aggregate only",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/zeroc-ice/ice/v3.8.3/slice/IceStorm/Metrics.ice",
+        "quote": "The number of events published on the topic(s) by publishers."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/zeroc-ice/ice/v3.8.3/slice/IceStorm/Metrics.ice",
+        "quote": "The number of delivered events."
+       }
+      ],
+      "note": "The metrics classes count events published, forwarded, queued, outstanding and delivered; no time is kept for a single event."
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/zeroc-ice/ice/v3.8.3/slice/IceStorm/IceStorm.ice",
+        "quote": "Represents an IceStorm topic. Publishers publish data to a topic (via the topic's publisher object), and /// subscribers subscribe to a topic."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/zeroc-ice/ice/v3.8.3/cpp/src/IceStorm/Subscriber.cpp",
+        "quote": "_obj->ice_invokeAsync( e.op, e.mode, e.data, nullptr, [self](exception_ptr ex) { self->error(true, ex); }, [self, isSent](bool sentSynchronously) { isSent->set_value(sentSynchronously); if (!sentSynchronously) { self->sentAsynchronously(); } }, e.context);"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/zeroc-ice/ice/v3.8.3/cpp/src/IceStorm/Subscriber.cpp",
+       "read": "IceStorm itself invokes the subscriber's proxy and keeps a fixed number of requests outstanding (set in the code: 1 for batch and ordered twoway, 5 for oneway), and the subscriber's QoS offers only reliability and retryCount, so the consumer can keep no request or credit waiting.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "publisher proxy (invoke a void operation on the topic's publisher object)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "empty success reply"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/zeroc-ice/ice/v3.8.3/cpp/src/IceStorm/TopicI.cpp",
+        "quote": "EventData event = {current.operation, current.mode, Ice::ByteSeq(), current.ctx}; Ice::ByteSeq data(inParams.first, inParams.second); event.data = std::move(data); EventDataSeq v; v.push_back(std::move(event)); _topic->publish(false, v); return true; }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/zeroc-ice/ice/v3.8.3/cpp/src/IceStorm/TopicI.cpp",
+        "quote": "EventData event = {current.operation, current.mode, Ice::ByteSeq(), current.ctx}; Ice::ByteSeq data(inParams.first, inParams.second); event.data = std::move(data); EventDataSeq v; v.push_back(std::move(event)); _topic->publish(false, v); return true; }"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/zeroc-ice/ice/v3.8.3/cpp/src/IceStorm/TopicI.cpp",
+        "quote": "EventData event = {current.operation, current.mode, Ice::ByteSeq(), current.ctx}; Ice::ByteSeq data(inParams.first, inParams.second); event.data = std::move(data); EventDataSeq v; v.push_back(std::move(event)); _topic->publish(false, v); return true; }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/zeroc-ice/ice/v3.8.3/cpp/src/IceStorm/TopicI.cpp",
+        "quote": "EventData event = {current.operation, current.mode, Ice::ByteSeq(), current.ctx}; Ice::ByteSeq data(inParams.first, inParams.second); event.data = std::move(data); EventDataSeq v; v.push_back(std::move(event)); _topic->publish(false, v); return true; }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Azurite",
+   "group": "C",
+   "kind": "cloud service",
+   "version": "v3.37.0",
+   "version_evidence": [
+    {
+     "url": "https://github.com/Azure/Azurite/releases/tag/v3.37.0",
+     "quote": "v3.37.0"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 2",
+     "source": "times-first search",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "Get Messages (dequeue)",
+     "Q0": {
+      "fields": [
+       "message id",
+       "insertion time",
+       "expiration time",
+       "pop receipt",
+       "time next visible",
+       "dequeue count",
+       "message text"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "export interface DequeuedMessageItem { /** * The Id of the Message. */ messageId: string; /** * The time the Message was inserted into the Queue. */ insertionTime: Date; /** * The time that the Message will expire and be automatically deleted. */ expirationTime: Date;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "popReceipt: string; /** * The time that the message will again become visible in the Queue. */ timeNextVisible: Date; /** * The number of times the message has been dequeued. */ dequeueCount: number; /** * The content of the Message. */ messageText: string; }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/handlers/MessagesHandler.ts",
+        "quote": "messageId: uuid(), insertionTime: new Date(context.startTime!), expirationTime: new Date( context.startTime!.getTime() + DEFAULT_MESSAGETTL * 1000 ), // Default ttl is 7 days. dequeueCount: 0, timeNextVisible: new Date(context.startTime!),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/mappers.ts",
+        "quote": "insertionTime: { xmlName: \"InsertionTime\", required: true, serializedName: \"InsertionTime\", type: { name: \"DateTimeRfc1123\" } }"
+       }
+      ],
+      "field": "InsertionTime",
+      "resolution": "s"
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "export interface DequeuedMessageItem { /** * The Id of the Message. */ messageId: string; /** * The time the Message was inserted into the Queue. */ insertionTime: Date; /** * The time that the Message will expire and be automatically deleted. */ expirationTime: Date;"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "request arrival",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/handlers/MessagesHandler.ts",
+        "quote": "const timeNextVisible = new Date( context.startTime!.getTime() + DEFAULT_DEQUEUE_VISIBILITYTIMEOUT * 1000 // 30s as default, convert to ms );"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/handlers/MessagesHandler.ts",
+        "quote": "timeNextVisible.setTime( context.startTime!.getTime() + options.visibilitytimeout * 1000 );"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/middlewares/queueStorageContext.middleware.ts",
+        "quote": "queueContext.startTime = new Date(); queueContext.xMsRequestID = requestID;"
+       },
+       {
+        "url": "https://learn.microsoft.com/rest/api/storageservices/get-messages",
+        "quote": "Specifies the new visibility time-out value, in seconds, relative to server time. The default value is 30 seconds."
+       }
+      ],
+      "note": "The server keeps the arrival of the dequeue request only as the deadline TimeNextVisible, which the source sets to the request's start time plus the visibility timeout."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "popReceipt: string; /** * The time that the message will again become visible in the Queue. */ timeNextVisible: Date; /** * The number of times the message has been dequeued. */ dequeueCount: number; /** * The content of the Message. */ messageText: string; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/handlers/MessagesHandler.ts",
+        "quote": "const timeNextVisible = new Date( context.startTime!.getTime() + DEFAULT_DEQUEUE_VISIBILITYTIMEOUT * 1000 // 30s as default, convert to ms );"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/handlers/MessagesHandler.ts",
+        "quote": "timeNextVisible.setTime( context.startTime!.getTime() + options.visibilitytimeout * 1000 );"
+       }
+      ],
+      "note": "Delivered as TimeNextVisible; the consumer subtracts the visibility timeout it sent (default 30 s)."
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "export interface DequeuedMessageItem { /** * The Id of the Message. */ messageId: string; /** * The time the Message was inserted into the Queue. */ insertionTime: Date; /** * The time that the Message will expire and be automatically deleted. */ expirationTime: Date;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "popReceipt: string; /** * The time that the message will again become visible in the Queue. */ timeNextVisible: Date; /** * The number of times the message has been dequeued. */ dequeueCount: number; /** * The content of the Message. */ messageText: string; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/handlers/MessagesHandler.ts",
+        "quote": "const timeNextVisible = new Date( context.startTime!.getTime() + DEFAULT_DEQUEUE_VISIBILITYTIMEOUT * 1000 // 30s as default, convert to ms );"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/handlers/MessagesHandler.ts",
+        "quote": "timeNextVisible.setTime( context.startTime!.getTime() + options.visibilitytimeout * 1000 );"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/handlers/MessagesHandler.ts",
+        "quote": "messageId: uuid(), insertionTime: new Date(context.startTime!), expirationTime: new Date( context.startTime!.getTime() + DEFAULT_MESSAGETTL * 1000 ), // Default ttl is 7 days. dequeueCount: 0, timeNextVisible: new Date(context.startTime!),"
+       }
+      ],
+      "resolution": "s",
+      "note": "TimeNextVisible less the visibility timeout is the dequeue request's arrival; less InsertionTime it is the stay. All three times are on the server's clock."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "export interface DequeuedMessageItem { /** * The Id of the Message. */ messageId: string; /** * The time the Message was inserted into the Queue. */ insertionTime: Date; /** * The time that the Message will expire and be automatically deleted. */ expirationTime: Date;"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/handlers/MessagesHandler.ts",
+        "quote": "const messages = await this.metadataStore.getMessages( accountName, queueName, timeNextVisible, popReceipt, numberOfMessages, context.startTime!, context );"
+       },
+       {
+        "url": "https://learn.microsoft.com/rest/api/storageservices/get-messages",
+        "quote": "If fewer messages are visible, the visible messages are returned."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/handlers/MessagesHandler.ts",
+       "read": "The first middleware sets context.startTime = new Date() when each request starts, and the Get Messages handler sets timeNextVisible to that startTime plus the visibility timeout (default 30 s, else the request's value), also passing startTime as the visibility cut-off to getMessages, so the time used is taken when the request starts, not when the message is taken nor when the reply is built.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+       "read": "The dequeued message item returns TimeNextVisible, a required field that getMessages sets from the handler's value (request start plus visibility timeout) and that is serialized as an RFC 1123 date in whole seconds, so the consumer subtracts the visibility timeout it sent, or the documented 30 s default, to get the request's start.",
+       "agrees": true
+      },
+      {
+       "question": "Q5",
+       "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/handlers/MessagesHandler.ts",
+       "read": "InsertionTime is set from the Put Message request's startTime and TimeNextVisible less the visibility timeout is the Get Messages request's startTime, both read from the server clock when each request starts (no clock is read when the message is taken or the reply built) and both returned as whole-second RFC 1123 dates, so their difference spans the message's wait from the put request to the consumer's get request, to within a second.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "Peek Messages",
+     "Q0": {
+      "fields": [
+       "message id",
+       "insertion time",
+       "expiration time",
+       "dequeue count",
+       "message text"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "export interface PeekedMessageItem { /** * The Id of the Message. */ messageId: string; /** * The time the Message was inserted into the Queue. */ insertionTime: Date; /** * The time that the Message will expire and be automatically deleted. */ expirationTime: Date;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "expirationTime: Date; /** * The number of times the message has been dequeued. */ dequeueCount: number; /** * The content of the Message. */ messageText: string; }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/handlers/MessagesHandler.ts",
+        "quote": "messageId: uuid(), insertionTime: new Date(context.startTime!), expirationTime: new Date( context.startTime!.getTime() + DEFAULT_MESSAGETTL * 1000 ), // Default ttl is 7 days. dequeueCount: 0, timeNextVisible: new Date(context.startTime!),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/mappers.ts",
+        "quote": "insertionTime: { xmlName: \"InsertionTime\", required: true, serializedName: \"InsertionTime\", type: { name: \"DateTimeRfc1123\" } }"
+       }
+      ],
+      "field": "InsertionTime",
+      "resolution": "s"
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "export interface PeekedMessageItem { /** * The Id of the Message. */ messageId: string; /** * The time the Message was inserted into the Queue. */ insertionTime: Date; /** * The time that the Message will expire and be automatically deleted. */ expirationTime: Date;"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "export interface PeekedMessageItem { /** * The Id of the Message. */ messageId: string; /** * The time the Message was inserted into the Queue. */ insertionTime: Date; /** * The time that the Message will expire and be automatically deleted. */ expirationTime: Date;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "expirationTime: Date; /** * The number of times the message has been dequeued. */ dequeueCount: number; /** * The content of the Message. */ messageText: string; }"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "export interface PeekedMessageItem { /** * The Id of the Message. */ messageId: string; /** * The time the Message was inserted into the Queue. */ insertionTime: Date; /** * The time that the Message will expire and be automatically deleted. */ expirationTime: Date;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "expirationTime: Date; /** * The number of times the message has been dequeued. */ dequeueCount: number; /** * The content of the Message. */ messageText: string; }"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "export interface PeekedMessageItem { /** * The Id of the Message. */ messageId: string; /** * The time the Message was inserted into the Queue. */ insertionTime: Date; /** * The time that the Message will expire and be automatically deleted. */ expirationTime: Date;"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/handlers/MessagesHandler.ts",
+        "quote": "const messages = await this.metadataStore.peekMessages( accountName, queueName, numberOfMessages, context.startTime!, context );"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": []
+    }
+   ],
+   "producers": [
+    {
+     "interface": "Put Message",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "message id",
+       "insertion time",
+       "expiration time",
+       "pop receipt",
+       "time next visible"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "export interface EnqueuedMessage { /** * The Id of the Message. */ messageId: string; /** * The time the Message was inserted into the Queue. */ insertionTime: Date; /** * The time that the Message will expire and be automatically deleted. */ expirationTime: Date;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "popReceipt: string; /** * The time that the message will again become visible in the Queue. */ timeNextVisible: Date; } /** * signed identifier */"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/handlers/MessagesHandler.ts",
+        "quote": "const enqueuedMessage: Models.EnqueuedMessage = message; responseArray.push(enqueuedMessage);"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/handlers/MessagesHandler.ts",
+        "quote": "messageId: uuid(), insertionTime: new Date(context.startTime!), expirationTime: new Date( context.startTime!.getTime() + DEFAULT_MESSAGETTL * 1000 ), // Default ttl is 7 days. dequeueCount: 0, timeNextVisible: new Date(context.startTime!),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/handlers/MessagesHandler.ts",
+        "quote": "const enqueuedMessage: Models.EnqueuedMessage = message; responseArray.push(enqueuedMessage);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/mappers.ts",
+        "quote": "insertionTime: { xmlName: \"InsertionTime\", required: true, serializedName: \"InsertionTime\", type: { name: \"DateTimeRfc1123\" } }"
+       }
+      ],
+      "which": "receive time",
+      "field": "InsertionTime",
+      "resolution": "s"
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "export interface EnqueuedMessage { /** * The Id of the Message. */ messageId: string; /** * The time the Message was inserted into the Queue. */ insertionTime: Date; /** * The time that the Message will expire and be automatically deleted. */ expirationTime: Date;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "popReceipt: string; /** * The time that the message will again become visible in the Queue. */ timeNextVisible: Date; } /** * signed identifier */"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "export interface EnqueuedMessage { /** * The Id of the Message. */ messageId: string; /** * The time the Message was inserted into the Queue. */ insertionTime: Date; /** * The time that the Message will expire and be automatically deleted. */ expirationTime: Date;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/generated/artifacts/models.ts",
+        "quote": "popReceipt: string; /** * The time that the message will again become visible in the Queue. */ timeNextVisible: Date; } /** * signed identifier */"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/Azure/Azurite/v3.37.0/src/queue/handlers/MessagesHandler.ts",
+       "read": "The Put Message handler sets insertionTime from the request's startTime on every message and returns the stored message in the 201 response, whose EnqueuedMessage mapper requires InsertionTime, so every acknowledgment carries the broker's insertion time as a whole-second RFC 1123 date taken at request start.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "Backendless",
+   "group": "C",
+   "kind": "cloud service",
+   "version": "service documentation as retrieved 2026-10-29; JavaScript SDK v7.4.8",
+   "version_evidence": [
+    {
+     "url": "https://github.com/Backendless/JS-SDK/releases/tag/v7.4.8",
+     "quote": "v7.4.8"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 2",
+     "source": "times-first search",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "REST Retrieve Messages (poll a subscription)",
+     "Q0": {
+      "fields": [
+       "message id",
+       "data",
+       "published at",
+       "publisher id (optional)",
+       "headers (optional)"
+      ],
+      "evidence": [
+       {
+        "url": "https://backendless.com/docs/rest/pubsub_retrieve_messages.html",
+        "quote": "{ \"messages\": [ { \"messageId\":\"value\", \"data\":value, \"publishedAt\":timestamp, [\"publisherId\":value,] [\"headers\": {\"key1\":\"value1\",\"key2\":\"value2\"}] }, ... ] }"
+       },
+       {
+        "url": "https://backendless.com/docs/rest/pubsub_retrieve_messages.html",
+        "quote": "Each message in the response contains the following parameters: Argument Description messageId unique message ID. The ID is assigned at the time of message publishing. headers an array which is a collection of key/value pairs."
+       },
+       {
+        "url": "https://backendless.com/docs/rest/pubsub_retrieve_messages.html",
+        "quote": "publishedAt a timestamp indicating when the message was received by Backendless from the publisher."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://backendless.com/docs/rest/pubsub_retrieve_messages.html",
+        "quote": "{ \"messages\": [ { \"messageId\":\"value\", \"data\":value, \"publishedAt\":timestamp, [\"publisherId\":value,] [\"headers\": {\"key1\":\"value1\",\"key2\":\"value2\"}] }, ... ] }"
+       },
+       {
+        "url": "https://backendless.com/docs/rest/pubsub_retrieve_messages.html",
+        "quote": "publishedAt a timestamp indicating when the message was received by Backendless from the publisher."
+       },
+       {
+        "url": "https://backendless.com/docs/rest/pubsub_retrieve_messages.html",
+        "quote": "\"publishedAt\":1359071622226, \"publisherId\":null, \"data\":\"Hello World\", \"messageId\":\"D98A994C-7EF6-7DE2-FFC3-95807BDF8700-4428\" } ] }"
+       }
+      ],
+      "field": "publishedAt",
+      "resolution": "ms",
+      "note": "The response schema brackets publisherId and headers as optional and leaves publishedAt unbracketed; the example value has 13 digits (milliseconds)."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://backendless.com/docs/rest/pubsub_retrieve_messages.html",
+        "quote": "{ \"messages\": [ { \"messageId\":\"value\", \"data\":value, \"publishedAt\":timestamp, [\"publisherId\":value,] [\"headers\": {\"key1\":\"value1\",\"key2\":\"value2\"}] }, ... ] }"
+       },
+       {
+        "url": "https://backendless.com/docs/rest/pubsub_retrieve_messages.html",
+        "quote": "publishedAt a timestamp indicating when the message was received by Backendless from the publisher."
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://backendless.com/docs/rest/pubsub_retrieve_messages.html",
+        "quote": "{ \"messages\": [ { \"messageId\":\"value\", \"data\":value, \"publishedAt\":timestamp, [\"publisherId\":value,] [\"headers\": {\"key1\":\"value1\",\"key2\":\"value2\"}] }, ... ] }"
+       },
+       {
+        "url": "https://backendless.com/docs/rest/pubsub_retrieve_messages.html",
+        "quote": "Each message in the response contains the following parameters: Argument Description messageId unique message ID. The ID is assigned at the time of message publishing. headers an array which is a collection of key/value pairs."
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://backendless.com/docs/rest/pubsub_retrieve_messages.html",
+        "quote": "{ \"messages\": [ { \"messageId\":\"value\", \"data\":value, \"publishedAt\":timestamp, [\"publisherId\":value,] [\"headers\": {\"key1\":\"value1\",\"key2\":\"value2\"}] }, ... ] }"
+       },
+       {
+        "url": "https://backendless.com/docs/rest/pubsub_retrieve_messages.html",
+        "quote": "Each message in the response contains the following parameters: Argument Description messageId unique message ID. The ID is assigned at the time of message publishing. headers an array which is a collection of key/value pairs."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://backendless.com/docs/rest/pubsub_retrieve_messages.html",
+        "quote": "The API returns messages for a subscription."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://backendless.com/docs/rest/pubsub_retrieve_messages.html",
+        "quote": "The API returns messages for a subscription."
+       },
+       {
+        "url": "https://backendless.com/docs/rest/pubsub_retrieve_messages.html",
+        "quote": "Otherwise, the response includes all messages received in the past 60 seconds."
+       }
+      ],
+      "note": "The page describes a call that returns the messages received in the past 60 seconds and mentions no waiting."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": []
+    },
+    {
+     "mode": "Real-time channel listeners (push)",
+     "Q0": {
+      "fields": [
+       "message",
+       "publisher id",
+       "headers",
+       "subtopic"
+      ],
+      "evidence": [
+       {
+        "url": "https://backendless.com/docs/flutter/pubsub_message_listener.html",
+        "quote": "addMessageListener (( PublishMessageInfo message ) { print ( \"Published message - ${message.message}\" ); print ( \"Publisher ID - ${message.publisherId}\" ); print ( \"Message headers - ${message.headers}\" ); print ( \"Message subtopic ${message.subtopic}\" ); });"
+       },
+       {
+        "url": "https://backendless.com/docs/js/pubsub_about_messages.html",
+        "quote": "The subscriber API offers the flexibility to receive messages which are cast to a specific data type or messages represented in the internal Backendless format. The latter provides access to additional metadata, such as publisher ID and headers."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Backendless/Swift-SDK/7.0.4/Sources/SwiftSDK/Messaging/PublishMessageInfo.swift",
+        "quote": "private var _timestamp: Int? public var timestamp: NSNumber? {"
+       }
+      ],
+      "note": "The Swift SDK's PublishMessageInfo declares an optional timestamp, but no page says the server sets it for real-time messages or what it measures; the REST retrieval of the same messages gives publishedAt. Not reached."
+     },
+     "Q2": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Backendless/Swift-SDK/7.0.4/Sources/SwiftSDK/Messaging/PublishMessageInfo.swift",
+        "quote": "private var _timestamp: Int? public var timestamp: NSNumber? {"
+       }
+      ],
+      "note": "not reached"
+     },
+     "Q3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://backendless.com/docs/flutter/pubsub_message_listener.html",
+        "quote": "addMessageListener (( PublishMessageInfo message ) { print ( \"Published message - ${message.message}\" ); print ( \"Publisher ID - ${message.publisherId}\" ); print ( \"Message headers - ${message.headers}\" ); print ( \"Message subtopic ${message.subtopic}\" ); });"
+       }
+      ],
+      "note": "not reached"
+     },
+     "Q4": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://backendless.com/docs/flutter/pubsub_message_listener.html",
+        "quote": "addMessageListener (( PublishMessageInfo message ) { print ( \"Published message - ${message.message}\" ); print ( \"Publisher ID - ${message.publisherId}\" ); print ( \"Message headers - ${message.headers}\" ); print ( \"Message subtopic ${message.subtopic}\" ); });"
+       }
+      ],
+      "note": "not reached"
+     },
+     "Q5": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://backendless.com/docs/flutter/pubsub_message_listener.html",
+        "quote": "addMessageListener (( PublishMessageInfo message ) { print ( \"Published message - ${message.message}\" ); print ( \"Publisher ID - ${message.publisherId}\" ); print ( \"Message headers - ${message.headers}\" ); print ( \"Message subtopic ${message.subtopic}\" ); });"
+       }
+      ],
+      "note": "not reached"
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://backendless.com/docs/flutter/pubsub_message_listener.html",
+        "quote": "addMessageListener (( PublishMessageInfo message ) { print ( \"Published message - ${message.message}\" ); print ( \"Publisher ID - ${message.publisherId}\" ); print ( \"Message headers - ${message.headers}\" ); print ( \"Message subtopic ${message.subtopic}\" ); });"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://backendless.com/docs/flutter/pubsub_message_listener.html",
+        "quote": "Backendless Real-Time Messaging delivers messages to listeners added to a channel."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "Q4",
+      "Q5",
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://backendless.com/docs/flutter/pubsub_message_listener.html",
+       "read": "The page states that Real-Time Messaging delivers messages to the listeners added to a channel and describes no request, credit or window that a listener can set.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "Messaging.publish (REST POST to the channel)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "status (published, scheduled or failed)",
+       "message id",
+       "error message"
+      ],
+      "evidence": [
+       {
+        "url": "https://backendless.com/docs/js/pubsub_general_publish_api.html",
+        "quote": "A JavaScript object containing message ID and the status of the publishing operation. In order to obtain message delivery status, use the Get Message Status API with the messageId value returned by this API."
+       },
+       {
+        "url": "https://backendless.com/docs/js/pubsub_general_publish_api.html",
+        "quote": "{ \"errorMessage\":null, \"messageId\":\"message:FCBD8BF1-A45D-4564-B449-3C91D4896987\", \"status\":\"published\" }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://backendless.com/docs/js/pubsub_general_publish_api.html",
+        "quote": "A JavaScript object containing message ID and the status of the publishing operation. In order to obtain message delivery status, use the Get Message Status API with the messageId value returned by this API."
+       },
+       {
+        "url": "https://backendless.com/docs/js/pubsub_general_publish_api.html",
+        "quote": "{ \"errorMessage\":null, \"messageId\":\"message:FCBD8BF1-A45D-4564-B449-3C91D4896987\", \"status\":\"published\" }"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://backendless.com/docs/js/pubsub_general_publish_api.html",
+        "quote": "A JavaScript object containing message ID and the status of the publishing operation. In order to obtain message delivery status, use the Get Message Status API with the messageId value returned by this API."
+       },
+       {
+        "url": "https://backendless.com/docs/js/pubsub_general_publish_api.html",
+        "quote": "{ \"errorMessage\":null, \"messageId\":\"message:FCBD8BF1-A45D-4564-B449-3C91D4896987\", \"status\":\"published\" }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://backendless.com/docs/js/pubsub_general_publish_api.html",
+        "quote": "A JavaScript object containing message ID and the status of the publishing operation. In order to obtain message delivery status, use the Get Message Status API with the messageId value returned by this API."
+       },
+       {
+        "url": "https://backendless.com/docs/js/pubsub_general_publish_api.html",
+        "quote": "{ \"errorMessage\":null, \"messageId\":\"message:FCBD8BF1-A45D-4564-B449-3C91D4896987\", \"status\":\"published\" }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "FAA NAS Enterprise Messaging Service (NEMS)",
+   "group": "C",
+   "kind": "cloud service",
+   "version": "SWIM Timestamp and Message Sequence Number Policy, version 1.0 (29 September 2025)",
+   "version_evidence": [
+    {
+     "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+     "quote": "System Wide Information Management (SWIM) Timestamp and Message Sequence Number Policy Version 1.0 September 29, 2025"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 2",
+     "source": "times-first search",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "JMS subscription (SWIM consumer)",
+     "Q0": {
+      "fields": [
+       "JMSTimestamp",
+       "SWIMDataAvailableTS (optional)",
+       "SWIMDataProcessedTS (optional)",
+       "SWIMDataPublishedTS",
+       "SWIMMsgKey (optional)",
+       "SWIMMsgSeqNum (optional)",
+       "SWIMProducerInstanceID",
+       "SWIMProducerInstanceMsgSeqNum"
+      ],
+      "evidence": [
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "a) All SWIM producers MAY include an optional “SWIMDataAvailableTS” Timestamp field in messages they publish as described in Table 2."
+       },
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "SWIM producers MAY include an optional “SWIMDataProcessedTS” Timestamp field in messages they publish as described in Table 2. c) All SWIM producers MUST include a mandatory “SWIMDataPublishedTS” Timestamp field in messages they publish as described in Table 2."
+       },
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "d) All SWIM producers MAY include a “SWIMMsgKey” Message Key field in messages they publish As described in Table 3. e) All SWIM producers MAY include a “SWIMMsgSeqNum” MSN field as described in Table 3."
+       },
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "f) All SWIM producers MUST include a “SWIMProducerInstanceID” Producer Instance ID field as described in Table 3. g) All SWIM producers MUST include a “SWIMProducerInstanceMsgSeqNum” PIMSN field as described in Table 3."
+       },
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "h) No SWIM producers MAY disable the JMSTimestamp header field."
+       },
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "The standard “JMSTimestamp” header field will also be available to consumers from the broker when receiving a message."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "The Broker can also make available the standard JMSTimestamp header field on messages."
+       },
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "It is populated by the JMS Provider when a message is sent to the JMS broker and may subsequently be updated while in transit between the producer and consumer."
+       },
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "What exactly is contained in the JMSTimestamp value depends on the path between the producer and consumer."
+       },
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "a JMS broker (within NEMS) that applied the timestamp again (which one it is depends on the type of broker within NEMS to which the producer instance connects and whether there are multiple JMS brokers on the"
+       }
+      ],
+      "note": "The policy says the JMSTimestamp is populated by the JMS provider when a message is sent to the broker and may be updated in transit, that a broker within NEMS may apply it again, and that its content depends on the path and the broker type. It does not say that the broker a consumer reads from stamps every message on arrival."
+     },
+     "Q2": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "The standard “JMSTimestamp” header field will also be available to consumers from the broker when receiving a message."
+       }
+      ],
+      "note": "The JMSTimestamp is delivered to consumers, but the policy does not settle that it is an arrival stamp."
+     },
+     "Q3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "The standard “JMSTimestamp” header field will also be available to consumers from the broker when receiving a message."
+       }
+      ],
+      "note": "The public policy names no delivery-time field."
+     },
+     "Q4": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "The standard “JMSTimestamp” header field will also be available to consumers from the broker when receiving a message."
+       }
+      ],
+      "note": "The public policy names no delivery-time field."
+     },
+     "Q5": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "The standard “JMSTimestamp” header field will also be available to consumers from the broker when receiving a message."
+       }
+      ],
+      "note": "The public policy names no duration field."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "The Publish-Subscribe pattern uses a JMS Message Broker to transmit information from the SWIM producer to all SWIM consumers that have registered for this business information."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "The Publish-Subscribe pattern uses a JMS Message Broker to transmit information from the SWIM producer to all SWIM consumers that have registered for this business information."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "Q4",
+      "Q5",
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+       "read": "The timestamp policy page says only that a JMS message broker transmits messages from SWIM producers to the registered consumers and describes nothing about flow control, so it does not show whether a consumer can keep a receive call or a prefetch credit waiting; standing is not supported by this text.",
+       "agrees": false
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "JMS publish by a SWIM producer",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "not described in the public policy"
+      ],
+      "evidence": [
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "h) No SWIM producers MAY disable the JMSTimestamp header field."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "h) No SWIM producers MAY disable the JMSTimestamp header field."
+       }
+      ],
+      "note": "The public policy does not describe a publish reply."
+     },
+     "P2": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "h) No SWIM producers MAY disable the JMSTimestamp header field."
+       }
+      ],
+      "note": "The public policy does not describe a publish reply."
+     },
+     "P3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.faa.gov/sites/faa.gov/files/air_traffic/technology/swim/governance/SWIM%20Message%20Timestamp%20and%20Message%20Sequence%20Number%20Policy%20V1.0_20250904",
+        "quote": "h) No SWIM producers MAY disable the JMSTimestamp header field."
+       }
+      ],
+      "note": "The public policy does not describe a publish reply."
+     },
+     "not_determined": [
+      "P1",
+      "P2",
+      "P3"
+     ],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Google App Engine Task Queue",
+   "group": "C",
+   "kind": "cloud service",
+   "version": "documentation last updated 2026-10-26 UTC",
+   "version_evidence": [
+    {
+     "url": "https://cloud.google.com/appengine/docs/legacy/standard/python/taskqueue",
+     "quote": "Last updated 2026-10-26 UTC."
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "Stack Overflow",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "Push queue (HTTP request to the task handler)",
+     "Q0": {
+      "fields": [
+       "queue name",
+       "task name",
+       "retry count",
+       "execution count",
+       "target execution time (ETA)",
+       "previous response code (retries only)",
+       "retry reason (retries only)",
+       "fail-fast flag (when set)",
+       "task data as query string or request body"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/push/creating-handlers",
+        "quote": "A push task HTTP request has special headers set by App Engine, which contain task-specific information your handler can use."
+       },
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/push/creating-handlers",
+        "quote": "X-Appengine-QueueName The name of the queue (possibly \"default\" for the default push queue). X-Appengine-TaskName The name of the task, or a system-generated unique ID if no name was specified."
+       },
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/push/creating-handlers",
+        "quote": "X-Appengine-TaskRetryCount The number of times this task has been retried. For the first attempt, this value is 0 ."
+       },
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/push/creating-handlers",
+        "quote": "X-Appengine-TaskExecutionCount The number of times this task has previously failed during the execution phase."
+       },
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/push/creating-handlers",
+        "quote": "X-Appengine-TaskETA The target execution time of the task, specified in seconds since January 1st 1970."
+       },
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/push/creating-handlers",
+        "quote": "X-Appengine-TaskPreviousResponse The HTTP response code from the previous retry. X-Appengine-TaskRetryReason The reason for retrying the task. X-Appengine-FailFast Indicates that a task running fails immediately if an existing instance is not available ."
+       },
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/push/creating-handlers",
+        "quote": "request as a query string or as a payload in the request body."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/push/creating-handlers",
+        "quote": "X-Appengine-TaskETA The target execution time of the task, specified in seconds since January 1st 1970."
+       },
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/python3/reference/services/bundled/google/appengine/api/taskqueue/Task",
+        "quote": "countdown Optional; time in seconds into the future that this task should run or be leased. The default value is zero. Do not specify a countdown if you also specified an eta , as it sets the ETA to a value of now + countdown ."
+       }
+      ],
+      "note": "TaskETA is the target execution time (the producer's eta, or now plus countdown, default zero); the documentation does not describe it as a record of the task's arrival."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/push/creating-handlers",
+        "quote": "X-Appengine-TaskETA The target execution time of the task, specified in seconds since January 1st 1970."
+       },
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/push/creating-handlers",
+        "quote": "X-Appengine-TaskPreviousResponse The HTTP response code from the previous retry. X-Appengine-TaskRetryReason The reason for retrying the task. X-Appengine-FailFast Indicates that a task running fails immediately if an existing instance is not available ."
+       }
+      ],
+      "note": "TaskETA is a target, not described as the time the task was sent."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/push/creating-handlers",
+        "quote": "X-Appengine-QueueName The name of the queue (possibly \"default\" for the default push queue). X-Appengine-TaskName The name of the task, or a system-generated unique ID if no name was specified."
+       },
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/push/creating-handlers",
+        "quote": "X-Appengine-TaskRetryCount The number of times this task has been retried. For the first attempt, this value is 0 ."
+       },
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/push/creating-handlers",
+        "quote": "X-Appengine-TaskExecutionCount The number of times this task has previously failed during the execution phase."
+       },
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/push/creating-handlers",
+        "quote": "X-Appengine-TaskETA The target execution time of the task, specified in seconds since January 1st 1970."
+       },
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/push/creating-handlers",
+        "quote": "X-Appengine-TaskPreviousResponse The HTTP response code from the previous retry. X-Appengine-TaskRetryReason The reason for retrying the task. X-Appengine-FailFast Indicates that a task running fails immediately if an existing instance is not available ."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/push/creating-handlers",
+        "quote": "A push task HTTP request has special headers set by App Engine, which contain task-specific information your handler can use."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/push/creating-handlers",
+        "quote": "A push task HTTP request has special headers set by App Engine, which contain task-specific information your handler can use."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/push/creating-handlers",
+       "read": "App Engine itself sends each push task as an HTTP request to the handler, with its own headers such as the queue name and the target execution time, and the page describes no request or credit that the handler can keep waiting.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "Pull queue (lease_tasks)",
+     "Q0": {
+      "fields": [
+       "task payload",
+       "queue name",
+       "tag",
+       "eta",
+       "retry count (retries or leases attempted)",
+       "retry options",
+       "size",
+       "dispatch deadline"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/python3/reference/services/bundled/google/appengine/api/taskqueue/Task",
+        "quote": "dispatch_deadline_usec Returns the dispatch deadline set for the task. eta Returns a datetime.datatime when this task will run or be leased. eta_posix Returns a POSIX timestamp of when this task will run or be leased."
+       },
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/python3/reference/services/bundled/google/appengine/api/taskqueue/Task",
+        "quote": "Returns the payload to be used when the task is invoked (can be None)."
+       },
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/python3/reference/services/bundled/google/appengine/api/taskqueue/Task",
+        "quote": "queue_name Returns the name of the queue with which this task is associated. retry_count Returns the number of retries or leases attempted on the task. retry_options Returns any or all the TaskRetryOptions tasks. size Returns the size of this task in bytes. tag Returns the tag for this task."
+       },
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/pull/leasing-pull-tasks",
+        "quote": "Leasing a task makes it unavailable for processing by another worker, and it remains unavailable until the lease expires. The lease_tasks() method returns a Task object containing a list of tasks leased from the queue."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/python3/reference/services/bundled/google/appengine/api/taskqueue/Task",
+        "quote": "dispatch_deadline_usec Returns the dispatch deadline set for the task. eta Returns a datetime.datatime when this task will run or be leased. eta_posix Returns a POSIX timestamp of when this task will run or be leased."
+       },
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/python3/reference/services/bundled/google/appengine/api/taskqueue/Task",
+        "quote": "queue_name Returns the name of the queue with which this task is associated. retry_count Returns the number of retries or leases attempted on the task. retry_options Returns any or all the TaskRetryOptions tasks. size Returns the size of this task in bytes. tag Returns the tag for this task."
+       }
+      ]
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/pull/leasing-pull-tasks",
+        "quote": "When you request a lease, you specify the number of tasks to lease (up to a maximum of 1,000 tasks) and the duration of the lease in seconds (up to a maximum of one week)."
+       },
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/pull/leasing-pull-tasks",
+        "quote": "Leasing a task makes it unavailable for processing by another worker, and it remains unavailable until the lease expires. The lease_tasks() method returns a Task object containing a list of tasks leased from the queue."
+       }
+      ],
+      "note": "The lease lasts for the duration the worker asked for; the pages do not say which moment it counts from or whether the returned task carries the lease expiry."
+     },
+     "Q4": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/pull/leasing-pull-tasks",
+        "quote": "Leasing a task makes it unavailable for processing by another worker, and it remains unavailable until the lease expires. The lease_tasks() method returns a Task object containing a list of tasks leased from the queue."
+       },
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/python3/reference/services/bundled/google/appengine/api/taskqueue/Task",
+        "quote": "dispatch_deadline_usec Returns the dispatch deadline set for the task. eta Returns a datetime.datatime when this task will run or be leased. eta_posix Returns a POSIX timestamp of when this task will run or be leased."
+       }
+      ],
+      "note": "The pages do not say whether the eta of a leased task is the lease expiry."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/python3/reference/services/bundled/google/appengine/api/taskqueue/Task",
+        "quote": "dispatch_deadline_usec Returns the dispatch deadline set for the task. eta Returns a datetime.datatime when this task will run or be leased. eta_posix Returns a POSIX timestamp of when this task will run or be leased."
+       },
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/python3/reference/services/bundled/google/appengine/api/taskqueue/Task",
+        "quote": "queue_name Returns the name of the queue with which this task is associated. retry_count Returns the number of retries or leases attempted on the task. retry_options Returns any or all the TaskRetryOptions tasks. size Returns the size of this task in bytes. tag Returns the tag for this task."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/pull/leasing-pull-tasks",
+        "quote": "Leasing a task makes it unavailable for processing by another worker, and it remains unavailable until the lease expires. The lease_tasks() method returns a Task object containing a list of tasks leased from the queue."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/services/taskqueue/pull/leasing-pull-tasks",
+        "quote": "You should also back off when a lease request returns an empty list of tasks."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q3",
+      "Q4",
+      "Q6"
+     ],
+     "read_back": []
+    }
+   ],
+   "producers": [
+    {
+     "interface": "Queue.add (task added by the application)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "queue name",
+       "task name"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/python3/reference/services/bundled/google/appengine/api/taskqueue/Queue",
+        "quote": "Returns The task or list of tasks that was supplied to this method. Successfully queued tasks will have a valid queue name and task name after the call;"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/python3/reference/services/bundled/google/appengine/api/taskqueue/Queue",
+        "quote": "Returns The task or list of tasks that was supplied to this method. Successfully queued tasks will have a valid queue name and task name after the call;"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/python3/reference/services/bundled/google/appengine/api/taskqueue/Queue",
+        "quote": "Returns The task or list of tasks that was supplied to this method. Successfully queued tasks will have a valid queue name and task name after the call;"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.cloud.google.com/appengine/docs/standard/python3/reference/services/bundled/google/appengine/api/taskqueue/Queue",
+        "quote": "Returns The task or list of tasks that was supplied to this method. Successfully queued tasks will have a valid queue name and task name after the call;"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "MyQttHub",
+   "group": "C",
+   "kind": "cloud service",
+   "version": "ReactiveMyQtt v6.7.764 (REST API documentation, retrieved 2026-10-29)",
+   "version_evidence": [
+    {
+     "url": "https://support.asplhosting.com/raw/86",
+     "quote": "REST API to manage MQTT service (ReactiveMyQtt v6.7.764"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list awesome-mqtt/awesome-mqtt",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "REST API pull (POST /pull)",
+     "Q0": {
+      "fields": [
+       "topic",
+       "qos",
+       "payload",
+       "retain",
+       "dup"
+      ],
+      "evidence": [
+       {
+        "url": "https://support.asplhosting.com/raw/86",
+        "quote": "Allows to pull (receive) all messages that were received since last pull."
+       },
+       {
+        "url": "https://support.asplhosting.com/raw/86",
+        "quote": "200 OK [{‘topic’ : string, ‘qos’ : int, ‘payload’ : string, ‘retain’ : false, ‘dup’ : boolean}, ..]"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.asplhosting.com/raw/86",
+        "quote": "200 OK [{‘topic’ : string, ‘qos’ : int, ‘payload’ : string, ‘retain’ : false, ‘dup’ : boolean}, ..]"
+       }
+      ]
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.asplhosting.com/raw/86",
+        "quote": "200 OK [{‘topic’ : string, ‘qos’ : int, ‘payload’ : string, ‘retain’ : false, ‘dup’ : boolean}, ..]"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.asplhosting.com/raw/86",
+        "quote": "200 OK [{‘topic’ : string, ‘qos’ : int, ‘payload’ : string, ‘retain’ : false, ‘dup’ : boolean}, ..]"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per message",
+      "evidence": [
+       {
+        "url": "https://support.asplhosting.com/raw/53",
+        "quote": "Together with the message is also stored when it was received, source IP and additional data."
+       },
+       {
+        "url": "https://support.asplhosting.com/raw/53",
+        "quote": "Only messages matching configured filter will be stashed."
+       }
+      ],
+      "note": "Only messages that match a configured filter naming a stash are logged, each with the time it was received; the log is read by the domain administrator."
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://support.asplhosting.com/raw/86",
+        "quote": "Allows to pull (receive) all messages that were received since last pull."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "mode": "MQTT 3.1 and 3.1.1 subscription (QoS 0, 1 and 2)",
+     "Q0": {
+      "fields": [
+       "topic name",
+       "packet identifier (QoS 1 and 2)",
+       "payload",
+       "QoS",
+       "DUP flag",
+       "RETAIN flag"
+      ],
+      "evidence": [
+       {
+        "url": "https://support.asplhosting.com/t/which-version-of-mqtt-should-paho-java-mqtt-client-support-if-i-use-the-myqtthub-com-services/342",
+        "quote": "You can connect with MQTT protocol 3.1 and 3.1.1. MyQttHub.com still does not support 5.0."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the following fields in the order: Topic Name, Packet Identifier."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The Payload contains the Application Message that is being published."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "MQTT Control Packet type (3) DUP flag QoS level RETAIN"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the following fields in the order: Topic Name, Packet Identifier."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The Payload contains the Application Message that is being published."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "MQTT Control Packet type (3) DUP flag QoS level RETAIN"
+       }
+      ]
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the following fields in the order: Topic Name, Packet Identifier."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The Payload contains the Application Message that is being published."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "MQTT Control Packet type (3) DUP flag QoS level RETAIN"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The variable header contains the following fields in the order: Topic Name, Packet Identifier."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The Payload contains the Application Message that is being published."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "MQTT Control Packet type (3) DUP flag QoS level RETAIN"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per message",
+      "evidence": [
+       {
+        "url": "https://support.asplhosting.com/raw/53",
+        "quote": "Together with the message is also stored when it was received, source IP and additional data."
+       },
+       {
+        "url": "https://support.asplhosting.com/raw/53",
+        "quote": "Only messages matching configured filter will be stashed."
+       }
+      ],
+      "note": "Only messages that match a configured filter naming a stash are logged, each with the time it was received; the log is read by the domain administrator."
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The Server is permitted to start sending PUBLISH packets matching the Subscription before the Server sends the SUBACK Packet."
+       },
+       {
+        "url": "https://myqtthub.com/en/",
+        "quote": "MyQttHub.com provides highly scalable support for MQTT, based on Akka and Scala technology."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+       "read": "The product page names the MQTT v3.1.1 standard and says nothing of a window, and in that standard the server MUST deliver matching messages to the client and may start before the SUBACK, with no consumer-set credit, so the answer rests on the standard.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "REST API publish (POST /publish)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "HTTP status: 200 OK on success, 400 Bad request on failure"
+      ],
+      "evidence": [
+       {
+        "url": "https://support.asplhosting.com/raw/86",
+        "quote": "Allows to PUBLISH a message with the provided data. Payload is a base64 payload with the message to publish. Platform unpacks it before sending to subscribers. Service result: Correct finalization: 200 OK Failure: 400 Bad request"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.asplhosting.com/raw/86",
+        "quote": "Allows to PUBLISH a message with the provided data. Payload is a base64 payload with the message to publish. Platform unpacks it before sending to subscribers. Service result: Correct finalization: 200 OK Failure: 400 Bad request"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.asplhosting.com/raw/86",
+        "quote": "Allows to PUBLISH a message with the provided data. Payload is a base64 payload with the message to publish. Platform unpacks it before sending to subscribers. Service result: Correct finalization: 200 OK Failure: 400 Bad request"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.asplhosting.com/raw/86",
+        "quote": "Allows to PUBLISH a message with the provided data. Payload is a base64 payload with the message to publish. Platform unpacks it before sending to subscribers. Service result: Correct finalization: 200 OK Failure: 400 Bad request"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "MQTT publish, QoS 1 and 2",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet identifier"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "This contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "A PUBACK Packet is the response to a PUBLISH Packet with QoS level 1."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "A PUBREC Packet is the response to a PUBLISH Packet with QoS 2."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "This contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "This contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "This contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "MQTT publish, QoS 0",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "No response is sent by the receiver and no retry is performed by the sender."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "OCI Notifications",
+   "group": "C",
+   "kind": "cloud service",
+   "version": "service documentation as retrieved 2026-10-29; OCI Go SDK v65.128.0",
+   "version_evidence": [
+    {
+     "url": "https://github.com/oracle/oci-go-sdk/releases/tag/v65.128.0",
+     "quote": "v65.128.0"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "Oracle Cloud price list",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "HTTPS (Custom URL) subscription",
+     "Q0": {
+      "fields": [
+       "message body",
+       "Content-Type",
+       "X-OCI-NS-MessageId",
+       "X-OCI-NS-TopicOcid",
+       "X-OCI-NS-TopicName",
+       "X-OCI-NS-MessageType",
+       "X-OCI-NS-UnsubscribeURL",
+       "X-OCI-NS-Signature",
+       "X-OCI-NS-Timestamp",
+       "X-OCI-NS-SignatureVersion",
+       "X-OCI-NS-SigningCertURL"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en-us/iaas/Content/Notification/Concepts/notificationoverview.htm",
+        "quote": "When delivering messages, Notifications appends the following header metadata."
+       },
+       {
+        "url": "https://docs.oracle.com/en-us/iaas/Content/Notification/Concepts/notificationoverview.htm",
+        "quote": "For all messages: Content-Type X-OCI-NS-MessageId X-OCI-NS-TopicOcid X-OCI-NS-TopicName X-OCI-NS-MessageType X-OCI-NS-UnsubscribeURL"
+       },
+       {
+        "url": "https://docs.oracle.com/en-us/iaas/Content/Notification/Concepts/notificationoverview.htm",
+        "quote": "For message signature validation: X-OCI-NS-Signature X-OCI-NS-Timestamp X-OCI-NS-SignatureVersion X-OCI-NS-SigningCertURL"
+       },
+       {
+        "url": "https://docs.oracle.com/en-us/iaas/Content/Notification/Concepts/notificationoverview.htm",
+        "quote": "For confirmation messages: Note See also HTTPS (Custom URL) Confirmation URL . X-OCI-NS-ConfirmationURL X-OCI-NS-SubscriptionId"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/oracle/oci-go-sdk/v65.128.0/ons/publish_result.go",
+        "quote": "PublishResult The response to a PublishMessage call. type PublishResult struct { // The UUID of the message. MessageId *string `mandatory:\"true\" json:\"messageId\"` // The time that the service received the message. TimeStamp *common.SDKTime `mandatory:\"false\" json:\"timeStamp\"` }"
+       },
+       {
+        "url": "https://docs.oracle.com/en-us/iaas/Content/Notification/Concepts/notificationoverview.htm",
+        "quote": "For message signature validation: X-OCI-NS-Signature X-OCI-NS-Timestamp X-OCI-NS-SignatureVersion X-OCI-NS-SigningCertURL"
+       }
+      ],
+      "note": "The publish result has timeStamp, the time that the service received the message, so the service records one. The model marks it optional and no page says it is set for every message or that the X-OCI-NS-Timestamp header carries it."
+     },
+     "Q2": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en-us/iaas/Content/Notification/Concepts/notificationoverview.htm",
+        "quote": "For message signature validation: X-OCI-NS-Signature X-OCI-NS-Timestamp X-OCI-NS-SignatureVersion X-OCI-NS-SigningCertURL"
+       },
+       {
+        "url": "https://docs.oracle.com/en-us/iaas/Content/Notification/Tasks/confirm-subscription.htm",
+        "quote": "\"X-OCI-NS-Timestamp\":\"2019-04-19T21:26:00.310+0000\""
+       }
+      ],
+      "note": "X-OCI-NS-Timestamp is delivered with milliseconds, but the pages read do not say which moment it records."
+     },
+     "Q3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en-us/iaas/Content/Notification/Concepts/notificationoverview.htm",
+        "quote": "For message signature validation: X-OCI-NS-Signature X-OCI-NS-Timestamp X-OCI-NS-SignatureVersion X-OCI-NS-SigningCertURL"
+       }
+      ],
+      "note": "X-OCI-NS-Timestamp is listed only under message signature validation; the pages read do not say which moment it records."
+     },
+     "Q4": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en-us/iaas/Content/Notification/Concepts/notificationoverview.htm",
+        "quote": "For message signature validation: X-OCI-NS-Signature X-OCI-NS-Timestamp X-OCI-NS-SignatureVersion X-OCI-NS-SigningCertURL"
+       },
+       {
+        "url": "https://docs.oracle.com/en-us/iaas/Content/Notification/Tasks/confirm-subscription.htm",
+        "quote": "\"X-OCI-NS-Timestamp\":\"2019-04-19T21:26:00.310+0000\""
+       }
+      ],
+      "note": "See Q3."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en-us/iaas/Content/Notification/Concepts/notificationoverview.htm",
+        "quote": "When delivering messages, Notifications appends the following header metadata."
+       },
+       {
+        "url": "https://docs.oracle.com/en-us/iaas/Content/Notification/Concepts/notificationoverview.htm",
+        "quote": "For all messages: Content-Type X-OCI-NS-MessageId X-OCI-NS-TopicOcid X-OCI-NS-TopicName X-OCI-NS-MessageType X-OCI-NS-UnsubscribeURL"
+       },
+       {
+        "url": "https://docs.oracle.com/en-us/iaas/Content/Notification/Concepts/notificationoverview.htm",
+        "quote": "For message signature validation: X-OCI-NS-Signature X-OCI-NS-Timestamp X-OCI-NS-SignatureVersion X-OCI-NS-SigningCertURL"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en-us/iaas/Content/Notification/Concepts/notificationoverview.htm",
+        "quote": "When a message is published to a topic, the Notifications service sends the message to all of the topic's subscriptions."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en-us/iaas/Content/Notification/Concepts/notificationoverview.htm",
+        "quote": "When a message is published to a topic, the Notifications service sends the message to all of the topic's subscriptions."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "Q4",
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://docs.oracle.com/en-us/iaas/Content/Notification/Concepts/notificationoverview.htm",
+       "read": "The service sends each published message to the topic's subscriptions and retries the delivery to the HTTPS endpoint when it does not acknowledge receipt, so the service initiates every delivery and the endpoint holds no request or credit.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "PublishMessage (REST API and SDKs)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "message id",
+       "time stamp"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/oracle/oci-go-sdk/v65.128.0/ons/publish_result.go",
+        "quote": "PublishResult The response to a PublishMessage call. type PublishResult struct { // The UUID of the message. MessageId *string `mandatory:\"true\" json:\"messageId\"` // The time that the service received the message. TimeStamp *common.SDKTime `mandatory:\"false\" json:\"timeStamp\"` }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/oracle/oci-go-sdk/v65.128.0/ons/publish_result.go",
+        "quote": "PublishResult The response to a PublishMessage call. type PublishResult struct { // The UUID of the message. MessageId *string `mandatory:\"true\" json:\"messageId\"` // The time that the service received the message. TimeStamp *common.SDKTime `mandatory:\"false\" json:\"timeStamp\"` }"
+       }
+      ],
+      "note": "timeStamp is the time that the service received the message, but the model marks it optional (mandatory false) and no page says it is set on every response, so it is not coded always."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/oracle/oci-go-sdk/v65.128.0/ons/publish_result.go",
+        "quote": "PublishResult The response to a PublishMessage call. type PublishResult struct { // The UUID of the message. MessageId *string `mandatory:\"true\" json:\"messageId\"` // The time that the service received the message. TimeStamp *common.SDKTime `mandatory:\"false\" json:\"timeStamp\"` }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/oracle/oci-go-sdk/v65.128.0/ons/publish_result.go",
+        "quote": "PublishResult The response to a PublishMessage call. type PublishResult struct { // The UUID of the message. MessageId *string `mandatory:\"true\" json:\"messageId\"` // The time that the service received the message. TimeStamp *common.SDKTime `mandatory:\"false\" json:\"timeStamp\"` }"
+       }
+      ]
+     },
+     "not_determined": [
+      "P1"
+     ],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Oracle Messaging Cloud Service",
+   "group": "C",
+   "kind": "cloud service",
+   "version": "Using Oracle Messaging Cloud Service, E37257-26, May 2020 (Cloud Classic Infrastructure documentation)",
+   "version_evidence": [
+    {
+     "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/index.html",
+     "quote": "Using Oracle Messaging Cloud Service E37257-26 May 2020"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "Wikipedia (de): Message Queuing",
+     "query": "as logged in search_log.json"
+    },
+    {
+     "route": "route 2",
+     "source": "times-first search",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "REST receive request (POST /consumers/{consumerName}/messages)",
+     "Q0": {
+      "fields": [
+       "message body",
+       "Content-Type",
+       "Content-Language",
+       "X-OC-MESSAGE-TYPE",
+       "X-OC-CORRELATION-ID",
+       "X-OC-DELIVERY-MODE",
+       "X-OC-DESTINATION",
+       "X-OC-EXPIRATION",
+       "X-OC-MESSAGE-ID (if present)",
+       "X-OC-PRIORITY",
+       "X-OC-REDELIVERED",
+       "X-OC-REPLY-TO",
+       "X-OC-TIMESTAMP (if present)",
+       "X-OC-DELIVERY-COUNT (if present)",
+       "X-OC-GROUP-ID (if present)",
+       "X-OC-GROUP-SEQ (if present)",
+       "one X-OC header per message property"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "Messages are delivered to clients of the REST API in two ways: in the HTTP response to a receive request, and in an HTTP request made by a message push listener to an HTTP endpoint."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "its Content-Type , Content-Language , and X-OC-MESSAGE-TYPE headers are as described in Properties of HTTP Requests to Send Messages from REST Clients ."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "The following non-standard headers are set from message headers and properties: X-OC-CORRELATION-ID: message correlation ID X-OC-DELIVERY-MODE: persistent or non_persistent ."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-EXPIRATION: message expiration time . This is a long integer interpreted as Unix time. X-OC-MESSAGE-ID: message's ID , if present X-OC-PRIORITY: message priority X-OC-REDELIVERED: true/false , indicating if message is a re-delivery"
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-TIMESTAMP: time at which message was handed off to the JMS broker , if present. This is a long integer interpreted as Unix time."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-LISTENER-NAME: name of the listener that pushed the message X-OC-DELIVERY-COUNT: value of the message's JMSXDeliveryCount property , if present."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-GROUP-SEQ: sequence number of the message within a message group , if present."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "For each message property, a header X-OC- property type -PROPERTY-"
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas-classic/messaging-cloud/mcsap/op-consumers-consumername-messages-post.html",
+        "quote": "Message successfully received. Note: The JMS headers and properties of the message are in the HTTP response headers."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-TIMESTAMP: time at which message was handed off to the JMS broker , if present. This is a long integer interpreted as Unix time."
+       }
+      ],
+      "note": "X-OC-TIMESTAMP is the time at which the message was handed off to the JMS broker, 'if present'. No page says when it is present or which clock sets it, so it is not coded always."
+     },
+     "Q2": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-TIMESTAMP: time at which message was handed off to the JMS broker , if present. This is a long integer interpreted as Unix time."
+       }
+      ],
+      "note": "The header is delivered when present."
+     },
+     "Q3": {
+      "answer": "request arrival",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas-classic/messaging-cloud/mcsap/op-consumers-consumername-messages-post.html",
+        "quote": "The number of milliseconds to wait for a message to become available from the consumer before returning a null message."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas-classic/messaging-cloud/mcsap/op-consumers-consumername-messages-post.html",
+        "quote": "The value must be a strictly positive long integer that is no more than the maximum receive timeout of 5 minutes."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas-classic/messaging-cloud/mcsap/op-consumers-consumername-messages-post.html",
+        "quote": "within the number of milliseconds in timeout , it is returned in the HTTP response. Otherwise, a null message is returned."
+       }
+      ],
+      "note": "A receive request waits up to its timeout (at most 5 minutes), so the service keeps a deadline set from the request's arrival; coded under the timeout-deadline reading."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas-classic/messaging-cloud/mcsap/op-consumers-consumername-messages-post.html",
+        "quote": "Message successfully received. Note: The JMS headers and properties of the message are in the HTTP response headers."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "The following non-standard headers are set from message headers and properties: X-OC-CORRELATION-ID: message correlation ID X-OC-DELIVERY-MODE: persistent or non_persistent ."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-EXPIRATION: message expiration time . This is a long integer interpreted as Unix time. X-OC-MESSAGE-ID: message's ID , if present X-OC-PRIORITY: message priority X-OC-REDELIVERED: true/false , indicating if message is a re-delivery"
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-TIMESTAMP: time at which message was handed off to the JMS broker , if present. This is a long integer interpreted as Unix time."
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "The following non-standard headers are set from message headers and properties: X-OC-CORRELATION-ID: message correlation ID X-OC-DELIVERY-MODE: persistent or non_persistent ."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-EXPIRATION: message expiration time . This is a long integer interpreted as Unix time. X-OC-MESSAGE-ID: message's ID , if present X-OC-PRIORITY: message priority X-OC-REDELIVERED: true/false , indicating if message is a re-delivery"
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-TIMESTAMP: time at which message was handed off to the JMS broker , if present. This is a long integer interpreted as Unix time."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "Messages are delivered to clients of the REST API in two ways: in the HTTP response to a receive request, and in an HTTP request made by a message push listener to an HTTP endpoint."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas-classic/messaging-cloud/mcsap/op-consumers-consumername-messages-post.html",
+        "quote": "The number of milliseconds to wait for a message to become available from the consumer before returning a null message."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas-classic/messaging-cloud/mcsap/op-consumers-consumername-messages-post.html",
+        "quote": "within the number of milliseconds in timeout , it is returned in the HTTP response. Otherwise, a null message is returned."
+       }
+      ],
+      "note": "A receive request waits for a message, so the answer is not none; the pages read do not say whether several receive requests can wait at once."
+     },
+     "not_determined": [
+      "Q1",
+      "Q2",
+      "Q6",
+      "Q7"
+     ],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://docs.oracle.com/en/cloud/iaas-classic/messaging-cloud/mcsap/op-consumers-consumername-messages-post.html",
+       "read": "A receive request must carry a timeout of at least 1 ms and at most 5 minutes, and the service holds the request open for that many milliseconds for a message to enter the queue before it returns a null message, so a deadline set from the request's arrival is kept by the service and is not delivered.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "Message push listener (HTTP request to the listener's endpoint)",
+     "Q0": {
+      "fields": [
+       "message body",
+       "Content-Type",
+       "Content-Language",
+       "X-OC-MESSAGE-TYPE",
+       "X-OC-CORRELATION-ID",
+       "X-OC-DELIVERY-MODE",
+       "X-OC-DESTINATION",
+       "X-OC-EXPIRATION",
+       "X-OC-MESSAGE-ID (if present)",
+       "X-OC-PRIORITY",
+       "X-OC-REDELIVERED",
+       "X-OC-REPLY-TO",
+       "X-OC-TIMESTAMP (if present)",
+       "X-OC-LISTENER-NAME",
+       "X-OC-DELIVERY-COUNT (if present)",
+       "X-OC-GROUP-ID (if present)",
+       "X-OC-GROUP-SEQ (if present)",
+       "one X-OC header per message property"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "Messages are delivered to clients of the REST API in two ways: in the HTTP response to a receive request, and in an HTTP request made by a message push listener to an HTTP endpoint."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "its Content-Type , Content-Language , and X-OC-MESSAGE-TYPE headers are as described in Properties of HTTP Requests to Send Messages from REST Clients ."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "The following non-standard headers are set from message headers and properties: X-OC-CORRELATION-ID: message correlation ID X-OC-DELIVERY-MODE: persistent or non_persistent ."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-EXPIRATION: message expiration time . This is a long integer interpreted as Unix time. X-OC-MESSAGE-ID: message's ID , if present X-OC-PRIORITY: message priority X-OC-REDELIVERED: true/false , indicating if message is a re-delivery"
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-TIMESTAMP: time at which message was handed off to the JMS broker , if present. This is a long integer interpreted as Unix time."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-LISTENER-NAME: name of the listener that pushed the message X-OC-DELIVERY-COUNT: value of the message's JMSXDeliveryCount property , if present."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-GROUP-SEQ: sequence number of the message within a message group , if present."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "For each message property, a header X-OC- property type -PROPERTY-"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-TIMESTAMP: time at which message was handed off to the JMS broker , if present. This is a long integer interpreted as Unix time."
+       }
+      ],
+      "note": "See the receive request: X-OC-TIMESTAMP is the hand-off time to the JMS broker, 'if present'."
+     },
+     "Q2": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-TIMESTAMP: time at which message was handed off to the JMS broker , if present. This is a long integer interpreted as Unix time."
+       }
+      ],
+      "note": "The header is delivered when present."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "The following non-standard headers are set from message headers and properties: X-OC-CORRELATION-ID: message correlation ID X-OC-DELIVERY-MODE: persistent or non_persistent ."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-EXPIRATION: message expiration time . This is a long integer interpreted as Unix time. X-OC-MESSAGE-ID: message's ID , if present X-OC-PRIORITY: message priority X-OC-REDELIVERED: true/false , indicating if message is a re-delivery"
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-TIMESTAMP: time at which message was handed off to the JMS broker , if present. This is a long integer interpreted as Unix time."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-LISTENER-NAME: name of the listener that pushed the message X-OC-DELIVERY-COUNT: value of the message's JMSXDeliveryCount property , if present."
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "The following non-standard headers are set from message headers and properties: X-OC-CORRELATION-ID: message correlation ID X-OC-DELIVERY-MODE: persistent or non_persistent ."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-EXPIRATION: message expiration time . This is a long integer interpreted as Unix time. X-OC-MESSAGE-ID: message's ID , if present X-OC-PRIORITY: message priority X-OC-REDELIVERED: true/false , indicating if message is a re-delivery"
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-TIMESTAMP: time at which message was handed off to the JMS broker , if present. This is a long integer interpreted as Unix time."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "Messages are delivered to clients of the REST API in two ways: in the HTTP response to a receive request, and in an HTTP request made by a message push listener to an HTTP endpoint."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "Messages are delivered to clients of the REST API in two ways: in the HTTP response to a receive request, and in an HTTP request made by a message push listener to an HTTP endpoint."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+        "quote": "X-OC-LISTENER-NAME: name of the listener that pushed the message X-OC-DELIVERY-COUNT: value of the message's JMSXDeliveryCount property , if present."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q1",
+      "Q2",
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://docs.oracle.com/en/cloud/iaas/messaging-cloud/csmes/properties-http-requests-and-responses-that-deliver-messages.html",
+       "read": "A message push listener makes an HTTP request to an endpoint chosen by the listener to deliver each message, and the page describes no request, credit or window that the endpoint can hold, so delivery is service-initiated.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "REST send (POST /producers/{producerName}/messages)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "X-OC-DELIVERY-MODE",
+       "X-OC-DESTINATION",
+       "X-OC-EXPIRATION",
+       "X-OC-MESSAGE-ID (if present)",
+       "X-OC-PRIORITY",
+       "X-OC-TIMESTAMP (if present)"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas-classic/messaging-cloud/mcsap/op-producers-producername-messages-post.html",
+        "quote": "Response 200 Response Message successfully sent. Headers X-OC-DELIVERY-MODE: string persistent or non_persistent X-OC-DESTINATION: string One of the following"
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas-classic/messaging-cloud/mcsap/op-producers-producername-messages-post.html",
+        "quote": "X-OC-EXPIRATION: string Time at which the message will expire, and be removed from the service. This is a long integer interpreted as Unix time. X-OC-MESSAGE-ID: string The message's unique ID, if present X-OC-PRIORITY: string This is always the default value, 4 ."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas-classic/messaging-cloud/mcsap/op-producers-producername-messages-post.html",
+        "quote": "X-OC-TIMESTAMP: string The time at which message was handed off to the JMS broker, if present. This is a long integer interpreted as Unix time."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas-classic/messaging-cloud/mcsap/op-producers-producername-messages-post.html",
+        "quote": "X-OC-TIMESTAMP: string The time at which message was handed off to the JMS broker, if present. This is a long integer interpreted as Unix time."
+       }
+      ],
+      "note": "X-OC-TIMESTAMP is the time at which the message was handed off to the JMS broker, 'if present'; no page says when it is present, so it is not coded always."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas-classic/messaging-cloud/mcsap/op-producers-producername-messages-post.html",
+        "quote": "Response 200 Response Message successfully sent. Headers X-OC-DELIVERY-MODE: string persistent or non_persistent X-OC-DESTINATION: string One of the following"
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas-classic/messaging-cloud/mcsap/op-producers-producername-messages-post.html",
+        "quote": "X-OC-EXPIRATION: string Time at which the message will expire, and be removed from the service. This is a long integer interpreted as Unix time. X-OC-MESSAGE-ID: string The message's unique ID, if present X-OC-PRIORITY: string This is always the default value, 4 ."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas-classic/messaging-cloud/mcsap/op-producers-producername-messages-post.html",
+        "quote": "X-OC-TIMESTAMP: string The time at which message was handed off to the JMS broker, if present. This is a long integer interpreted as Unix time."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas-classic/messaging-cloud/mcsap/op-producers-producername-messages-post.html",
+        "quote": "Response 200 Response Message successfully sent. Headers X-OC-DELIVERY-MODE: string persistent or non_persistent X-OC-DESTINATION: string One of the following"
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas-classic/messaging-cloud/mcsap/op-producers-producername-messages-post.html",
+        "quote": "X-OC-EXPIRATION: string Time at which the message will expire, and be removed from the service. This is a long integer interpreted as Unix time. X-OC-MESSAGE-ID: string The message's unique ID, if present X-OC-PRIORITY: string This is always the default value, 4 ."
+       },
+       {
+        "url": "https://docs.oracle.com/en/cloud/iaas-classic/messaging-cloud/mcsap/op-producers-producername-messages-post.html",
+        "quote": "X-OC-TIMESTAMP: string The time at which message was handed off to the JMS broker, if present. This is a long integer interpreted as Unix time."
+       }
+      ]
+     },
+     "not_determined": [
+      "P1"
+     ],
+     "read_back": []
+    }
+   ]
+  }
+ ]
+}

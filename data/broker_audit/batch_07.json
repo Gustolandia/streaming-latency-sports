@@ -1,0 +1,3177 @@
+{
+ "audited_utc": "2026-10-27",
+ "brokers": [
+  {
+   "broker": "Oracle Database Advanced Queuing and Transactional Event Queues",
+   "group": "C",
+   "kind": "database queue",
+   "version": "Oracle AI Database 26ai (documentation G43539-02, retrieved 27 October 2026)",
+   "version_evidence": [
+    {
+     "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/index.html",
+     "quote": "Oracle AI Database Transactional Event Queues and Advanced Queuing User's Guide, 26ai G43539-02"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    }
+   ],
+   "note": "Advanced Queuing (queue tables) and Transactional Event Queues (sharded queues) share the DBMS_AQ interface, its message properties and Oracle JMS, and are coded as one record. The Kafka Java client for TxEventQ (OKafka) and the REST interface were not coded as modes: OKafka is a client library over the same enqueue and dequeue, and its documentation does not say which clock its record timestamps use.",
+   "modes": [
+    {
+     "mode": "PL/SQL DBMS_AQ.DEQUEUE and DEQUEUE_ARRAY (also the OCI dequeue)",
+     "Q0": {
+      "fields": [
+       "msgid (RAW(16))",
+       "payload",
+       "message_properties_t: priority, delay, expiration, correlation, attempts, exception_queue, enqueue_time (DATE), state, sender_id, original_msgid, signature, transaction_group, user_property, delivery_mode; recipient_list is not returned"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/DBMS_AQ.html",
+        "quote": "DBMS_AQ.DEQUEUE ( queue_name IN VARCHAR2, dequeue_options IN dequeue_options_t, message_properties OUT message_properties_t, payload OUT \"<ADT_1>\" msgid OUT RAW);"
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/advanced-queuing-AQ-types.html",
+        "quote": "TYPE message_properties_t IS RECORD ( priority BINARY_INTEGER NOT NULL DEFAULT 1, delay BINARY_INTEGER NOT NULL DEFAULT NO_DELAY, expiration BINARY_INTEGER NOT NULL DEFAULT NEVER, correlation VARCHAR2(128) DEFAULT NULL, attempts BINARY_INTEGER, recipient_list AQ$_RECIPIENT_LIST_T,"
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/advanced-queuing-AQ-types.html",
+        "quote": "exception_queue VARCHAR2(61) DEFAULT NULL, enqueue_time DATE, state BINARY_INTEGER, sender_id SYS.AQ$_AGENT DEFAULT NULL, original_msgid RAW(16) DEFAULT NULL, signature aq$_sig_prop DEFAULT NULL, transaction_group VARCHAR2(30) DEFAULT NULL, user_property SYS.ANYDATA DEFAULT NULL delivery_mode"
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/advanced-queuing-AQ-types.html",
+        "quote": "These are set at enqueue time, and their values are returned at dequeue time."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/advanced-queuing-AQ-types.html",
+        "quote": "This parameter is not returned to a consumer at dequeue time."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "enqueue_time (message_properties_t)",
+      "resolution": "s (DATE; the queue table also keeps ENQ_TIMESTAMP, a TIMESTAMP)",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/advanced-queuing-AQ-types.html",
+        "quote": "The enqueue_time attribute specifies the time the message was enqueued. This value is always in Universal Coordinated Time (UTC), and is determined by the system and cannot be set by the user at enqueue time."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-messaging-gateway-views.html",
+        "quote": "ENQ_TIMESTAMP TIMESTAMP - Enqueue time"
+       }
+      ],
+      "note": "Set by the database, in UTC, when the message is enqueued."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/advanced-queuing-AQ-types.html",
+        "quote": "These are set at enqueue time, and their values are returned at dequeue time."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/DBMS_AQ.html",
+        "quote": "DBMS_AQ.DEQUEUE ( queue_name IN VARCHAR2, dequeue_options IN dequeue_options_t, message_properties OUT message_properties_t, payload OUT \"<ADT_1>\" msgid OUT RAW);"
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/advanced-queuing-AQ-types.html",
+        "quote": "exception_queue VARCHAR2(61) DEFAULT NULL, enqueue_time DATE, state BINARY_INTEGER, sender_id SYS.AQ$_AGENT DEFAULT NULL, original_msgid RAW(16) DEFAULT NULL, signature aq$_sig_prop DEFAULT NULL, transaction_group VARCHAR2(30) DEFAULT NULL, user_property SYS.ANYDATA DEFAULT NULL delivery_mode"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "DEQ_TIME / DEQ_TIMESTAMP (dequeue time) in the queue table, shown by the AQ$<queue_table> view",
+      "resolution": "TIMESTAMP (fractional seconds)",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-messaging-gateway-views.html",
+        "quote": "When a message is dequeued using the REMOVE mode, DEQ_TIME , DEQ_USER_ID , and DEQ_TXN_ID are updated for the consumer that dequeued the message."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-messaging-gateway-views.html",
+        "quote": "DEQ_TIMESTAMP TIMESTAMP - Dequeue time"
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-messaging-gateway-views.html",
+        "quote": "The dequeue history data (time, user identification and transaction identification) is only valid for single-consumer queues."
+       }
+      ],
+      "note": "Kept with the message's row while the row remains (retention, or consumers still to dequeue); the documentation calls the dequeue history valid only for single-consumer queues, and for JMS sharded queues (TxEventQ) it lists other columns of the view as always NULL without saying whether dequeue times are kept. The dequeue itself does not return it."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/DBMS_AQ.html",
+        "quote": "DBMS_AQ.DEQUEUE ( queue_name IN VARCHAR2, dequeue_options IN dequeue_options_t, message_properties OUT message_properties_t, payload OUT \"<ADT_1>\" msgid OUT RAW);"
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/advanced-queuing-AQ-types.html",
+        "quote": "TYPE message_properties_t IS RECORD ( priority BINARY_INTEGER NOT NULL DEFAULT 1, delay BINARY_INTEGER NOT NULL DEFAULT NO_DELAY, expiration BINARY_INTEGER NOT NULL DEFAULT NEVER, correlation VARCHAR2(128) DEFAULT NULL, attempts BINARY_INTEGER, recipient_list AQ$_RECIPIENT_LIST_T,"
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/advanced-queuing-AQ-types.html",
+        "quote": "exception_queue VARCHAR2(61) DEFAULT NULL, enqueue_time DATE, state BINARY_INTEGER, sender_id SYS.AQ$_AGENT DEFAULT NULL, original_msgid RAW(16) DEFAULT NULL, signature aq$_sig_prop DEFAULT NULL, transaction_group VARCHAR2(30) DEFAULT NULL, user_property SYS.ANYDATA DEFAULT NULL delivery_mode"
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/advanced-queuing-AQ-types.html",
+        "quote": "TYPE message_properties_t IS RECORD ( priority BINARY_INTEGER NOT NULL DEFAULT 1, delay BINARY_INTEGER NOT NULL DEFAULT NO_DELAY, expiration BINARY_INTEGER NOT NULL DEFAULT NEVER, correlation VARCHAR2(128) DEFAULT NULL, attempts BINARY_INTEGER, recipient_list AQ$_RECIPIENT_LIST_T,"
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/advanced-queuing-AQ-types.html",
+        "quote": "exception_queue VARCHAR2(61) DEFAULT NULL, enqueue_time DATE, state BINARY_INTEGER, sender_id SYS.AQ$_AGENT DEFAULT NULL, original_msgid RAW(16) DEFAULT NULL, signature aq$_sig_prop DEFAULT NULL, transaction_group VARCHAR2(30) DEFAULT NULL, user_property SYS.ANYDATA DEFAULT NULL delivery_mode"
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/advanced-queuing-AQ-types.html",
+        "quote": "It determines, in seconds, the duration the message is available for dequeuing."
+       }
+      ],
+      "note": "expiration is returned as the producer set it, not reduced."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "The AQ$<queue_table> view, created with each queue table, shows each message's ENQ_TIMESTAMP and, after a dequeue in REMOVE mode, DEQ_TIMESTAMP, to anyone with the privileges to query it; dynamic performance views give aggregates.",
+      "resolution": "TIMESTAMP (fractional seconds)",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-messaging-gateway-views.html",
+        "quote": "This view is automatically created with each queue table and should be used for querying the queue data."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-messaging-gateway-views.html",
+        "quote": "ENQ_TIMESTAMP TIMESTAMP - Enqueue time"
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-messaging-gateway-views.html",
+        "quote": "DEQ_TIMESTAMP TIMESTAMP - Dequeue time"
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-messaging-gateway-views.html",
+        "quote": "When a message is dequeued using the REMOVE mode, DEQ_TIME , DEQ_USER_ID , and DEQ_TXN_ID are updated for the consumer that dequeued the message."
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-operations-using-pl-sql.html",
+        "quote": "If a number is specified, then the operation waits that number of seconds. If FOREVER is specified, then the operation waits forever (the default)."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-performance-scalability.html",
+        "quote": "Consider having multiple dequeuers for each subscriber on each Oracle RAC instance"
+       }
+      ],
+      "note": "A dequeue waits in the database for up to its wait time (FOREVER by default). A session runs one dequeue at a time; several sessions can each wait on one queue (the documentation recommends several dequeuers per subscriber), each taking a different message."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-messaging-gateway-views.html",
+       "read": "The AQ$<queue_table> view lists DEQ_TIME and DEQ_TIMESTAMP as the dequeue time, updated for the consumer that dequeued the message in REMOVE mode, and calls the dequeue history valid only for single-consumer queues. The database takes the time as it hands the message to the consumer, so send time fits; it is kept only while the row is.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/advanced-queuing-AQ-types.html",
+       "read": "DEQUEUE returns the payload, the msgid and message_properties_t, whose attributes are set at enqueue and returned at dequeue; it holds enqueue_time but no dequeue time.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-operations-using-pl-sql.html",
+       "read": "The dequeue option wait makes a dequeue wait when no message matches, forever by default. The tuning section recommends several dequeuers per subscriber, so several sessions can each have a dequeue waiting, each taking a different message, as SQS's long polls were read.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "Oracle JMS (AQ and TxEventQ)",
+     "Q0": {
+      "fields": [
+       "JMS headers: JMSDestination, JMSDeliveryMode, JMSMessageID, JMSTimestamp, JMSCorrelationID, JMSReplyTo, JMSType, JMSExpiration, JMSPriority, JMSRedelivered",
+       "properties: JMSXUserID, JMSXAppID, JMSXDeliveryCount, JMSXGroupID, JMSXGroupSeq, JMSXRcvTimestamp, JMSXState, JMS_OracleExcpQ, JMS_OracleDelay, JMS_OracleOriginalMessageID, and application properties",
+       "body"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "A JMS message header contains the following fields: JMSDestination This field contains the destination to which the message is sent."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "JMSTimeStamp This field contains the time the message was handed over to the provider to be sent. This maps to Oracle Database Advanced Queuing message enqueue time. It is a Long type set by JMS after the Send method has completed."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "JMSRedelivered This field is a Boolean set by the JMS provider."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "For StreamMessage , BytesMessage , ObjectMessage , TextMessage , and MapMessage objects, the client can get: JMSXuserID JMSXAppID JMSXDeliveryCount JMSXGroupID JMSXGroupSeq JMSXRecvTimeStamp JMSXState JMS_OracleExcpQ JMS_OracleDelay JMS_OracleOriginalMessageID"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "JMSTimestamp (the Advanced Queuing enqueue time)",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "JMSTimeStamp This field contains the time the message was handed over to the provider to be sent. This maps to Oracle Database Advanced Queuing message enqueue time. It is a Long type set by JMS after the Send method has completed."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "JMSTimeStamp when the message was enqueued (Greenwich Mean Time, in milliseconds)"
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/advanced-queuing-AQ-types.html",
+        "quote": "The enqueue_time attribute specifies the time the message was enqueued. This value is always in Universal Coordinated Time (UTC), and is determined by the system and cannot be set by the user at enqueue time."
+       }
+      ]
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "JMSTimeStamp This field contains the time the message was handed over to the provider to be sent. This maps to Oracle Database Advanced Queuing message enqueue time. It is a Long type set by JMS after the Send method has completed."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "JMSTimeStamp when the message was enqueued (Greenwich Mean Time, in milliseconds)"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "DEQ_TIME / DEQ_TIMESTAMP (dequeue time) in the queue table, shown by the AQ$<queue_table> view",
+      "resolution": "TIMESTAMP (fractional seconds)",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-messaging-gateway-views.html",
+        "quote": "When a message is dequeued using the REMOVE mode, DEQ_TIME , DEQ_USER_ID , and DEQ_TXN_ID are updated for the consumer that dequeued the message."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-messaging-gateway-views.html",
+        "quote": "DEQ_TIMESTAMP TIMESTAMP - Dequeue time"
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-messaging-gateway-views.html",
+        "quote": "The dequeue history data (time, user identification and transaction identification) is only valid for single-consumer queues."
+       }
+      ],
+      "note": "Kept with the message's row while the row remains (retention, or consumers still to dequeue); the documentation calls the dequeue history valid only for single-consumer queues, and for JMS sharded queues (TxEventQ) it lists other columns of the view as always NULL without saying whether dequeue times are kept. The dequeue itself does not return it."
+     },
+     "Q4": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "JMSXRcvTimeStamp This field is the time the message was delivered to the consumer (dequeue time). It is a String type set by JMS after the Receive method has completed."
+       }
+      ],
+      "note": "JMSXRcvTimestamp is documented as the dequeue time and as set by JMS after the receive completes; the documentation does not say whether it is the database's dequeue time or a time the client library takes. The PL/SQL dequeue's message properties carry no dequeue time."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "A JMS message header contains the following fields: JMSDestination This field contains the destination to which the message is sent."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "For StreamMessage , BytesMessage , ObjectMessage , TextMessage , and MapMessage objects, the client can get: JMSXuserID JMSXAppID JMSXDeliveryCount JMSXGroupID JMSXGroupSeq JMSXRecvTimeStamp JMSXState JMS_OracleExcpQ JMS_OracleDelay JMS_OracleOriginalMessageID"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "The AQ$<queue_table> view, created with each queue table, shows each message's ENQ_TIMESTAMP and, after a dequeue in REMOVE mode, DEQ_TIMESTAMP, to anyone with the privileges to query it; dynamic performance views give aggregates.",
+      "resolution": "TIMESTAMP (fractional seconds)",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-messaging-gateway-views.html",
+        "quote": "This view is automatically created with each queue table and should be used for querying the queue data."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-messaging-gateway-views.html",
+        "quote": "ENQ_TIMESTAMP TIMESTAMP - Enqueue time"
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-messaging-gateway-views.html",
+        "quote": "DEQ_TIMESTAMP TIMESTAMP - Dequeue time"
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-messaging-gateway-views.html",
+        "quote": "When a message is dequeued using the REMOVE mode, DEQ_TIME , DEQ_USER_ID , and DEQ_TXN_ID are updated for the consumer that dequeued the message."
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "public javax.jms.Message receive(long timeout) throws JMSException This method receives a message using a message consumer by specifying timeout."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "Messages can be received synchronously using the receive call or asynchronously using a message listener."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-performance-scalability.html",
+        "quote": "Consider having multiple dequeuers for each subscriber on each Oracle RAC instance"
+       }
+      ],
+      "note": "receive with a timeout waits for a message; several consumers, each in its own session, can wait at once, each taking a different message."
+     },
+     "not_determined": [
+      "Q4"
+     ],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/aq-messaging-gateway-views.html",
+       "read": "A JMS receive is a dequeue from the same queue table, so the same DEQ_TIME and DEQ_TIMESTAMP columns of the AQ$<queue_table> view keep the dequeue time, with the same limits (single-consumer queues; the view does not say whether sharded queues keep it).",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+       "read": "JMSXRcvTimeStamp is described as the time the message was delivered to the consumer (dequeue time), set by JMS after the Receive method has completed. Neither this chapter nor the AQjmsMessage Javadoc says whether it is the database's dequeue time or a time the client library takes, so not determined stands.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+       "read": "A receive can block until a message arrives or for a given timeout; consumers in several sessions can each have a receive waiting, and the tuning section recommends several dequeuers per subscriber.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "PL/SQL DBMS_AQ.ENQUEUE and ENQUEUE_ARRAY",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "msgid (RAW(16)), an OUT parameter; ENQUEUE_ARRAY returns the array of message ids"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/DBMS_AQ.html",
+        "quote": "DBMS_AQ.ENQUEUE ( queue_name IN VARCHAR2, enqueue_options IN enqueue_options_t, message_properties IN message_properties_t, payload IN \"<ADT_1>\", msgid OUT RAW);"
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/DBMS_AQ.html",
+        "quote": "msgid System generated identification of the message. This is a globally unique identifier that can be used to identify the message at dequeue time."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/DBMS_AQ.html",
+        "quote": "DBMS_AQ.ENQUEUE ( queue_name IN VARCHAR2, enqueue_options IN enqueue_options_t, message_properties IN message_properties_t, payload IN \"<ADT_1>\", msgid OUT RAW);"
+       }
+      ],
+      "note": "message_properties is an IN parameter of ENQUEUE; the enqueue time is not returned."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/DBMS_AQ.html",
+        "quote": "DBMS_AQ.ENQUEUE ( queue_name IN VARCHAR2, enqueue_options IN enqueue_options_t, message_properties IN message_properties_t, payload IN \"<ADT_1>\", msgid OUT RAW);"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/DBMS_AQ.html",
+        "quote": "DBMS_AQ.ENQUEUE ( queue_name IN VARCHAR2, enqueue_options IN enqueue_options_t, message_properties IN message_properties_t, payload IN \"<ADT_1>\", msgid OUT RAW);"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "Oracle JMS send and publish",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "send returns no value; when it completes, the provider has set JMSDestination, JMSDeliveryMode, JMSMessageID, JMSTimestamp, JMSExpiration, JMSPriority, JMSXUserID, JMSXAppID and JMSXDeliveryCount on the message sent"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "A JMS message header contains the following fields: JMSDestination This field contains the destination to which the message is sent."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "It is a String type set by JMS after the Send method has completed."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "JMSTimeStamp This field contains the time the message was handed over to the provider to be sent. This maps to Oracle Database Advanced Queuing message enqueue time. It is a Long type set by JMS after the Send method has completed."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "JMSTimeStamp This field contains the time the message was handed over to the provider to be sent. This maps to Oracle Database Advanced Queuing message enqueue time. It is a Long type set by JMS after the Send method has completed."
+       }
+      ],
+      "note": "JMSTimestamp is documented as mapping to the enqueue time and as set by JMS after send completes; the documentation does not say whether the sender's copy holds the database's enqueue time or a time the client library took (searched: the JMS chapter's message headers and properties, and the DBMS_AQ ENQUEUE parameters)."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "A JMS message header contains the following fields: JMSDestination This field contains the destination to which the message is sent."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "JMSTimeStamp This field contains the time the message was handed over to the provider to be sent. This maps to Oracle Database Advanced Queuing message enqueue time. It is a Long type set by JMS after the Send method has completed."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "A JMS message header contains the following fields: JMSDestination This field contains the destination to which the message is sent."
+       },
+       {
+        "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/adque/java_message_service.html",
+        "quote": "JMSTimeStamp This field contains the time the message was handed over to the provider to be sent. This maps to Oracle Database Advanced Queuing message enqueue time. It is a Long type set by JMS after the Send method has completed."
+       }
+      ]
+     },
+     "not_determined": [
+      "P1"
+     ],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "SQL Server Service Broker",
+   "group": "C",
+   "kind": "database queue",
+   "version": "SQL Server 2025 (17.x); documentation retrieved 27 October 2026",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/sql-server/what-s-new-in-sql-server-2025.md",
+     "quote": "description: Learn about new features for SQL Server 2025 (17.x), which gives you choices of development languages, data types, environments, and operating systems."
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    }
+   ],
+   "note": "Coded from Microsoft's SQL Server documentation source, pinned to a commit of MicrosoftDocs/sql-docs; RECEIVE and SEND also apply to Azure SQL Managed Instance.",
+   "modes": [
+    {
+     "mode": "RECEIVE (with WAITFOR)",
+     "Q0": {
+      "fields": [
+       "one row per message, with the columns the statement names or, with *, all the queue's columns: status, priority, queuing_order, conversation_group_id, conversation_handle, message_sequence_number, service_name, service_id, service_contract_name, service_contract_id, message_type_name, message_type_id, validation, message_body, message_enqueue_time"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/receive-transact-sql.md",
+        "quote": "Specifies that the result set contains all columns in the queue."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/receive-transact-sql.md",
+        "quote": "The name of a column to include in the result set."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/create-queue-transact-sql.md",
+        "quote": "The following table lists the columns in a queue."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/create-queue-transact-sql.md",
+        "quote": "| `message_enqueue_time` |**datetime**|Time when the message was enqueued.|"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/create-queue-transact-sql.md",
+        "quote": "| `queuing_order` |**bigint**|Message order number in the queue.|"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/receive-transact-sql.md",
+        "quote": "| `message_body` |**varbinary(MAX)**|Content of the message.|"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "message_enqueue_time",
+      "resolution": "datetime (rounded to .000, .003 or .007 s)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/create-queue-transact-sql.md",
+        "quote": "| `message_enqueue_time` |**datetime**|Time when the message was enqueued.|"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/data-types/datetime-transact-sql.md",
+        "quote": "| **Accuracy** | Rounded to increments of `.000`, `.003`, or `.007` seconds |"
+       }
+      ],
+      "note": "The documentation does not say whether this column is in UTC or local time; sys.transmission_queue's enqueue_time, for messages still in transit, is documented as UTC."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/receive-transact-sql.md",
+        "quote": "Specifies that the result set contains all columns in the queue."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/create-queue-transact-sql.md",
+        "quote": "| `message_enqueue_time` |**datetime**|Time when the message was enqueued.|"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/create-queue-transact-sql.md",
+        "quote": "The following table lists the columns in a queue."
+       }
+      ],
+      "note": "When the RECEIVE names the column or uses *. The RECEIVE page's own table of result columns ends at message_body, but the CREATE QUEUE page lists message_enqueue_time among the queue's columns and RECEIVE * returns every column of the queue: a gap between the two pages, read here in favor of the column list."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/receive-transact-sql.md",
+        "quote": "The RECEIVE statement removes received messages from the queue unless the queue specifies message retention. When the RETENTION setting for the queue is ON, the RECEIVE statement updates the `status` column to `0` and leaves the messages in the queue."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/create-queue-transact-sql.md",
+        "quote": "The following table lists the columns in a queue."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/create-queue-transact-sql.md",
+        "quote": "| `message_enqueue_time` |**datetime**|Time when the message was enqueued.|"
+       }
+      ],
+      "note": "With retention on, a received message stays in the queue with its status changed; no column records when it was received."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/create-queue-transact-sql.md",
+        "quote": "The following table lists the columns in a queue."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/create-queue-transact-sql.md",
+        "quote": "| `message_enqueue_time` |**datetime**|Time when the message was enqueued.|"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/receive-transact-sql.md",
+        "quote": "| `message_body` |**varbinary(MAX)**|Content of the message.|"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "SQL Trace's Broker:Conversation event class (collected only when a trace asks for it) records a SEND Message event for each SEND and a Received Sequenced Message event for each sequenced message that arrives from the other side of a conversation, each with StartTime.",
+      "resolution": "datetime (about 3 ms)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/relational-databases/event-classes/broker-conversation-event-class.md",
+        "quote": "| `StartTime` | **datetime** | The time when the event started, when available. | 14 | Yes |"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/relational-databases/event-classes/broker-conversation-event-class.md",
+        "quote": "generates a `SEND Message` event when the [!INCLUDE [ssDE](../../includes/ssde-md.md)] executes a SEND statement."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/relational-databases/event-classes/broker-conversation-event-class.md",
+        "quote": "generates a `Received Sequenced Message` event class when [!INCLUDE [ssNoVersion](../../includes/ssnoversion-md.md)] receives a message that contains a message sequence number."
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/receive-transact-sql.md",
+        "quote": "When the WAITFOR clause is specified, the statement waits for the specified time out, or until a result set is available."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/receive-transact-sql.md",
+        "quote": "If this clause is not specified, or the time-out is `-1`, the wait time is unlimited."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/receive-transact-sql.md",
+        "quote": "The RECEIVE statement locks the conversation group for the messages that are returned until the transaction that contains the statement finishes."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/create-queue-transact-sql.md",
+        "quote": "Specifies the maximum number of instances of the activation stored procedure that the queue starts at the same time."
+       }
+      ],
+      "note": "A RECEIVE with WAITFOR waits in the server until a message arrives or the timeout ends (unlimited by default). A session runs one statement at a time; several sessions, or several activated procedures up to MAX_QUEUE_READERS, can each wait on one queue, each taking messages of a different conversation group."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q1",
+       "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/create-queue-transact-sql.md",
+       "read": "The CREATE QUEUE page lists message_enqueue_time (datetime), the time the message was enqueued, among the columns of every queue; the server sets it, to the datetime type's accuracy of about 3 ms.",
+       "agrees": true
+      },
+      {
+       "question": "Q2",
+       "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/database-engine/configure-windows/sql-server-service-broker.md",
+       "read": "RECEIVE * returns all columns in the queue, and a column can be named. The CREATE QUEUE column list and this page (queues have a column message_enqueue_time, added in SQL Server 2012) both make it a column of the queue; the RECEIVE page's own table stops at message_body, a gap between the pages that the answer reads in favour of the column list.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/receive-transact-sql.md",
+       "read": "With WAITFOR the statement waits until a result set is available or its timeout ends (unlimited by default). RECEIVE locks the conversation group of the messages it returns, so RECEIVEs in several sessions, or activated procedures up to MAX_QUEUE_READERS, wait at once and take messages of different conversation groups.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "SEND ON CONVERSATION",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "none: the statement completes without a result set or output value, or raises an error; the message is committed with the sender's transaction"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/send-transact-sql.md",
+        "quote": "SEND ON CONVERSATION [(]conversation_handle [,.. @conversation_handle_n][)] [ MESSAGE TYPE message_type_name ] [ ( message_body_expression ) ] [ ; ]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/send-transact-sql.md",
+        "quote": "Sends a message, using one or more existing conversations."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/send-transact-sql.md",
+        "quote": "SEND is an atomic statement."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/send-transact-sql.md",
+        "quote": "SEND ON CONVERSATION [(]conversation_handle [,.. @conversation_handle_n][)] [ MESSAGE TYPE message_type_name ] [ ( message_body_expression ) ] [ ; ]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/relational-databases/system-catalog-views/sys-transmission-queue-transact-sql.md",
+        "quote": "|**enqueue_time**|**datetime**|Time at which the message entered the queue. This value uses UTC regardless of the local time zone for the instance. Not NULLABLE.|"
+       }
+      ],
+      "note": "The enqueue times are kept in the target queue (message_enqueue_time) or, for a message in transit, in sys.transmission_queue; SEND returns neither."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/send-transact-sql.md",
+        "quote": "SEND ON CONVERSATION [(]conversation_handle [,.. @conversation_handle_n][)] [ MESSAGE TYPE message_type_name ] [ ( message_body_expression ) ] [ ; ]"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sql-docs/b9f1c2b849722184bfdde1cabf4a6a6fe6444a00/docs/t-sql/statements/send-transact-sql.md",
+        "quote": "SEND ON CONVERSATION [(]conversation_handle [,.. @conversation_handle_n][)] [ MESSAGE TYPE message_type_name ] [ ( message_body_expression ) ] [ ; ]"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Microsoft Message Queuing (MSMQ)",
+   "group": "C",
+   "kind": "broker",
+   "version": "Message Queuing of Windows 10 and Windows Server 2012 R2 and later (documentation retrieved 27 October 2026)",
+   "version_evidence": [
+    {
+     "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms705262(v=vs.85)",
+     "quote": "Applies To: Windows 10, Windows 7, Windows 8, Windows 8.1, Windows Server 2008, Windows Server 2008 R2, Windows Server 2012, Windows Server 2012 R2, Windows Server Technical Preview, Windows Vista"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    }
+   ],
+   "note": "Coded from the C API's message properties; the COM (MSMQMessage) and .NET (System.Messaging.Message) classes expose the same properties under other names. The documentation is archived under previous-versions and was last updated on 2016-10-19.",
+   "modes": [
+    {
+     "mode": "MQReceiveMessage (synchronous and asynchronous)",
+     "Q0": {
+      "fields": [
+       "any of the message properties the receiver names in MQMSGPROPS: PROPID_M_ABORT_COUNT, ACKNOWLEDGE, ADMIN_QUEUE(_LEN), APPSPECIFIC, ARRIVEDTIME, AUTH_LEVEL, AUTHENTICATED(_EX), BODY, BODY_SIZE, BODY_TYPE, CLASS, COMPOUND_MESSAGE(_SIZE), CONNECTOR_TYPE, CORRELATIONID, DEADLETTER_QUEUE(_LEN), DELIVERY, DEST_FORMAT_NAME(_LEN), DEST_QUEUE(_LEN), DEST_SYMM_KEY(_LEN), ENCRYPTION_ALG, EXTENSION(_LEN), FIRST_IN_XACT, HASH_ALG, JOURNAL, LABEL(_LEN), LAST_IN_XACT, LOOKUPID, MOVE_COUNT, MSGID, PRIORITY, PRIV_LEVEL, PROV_NAME(_LEN), PROV_TYPE, RESP_FORMAT_NAME(_LEN), RESP_QUEUE(_LEN), SECURITY_CONTEXT, SENDER_CERT(_LEN), SENDERID(_LEN, _TYPE), SENTTIME, SIGNATURE(_LEN), SOAP_BODY, SOAP_ENVELOPE(_LEN), SOAP_HEADER, SRC_MACHINE_ID, TIME_TO_BE_RECEIVED, TIME_TO_REACH_QUEUE, TRACE, VERSION, XACTID, XACT_STATUS_QUEUE(_LEN)"
+      ],
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms705262(v=vs.85)",
+        "quote": "Message Queuing provides the following properties for defining the data in a message and how Message Queuing handles the message."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms705262(v=vs.85)",
+        "quote": "PROPID_M_ARRIVEDTIME Indicates when the message arrived at the queue."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms705262(v=vs.85)",
+        "quote": "PROPID_M_SENTTIME Indicates the date and time that the message was sent by the source queue manager ."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms699825(v=vs.85)",
+        "quote": "All message properties can be read. However, only those properties specified in the pMessageProps parameter are returned to the calling application; other properties are simply discarded when the message is read."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "PROPID_M_ARRIVEDTIME (MSMQMessage.ArrivedTime)",
+      "resolution": "s",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms704047(v=vs.85)",
+        "quote": "The PROPID_M_ARRIVEDTIME property is attached to the message by Message Queuing. The arrival time returned is the number of seconds elapsed since midnight (00:00:00), January 1, 1970 (Coordinated Universal time) according to the system clock."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms705262(v=vs.85)",
+        "quote": "PROPID_M_ARRIVEDTIME Indicates when the message arrived at the queue."
+       }
+      ],
+      "note": "Set by the queue manager of the computer that holds the destination queue. PROPID_M_SENTTIME, also attached by Message Queuing, is when the source queue manager sent the message, by the sending computer's clock (the same computer for a local queue), in seconds."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms704047(v=vs.85)",
+        "quote": "To retrieve the arrived time of a message, specify PROPID_M_ARRIVEDTIME in the MQMSGPROPS structure. Then call MQReceiveMessage or MQReceiveMessageByLookupId and examine the returned value."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms699825(v=vs.85)",
+        "quote": "All message properties can be read. However, only those properties specified in the pMessageProps parameter are returned to the calling application; other properties are simply discarded when the message is read."
+       }
+      ],
+      "note": "Returned only when the receiver names the property in MQMSGPROPS, as with SQS's attribute names."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms705262(v=vs.85)",
+        "quote": "Message Queuing provides the following properties for defining the data in a message and how Message Queuing handles the message."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms705262(v=vs.85)",
+        "quote": "PROPID_M_ARRIVEDTIME Indicates when the message arrived at the queue."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms705262(v=vs.85)",
+        "quote": "PROPID_M_SENTTIME Indicates the date and time that the message was sent by the source queue manager ."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms704047(v=vs.85)",
+        "quote": "When reading messages from a queue journal, PROPID_M_ARRIVEDTIME indicates the time the original message arrived at its destination queue, not when the copy of the original message arrived in the"
+       }
+      ],
+      "note": "No property records when a message was received or handed to a receiver; a journal copy keeps the original arrival time."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "field": "PROPID_M_TIME_TO_BE_RECEIVED (time left in the time-to-be-received timer when the message is received)",
+      "resolution": "s",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms711348(v=vs.85)",
+        "quote": "The PROPID_M_TIME_TO_BE_RECEIVED property specifies the total time (in seconds) that the message is allowed to live. This includes the time it spends getting to the destination queue plus the time spent waiting in the queue before it is retrieved by an application."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms711348(v=vs.85)",
+        "quote": "In each hop, Message Queuing subtracts the time elapsed on the applicable computer from the value of PROPID_M_TIME_TO_BE_RECEIVED when it dispatches the message to the next computer, where a new timer is set."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms711348(v=vs.85)",
+        "quote": "To find out how much time remains in the time-to-be-received timer when the message is received, specify PROPID_M_TIME_TO_BE_RECEIVED in the MQMSGPROPS structure."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms711348(v=vs.85)",
+        "quote": "Integer value (the default is INFINITE)."
+       }
+      ],
+      "note": "The receiver reads the time left in the message's time-to-be-received timer; the sender's value less that remainder is the time since the send, across hops and the wait in the destination queue, to the second. The receiver must know the sender's value (agreed, or carried in the message, for example in its extension or app-specific property); with the default, INFINITE, nothing is learned. Coded like MQTT 5.0's reduced expiry."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "End-to-end tracing, the MSMQ End2End event log (off by default), records events along each message's life cycle, from the send until an application uses it, each with the date and time it occurred.",
+      "resolution": "not stated (Windows event log time stamps)",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2008-r2-and-2008/cc730882(v=ws.11)",
+        "quote": "It tracks the path of a message through its life cycle, from the time that an application sent it to the time that:"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2008-r2-and-2008/cc730882(v=ws.11)",
+        "quote": "End-to-end tracing is disabled by default."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2008-r2-and-2008/cc730882(v=ws.11)",
+        "quote": "By default, events for all messages are listed by the date and time on which they occurred, with the most recent events listed first."
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms699825(v=vs.85)",
+        "quote": "dwTimeout [in] Time, in milliseconds, to wait for the message. This parameter can be set to INFINITE, 0, or a specific amount of time. The default setting is INFINITE."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms699825(v=vs.85)",
+        "quote": "This return value indicates that the operation is pending and will be completed as soon as a suitable message can be found."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms699825(v=vs.85)",
+        "quote": "When using a callback function, you can register only 63 callbacks at the same time."
+       }
+      ],
+      "note": "A receive waits in the queue manager until a message comes or the timeout ends (INFINITE by default). An application can keep several asynchronous receives pending (callbacks, up to 63 per process, events or completion ports), each completed by a different message."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q5",
+       "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms711348(v=vs.85)",
+       "read": "PROPID_M_TIME_TO_BE_RECEIVED is the total time the message may live, counting its trip to the destination queue and its wait there; each hop subtracts the time elapsed on its computer, and a receiver that names the property reads the time left when the message is received. The sender's value less that remainder is the time since the send, to the second, for a receiver that knows the sender's value (default INFINITE): a derivable stay, coded as MQTT 5.0's reduced expiry.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms699825(v=vs.85)",
+       "read": "A receive waits up to dwTimeout (INFINITE by default). An asynchronous receive returns MQ_INFORMATION_OPERATION_PENDING and completes when a suitable message is found; up to 63 callbacks, or events and completion ports, can be pending at once, each completed by its own message.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQSendMessage (return value)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "the function's return code (MQ_OK once the message is placed in an outgoing queue)",
+       "the properties named in the caller's MQMSGPROPS that Message Queuing fills on send, such as PROPID_M_MSGID"
+      ],
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms707129(v=vs.85)",
+        "quote": "When sending a message, Message Queuing indicates that the sending operation has succeeded as soon as the message is created with valid properties and placed in an outgoing queue where it remains until it is delivered to its destination or one of its timers expires."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms705091(v=vs.85)",
+        "quote": "Then call MQSendMessage , MQReceiveMessage , or MQReceiveMessageByLookupId and examine the returned identifier."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms707129(v=vs.85)",
+        "quote": "When sending a message, Message Queuing indicates that the sending operation has succeeded as soon as the message is created with valid properties and placed in an outgoing queue where it remains until it is delivered to its destination or one of its timers expires."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms702026(v=vs.85)",
+        "quote": "To see when a message was sent, specify PROPID_M_SENTTIME in the MQMSGPROPS structure. Then call MQReceiveMessage or MQReceiveMessageByLookupId and examine the returned value."
+       }
+      ],
+      "note": "The send succeeds when the message is in a local outgoing queue; the documentation names reading PROPID_M_SENTTIME only on receive."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms707129(v=vs.85)",
+        "quote": "When sending a message, Message Queuing indicates that the sending operation has succeeded as soon as the message is created with valid properties and placed in an outgoing queue where it remains until it is delivered to its destination or one of its timers expires."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms707129(v=vs.85)",
+        "quote": "When sending a message, Message Queuing indicates that the sending operation has succeeded as soon as the message is created with valid properties and placed in an outgoing queue where it remains until it is delivered to its destination or one of its timers expires."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "acknowledgment messages (PROPID_M_ACKNOWLEDGE, to an administration queue)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "a system-generated message in the sender's administration queue: class (which positive or negative acknowledgment), message id, correlation id (the original message's id), body (empty for positive acknowledgments; the original body for most negative ones), app-specific, delivery, extension, journal, label, priority (as the original), response queue or format name (the original destination), time-to-be-received and time-to-reach-queue set to the maximum"
+      ],
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms707129(v=vs.85)",
+        "quote": "These messages can indicate whether a message sent by the application has reached its destination queue or whether the message has been retrieved."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms704017(v=vs.85)",
+        "quote": "The following is a list of the message properties that the system sets when it generates the acknowledgment message:"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms704017(v=vs.85)",
+        "quote": "PROPID_M_CORRELATIONID or MSMQMessage.CorrelationId Specifies the message identifier of the original message sent by the sending application."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms704017(v=vs.85)",
+        "quote": "PROPID_M_TIME_TO_BE_RECEIVED or MSMQMessage.MaxTimeToReceive Set to maximum time allowed by Message Queuing."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms704017(v=vs.85)",
+        "quote": "The following is a list of the message properties that the system sets when it generates the acknowledgment message:"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms702026(v=vs.85)",
+        "quote": "The PROPID_M_SENTTIME property indicates the date and time when the message was sent by the source queue manager ."
+       }
+      ],
+      "note": "The list of properties the system sets on an acknowledgment holds no time. As a message, an acknowledgment read from the administration queue can be asked for its own PROPID_M_SENTTIME and PROPID_M_ARRIVEDTIME, but the documentation does not say what these hold for an acknowledgment (searched: Acknowledgment Messages, Acknowledgment Message Properties, PROPID_M_SENTTIME, PROPID_M_ARRIVEDTIME)."
+     },
+     "P2": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms704017(v=vs.85)",
+        "quote": "The following is a list of the message properties that the system sets when it generates the acknowledgment message:"
+       }
+      ],
+      "note": "As P1."
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms704017(v=vs.85)",
+        "quote": "The following is a list of the message properties that the system sets when it generates the acknowledgment message:"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/msmq/ms711348(v=vs.85)",
+        "quote": "When Message Queuing creates an acknowledgment message, it always sets the PROPID_M_TIME_TO_BE_RECEIVED property of the message to INFINITE."
+       }
+      ],
+      "note": "Its time-to-be-received is INFINITE, so it carries no reduced duration."
+     },
+     "not_determined": [
+      "P1",
+      "P2"
+     ],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "PGMQ",
+   "group": "C",
+   "kind": "database queue",
+   "version": "1.13.1",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/pgmq.control",
+     "quote": "default_version = '1.13.1'"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    }
+   ],
+   "note": "PGMQ is a PostgreSQL extension: its queues are tables and its operations are SQL functions that run inside the database server, so it is coded as a queue built into a database server, not as a client library. Supabase Queues runs PGMQ and is a copy (no record).",
+   "modes": [
+    {
+     "mode": "read and read_with_poll (visibility timeout; also read_grouped and its variants)",
+     "Q0": {
+      "fields": [
+       "one pgmq.message_record per message: msg_id (bigint), read_ct (integer), enqueued_at (timestamptz), last_read_at (timestamptz), vt (timestamptz, the new visibility deadline), message (jsonb), headers (jsonb)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "CREATE TYPE pgmq.message_record AS ( msg_id BIGINT, read_ct INTEGER, enqueued_at TIMESTAMP WITH TIME ZONE, last_read_at TIMESTAMP WITH TIME ZONE, vt TIMESTAMP WITH TIME ZONE, message JSONB, headers JSONB );"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.last_read_at, m.vt, m.message, m.headers;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "RETURNS SETOF pgmq.message_record AS $$"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "enqueued_at",
+      "resolution": "µs (timestamptz)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,"
+       },
+       {
+        "url": "https://www.postgresql.org/docs/18/functions-datetime.html",
+        "quote": "now ( ) → timestamp with time zone Current date and time (start of current transaction)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/docs/api/sql/types.md",
+        "quote": "| enqueued_at | timestamp with time zone | Timestamp when the message was inserted into the queue |"
+       },
+       {
+        "url": "https://www.postgresql.org/docs/18/datatype-datetime.html",
+        "quote": "timestamp [ ( p ) ] with time zone 8 bytes both date and time, with time zone 4713 BC 294276 AD 1 microsecond"
+       }
+      ],
+      "note": "Set by the queue table's column default now(), which PostgreSQL defines as the start of the current transaction, on the database server's clock: for a send in a transaction of its own, the start of that statement's transaction; inside a longer transaction it precedes the insert by the transaction's earlier work, and readers see the message only after the sending transaction commits."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.last_read_at, m.vt, m.message, m.headers;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/docs/api/sql/types.md",
+        "quote": "| enqueued_at | timestamp with time zone | Timestamp when the message was inserted into the queue |"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "last_read_at = clock_timestamp() when the read takes the message (and vt = that instant plus the requested visibility timeout)",
+      "resolution": "µs (timestamptz)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "last_read_at = clock_timestamp(),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "vt = clock_timestamp() + %L,"
+       },
+       {
+        "url": "https://www.postgresql.org/docs/18/functions-datetime.html",
+        "quote": "clock_timestamp ( ) → timestamp with time zone Current date and time (changes during statement execution)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/docs/api/sql/types.md",
+        "quote": "| last_read_at | timestamp with time zone | Timestamp when the message was last read |"
+       }
+      ],
+      "note": "The read's UPDATE stamps the row as it takes the message, with clock_timestamp(), the database server's current time during the statement. For read_with_poll this is the internal poll that found the message, after the call arrived; coded send time, the weaker of the two verdicts."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.last_read_at, m.vt, m.message, m.headers;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/docs/api/sql/types.md",
+        "quote": "| last_read_at | timestamp with time zone | Timestamp when the message was last read |"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/docs/api/sql/types.md",
+        "quote": "| vt | timestamp with time zone | Timestamp when the message will become available for consumers to read |"
+       }
+      ],
+      "note": "last_read_at is returned with every message read, and vt (the same instant plus the consumer's own vt argument) too."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "CREATE TYPE pgmq.message_record AS ( msg_id BIGINT, read_ct INTEGER, enqueued_at TIMESTAMP WITH TIME ZONE, last_read_at TIMESTAMP WITH TIME ZONE, vt TIMESTAMP WITH TIME ZONE, message JSONB, headers JSONB );"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.last_read_at, m.vt, m.message, m.headers;"
+       }
+      ],
+      "note": "No returned column holds a duration. last_read_at less enqueued_at, both stamped by the database server's clock, is taken through Q1 to Q4; it includes the time from the start of the sending transaction to its commit."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "The archive table pgmq.a_<queue> keeps, for each message a consumer archives, enqueued_at, last_read_at and archived_at; anyone with SELECT on it can read them. pgmq.metrics() gives only the newest and oldest message age in whole seconds (aggregate). PostgreSQL's log_min_duration_statement = 0 (default -1, off) logs every statement, so every send and read call, with its duration, in a log line time-stamped to the millisecond with %m.",
+      "resolution": "µs (archive table); ms (statement log)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/docs/api/sql/types.md",
+        "quote": "| oldest_msg_age_sec | integer | Age of the oldest message in seconds (null if queue is empty) |"
+       },
+       {
+        "url": "https://www.postgresql.org/docs/18/runtime-config-logging.html",
+        "quote": "Setting this to zero prints all statement durations. -1 (the default) disables logging statement durations."
+       },
+       {
+        "url": "https://www.postgresql.org/docs/18/runtime-config-logging.html",
+        "quote": "%m Time stamp with milliseconds"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/docs/api/sql/functions.md",
+        "quote": "Same as read(). Also provides convenient long-poll functionality."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/docs/api/sql/functions.md",
+        "quote": "When there are no messages in the queue, the function call will wait for `max_poll_seconds` in duration before returning."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/docs/api/sql/functions.md",
+        "quote": "| poll_interval_ms | integer | Milliseconds between the internal poll operations. Defaults to 100. |"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "PERFORM pg_catalog.pg_sleep(poll_interval_ms::numeric / 1000);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "FOR UPDATE SKIP LOCKED"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/README.md",
+        "quote": "Guaranteed \"exactly once\" delivery of messages to a consumer within a visibility timeout"
+       }
+      ],
+      "note": "read_with_poll keeps the call waiting inside the server for up to max_poll_seconds (default 5), re-running the read every poll_interval_ms (default 100), so a message arriving finds a pending request but is taken at the next internal poll. A session runs one call at a time; several sessions can each have a call pending on one queue, and FOR UPDATE SKIP LOCKED gives each a different message, as with SQS long polls. Plain read returns at once. pgmq.enable_notify_insert can also send a NOTIFY on each insert, which wakes a LISTENing consumer but takes no message."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q1",
+       "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+       "read": "Every queue table defines enqueued_at with DEFAULT now(), and send inserts only vt, message and headers, so the database server stamps each message with its transaction's start time, in µs, on the same server clock that later stamps last_read_at.",
+       "agrees": true
+      },
+      {
+       "question": "Q2",
+       "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+       "read": "Each read's UPDATE ... RETURNING returns enqueued_at with every message.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+       "read": "read and read_with_poll take messages FOR UPDATE SKIP LOCKED and, in the statement that returns them, set last_read_at = clock_timestamp() and vt = clock_timestamp() plus the requested timeout; clock_timestamp is the server's current time during the statement. A time of taking the message, so send time; with enqueued_at from the same clock the message carries a stay.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+       "read": "The same RETURNING clause returns last_read_at, and vt, with every message read.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+       "read": "read_with_poll loops inside the server until max_poll_seconds (default 5), re-running the read and sleeping poll_interval_ms (default 100) between tries, so the call stays pending in the database; each session runs one call, and FOR UPDATE SKIP LOCKED gives concurrent calls different messages. A message that arrives waits for the call's next try.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "pop (read and delete)",
+     "Q0": {
+      "fields": [
+       "one pgmq.message_record per message: msg_id, read_ct, enqueued_at, last_read_at (null unless an earlier read took it), vt (as last set: at send, the send time plus any delay), message, headers"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "CREATE TYPE pgmq.message_record AS ( msg_id BIGINT, read_ct INTEGER, enqueued_at TIMESTAMP WITH TIME ZONE, last_read_at TIMESTAMP WITH TIME ZONE, vt TIMESTAMP WITH TIME ZONE, message JSONB, headers JSONB );"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "DELETE from pgmq.%I WHERE msg_id IN (select msg_id from cte) RETURNING msg_id, read_ct, enqueued_at, last_read_at, vt, message, headers;"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "enqueued_at",
+      "resolution": "µs (timestamptz)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,"
+       },
+       {
+        "url": "https://www.postgresql.org/docs/18/functions-datetime.html",
+        "quote": "now ( ) → timestamp with time zone Current date and time (start of current transaction)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/docs/api/sql/types.md",
+        "quote": "| enqueued_at | timestamp with time zone | Timestamp when the message was inserted into the queue |"
+       },
+       {
+        "url": "https://www.postgresql.org/docs/18/datatype-datetime.html",
+        "quote": "timestamp [ ( p ) ] with time zone 8 bytes both date and time, with time zone 4713 BC 294276 AD 1 microsecond"
+       }
+      ],
+      "note": "Set by the queue table's column default now(), which PostgreSQL defines as the start of the current transaction, on the database server's clock: for a send in a transaction of its own, the start of that statement's transaction; inside a longer transaction it precedes the insert by the transaction's earlier work, and readers see the message only after the sending transaction commits. For a message never read, the vt returned by pop is the clock_timestamp() of the send (plus any delay), a second, statement-time arrival stamp."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "DELETE from pgmq.%I WHERE msg_id IN (select msg_id from cte) RETURNING msg_id, read_ct, enqueued_at, last_read_at, vt, message, headers;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/docs/api/sql/types.md",
+        "quote": "| enqueued_at | timestamp with time zone | Timestamp when the message was inserted into the queue |"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "DELETE from pgmq.%I WHERE msg_id IN (select msg_id from cte) RETURNING msg_id, read_ct, enqueued_at, last_read_at, vt, message, headers;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "CREATE TYPE pgmq.message_record AS ( msg_id BIGINT, read_ct INTEGER, enqueued_at TIMESTAMP WITH TIME ZONE, last_read_at TIMESTAMP WITH TIME ZONE, vt TIMESTAMP WITH TIME ZONE, message JSONB, headers JSONB );"
+       }
+      ],
+      "note": "pop deletes the row in the statement that takes it and records no time of its own; the last_read_at it returns is that of an earlier read, if any."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "CREATE TYPE pgmq.message_record AS ( msg_id BIGINT, read_ct INTEGER, enqueued_at TIMESTAMP WITH TIME ZONE, last_read_at TIMESTAMP WITH TIME ZONE, vt TIMESTAMP WITH TIME ZONE, message JSONB, headers JSONB );"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "DELETE from pgmq.%I WHERE msg_id IN (select msg_id from cte) RETURNING msg_id, read_ct, enqueued_at, last_read_at, vt, message, headers;"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "pop leaves nothing in the archive table; only PostgreSQL's statement log (log_min_duration_statement = 0, off by default) records each pop call with its duration, time-stamped to the millisecond.",
+      "resolution": "ms (statement log)",
+      "evidence": [
+       {
+        "url": "https://www.postgresql.org/docs/18/runtime-config-logging.html",
+        "quote": "Setting this to zero prints all statement durations. -1 (the default) disables logging statement durations."
+       },
+       {
+        "url": "https://www.postgresql.org/docs/18/runtime-config-logging.html",
+        "quote": "%m Time stamp with milliseconds"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "DELETE from pgmq.%I WHERE msg_id IN (select msg_id from cte) RETURNING msg_id, read_ct, enqueued_at, last_read_at, vt, message, headers;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/README.md",
+        "quote": "Read a message and immediately delete it from the queue. Returns an empty record if the queue is empty or all messages are invisible."
+       }
+      ],
+      "note": "pop has no waiting variant: it returns at once, empty when no message is visible."
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ],
+   "producers": [
+    {
+     "interface": "send and send_batch (also send_topic)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "msg_id (bigint) of each message inserted",
+       "send_topic: only the number of queues it sent to"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/docs/api/sql/functions.md",
+        "quote": "**Returns:** The ID of the message that was added to the queue."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "INSERT INTO pgmq.%I (vt, message, headers) VALUES ($2, $1, $3) RETURNING msg_id;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "RETURN matched_count;"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "INSERT INTO pgmq.%I (vt, message, headers) VALUES ($2, $1, $3) RETURNING msg_id;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/docs/api/sql/functions.md",
+        "quote": "**Returns:** The ID of the message that was added to the queue."
+       }
+      ],
+      "note": "The reply is the message id only; enqueued_at is kept in the queue table."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "INSERT INTO pgmq.%I (vt, message, headers) VALUES ($2, $1, $3) RETURNING msg_id;"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pgmq/pgmq/v1.13.1/pgmq-extension/sql/pgmq.sql",
+        "quote": "INSERT INTO pgmq.%I (vt, message, headers) VALUES ($2, $1, $3) RETURNING msg_id;"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Beanstalkd",
+   "group": "C",
+   "kind": "job-queue server",
+   "version": "1.13",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/vers.sh",
+     "quote": "printf '1.13'"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    }
+   ],
+   "note": "The project publishes no GitHub releases; 1.13 is its highest tag.",
+   "modes": [
+    {
+     "mode": "reserve, reserve-with-timeout and reserve-job (TTR reservation)",
+     "Q0": {
+      "fields": [
+       "reply line RESERVED <id> <bytes>: the job id and the body's size",
+       "the job body"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/doc/protocol.txt",
+        "quote": "RESERVED <id> <bytes>\\r\\n <data>\\r\\n - <id> is the job id -- an integer unique to this job in this instance of beanstalkd."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/prot.c",
+        "quote": "reply_line(c, STATE_SEND_JOB, \"%s %\"PRIu64\" %u\\r\\n\", msg, j->r.id, j->r.body_size - 2);"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "created_at (job record)",
+      "resolution": "µs (gettimeofday, kept in ns)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/job.c",
+        "quote": "j->r.created_at = nanoseconds();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/time.c",
+        "quote": "return ((int64)tv.tv_sec)*1000000000 + ((int64)tv.tv_usec)*1000;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/doc/protocol.txt",
+        "quote": "- \"age\" is the time in seconds since the put command that created this job."
+       }
+      ],
+      "note": "Set when the server allocates the job for a put command, on its own clock; the binlog keeps it with the job. Not sent with the job: stats-job reports only the age, in whole seconds (Q6)."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/doc/protocol.txt",
+        "quote": "RESERVED <id> <bytes>\\r\\n <data>\\r\\n - <id> is the job id -- an integer unique to this job in this instance of beanstalkd."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/prot.c",
+        "quote": "reply_line(c, STATE_SEND_JOB, \"%s %\"PRIu64\" %u\\r\\n\", msg, j->r.id, j->r.body_size - 2);"
+       }
+      ],
+      "note": "The reply carries the id and the body's size, then the body."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "deadline_at = reservation instant + TTR (job record)",
+      "resolution": "µs (kept in ns)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/conn.c",
+        "quote": "j->r.deadline_at = nanoseconds() + j->r.ttr;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/dat.h",
+        "quote": "// * time when TTR is about to expire for reserved job,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/doc/protocol.txt",
+        "quote": "Once a job is reserved for the client, the client has limited time to run (TTR) the job before the job times out."
+       }
+      ],
+      "note": "conn_reserve_job sets the deadline to the reservation instant plus the job's TTR, a length the producer set with put, just before the RESERVED reply is queued; by the audit's reading of deadlines this is a recorded send time. A touch command moves the deadline. Kept, not sent: stats-job shows only time-left in whole seconds."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/doc/protocol.txt",
+        "quote": "RESERVED <id> <bytes>\\r\\n <data>\\r\\n - <id> is the job id -- an integer unique to this job in this instance of beanstalkd."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/prot.c",
+        "quote": "reply_line(c, STATE_SEND_JOB, \"%s %\"PRIu64\" %u\\r\\n\", msg, j->r.id, j->r.body_size - 2);"
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/doc/protocol.txt",
+        "quote": "RESERVED <id> <bytes>\\r\\n <data>\\r\\n - <id> is the job id -- an integer unique to this job in this instance of beanstalkd."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/prot.c",
+        "quote": "reply_line(c, STATE_SEND_JOB, \"%s %\"PRIu64\" %u\\r\\n\", msg, j->r.id, j->r.body_size - 2);"
+       }
+      ],
+      "note": "No duration is sent with the job. stats-job, a separate command any client may send, reports age and time-left in whole seconds (Q6)."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "stats-job <id> returns, for one job, its age (whole seconds since the put that created it) and time-left (whole seconds until its TTR deadline while reserved), with its counts of reserves, timeouts, releases, buries and kicks; any client connection may send it. The -V verbose output prints each command and reply without a time.",
+      "resolution": "s",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/doc/protocol.txt",
+        "quote": "- \"age\" is the time in seconds since the put command that created this job."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/doc/protocol.txt",
+        "quote": "- \"time-left\" is the number of seconds left until the server puts this job into the ready queue."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/prot.c",
+        "quote": "(t - j->r.created_at) / 1000000000,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/prot.c",
+        "quote": "time_left = (j->r.deadline_at - t) / 1000000000;"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/doc/protocol.txt",
+        "quote": "If no job is available to be reserved, beanstalkd will wait to send a response until one becomes available."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/prot.c",
+        "quote": "Conn *c = ms_take(&j->tube->waiting_conns);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/prot.c",
+        "quote": "while (cmd_data_ready(c) && (c->cmd_len = scan_line_end(c->cmd, c->cmd_read))) {"
+       }
+      ],
+      "note": "reserve waits at the server. Each connection has one reservation pending, and the server keeps the set of waiting connections per tube, so several connections (a worker pool) can each have a reserve pending, each taking a different job. A reserve pipelined behind a waiting one runs as soon as the first is served, as for Redis. reserve-with-timeout 0 returns at once."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/conn.c",
+       "read": "conn_reserve_job sets deadline_at = nanoseconds() + ttr as the job is reserved for the connection, just before reply_job queues the RESERVED line, and dat.h calls deadline_at the time TTR expires for a reserved job. The code states the moment and the fixed length (the job's TTR), so by the deadline reading it is a kept send time.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/doc/protocol.txt",
+       "read": "The reply is RESERVED <id> <bytes> and the body as the put sent it; no time.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/prot.c",
+       "read": "A reserve that finds no ready job puts the connection in STATE_WAIT and in each watched tube's waiting_conns set, and process_queue hands each ready job to one waiting connection, so several connections can each have a reserve waiting, each taking a different job; that alone makes it several. A waiting connection is not read, but a reserve already in its buffer is dispatched as soon as the job has been written, and one sent later is read on the event loop's next turn.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "put",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "INSERTED <id>: the new job's id",
+       "or BURIED <id> when the server ran out of memory growing the priority queue (and error lines)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/doc/protocol.txt",
+        "quote": "- \"INSERTED <id>\\r\\n\" to indicate success. - <id> is the integer id of the new job"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/doc/protocol.txt",
+        "quote": "- \"BURIED <id>\\r\\n\" if the server ran out of memory trying to grow the priority queue data structure."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/prot.c",
+        "quote": "reply_line(c, STATE_SEND_WORD, MSG_INSERTED_FMT, j->r.id);"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/doc/protocol.txt",
+        "quote": "- \"INSERTED <id>\\r\\n\" to indicate success. - <id> is the integer id of the new job"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/prot.c",
+        "quote": "reply_line(c, STATE_SEND_WORD, MSG_INSERTED_FMT, j->r.id);"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/doc/protocol.txt",
+        "quote": "- \"INSERTED <id>\\r\\n\" to indicate success. - <id> is the integer id of the new job"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/prot.c",
+        "quote": "reply_line(c, STATE_SEND_WORD, MSG_INSERTED_FMT, j->r.id);"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/doc/protocol.txt",
+        "quote": "- \"INSERTED <id>\\r\\n\" to indicate success. - <id> is the integer id of the new job"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/beanstalkd/beanstalkd/v1.13/prot.c",
+        "quote": "reply_line(c, STATE_SEND_WORD, MSG_INSERTED_FMT, j->r.id);"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Faktory",
+   "group": "C",
+   "kind": "job-queue server",
+   "version": "1.10.0",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/Changes.md",
+     "quote": "## 1.10.0"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    }
+   ],
+   "note": "The open-source server is coded; Faktory Enterprise's features (batches, unique jobs, job tracking) are closed and were not read.",
+   "modes": [
+    {
+     "mode": "FETCH (work units, reservation)",
+     "Q0": {
+      "fields": [
+       "work unit JSON: jid, queue, jobtype, args, created_at, enqueued_at, at, retry, backtrace, reserve_for, custom, failure (failed_at, next_at, message, errtype, backtrace, retry_count, remaining)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/client/job.go",
+        "quote": "type Job struct { Retry *int `json:\"retry\"` Failure *Failure `json:\"failure,omitempty\"` Custom map[string]any `json:\"custom,omitempty\"` // required Jid string `json:\"jid\"` Queue string `json:\"queue\"` Type string `json:\"jobtype\"`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/client/job.go",
+        "quote": "// optional CreatedAt string `json:\"created_at,omitempty\"` EnqueuedAt string `json:\"enqueued_at,omitempty\"` At string `json:\"at,omitempty\"` Args []any `json:\"args\"` ReserveFor int `json:\"reserve_for,omitempty\"` Backtrace int `json:\"backtrace,omitempty\"` }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/client/job.go",
+        "quote": "FailedAt string `json:\"failed_at\"`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/server/commands.go",
+        "quote": "res, err := json.Marshal(job)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/server/commands.go",
+        "quote": "_ = c.Result(res)"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "enqueued_at",
+      "resolution": "ns digits (RFC 3339 with fractional seconds)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/manager/manager.go",
+        "quote": "job.EnqueuedAt = util.Nows()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/util/util.go",
+        "quote": "return time.Now().UTC().Format(TimestampFormat)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/util/util.go",
+        "quote": "TimestampFormat = time.RFC3339Nano"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/docs/protocol-specification.md",
+        "quote": "| `enqueued_at` | RFC3339 string | the most recent time this job was enqueued by the server."
+       }
+      ],
+      "note": "The server stamps each push into a queue (including jobs moved from the scheduled and retry sets) on its own clock. created_at is normally the client library's time; the server sets it only when the producer leaves it empty."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/client/job.go",
+        "quote": "// optional CreatedAt string `json:\"created_at,omitempty\"` EnqueuedAt string `json:\"enqueued_at,omitempty\"` At string `json:\"at,omitempty\"` Args []any `json:\"args\"` ReserveFor int `json:\"reserve_for,omitempty\"` Backtrace int `json:\"backtrace,omitempty\"` }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/server/commands.go",
+        "quote": "res, err := json.Marshal(job)"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "reservation reserved_at, and expires_at = reserved_at + reserve_for (working set)",
+      "resolution": "ns digits",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/manager/working.go",
+        "quote": "Since string `json:\"reserved_at\"`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/manager/working.go",
+        "quote": "Expiry string `json:\"expires_at\"`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/manager/working.go",
+        "quote": "Since:   util.Thens(now),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/manager/fetch.go",
+        "quote": "return m.reserve(ctxh, wid, lease)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/docs/protocol-specification.md",
+        "quote": "Once a work unit has been fetched, it enters the `WORKING` state."
+       }
+      ],
+      "note": "manager.reserve stamps time.Now() as the fetched job is reserved, just before the reply is written, and keeps it with the job in the working set; not sent."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/client/job.go",
+        "quote": "type Job struct { Retry *int `json:\"retry\"` Failure *Failure `json:\"failure,omitempty\"` Custom map[string]any `json:\"custom,omitempty\"` // required Jid string `json:\"jid\"` Queue string `json:\"queue\"` Type string `json:\"jobtype\"`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/client/job.go",
+        "quote": "// optional CreatedAt string `json:\"created_at,omitempty\"` EnqueuedAt string `json:\"enqueued_at,omitempty\"` At string `json:\"at,omitempty\"` Args []any `json:\"args\"` ReserveFor int `json:\"reserve_for,omitempty\"` Backtrace int `json:\"backtrace,omitempty\"` }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/server/commands.go",
+        "quote": "res, err := json.Marshal(job)"
+       }
+      ],
+      "note": "FETCH returns the job as stored; the reservation is not part of it."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/client/job.go",
+        "quote": "type Job struct { Retry *int `json:\"retry\"` Failure *Failure `json:\"failure,omitempty\"` Custom map[string]any `json:\"custom,omitempty\"` // required Jid string `json:\"jid\"` Queue string `json:\"queue\"` Type string `json:\"jobtype\"`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/client/job.go",
+        "quote": "// optional CreatedAt string `json:\"created_at,omitempty\"` EnqueuedAt string `json:\"enqueued_at,omitempty\"` At string `json:\"at,omitempty\"` Args []any `json:\"args\"` ReserveFor int `json:\"reserve_for,omitempty\"` Backtrace int `json:\"backtrace,omitempty\"` }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/server/commands.go",
+        "quote": "res, err := json.Marshal(job)"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "The Web UI's Busy page lists every reserved job with its reservation start (Started, shown as a relative time); the working set in Faktory's Redis keeps reserved_at and expires_at for each. No log line is written per fetch.",
+      "resolution": "ns digits kept; the page shows a relative time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/webui/busy.ego",
+        "quote": "<td><%= relativeTime(res.Since) %></td>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/manager/working.go",
+        "quote": "Since string `json:\"reserved_at\"`"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/docs/protocol-specification.md",
+        "quote": "If no work units are found, `FETCH` will block for up to 2 seconds on the *first* queue provided."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/docs/protocol-specification.md",
+        "quote": "only one command may be executed at a time on a single connection."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/docs/protocol-specification.md",
+        "quote": "A client is allowed to establish multiple connections to the server, and use the same `wid` value across connections."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/manager/fetch.go",
+        "quote": "val, err := r.BRPop(ctx, 2*time.Second, qs...).Result()"
+       }
+      ],
+      "note": "A FETCH waits up to 2 s for a job on its first queue, then returns null and the worker fetches again. One command runs at a time per connection; a worker may open several connections, each with a FETCH pending, each taking a different job."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/manager/working.go",
+       "read": "reserve takes now := time.Now() as a fetched job is reserved and keeps it in the working set as reserved_at, with expires_at = now + reserve_for; the FETCH handler then marshals the job and writes the reply. A kept send time.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/server/commands.go",
+       "read": "The FETCH reply is json.Marshal(job), the work unit's own fields (created_at, enqueued_at, at and the rest), without the reservation.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/docs/protocol-specification.md",
+       "read": "FETCH blocks for up to 2 seconds (a Redis BRPOP in manager/fetch.go), one command runs at a time per connection, and a client may open several connections with one wid, so several FETCHes can wait at once, each taking a different job.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "PUSH and PUSHB",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "PUSH: the simple string OK, or an error",
+       "PUSHB: a JSON object mapping the jid of each job not enqueued to its error ({} when all were)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/docs/protocol-specification.md",
+        "quote": "- Simple String \"OK\" - work unit was enqueued"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/server/commands.go",
+        "quote": "_ = c.Ok()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/server/commands.go",
+        "quote": "// PUSHB [{job},{job},{job},...] => Map<JID, Error>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/server/commands.go",
+        "quote": "_ = c.Result([]byte(\"{}\"))"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/docs/protocol-specification.md",
+        "quote": "- Simple String \"OK\" - work unit was enqueued"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/server/commands.go",
+        "quote": "// PUSHB [{job},{job},{job},...] => Map<JID, Error>"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/docs/protocol-specification.md",
+        "quote": "- Simple String \"OK\" - work unit was enqueued"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/server/commands.go",
+        "quote": "// PUSHB [{job},{job},{job},...] => Map<JID, Error>"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/docs/protocol-specification.md",
+        "quote": "- Simple String \"OK\" - work unit was enqueued"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/contribsys/faktory/v1.10.0/server/commands.go",
+        "quote": "// PUSHB [{job},{job},{job},...] => Map<JID, Error>"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Gearman (gearmand)",
+   "group": "C",
+   "kind": "job-queue server",
+   "version": "2.2.0",
+   "version_evidence": [
+    {
+     "url": "https://github.com/gearman/gearmand/releases/tag/2.2.0",
+     "quote": "2.2.0: October 2026 Bug Fixes and Some New Features"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    }
+   ],
+   "note": "gearmand, the C server, is coded with the Gearman protocol document in its repository; other Gearman servers were not read.",
+   "modes": [
+    {
+     "mode": "worker GRAB_JOB, GRAB_JOB_UNIQ and GRAB_JOB_ALL (JOB_ASSIGN packets)",
+     "Q0": {
+      "fields": [
+       "JOB_ASSIGN: job handle, function name, opaque data",
+       "JOB_ASSIGN_UNIQ: adds the client-assigned unique ID",
+       "JOB_ASSIGN_ALL: adds the reducer"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/PROTOCOL",
+        "quote": "JOB_ASSIGN This is given in response to a GRAB_JOB request to give the worker information needed to run the job."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/PROTOCOL",
+        "quote": "Arguments: - NULL byte terminated job handle. - NULL byte terminated function name. - Opaque data that is given to the function as an argument. JOB_ASSIGN_UNIQ"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/PROTOCOL",
+        "quote": "JOB_ASSIGN_ALL This is given in response to a GRAB_JOB_ALL request and acts just like JOB_ASSIGN_UNIQ but with the reducer returned."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/libgearman-server/server.cc",
+        "quote": "server_job->data, server_job->data_size,"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/libgearman-server/struct/job.h",
+        "quote": "int64_t when;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/PROTOCOL",
+        "quote": "- NULL byte terminated epoch time."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/PROTOCOL",
+        "quote": "Arguments: - NULL byte terminated job handle. - NULL byte terminated function name. - Opaque data that is given to the function as an argument. JOB_ASSIGN_UNIQ"
+       }
+      ],
+      "note": "The server's job record keeps no arrival time; its only time is when, the run-at time a client gives with SUBMIT_JOB_EPOCH or SUBMIT_JOB_SCHED."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "job timeout timer armed at assignment (only for functions registered with CAN_DO_TIMEOUT)",
+      "resolution": "ms (event-loop timer)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/libgearman-server/server.cc",
+        "quote": "/* Since job is assigned, we should respect function timeout */"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/libgearman-server/server.cc",
+        "quote": "gearman_server_con_add_job_timeout(server_con, server_job);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/libgearman-server/connection.cc",
+        "quote": "timeout_add(con->timeout_event, &timeout_tv);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/PROTOCOL",
+        "quote": "CAN_DO_TIMEOUT Same as CAN_DO, but with a timeout value on how long the job is allowed to run."
+       }
+      ],
+      "note": "Only for a function the worker registered with CAN_DO_TIMEOUT; a plain CAN_DO arms no timer and then nothing times the assignment. When such a job is assigned, the server arms a timer for the registered length, so the event loop holds the assignment instant plus that length. Counted as a recorded send time by the audit's reading of deadlines. Not sent."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/PROTOCOL",
+        "quote": "Arguments: - NULL byte terminated job handle. - NULL byte terminated function name. - Opaque data that is given to the function as an argument. JOB_ASSIGN_UNIQ"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/PROTOCOL",
+        "quote": "JOB_ASSIGN_ALL This is given in response to a GRAB_JOB_ALL request and acts just like JOB_ASSIGN_UNIQ but with the reducer returned."
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/PROTOCOL",
+        "quote": "Arguments: - NULL byte terminated job handle. - NULL byte terminated function name. - Opaque data that is given to the function as an argument. JOB_ASSIGN_UNIQ"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/PROTOCOL",
+        "quote": "JOB_ASSIGN_ALL This is given in response to a GRAB_JOB_ALL request and acts just like JOB_ASSIGN_UNIQ but with the reducer returned."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "At DEBUG verbosity gearmand logs every packet it receives (PACKET COMMAND), each job submission and each plain JOB_ASSIGN it sends; at DEBUG each log line's time carries microseconds (at other levels, whole seconds).",
+      "resolution": "µs (DEBUG log lines)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/libgearman-server/server.cc",
+        "quote": "\"PACKET COMMAND: %s\", gearmand_strcommand(packet));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/libgearman-server/log.cc",
+        "quote": "int length= snprintf(log_buffer, sizeof(log_buffer), \"%04d-%02d-%02d %02d:%02d:%02d.%06d %s \","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/libgearman-server/log.cc",
+        "quote": "if (Gearmand() and Gearmand()->verbose < GEARMAND_VERBOSE_DEBUG)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/libgearman-server/log.cc",
+        "quote": "current_epoch.tv_usec= 0;"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/PROTOCOL",
+        "quote": "GRAB_JOB This is sent to the server to request any available jobs on the queue. The server will respond with either NO_JOB or JOB_ASSIGN, depending on whether a job is available."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/PROTOCOL",
+        "quote": "PRE_SLEEP This is sent to notify the server that the worker is about to sleep, and that it should be woken up with a NOOP packet if a job comes in for a function the worker is able to perform."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/PROTOCOL",
+        "quote": "NOOP This is used to wake up a sleeping worker so that it may grab a pending job."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/PROTOCOL",
+        "quote": "ALL_YOURS Not yet implemented."
+       }
+      ],
+      "note": "GRAB_JOB returns at once (NO_JOB when nothing is queued). A worker that sent PRE_SLEEP is woken by NOOP when a job arrives and must then send GRAB_JOB, so an arriving job waits a round trip for the request that takes it; no request waits at the server."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/libgearman-server/server.cc",
+       "read": "After queuing the JOB_ASSIGN packet the server calls gearman_server_con_add_job_timeout, which (connection.cc) arms a libevent timer for the worker's CAN_DO_TIMEOUT length in ms. The code states the moment (the assignment) and the fixed length, so by the deadline reading the event loop keeps the assignment time; a plain CAN_DO arms nothing, as the note says.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/PROTOCOL",
+       "read": "JOB_ASSIGN carries the job handle, the function name and the data (the UNIQ and ALL forms add the unique id and the reducer); no time.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "SUBMIT_JOB and its variants (background, high and low priority, epoch)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "JOB_CREATED: the job handle assigned by the server"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/PROTOCOL",
+        "quote": "JOB_CREATED This is sent in response to one of the SUBMIT_JOB* packets. It signifies to the client that a the server successfully received the job and queued it to be run by a worker. Arguments: - Job handle assigned by server."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/PROTOCOL",
+        "quote": "JOB_CREATED This is sent in response to one of the SUBMIT_JOB* packets. It signifies to the client that a the server successfully received the job and queued it to be run by a worker. Arguments: - Job handle assigned by server."
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/PROTOCOL",
+        "quote": "JOB_CREATED This is sent in response to one of the SUBMIT_JOB* packets. It signifies to the client that a the server successfully received the job and queued it to be run by a worker. Arguments: - Job handle assigned by server."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gearman/gearmand/2.2.0/PROTOCOL",
+        "quote": "JOB_CREATED This is sent in response to one of the SUBMIT_JOB* packets. It signifies to the client that a the server successfully received the job and queued it to be run by a worker. Arguments: - Job handle assigned by server."
+       }
+      ],
+      "note": "A foreground job's client later receives WORK_STATUS, WORK_DATA and WORK_COMPLETE packets about the job's run; none carries a time."
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Svix",
+   "group": "C",
+   "kind": "webhook service",
+   "version": "1.103.0 (Svix server, open source; API 1.1.1)",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/Cargo.toml",
+     "quote": "version = \"1.103.0\""
+    },
+    {
+     "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/openapi.json",
+     "quote": "\"version\": \"1.1.1\","
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    }
+   ],
+   "note": "Coded from the open-source Svix server at its latest release and Svix's documentation of the headers it sends. Features of the hosted service that the open-source server lacks were not coded.",
+   "modes": [
+    {
+     "mode": "endpoint delivery (HTTP POST to the consumer's endpoint)",
+     "Q0": {
+      "fields": [
+       "headers: svix-id (msg_ followed by a millisecond KSUID), svix-timestamp (the attempt's time, whole seconds), svix-signature; webhook-id, webhook-timestamp and webhook-signature instead when white-label headers are configured",
+       "user-agent and content-type (application/json)",
+       "the endpoint's configured custom headers",
+       "body: the message payload as the producer sent it"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+        "quote": "headers.insert(SVIX_ID, id_hdr);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+        "quote": "headers.insert(SVIX_TIMESTAMP, timestamp);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+        "quote": "headers.insert(SVIX_SIGNATURE, signatures_str);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+        "quote": "headers.insert(USER_AGENT, OUR_USER_AGENT);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+        "quote": "headers.insert(CONTENT_TYPE, APPLICATION_JSON);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+        "quote": "if let Some(configured_headers) = configured_headers {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+        "quote": ".body(payload.into(), HeaderValue::from_static(\"application/json\"))"
+       },
+       {
+        "url": "https://docs.svix.com/receiving/verifying-payloads/how-manual",
+        "quote": "Each webhook call includes three headers with additional information that are used for verification:"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "message created_at (database), also encoded in the message id that svix-id carries",
+      "resolution": "µs as kept; about 4 ms in the id (KsuidMs)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/db/models/message.rs",
+        "quote": "let timestamp = Utc::now();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/db/models/message.rs",
+        "quote": "id: Set(MessageId::new(timestamp.into(), None)),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/db/models/message.rs",
+        "quote": "created_at: Set(timestamp.into()),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/core/types/mod.rs",
+        "quote": "let ksuid = KsuidMs::new(dt, payload);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/rust-ksuid/v0.10.0/README.md",
+        "quote": "That's why this library exposes a higher accuracy mode which supports accuracy of up to 4ms."
+       }
+      ],
+      "note": "The API stamps a message on the server's clock when it builds the message's row while handling the create request, before the insert, and builds the message id from the same instant."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+        "quote": "headers.insert(SVIX_ID, id_hdr);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/db/models/message.rs",
+        "quote": "id: Set(MessageId::new(timestamp.into(), None)),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/core/types/mod.rs",
+        "quote": "let ksuid = KsuidMs::new(dt, payload);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/rust-ksuid/v0.10.0/README.md",
+        "quote": "That's why this library exposes a higher accuracy mode which supports accuracy of up to 4ms."
+       },
+       {
+        "url": "https://docs.svix.com/receiving/verifying-payloads/how-manual",
+        "quote": "svix-id : the unique message identifier for the webhook message."
+       }
+      ],
+      "note": "Only inside the message id: svix-id is msg_ followed by a millisecond KSUID (svix-ksuid's KsuidMs) built from created_at, so a consumer that decodes the KSUID reads the creation time to about 4 ms. Svix's documentation calls svix-id only the unique message identifier; the encoding is in the server's source. A judgment, like reading the time in a Redis stream id."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "attempt created_at (taken as each attempt is prepared), sent as svix-timestamp",
+      "resolution": "s in the header; µs as kept",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+        "quote": "let attempt_created_at = Utc::now();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+        "quote": "attempt_created_at.timestamp(),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+        "quote": "created_at: Set(created_at.into()),"
+       },
+       {
+        "url": "https://docs.svix.com/receiving/verifying-payloads/how-manual",
+        "quote": "Svix also sends the timestamp of the attempt in the svix-timestamp header."
+       }
+      ],
+      "note": "The worker takes Utc::now() as it prepares each attempt, signs with it, sends its whole seconds as svix-timestamp, and stores it as the attempt's created_at."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+        "quote": "headers.insert(SVIX_TIMESTAMP, timestamp);"
+       },
+       {
+        "url": "https://docs.svix.com/receiving/verifying-payloads/how-manual",
+        "quote": "svix-timestamp : timestamp in seconds since epoch ."
+       }
+      ],
+      "note": "Every attempt carries it, by default."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+        "quote": "headers.insert(SVIX_ID, id_hdr);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+        "quote": "headers.insert(SVIX_TIMESTAMP, timestamp);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+        "quote": "headers.insert(SVIX_SIGNATURE, signatures_str);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+        "quote": "headers.insert(USER_AGENT, OUR_USER_AGENT);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+        "quote": "headers.insert(CONTENT_TYPE, APPLICATION_JSON);"
+       }
+      ],
+      "note": "No header holds a duration. svix-timestamp less the time in svix-id is taken through Q1 to Q4; the API and the worker may run on different hosts, so the two stamps can come from two clocks."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "The attempts API returns, for each delivery attempt, its timestamp and responseDurationMs; the message API returns each message's timestamp. Both are read through the API by the account that sends the messages.",
+      "resolution": "µs (timestamps); ms (response duration)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/openapi.json",
+        "quote": "\"description\": \"Response duration in milliseconds.\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+        "quote": "created_at: Set(created_at.into()),"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/openapi.json",
+        "quote": "\"description\": \"Creates a new message and dispatches it to all of the application's endpoints."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/openapi.json",
+        "quote": "\"description\": \"Maximum messages per second to send to this endpoint."
+       }
+      ],
+      "note": "Delivery is pushed: each message is dispatched to every subscribed endpoint as it is processed, with no request or credit from the consumer. An endpoint's optional throttle rate (messages per second) can hold messages back."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q1",
+       "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/db/models/message.rs",
+       "read": "ActiveModel::new takes Utc::now() and sets created_at and the id from it when the API builds the message's row; the row keeps created_at in µs, so the arrival is recorded on the API server's clock for every message.",
+       "agrees": true
+      },
+      {
+       "question": "Q2",
+       "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/db/models/message.rs",
+       "read": "The message's ActiveModel::new takes Utc::now() and builds from it both created_at and the id, MessageId::new(timestamp), msg_ and a millisecond KSUID (core/types); create_message_inner builds the model through Default, which SeaORM routes to ActiveModelBehavior::new, while it handles the create request. The worker puts that id in svix-id on every attempt, so the id carries Svix's own arrival time, to about 4 ms: reading 4 holds.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+       "read": "prepare_dispatch takes attempt_created_at = Utc::now() for each attempt, signs with its whole seconds and puts them in svix-timestamp (webhook-timestamp when white-labelled); the attempt row stores the same instant as created_at.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://docs.svix.com/receiving/verifying-payloads/how-manual",
+       "read": "The documentation says each webhook call carries svix-timestamp, the attempt's time in seconds since the epoch; generate_msg_headers adds it to every attempt.",
+       "agrees": true
+      },
+      {
+       "question": "Q5",
+       "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/worker.rs",
+       "read": "The headers are svix-id, svix-timestamp, svix-signature, the software's name, the content type and the endpoint's own headers; none is a duration. The stay comes from Q1 to Q4, and since the API takes the id's time and the worker takes svix-timestamp, the two can be two hosts' clocks, as the note says.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/openapi.json",
+       "read": "Creating a message dispatches it to all of the application's endpoints; the consumer neither asks nor grants credit, and the only limit named is an endpoint's optional throttleRate in messages per second.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "create message (POST /api/v1/app/{app_id}/msg)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "HTTP 202 with MessageOut: id (msg_ KSUID), eventId, eventType, payload (empty unless with_content), channels, timestamp"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/v1/endpoints/message.rs",
+        "quote": ") -> Result<JsonStatus<202, MessageOut>> {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/v1/endpoints/message.rs",
+        "quote": "pub struct MessageOut { /// Optional unique identifier for the message #[serde(rename = \"eventId\")] pub uid: Option<MessageUid>, pub event_type: EventTypeName,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/v1/endpoints/message.rs",
+        "quote": "#[serde(rename = \"timestamp\")] pub created_at: DateTime<Utc>,"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "always",
+      "field": "timestamp (the message's created_at; the id encodes the same instant)",
+      "resolution": "µs (as stored)",
+      "which": "receive time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/v1/endpoints/message.rs",
+        "quote": "#[serde(rename = \"timestamp\")] pub created_at: DateTime<Utc>,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/db/models/message.rs",
+        "quote": "let timestamp = Utc::now();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/db/models/message.rs",
+        "quote": "created_at: Set(timestamp.into()),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/v1/endpoints/message.rs",
+        "quote": "created_at: model.created_at.into(),"
+       }
+      ],
+      "note": "Taken from the server's clock while the create request is handled, before the row is inserted, and returned as MessageOut.timestamp; judged the receive time."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/v1/endpoints/message.rs",
+        "quote": "pub struct MessageOut { /// Optional unique identifier for the message #[serde(rename = \"eventId\")] pub uid: Option<MessageUid>, pub event_type: EventTypeName,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/v1/endpoints/message.rs",
+        "quote": "#[serde(rename = \"timestamp\")] pub created_at: DateTime<Utc>,"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/v1/endpoints/message.rs",
+        "quote": "pub struct MessageOut { /// Optional unique identifier for the message #[serde(rename = \"eventId\")] pub uid: Option<MessageUid>, pub event_type: EventTypeName,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/v1/endpoints/message.rs",
+        "quote": "#[serde(rename = \"timestamp\")] pub created_at: DateTime<Utc>,"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/svix/svix-webhooks/server-v1.103.0/server/svix-server/src/v1/endpoints/message.rs",
+       "read": "create_message_inner builds the message model from the request (created_at = Utc::now() through ActiveModelBehavior::new), inserts it and returns MessageOut, whose timestamp is created_at: the server's time of receipt, returned with every 202.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "Hookdeck",
+   "group": "C",
+   "kind": "webhook service",
+   "version": "Event Gateway, API version 2026-09-01 (documentation retrieved 27 October 2026)",
+   "version_evidence": [
+    {
+     "url": "https://hookdeck.com/docs/api",
+     "quote": "curl \"https://api.hookdeck.com/2026-09-01/events\""
+    },
+    {
+     "url": "https://api.hookdeck.com/2026-09-01/openapi",
+     "quote": "\"title\":\"Hookdeck Admin REST API\""
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    }
+   ],
+   "note": "A closed service; coded from its documentation and the OpenAPI definition of its Admin REST API at version 2026-09-01. The Hookdeck CLI's forwarding of events to a local URL, and Hookdeck's separate open-source product Outpost, were not coded.",
+   "modes": [
+    {
+     "mode": "destination delivery (HTTP request to the destination)",
+     "Q0": {
+      "fields": [
+       "the original request's headers, body, query string (unless the destination URL sets one) and path (unless path forwarding is off), with its method by default",
+       "headers added: x-hookdeck-eventid, x-hookdeck-requestid, x-hookdeck-attempt-count, x-hookdeck-attempt-trigger, x-hookdeck-will-retry-after, x-hookdeck-event-url, x-hookdeck-source-name, x-hookdeck-destination-name, x-hookdeck-original-ip, x-hookdeck-signature (with Hookdeck signature authentication), x-hookdeck-verified (the prefix can be changed)",
+       "the destination's authentication header, if one is configured"
+      ],
+      "evidence": [
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "When routing a request to a destination, Hookdeck preserves the original request's headers, body, query string, and path."
+       },
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "In addition to the request's original headers, Hookdeck appends the following headers:"
+       },
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "x-hookdeck-eventid Hookdeck Event ID. x-hookdeck-requestid Hookdeck Request ID. x-hookdeck-attempt-count Event attempt count."
+       },
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "x-hookdeck-event-url URL of event on the Hookdeck dashboard. x-hookdeck-source-name Name of the source that received the request. x-hookdeck-destination-name Name of the Destination to receive the Event."
+       },
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "x-hookdeck-original-ip The IP of the client that sent the original request x-hookdeck-signature Hookdeck HMAC signature (sha256, base64 encoded)."
+       },
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "x-hookdeck-verified Boolean representing whether Hookdeck verified the original request."
+       },
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "By default, Hookdeck sends events to destinations via HTTP requests using the original request method."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "request ingested_at (and the event's created_at)",
+      "resolution": "ms (documented examples)",
+      "evidence": [
+       {
+        "url": "https://api.hookdeck.com/2026-09-01/openapi",
+        "quote": "\"ingested_at\":{\"type\":\"string\",\"format\":\"date-time\",\"nullable\":true,\"description\":\"The time the request was originally received\"}"
+       }
+      ],
+      "note": "Kept by the service and readable through its API."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "In addition to the request's original headers, Hookdeck appends the following headers:"
+       },
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "x-hookdeck-eventid Hookdeck Event ID. x-hookdeck-requestid Hookdeck Request ID. x-hookdeck-attempt-count Event attempt count."
+       },
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "x-hookdeck-event-url URL of event on the Hookdeck dashboard. x-hookdeck-source-name Name of the source that received the request. x-hookdeck-destination-name Name of the Destination to receive the Event."
+       },
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "x-hookdeck-original-ip The IP of the client that sent the original request x-hookdeck-signature Hookdeck HMAC signature (sha256, base64 encoded)."
+       },
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "x-hookdeck-verified Boolean representing whether Hookdeck verified the original request."
+       }
+      ],
+      "note": "None of the headers Hookdeck adds carries a time."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "attempt delivered_at (and created_at)",
+      "resolution": "ms (documented examples)",
+      "evidence": [
+       {
+        "url": "https://api.hookdeck.com/2026-09-01/openapi",
+        "quote": "\"delivered_at\":{\"type\":\"string\",\"format\":\"date-time\",\"nullable\":true,\"description\":\"Date the attempt was delivered\"}"
+       },
+       {
+        "url": "https://api.hookdeck.com/2026-09-01/openapi",
+        "quote": "\"delivery_latency\":{\"type\":\"integer\",\"nullable\":true,\"description\":\"Time elapsed between attempt initiation and final delivery (in ms)\"}"
+       }
+      ],
+      "note": "Kept per attempt and readable through the API; not sent."
+     },
+     "Q4": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "In addition to the request's original headers, Hookdeck appends the following headers:"
+       },
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "x-hookdeck-eventid Hookdeck Event ID. x-hookdeck-requestid Hookdeck Request ID. x-hookdeck-attempt-count Event attempt count."
+       },
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "x-hookdeck-event-url URL of event on the Hookdeck dashboard. x-hookdeck-source-name Name of the source that received the request. x-hookdeck-destination-name Name of the Destination to receive the Event."
+       },
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "x-hookdeck-original-ip The IP of the client that sent the original request x-hookdeck-signature Hookdeck HMAC signature (sha256, base64 encoded)."
+       },
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "x-hookdeck-verified Boolean representing whether Hookdeck verified the original request."
+       },
+       {
+        "url": "https://api.hookdeck.com/2026-09-01/openapi",
+        "quote": "\"DestinationConfigHTTPAuthStandardWebhooks\":{\"type\":\"object\",\"properties\":{\"webhook_secret_key\":{\"type\":\"string\"}},\"additionalProperties\":false,\"x-docs-type\":\"STANDARD_WEBHOOKS\"}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/standard-webhooks/standard-webhooks/8935d985e2a9ae6a0a4750049d5d7fd706cd9c94/spec/standard-webhooks.md",
+        "quote": "- `webhook-timestamp`: integer unix timestamp (seconds since epoch)."
+       }
+      ],
+      "note": "By default no header Hookdeck adds carries a time. The OpenAPI also names a Standard Webhooks authentication type for destinations; a sender following that specification sends webhook-timestamp, in seconds, but Hookdeck's documentation does not list the headers this type adds or say which time it puts there (searched: Destinations, Authentication, the API reference and the OpenAPI definition)."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "x-hookdeck-will-retry-after The number of seconds until the next automatic retry."
+       },
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "In addition to the request's original headers, Hookdeck appends the following headers:"
+       }
+      ],
+      "note": "x-hookdeck-will-retry-after is the delay to the next automatic retry, not a time the event has spent at the service."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "The Admin API returns, per request, ingested_at; per event, created_at and last_attempt_at; per attempt, delivered_at, responded_at, delivery_latency and response_latency (ms). Metrics give aggregates such as the depth and age of pending events.",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://api.hookdeck.com/2026-09-01/openapi",
+        "quote": "\"responded_at\":{\"type\":\"string\",\"format\":\"date-time\",\"nullable\":true,\"description\":\"Date the destination responded to this attempt\"}"
+       },
+       {
+        "url": "https://api.hookdeck.com/2026-09-01/openapi",
+        "quote": "\"last_attempt_at\":{\"type\":\"string\",\"format\":\"date-time\",\"nullable\":true,\"description\":\"Date of the most recently attempted retry\"}"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://hookdeck.com/docs/destinations",
+        "quote": "When routing a request to a destination, Hookdeck preserves the original request's headers, body, query string, and path."
+       },
+       {
+        "url": "https://api.hookdeck.com/2026-09-01/openapi",
+        "quote": "\"period\":{\"type\":\"string\",\"enum\":[\"second\",\"minute\",\"hour\",\"concurrent\"],\"nullable\":true,\"description\":\"Period to rate limit events by.\"}"
+       }
+      ],
+      "note": "Events are pushed to the destination as they are routed, with no request or credit from the consumer. A destination's delivery policy can cap deliveries per second, minute or hour, or the number of concurrent deliveries (period concurrent), which then acts as a window."
+     },
+     "not_determined": [
+      "Q4"
+     ],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://api.hookdeck.com/2026-09-01/openapi",
+       "read": "The Attempt schema keeps created_at, delivered_at (the date the attempt was delivered), responded_at, and delivery_latency from the attempt's start to its delivery, readable through the API: a kept send time.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://hookdeck.com/docs/authentication.md",
+       "read": "None of the headers Hookdeck documents for a destination carries a time. The authentication guide lists the destination methods (Hookdeck signature, custom SHA-256 signature, basic auth, API key, bearer token) without the Standard Webhooks type the OpenAPI names, and no page found says what that type sends, so not determined stands.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://hookdeck.com/docs/destinations",
+       "read": "Hookdeck sends each routed event to the destination as its own request, with no request or credit from the consumer; a delivery policy may cap events per second, minute or hour, or concurrent deliveries.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "source URL and Publish API (synchronous HTTP response)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "HTTP status (200 by default, also for a disabled source)",
+       "body: Hookdeck's default, which the documentation does not specify, or the source's custom response (empty, a text, a JSON or an XML body fixed by configuration)"
+      ],
+      "evidence": [
+       {
+        "url": "https://hookdeck.com/docs/sources",
+        "quote": "Hookdeck is a platform for asynchronous messaging and therefore returns a basic customizable synchronous HTTP response to the client that has invoked the source URL."
+       },
+       {
+        "url": "https://hookdeck.com/docs/sources",
+        "quote": "An HTTP 200 status code will still be returned for any request received on your Source URL."
+       },
+       {
+        "url": "https://hookdeck.com/docs/sources",
+        "quote": "Hookdeck responds with an empty body"
+       },
+       {
+        "url": "https://hookdeck.com/docs/api",
+        "quote": "The Publish API does not have a specification beyond the required headers."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://hookdeck.com/docs/sources",
+        "quote": "Hookdeck is a platform for asynchronous messaging and therefore returns a basic customizable synchronous HTTP response to the client that has invoked the source URL."
+       }
+      ],
+      "note": "The documentation describes the response only as basic and customizable; its default body and headers are not specified. Searched: the Sources, Destinations and Requests pages, the API reference with its Publish API section, and the OpenAPI definition, which covers the Admin REST API but not the source URL or the Publish API. A custom response is fixed text and carries no time."
+     },
+     "P2": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://hookdeck.com/docs/sources",
+        "quote": "Hookdeck is a platform for asynchronous messaging and therefore returns a basic customizable synchronous HTTP response to the client that has invoked the source URL."
+       }
+      ],
+      "note": "As P1."
+     },
+     "P3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://hookdeck.com/docs/sources",
+        "quote": "Hookdeck is a platform for asynchronous messaging and therefore returns a basic customizable synchronous HTTP response to the client that has invoked the source URL."
+       }
+      ],
+      "note": "As P1."
+     },
+     "not_determined": [
+      "P1",
+      "P2",
+      "P3"
+     ],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Convoy",
+   "group": "C",
+   "kind": "webhook service",
+   "version": "v26.9.2",
+   "version_evidence": [
+    {
+     "url": "https://github.com/frain-dev/convoy/releases/tag/v26.9.2",
+     "quote": "Release v26.9.2 · frain-dev/convoy"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    }
+   ],
+   "note": "Coded from the source at the release tag (its VERSION file still reads v26.6.6) and Convoy's documentation. Events can also be ingested from incoming webhook sources and from message brokers (SQS, Kafka, Pub/Sub, RabbitMQ); those paths were not traced.",
+   "modes": [
+    {
+     "mode": "endpoint delivery (HTTP POST to the endpoint)",
+     "Q0": {
+      "fields": [
+       "body: the event's data, converted to the endpoint's content type (JSON by default)",
+       "signature header (X-Convoy-Signature unless the project names another): t=<Unix seconds>,v1=<signature>... with advanced signatures, the bare signature with simple ones",
+       "Content-Type, Accept-Encoding: gzip, User-Agent (Convoy/<version> unless replaced)",
+       "the event's custom headers and the endpoint's authentication header",
+       "the project's request-ID header with the event's idempotency key, when the producer gave one",
+       "X-Convoy-EventDelivery-ID and X-Convoy-Event-ID (ULIDs), only with the project setting add_event_id_trace_headers"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/net/dispatcher.go",
+        "quote": "req.Header.Set(signatureHeader, hmac)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/net/dispatcher.go",
+        "quote": "req.Header.Add(\"Content-Type\", converter.ContentType())"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/net/dispatcher.go",
+        "quote": "req.Header.Set(\"Accept-Encoding\", \"gzip\")"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/net/dispatcher.go",
+        "quote": "header.MergeHeaders(headers)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/net/dispatcher.go",
+        "quote": "header[requestIDHeader] = []string{idempotencyKey}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/worker/task/process_event_delivery.go",
+        "quote": "eventDelivery.Headers[\"X-Convoy-EventDelivery-ID\"] = []string{eventDelivery.UID}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/worker/task/process_event_delivery.go",
+        "quote": "eventDelivery.Headers[\"X-Convoy-Event-ID\"] = []string{eventDelivery.EventID}"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "event id (a ULID made when the API received the event) sent as X-Convoy-Event-ID; the event also keeps acknowledged_at and created_at",
+      "resolution": "ms (ULID)",
+      "setting": "project config add_event_id_trace_headers (off by default)",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/api/handlers/event.go",
+        "quote": "id := ulid.Make().String()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/api/handlers/event.go",
+        "quote": "AcknowledgedAt: time.Now(),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/oklog/ulid/v2.1.1/ulid.go",
+        "quote": "// Make returns a ULID with the current time in Unix milliseconds and"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/datastore/models.go",
+        "quote": "AddEventIDTraceHeaders: false,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/worker/task/process_event_delivery.go",
+        "quote": "eventDelivery.Headers[\"X-Convoy-Event-ID\"] = []string{eventDelivery.EventID}"
+       }
+      ],
+      "note": "The create-event API makes the event's id, a ULID whose first 48 bits are the Unix time in milliseconds, as it handles the request, and records the same moment as acknowledged_at, on the API server's clock. The id reaches the endpoint only in X-Convoy-Event-ID, which add_event_id_trace_headers turns on (default off). Reading the time from the ULID is a judgment, as for Redis stream ids. Events from incoming sources and the fanout, broadcast and dynamic APIs were not traced."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/worker/task/process_event_delivery.go",
+        "quote": "if project.Config.AddEventIDTraceHeaders {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/worker/task/process_event_delivery.go",
+        "quote": "eventDelivery.Headers[\"X-Convoy-Event-ID\"] = []string{eventDelivery.EventID}"
+       }
+      ],
+      "note": "Only with add_event_id_trace_headers (Q1)."
+     },
+     "Q3": {
+      "answer": "send time",
+      "field": "signature timestamp t (taken as the signature is computed, just before the request), and each attempt's requested_at (kept)",
+      "resolution": "s in the header; attempt times as stored",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/pkg/signature/signature.go",
+        "quote": "ts = fmt.Sprintf(\"%d\", time.Now().Unix())"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/pkg/signature/signature.go",
+        "quote": "tPrefix := fmt.Sprintf(\"t=%s\", ts)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/worker/task/process_event_delivery.go",
+        "quote": "requestSentAt := time.Now()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/worker/task/process_retry_event_delivery.go",
+        "quote": "// parseAttemptFromResponse builds a delivery attempt record. requestedAt is the instant the"
+       },
+       {
+        "url": "https://getconvoy.io/docs/product-manual/signatures.md",
+        "quote": "Unlike simple signatures, advanced signatures are equipped with timestamps."
+       }
+      ],
+      "note": "The delivery worker computes the advanced signature with t = time.Now().Unix() just before it sends each attempt; each attempt also records requested_at and responded_at."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/worker/task/process_retry_event_delivery.go",
+        "quote": "s := &signature.Signature{Advanced: endpoint.AdvancedSignatures, Payload: data}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/api/models/endpoint.go",
+        "quote": "// -- simple or advanced. Only applies to outgoing projects, where it defaults to true when omitted. Incoming projects always use advanced signatures."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/services/create_endpoint.go",
+        "quote": "a.E.AdvancedSignatures = &truthValue"
+       }
+      ],
+      "note": "With advanced signatures, the default for new endpoints of outgoing projects and always on for incoming projects; an endpoint set to simple signatures receives no time."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/net/dispatcher.go",
+        "quote": "req.Header.Set(signatureHeader, hmac)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/net/dispatcher.go",
+        "quote": "req.Header.Add(\"Content-Type\", converter.ContentType())"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/net/dispatcher.go",
+        "quote": "req.Header.Set(\"Accept-Encoding\", \"gzip\")"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/net/dispatcher.go",
+        "quote": "header.MergeHeaders(headers)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/net/dispatcher.go",
+        "quote": "header[requestIDHeader] = []string{idempotencyKey}"
+       }
+      ],
+      "note": "No header holds a duration. The signature's t less the time in X-Convoy-Event-ID is taken through Q1 to Q4; the API and the worker may run on different hosts."
+     },
+     "Q6": {
+      "answer": "per message",
+      "what": "Each delivery attempt is stored with requested_at, responded_at and created_at, and each event with acknowledged_at and created_at, all serialized in the API's JSON for those who can read the project.",
+      "resolution": "as stored (database timestamps)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/datastore/models.go",
+        "quote": "RequestedAt null.Time `json:\"requested_at,omitempty\" db:\"requested_at\" swaggertype:\"string\" extensions:\"x-nullable\"`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/datastore/models.go",
+        "quote": "RespondedAt null.Time `json:\"responded_at,omitempty\" db:\"responded_at\" swaggertype:\"string\" extensions:\"x-nullable\"`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/datastore/models.go",
+        "quote": "AcknowledgedAt null.Time `json:\"acknowledged_at,omitempty\" db:\"acknowledged_at,omitempty\" swaggertype:\"string\" extensions:\"x-nullable\"`"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/worker/task/process_event_delivery.go",
+        "quote": "resp, err := deps.Dispatcher.SendWebhookWithMTLS("
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/worker/task/process_event_delivery.go",
+        "quote": "return &RateLimitError{Err: ErrRateLimit, delay: time.Duration(endpoint.RateLimitDuration) * time.Second}"
+       },
+       {
+        "url": "https://getconvoy.io/docs/glossary/rate-limiting-endpoints.md",
+        "quote": "You can control the number of events you send to an endpoint by setting a rate limit and a rate-limit duration on each endpoint."
+       }
+      ],
+      "note": "Delivery is pushed: the worker sends each event delivery to its endpoint when it processes it, with no request or credit from the consumer. Each endpoint's rate limit (by the documentation, 5,000 per minute by default) delays deliveries beyond it."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q1",
+       "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/api/handlers/event.go",
+       "read": "The create-event handler makes id := ulid.Make() (oklog/ulid: the current time in Unix ms) as it handles the request; the worker creates the event with that UID, each delivery's EventID is it, and X-Convoy-Event-ID carries it only when add_event_id_trace_headers is on (false in the default project config). Reading 4 holds. One detail of the note is off: the event's stored acknowledged_at is set by the worker when it creates the event, not at the handler's moment.",
+       "agrees": true
+      },
+      {
+       "question": "Q2",
+       "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/worker/task/process_event_delivery.go",
+       "read": "With AddEventIDTraceHeaders on, the worker sets X-Convoy-Event-ID to the event's id on each delivery.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/pkg/signature/signature.go",
+       "read": "Advanced signatures take ts = time.Now().Unix() when the header value is computed, which the delivery worker does just before dispatching each attempt, and send t=ts; each attempt also keeps requested_at, taken just before the request.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/services/create_endpoint.go",
+       "read": "New endpoints of incoming projects always get advanced signatures, and those of outgoing projects unless the producer sets false, so t= reaches the endpoint by default.",
+       "agrees": true
+      },
+      {
+       "question": "Q5",
+       "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/net/dispatcher.go",
+       "read": "The dispatcher sets the signature header, content type, accept-encoding, the merged event and endpoint headers and the request-ID header; none is a duration. The stay comes from Q1 to Q4: the ULID's time is the API server's and t= the worker's, which can be two hosts' clocks.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/worker/task/process_event_delivery.go",
+       "read": "The worker sends each event delivery to its endpoint as it processes it; an endpoint's rate limit only delays a delivery, and the consumer grants no credit.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "create event (POST /api/v1/projects/{projectID}/events)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "HTTP 201 with status, message (\"Event queued successfully\") and data: uid (the event id, a ULID), event_type, idempotency_key"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/api/handlers/event.go",
+        "quote": "_ = render.Render(w, r, util.NewServerResponse(\"Event queued successfully\", models.NewEventQueuedResponse(id, newMessage.EventType, newMessage.IdempotencyKey), http.StatusCreated))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/api/models/event.go",
+        "quote": "UID string `json:\"uid\"`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/api/models/event.go",
+        "quote": "IdempotencyKey string `json:\"idempotency_key,omitempty\"`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/util/response.go",
+        "quote": "Message string `json:\"message\"`"
+       },
+       {
+        "url": "https://getconvoy.io/docs/product-manual/events-and-event-deliveries.md",
+        "quote": "Create, broadcast, fan-out, and dynamic ingest return `uid` (the event id) in the `201` body."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "always",
+      "field": "data.uid: a ULID made as the request was handled; its first 48 bits are the Unix time in milliseconds",
+      "resolution": "ms",
+      "which": "receive time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/api/handlers/event.go",
+        "quote": "id := ulid.Make().String()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/oklog/ulid/v2.1.1/ulid.go",
+        "quote": "// Make returns a ULID with the current time in Unix milliseconds and"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/api/handlers/event.go",
+        "quote": "_ = render.Render(w, r, util.NewServerResponse(\"Event queued successfully\", models.NewEventQueuedResponse(id, newMessage.EventType, newMessage.IdempotencyKey), http.StatusCreated))"
+       }
+      ],
+      "note": "The handler makes the ULID with oklog/ulid's Make, which takes the current time in Unix milliseconds, before it queues the event, and returns it as data.uid. Reading the time from the id is a judgment, as for Redis stream ids."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/api/handlers/event.go",
+        "quote": "_ = render.Render(w, r, util.NewServerResponse(\"Event queued successfully\", models.NewEventQueuedResponse(id, newMessage.EventType, newMessage.IdempotencyKey), http.StatusCreated))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/api/models/event.go",
+        "quote": "UID string `json:\"uid\"`"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/api/handlers/event.go",
+        "quote": "_ = render.Render(w, r, util.NewServerResponse(\"Event queued successfully\", models.NewEventQueuedResponse(id, newMessage.EventType, newMessage.IdempotencyKey), http.StatusCreated))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/api/models/event.go",
+        "quote": "UID string `json:\"uid\"`"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/frain-dev/convoy/v26.9.2/api/handlers/event.go",
+       "read": "The handler makes the ULID with ulid.Make (the current time in Unix ms) before it queues the event and returns it as data.uid in the 201, so the id is made from Convoy's own clock as the request is handled: reading 4 holds, and the receive time can be read to the millisecond.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

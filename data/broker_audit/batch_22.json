@@ -1,0 +1,1858 @@
+{
+ "audited_utc": "2026-10-29",
+ "brokers": [
+  {
+   "broker": "ROMA Connect",
+   "group": "C",
+   "kind": "cloud service",
+   "version": "documentation updated 2025-07-21",
+   "version_evidence": [
+    {
+     "url": "https://support.huaweicloud.com/eu/devg-roma/roma_04_3013.html",
+     "quote": "Message Consumption API Updated on 2025-07-21 GMT+08:00"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "Huawei Cloud product catalog",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "RESTful consumption API",
+     "Q0": {
+      "fields": [
+       "handler",
+       "message content (Base64)"
+      ],
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/eu/devg-roma/roma_04_3013.html",
+        "quote": "Response parameters Parameter Type Description handler String Message handler. message Object Message content. Table 2 Parameter description of message Parameter Type Description content String Message body content, which is encrypted using Base64."
+       },
+       {
+        "url": "https://support.huaweicloud.com/intl/tr-tr/devg-roma/Kafka-summary.html",
+        "quote": "MQS of ROMA Connect is fully compatible with the open-source Kafka protocol. Service applications need to develop and integrate an open-source Kafka client or the RESTful APIs provided by ROMA Connect"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/eu/devg-roma/roma_04_3013.html",
+        "quote": "Response parameters Parameter Type Description handler String Message handler. message Object Message content. Table 2 Parameter description of message Parameter Type Description content String Message body content, which is encrypted using Base64."
+       }
+      ]
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "request arrival",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/eu/devg-roma/roma_04_3013.html",
+        "quote": "time_wait Integer No Amount of time that the API call can wait for a message to arrive in the empty queue before returning an empty response."
+       },
+       {
+        "url": "https://support.huaweicloud.com/eu/devg-roma/roma_04_3013.html",
+        "quote": "ack_wait Integer No Timeout duration that the API call can wait for message consumption acknowledgement."
+       }
+      ],
+      "note": "The call waits on an empty queue for at most time_wait, so the call's arrival is kept to time it out (reading 8). A second deadline, ack_wait (1 to 300 s, default 15 s), counts from the delivery to the consumer. Neither time is returned."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/eu/devg-roma/roma_04_3013.html",
+        "quote": "Response parameters Parameter Type Description handler String Message handler. message Object Message content. Table 2 Parameter description of message Parameter Type Description content String Message body content, which is encrypted using Base64."
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/eu/devg-roma/roma_04_3013.html",
+        "quote": "Response parameters Parameter Type Description handler String Message handler. message Object Message content. Table 2 Parameter description of message Parameter Type Description content String Message body content, which is encrypted using Base64."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/eu/devg-roma/roma_04_3013.html",
+        "quote": "This API is used to consume messages in a specified queue. Multiple messages can be consumed at the same time."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "one at a time",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/eu/devg-roma/roma_04_3013.html",
+        "quote": "time_wait Integer No Amount of time that the API call can wait for a message to arrive in the empty queue before returning an empty response."
+       }
+      ],
+      "note": "The page describes one call that can wait (time_wait) and returns a batch; it states nothing on several pending calls or on credit."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://support.huaweicloud.com/eu/devg-roma/roma_04_3013.html",
+       "read": "The consumption call waits up to time_wait seconds on an empty queue and then returns an empty response, so the call's arrival is what the broker counts that wait from, and no time is returned.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "RESTful production API",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "state",
+       "id"
+      ],
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/eu/devg-roma/roma_04_3012.html",
+        "quote": "Response Response parameter Parameter Type Description state String Result status. The value can be success or fail . id String Message sequence number."
+       },
+       {
+        "url": "https://support.huaweicloud.com/eu/devg-roma/roma_04_3012.html",
+        "quote": "This API is used to send messages to a queue. Multiple messages can be sent at a time."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/eu/devg-roma/roma_04_3012.html",
+        "quote": "Response Response parameter Parameter Type Description state String Result status. The value can be success or fail . id String Message sequence number."
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/eu/devg-roma/roma_04_3012.html",
+        "quote": "Response Response parameter Parameter Type Description state String Result status. The value can be success or fail . id String Message sequence number."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/eu/devg-roma/roma_04_3012.html",
+        "quote": "Response Response parameter Parameter Type Description state String Result status. The value can be success or fail . id String Message sequence number."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Simple Message Notification (SMN)",
+   "group": "C",
+   "kind": "cloud service",
+   "version": "documentation updated 2025-04-02",
+   "version_evidence": [
+    {
+     "url": "https://support.huaweicloud.com/eu/usermanual-smn/smn_ug_a9002.html",
+     "quote": "HTTP or HTTPS Message Format Updated on 2025-04-02 GMT+08:00"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "Huawei Cloud product catalog",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "HTTP/HTTPS subscription (notification message)",
+     "Q0": {
+      "fields": [
+       "header X-SMN-MESSAGE-TYPE",
+       "header X-SMN-MESSAGE-ID",
+       "header X-SMN-TOPIC-URN",
+       "type",
+       "signature",
+       "subject",
+       "topic_urn",
+       "message_id",
+       "signature_version",
+       "message",
+       "unsubscribe_url",
+       "signing_cert_url",
+       "timestamp"
+      ],
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/eu/usermanual-smn/smn_ug_a9002.html",
+        "quote": "The header of an SMN HTTP/HTTPS message contains the following parameters: X-SMN-MESSAGE-TYPE , X-SMN-MESSAGE-ID , and X-SMN-TOPIC-URN ."
+       },
+       {
+        "url": "https://support.huaweicloud.com/eu/usermanual-smn/smn_ug_a9002.html",
+        "quote": "Table 3 HTTP/HTTPS notification message body Parameter Description type Indicates the message type, which is Notification . signature Indicates the signature information. The signature includes the message , message_id , subject , timestamp , topic_urn , and type fields."
+       },
+       {
+        "url": "https://support.huaweicloud.com/eu/usermanual-smn/smn_ug_a9002.html",
+        "quote": "subject Indicates the message subject. topic_urn Indicates the URN of the topic the message belongs to. message_id Indicates the unique message ID. signature_version Indicates the signature version, which is V1 . message Indicates the message content."
+       },
+       {
+        "url": "https://support.huaweicloud.com/eu/usermanual-smn/smn_ug_a9002.html",
+        "quote": "unsubscribe_url Indicates the URL for canceling a subscription. signing_cert_url Indicates the certificate URL for generating the message signature. timestamp Indicates the time stamp when the message was initially sent."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/eu/usermanual-smn/smn_ug_a9002.html",
+        "quote": "Table 3 HTTP/HTTPS notification message body Parameter Description type Indicates the message type, which is Notification . signature Indicates the signature information. The signature includes the message , message_id , subject , timestamp , topic_urn , and type fields."
+       },
+       {
+        "url": "https://support.huaweicloud.com/eu/usermanual-smn/smn_ug_a9002.html",
+        "quote": "subject Indicates the message subject. topic_urn Indicates the URN of the topic the message belongs to. message_id Indicates the unique message ID. signature_version Indicates the signature version, which is V1 . message Indicates the message content."
+       },
+       {
+        "url": "https://support.huaweicloud.com/eu/usermanual-smn/smn_ug_a9002.html",
+        "quote": "unsubscribe_url Indicates the URL for canceling a subscription. signing_cert_url Indicates the certificate URL for generating the message signature. timestamp Indicates the time stamp when the message was initially sent."
+       }
+      ]
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "send time",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/eu/usermanual-smn/smn_ug_a9002.html",
+        "quote": "unsubscribe_url Indicates the URL for canceling a subscription. signing_cert_url Indicates the certificate URL for generating the message signature. timestamp Indicates the time stamp when the message was initially sent."
+       },
+       {
+        "url": "https://support.huaweicloud.com/eu/usermanual-smn/smn_ug_a9002.html",
+        "quote": "Table 3 HTTP/HTTPS notification message body Parameter Description type Indicates the message type, which is Notification . signature Indicates the signature information. The signature includes the message , message_id , subject , timestamp , topic_urn , and type fields."
+       }
+      ],
+      "field": "timestamp",
+      "resolution": "s",
+      "note": "The page says only 'the time stamp when the message was initially sent'. The same wording describes the subscription confirmation, which SMN itself sends, and SMN's signature covers the field, so it is read as SMN's first send time to the endpoint, not the publisher's time or an arrival time. The examples show whole seconds (2024-07-10T09:43:44Z)."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/eu/usermanual-smn/smn_ug_a9002.html",
+        "quote": "unsubscribe_url Indicates the URL for canceling a subscription. signing_cert_url Indicates the certificate URL for generating the message signature. timestamp Indicates the time stamp when the message was initially sent."
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/eu/usermanual-smn/smn_ug_a9002.html",
+        "quote": "Table 3 HTTP/HTTPS notification message body Parameter Description type Indicates the message type, which is Notification . signature Indicates the signature information. The signature includes the message , message_id , subject , timestamp , topic_urn , and type fields."
+       },
+       {
+        "url": "https://support.huaweicloud.com/eu/usermanual-smn/smn_ug_a9002.html",
+        "quote": "subject Indicates the message subject. topic_urn Indicates the URN of the topic the message belongs to. message_id Indicates the unique message ID. signature_version Indicates the signature version, which is V1 . message Indicates the message content."
+       },
+       {
+        "url": "https://support.huaweicloud.com/eu/usermanual-smn/smn_ug_a9002.html",
+        "quote": "unsubscribe_url Indicates the URL for canceling a subscription. signing_cert_url Indicates the certificate URL for generating the message signature. timestamp Indicates the time stamp when the message was initially sent."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/eu/usermanual-smn/smn_ug_a9002.html",
+        "quote": "After an HTTP/HTTPS subscriber confirms the subscription, the subscriber can receive notification messages published to the topic."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/eu/usermanual-smn/smn_ug_a9002.html",
+        "quote": "After an HTTP/HTTPS subscriber confirms the subscription, the subscriber can receive notification messages published to the topic."
+       },
+       {
+        "url": "https://support.huaweicloud.com/en-us/api-smn/PublishMessage.html",
+        "quote": "Publish messages to a topic. After the message ID is returned, the message has been saved and is to be pushed to the subscribers of the topic."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://support.huaweicloud.com/eu/usermanual-smn/smn_ug_a9002.html",
+       "read": "The page defines the notification's timestamp as the time the message was initially sent, uses the same words for the confirmation and cancellation messages that SMN itself generates, and the publish call accepts no time from the producer, so the stamp is SMN's own first send time to the endpoint.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://support.huaweicloud.com/eu/usermanual-smn/smn_ug_a9002.html",
+       "read": "The timestamp is a field of the notification body that SMN posts to the endpoint, and SMN's signature covers it.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://support.huaweicloud.com/eu/usermanual-smn/smn_ug_a9002.html",
+       "read": "Once the endpoint has confirmed its subscription SMN pushes each published message to it, and the publish call says the saved message is pushed to the topic's subscribers, with no request or credit from the endpoint.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "publish message API",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "request_id",
+       "message_id"
+      ],
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/en-us/api-smn/PublishMessage.html",
+        "quote": "Response body parameters Parameter Type Description request_id String Specifies the request ID, which is unique. message_id String Specifies the message ID, which is unique."
+       },
+       {
+        "url": "https://support.huaweicloud.com/en-us/api-smn/PublishMessage.html",
+        "quote": "Publish messages to a topic. After the message ID is returned, the message has been saved and is to be pushed to the subscribers of the topic."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/en-us/api-smn/PublishMessage.html",
+        "quote": "Response body parameters Parameter Type Description request_id String Specifies the request ID, which is unique. message_id String Specifies the message ID, which is unique."
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/en-us/api-smn/PublishMessage.html",
+        "quote": "Response body parameters Parameter Type Description request_id String Specifies the request ID, which is unique. message_id String Specifies the message ID, which is unique."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/en-us/api-smn/PublishMessage.html",
+        "quote": "Response body parameters Parameter Type Description request_id String Specifies the request ID, which is unique. message_id String Specifies the message ID, which is unique."
+       },
+       {
+        "url": "https://support.huaweicloud.com/en-us/api-smn/PublishMessage.html",
+        "quote": "time_to_live No String Specifies the maximum retention period of a message in SMN. After the retention period expires, SMN does not send this message."
+       }
+      ],
+      "note": "time_to_live is a request field that caps how long SMN keeps the message; the reply does not return a hold time."
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Xiaomi Galaxy EMQ",
+   "group": "C",
+   "kind": "cloud service",
+   "version": "EMQ SDK 1.3.6 (galaxy-sdk-java commit 97952feb, 2020-01-09)",
+   "version_evidence": [
+    {
+     "url": "https://github.com/XiaoMi/galaxy-sdk-java/commit/97952feb934e2f64e5b1a14cfe47b7ff566b9637",
+     "quote": "committed format emq emample and update emq-sdk to 1.3.6"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 2",
+     "source": "times-first search",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "ReceiveMessage (long polling optional)",
+     "Q0": {
+      "fields": [
+       "messageID",
+       "receiptHandle",
+       "messageBody",
+       "attributes: senderId",
+       "attributes: priority",
+       "attributes: messageLength",
+       "attributes: md5OfBody",
+       "attributes: sendTimestamp",
+       "attributes: receiveTimestamp",
+       "attributes: firstReceiveTimestamp",
+       "attributes: receiveCount",
+       "attributes: sourceQueueName, sourceTag, deadTimestamp, originalMessageID, originalReceiveCount (dead letter queue only)",
+       "attributes: topic (when a topic is set)",
+       "messageAttributes (user-defined)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/src/main/thrift/Message.thrift",
+        "quote": "struct ReceiveMessageResponse { /** * MessageID for the received message; **/ 1: required string messageID; /** * Receipt Handle for the received message * Using when change visibility time/delete message **/ 2: required string receiptHandle;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/src/main/thrift/Message.thrift",
+        "quote": "Attributes of message, including: * - senderId * - priority * - messageLength * - md5OfBody * - sendTimestamp * - receiveTimestamp * - firstReceiveTimestamp * - receiveCount"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/src/main/thrift/Message.thrift",
+        "quote": "If the message is received from a dead letter queue, * it has another four attributes: * - sourceQueueName * - sourceTag * - deadTimestamp * - originalMessageID * - originalReceiveCount * * If the message has been set topic * - topic **/ 4: optional map<string, string> attributes;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/src/main/thrift/Message.thrift",
+        "quote": "/** * User-defined attributes attached to message **/ 5: optional map<string, MessageAttribute> messageAttributes; }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/src/main/thrift/Message.thrift",
+        "quote": "/** * timestamp when the message arrived servers **/ 4: optional i64 sendTimestamp; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/src/main/thrift/Message.thrift",
+        "quote": "Attributes of message, including: * - senderId * - priority * - messageLength * - md5OfBody * - sendTimestamp * - receiveTimestamp * - firstReceiveTimestamp * - receiveCount"
+       }
+      ],
+      "note": "The reply to a publish describes sendTimestamp as the timestamp when the message arrived at the servers, and sendTimestamp is the fifth entry of the attribute list of a received message. The map and the reply field are optional and no text says they are set on every message (reading 5), so this is not coded as always."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/src/main/thrift/Message.thrift",
+        "quote": "Attributes of message, including: * - senderId * - priority * - messageLength * - md5OfBody * - sendTimestamp * - receiveTimestamp * - firstReceiveTimestamp * - receiveCount"
+       }
+      ],
+      "note": "Yes because the attribute list of a received message names sendTimestamp; whether it is present on every message is the open point of Q1."
+     },
+     "Q3": {
+      "answer": "request arrival",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/README.md",
+        "quote": "这时EMQ将阻塞Receive Request，并查询整个分布式系统。当查询到Queue中的Message后，将立即返回给Receiver。如果Queue中一直没有可读的Message， EMQ将在Delay Time超时后，向用户返回空。"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/src/main/thrift/Message.thrift",
+        "quote": "Max receive message wait seconds, default 20s (0 ~ 20), 0s means no wait; **/ 3: optional i32 maxReceiveMessageWaitSeconds = 0;"
+       }
+      ],
+      "note": "Reading 8: a Receive request that finds no message is blocked and answered empty when its Delay Time (maxReceiveMessageWaitSeconds, 0 to 20 s, 0 meaning no wait) runs out, so the request's arrival is kept to time it out. The delivered receiveTimestamp and firstReceiveTimestamp are listed but not defined, so whether either is this arrival or the time the message was handed over is not known."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/src/main/thrift/Message.thrift",
+        "quote": "Attributes of message, including: * - senderId * - priority * - messageLength * - md5OfBody * - sendTimestamp * - receiveTimestamp * - firstReceiveTimestamp * - receiveCount"
+       }
+      ],
+      "note": "Coded no because receiveTimestamp is not defined as the arrival of the request (see Q3)."
+     },
+     "Q5": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/src/main/thrift/Message.thrift",
+        "quote": "Attributes of message, including: * - senderId * - priority * - messageLength * - md5OfBody * - sendTimestamp * - receiveTimestamp * - firstReceiveTimestamp * - receiveCount"
+       }
+      ],
+      "note": "If sendTimestamp (arrival at the servers) and receiveTimestamp are both set on every message, the stay is derivable from them on the broker's clock; the sources do not settle it. The invisibility time (default 30 s, 2 s to 12 h) is set by the sender or queue and is not returned."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/src/main/thrift/Message.thrift",
+        "quote": "struct ReceiveMessageResponse { /** * MessageID for the received message; **/ 1: required string messageID; /** * Receipt Handle for the received message * Using when change visibility time/delete message **/ 2: required string receiptHandle;"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "one at a time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/README.md",
+        "quote": "默认状态下，EMQ收到Receive请求后，将查询分布式系统的一部分，并将查询到的这部分Message立即返回给Receiver。如果被查询的部分中暂时没有Message，将返回空。"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/README.md",
+        "quote": "这时EMQ将阻塞Receive Request，并查询整个分布式系统。当查询到Queue中的Message后，将立即返回给Receiver。如果Queue中一直没有可读的Message， EMQ将在Delay Time超时后，向用户返回空。"
+       }
+      ],
+      "note": "By default a Receive returns at once, empty if nothing is found; with a wait above 0 the request is blocked until a message is found. The README describes one blocked request and says nothing on several pending requests or on credit."
+     },
+     "not_determined": [
+      "Q1",
+      "Q5",
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/README.md",
+       "read": "A Receive request that finds no message is blocked and answered empty when its Delay Time (0 to 20 seconds) runs out, so the request's arrival is kept to time it out; receiveTimestamp and firstReceiveTimestamp are listed among the delivered attributes but defined nowhere in the sources read.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "SendMessage",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "messageID",
+       "bodyLength",
+       "bodyMd5",
+       "sendTimestamp"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/src/main/thrift/Message.thrift",
+        "quote": "struct SendMessageResponse { /** * MessageID for the send message **/ 1: required string messageID; /** * Length of message body **/ 2: optional i32 bodyLength; /** * MD5 string of the message body **/ 3: optional string bodyMd5;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/src/main/thrift/Message.thrift",
+        "quote": "/** * timestamp when the message arrived servers **/ 4: optional i64 sendTimestamp; }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/src/main/thrift/Message.thrift",
+        "quote": "/** * timestamp when the message arrived servers **/ 4: optional i64 sendTimestamp; }"
+       }
+      ],
+      "which": "receive time",
+      "note": "sendTimestamp is described as the timestamp when the message arrived at the servers, but it is declared optional and no text says it is set on every reply (reading 5)."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/src/main/thrift/Message.thrift",
+        "quote": "struct SendMessageResponse { /** * MessageID for the send message **/ 1: required string messageID; /** * Length of message body **/ 2: optional i32 bodyLength; /** * MD5 string of the message body **/ 3: optional string bodyMd5;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/src/main/thrift/Message.thrift",
+        "quote": "/** * timestamp when the message arrived servers **/ 4: optional i64 sendTimestamp; }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/src/main/thrift/Message.thrift",
+        "quote": "struct SendMessageResponse { /** * MessageID for the send message **/ 1: required string messageID; /** * Length of message body **/ 2: optional i32 bodyLength; /** * MD5 string of the message body **/ 3: optional string bodyMd5;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/XiaoMi/galaxy-sdk-java/97952feb934e2f64e5b1a14cfe47b7ff566b9637/galaxy-emq-client/src/main/thrift/Message.thrift",
+        "quote": "/** * timestamp when the message arrived servers **/ 4: optional i64 sendTimestamp; }"
+       }
+      ]
+     },
+     "not_determined": [
+      "P1"
+     ],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Zapier Trigger Inbox",
+   "group": "C",
+   "kind": "cloud service",
+   "version": "Trigger Inbox API 1.0.0 (OpenAPI spec)",
+   "version_evidence": [
+    {
+     "url": "https://docs.zapier.com/api-reference/specs/trigger-inbox.yaml",
+     "quote": "version: 1.0.0 contact: url: https://docs.zapier.com"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 2",
+     "source": "times-first search",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "lease API (poll)",
+     "Q0": {
+      "fields": [
+       "id",
+       "created_at",
+       "status",
+       "payload",
+       "message_attributes.lease_count",
+       "message_attributes.error_message",
+       "message_attributes.possible_duplicate_data",
+       "per lease: lease_id",
+       "per lease: leased_until",
+       "per lease: inbox_attributes.status",
+       "per lease: inbox_attributes.paused_reason"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.zapier.com/white-label/trigger-inbox/consuming-messages",
+        "quote": "results[] Array of leased messages. Empty if no messages are available. results[].id Unique message identifier. results[].created_at When the message was queued. results[].status"
+       },
+       {
+        "url": "https://docs.zapier.com/white-label/trigger-inbox/consuming-messages",
+        "quote": "results[].payload The event data from the connected app. results[].message_attributes.lease_count Number of times this message has been leased."
+       },
+       {
+        "url": "https://docs.zapier.com/white-label/trigger-inbox/consuming-messages",
+        "quote": "results[].message_attributes.possible_duplicate_data true if Zapier detected a potential duplicate due to a deduplication key change. inbox_attributes.status Current inbox status at the time of the lease call."
+       },
+       {
+        "url": "https://docs.zapier.com/white-label/trigger-inbox/consuming-messages",
+        "quote": "lease_id Unique identifier for the lease batch. Required for acknowledge and release. null if no messages are available. leased_until ISO 8601 timestamp when the lease expires. null if no messages are available."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://docs.zapier.com/white-label/trigger-inbox/consuming-messages",
+        "quote": "results[] Array of leased messages. Empty if no messages are available. results[].id Unique message identifier. results[].created_at When the message was queued. results[].status"
+       },
+       {
+        "url": "https://docs.zapier.com/api-reference/specs/trigger-inbox.yaml",
+        "quote": "LeasedMessage: type: object properties: id: type: string format: uuid readOnly: true description: The unique identifier for the message. created_at: type: string format: date-time readOnly: true description: Creation timestamp in ISO 8601 format."
+       },
+       {
+        "url": "https://docs.zapier.com/api-reference/specs/trigger-inbox.yaml",
+        "quote": "required: - created_at - id - message_attributes - payload - status Message: type: object"
+       }
+      ],
+      "field": "created_at",
+      "resolution": "ms"
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://docs.zapier.com/white-label/trigger-inbox/consuming-messages",
+        "quote": "results[] Array of leased messages. Empty if no messages are available. results[].id Unique message identifier. results[].created_at When the message was queued. results[].status"
+       },
+       {
+        "url": "https://docs.zapier.com/api-reference/specs/trigger-inbox.yaml",
+        "quote": "required: - created_at - id - message_attributes - payload - status Message: type: object"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "send time",
+      "evidence": [
+       {
+        "url": "https://docs.zapier.com/white-label/trigger-inbox/consuming-messages",
+        "quote": "Leasing claims a batch of available messages and gives your app exclusive access for a set duration. No other consumer can claim the same messages while they are leased."
+       },
+       {
+        "url": "https://docs.zapier.com/white-label/trigger-inbox/consuming-messages",
+        "quote": "lease_seconds integer 300 3600 How long, in seconds, to hold the lease. Messages return to the queue if not acknowledged within this window."
+       },
+       {
+        "url": "https://docs.zapier.com/white-label/trigger-inbox/consuming-messages",
+        "quote": "lease_id Unique identifier for the lease batch. Required for acknowledge and release. null if no messages are available. leased_until ISO 8601 timestamp when the lease expires. null if no messages are available."
+       }
+      ],
+      "field": "leased_until",
+      "resolution": "ms",
+      "note": "Reading 2: the lease is a deadline whose start and length are both stated (the lease gives the app exclusive access for a set duration of lease_seconds, and leased_until is when it expires), so the lease start counts as the recorded time. The lease call is a poll that returns at once, so this start is also the call's arrival."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.zapier.com/white-label/trigger-inbox/consuming-messages",
+        "quote": "lease_id Unique identifier for the lease batch. Required for acknowledge and release. null if no messages are available. leased_until ISO 8601 timestamp when the lease expires. null if no messages are available."
+       }
+      ],
+      "note": "Only the end of the lease is returned; the start is derivable from it and the consumer's own lease_seconds (see Q5)."
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "evidence": [
+       {
+        "url": "https://docs.zapier.com/white-label/trigger-inbox/consuming-messages",
+        "quote": "results[] Array of leased messages. Empty if no messages are available. results[].id Unique message identifier. results[].created_at When the message was queued. results[].status"
+       },
+       {
+        "url": "https://docs.zapier.com/white-label/trigger-inbox/consuming-messages",
+        "quote": "lease_id Unique identifier for the lease batch. Required for acknowledge and release. null if no messages are available. leased_until ISO 8601 timestamp when the lease expires. null if no messages are available."
+       },
+       {
+        "url": "https://docs.zapier.com/white-label/trigger-inbox/consuming-messages",
+        "quote": "lease_seconds integer 300 3600 How long, in seconds, to hold the lease. Messages return to the queue if not acknowledged within this window."
+       }
+      ],
+      "resolution": "ms",
+      "note": "created_at (when the message was queued) and leased_until are both Zapier's times; leased_until minus the consumer's own lease_seconds is the lease start, and the lease start minus created_at is the stay in the queue. A message leased again after a release or expiry keeps its first created_at."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.zapier.com/white-label/trigger-inbox/consuming-messages",
+        "quote": "lease_id Unique identifier for the lease batch. Required for acknowledge and release. null if no messages are available. leased_until ISO 8601 timestamp when the lease expires. null if no messages are available."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://docs.zapier.com/white-label/trigger-inbox/consuming-messages",
+        "quote": "When no messages are available, the API returns HTTP 200 with lease_id: null and results: []"
+       },
+       {
+        "url": "https://docs.zapier.com/white-label/trigger-inbox/consuming-messages",
+        "quote": "Continue polling on a 200 response. This is the normal idle state between events."
+       }
+      ],
+      "note": "An empty lease returns HTTP 200 at once and the consumer keeps polling. The overview adds a notification (a POST to a URL, or a stream) so a consumer can lease on demand; these carry no message."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://docs.zapier.com/white-label/trigger-inbox/consuming-messages",
+       "read": "The page states the lease length (lease_seconds, how long the lease is held) and its expiry (leased_until), which fixes the lease start, and the lease call answers at once with an empty result when nothing is queued, so the lease start is a send time.",
+       "agrees": true
+      },
+      {
+       "question": "Q5",
+       "url": "https://docs.zapier.com/white-label/trigger-inbox/consuming-messages",
+       "read": "Each message carries created_at (when it was queued) and the batch carries leased_until, both on Zapier's clock, so the stay before the lease is leased_until less the requested lease_seconds, less created_at.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "event from a connected app (no publish call)",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://docs.zapier.com/white-label/trigger-inbox/what-is-trigger-inbox-api.md",
+        "quote": "**Message queued.** Zapier captures the event and adds it to your inbox."
+       },
+       {
+        "url": "https://docs.zapier.com/white-label/trigger-inbox/what-is-trigger-inbox-api.md",
+        "quote": "you create an inbox that subscribes to trigger events, and the API delivers messages to you"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "AnyHook",
+   "group": "C",
+   "kind": "webhook service",
+   "version": "API v1 (documentation read 2026-10-29)",
+   "version_evidence": [
+    {
+     "url": "https://anyhook.net/docs",
+     "quote": "Batch Replay POST /api/v1/apps/{slug}/replay-failed Replay an app"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list realadeel/awesome-webhooks",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "webhook delivery to a destination endpoint",
+     "Q0": {
+      "fields": [
+       "original payload",
+       "original sender headers, byte for byte",
+       "X-AnyHook-Delivery (event id)",
+       "AnyHook-Signature (t = signing time in Unix seconds, v1 = HMAC)",
+       "custom headers set per destination"
+      ],
+      "evidence": [
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "which POSTs the original payload to your destination endpoint."
+       },
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "The original provider headers ( Stripe-Signature , etc.) are forwarded byte-for-byte alongside your custom headers and AnyHook-Signature"
+       },
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "the event id we forward in X-AnyHook-Delivery is the key to deduplicate on."
+       },
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "Every forwarded request includes an AnyHook-Signature header, a timestamped HMAC-SHA256 signature generated with your destination"
+       },
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "You can attach custom headers to outbound requests on a per-destination basis."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "Only events created after this timestamp limit integer 100 Max events to return (1-200)"
+       },
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "{ \"count\": 3, \"events\": [ { \"id\": \"evt_abc\", \"status\": \"failed\", \"created_at\": \"...\" }, ... ] }"
+       },
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "HTTP response code and body (per attempt) Latency in milliseconds Attempt count and next retry time"
+       }
+      ],
+      "field": "created_at (event log and API)",
+      "resolution": "not stated",
+      "note": "Every event that reaches the inbound URL is logged and the events API lists each with a created_at; the example does not show its resolution. It is visible to the account holder, not in the forwarded request."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "Every forwarded request includes an AnyHook-Signature header, a timestamped HMAC-SHA256 signature generated with your destination"
+       },
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "The original provider headers ( Stripe-Signature , etc.) are forwarded byte-for-byte alongside your custom headers and AnyHook-Signature"
+       },
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "the event id we forward in X-AnyHook-Delivery is the key to deduplicate on."
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "send time",
+      "evidence": [
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "Every forwarded request includes an AnyHook-Signature header, a timestamped HMAC-SHA256 signature generated with your destination"
+       },
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "AnyHook-Signature: t=1712934567,v1=5257a869..."
+       },
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "AnyHook-Signature is re-signed with a fresh timestamp on every attempt, on purpose, so retries never fail your tolerance window."
+       }
+      ],
+      "field": "AnyHook-Signature t=",
+      "resolution": "s",
+      "note": "The documentation does not call t the send time. It says the signature is timestamped and re-signed with a fresh timestamp on every attempt, and its example is a Unix time in seconds, so t is read as the time of each attempt."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "Every forwarded request includes an AnyHook-Signature header, a timestamped HMAC-SHA256 signature generated with your destination"
+       },
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "AnyHook-Signature: t=1712934567,v1=5257a869..."
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "Every forwarded request includes an AnyHook-Signature header, a timestamped HMAC-SHA256 signature generated with your destination"
+       },
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "The original provider headers ( Stripe-Signature , etc.) are forwarded byte-for-byte alongside your custom headers and AnyHook-Signature"
+       },
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "the event id we forward in X-AnyHook-Delivery is the key to deduplicate on."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per message",
+      "evidence": [
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "HTTP response code and body (per attempt) Latency in milliseconds Attempt count and next retry time"
+       }
+      ],
+      "note": "Each logged event shows its attempts, the next retry time and the latency in milliseconds, in the dashboard and the API of the account that owns the app."
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "By default AnyHook forwards events as they arrive, with no delay and no concurrency cap."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://anyhook.net/docs",
+       "read": "The docs say AnyHook-Signature is re-signed with a fresh timestamp on every attempt, and their check code comments that a genuine signature is never older than the 300-second window, so t is made anew at each attempt, in whole seconds.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://anyhook.net/docs",
+       "read": "Every forwarded request carries the AnyHook-Signature header, whose t field holds that attempt's timestamp.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://anyhook.net/docs",
+       "read": "By default AnyHook forwards each event as it arrives, with no delay and no concurrency cap, and the destination sends no request or credit.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "inbound URL (POST from the sender)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "HTTP status 200 once the event is durably queued (503 if nothing was stored)"
+      ],
+      "evidence": [
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "Edge receive : Cloudflare Workers accepts the POST, validates the signature, and returns 200 once the event is durably stored, in about a second."
+       },
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "AnyHook returns HTTP 200 as soon as the event is durably queued, in about a second, regardless of your destination endpoint"
+       },
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "The edge returns 200 only after the event is persisted, and there are two fallback stores behind the queue before it would answer 503 instead."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "Edge receive : Cloudflare Workers accepts the POST, validates the signature, and returns 200 once the event is durably stored, in about a second."
+       },
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "AnyHook returns HTTP 200 as soon as the event is durably queued, in about a second, regardless of your destination endpoint"
+       }
+      ],
+      "note": "The documentation describes the reply only as an HTTP 200 and names no body field."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "Edge receive : Cloudflare Workers accepts the POST, validates the signature, and returns 200 once the event is durably stored, in about a second."
+       },
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "AnyHook returns HTTP 200 as soon as the event is durably queued, in about a second, regardless of your destination endpoint"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "Edge receive : Cloudflare Workers accepts the POST, validates the signature, and returns 200 once the event is durably stored, in about a second."
+       },
+       {
+        "url": "https://anyhook.net/docs",
+        "quote": "AnyHook returns HTTP 200 as soon as the event is durably queued, in about a second, regardless of your destination endpoint"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Hook0",
+   "group": "C",
+   "kind": "webhook service",
+   "version": "API 1.0.2 (tag api/v1.0.2) and output worker 1.0.7 (tag output-worker/v1.0.7)",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/output-worker/Cargo.toml",
+     "quote": "version = \"1.0.7\""
+    },
+    {
+     "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/Cargo.toml",
+     "quote": "version = \"1.0.2\""
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list realadeel/awesome-webhooks",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "endpoint delivery (HTTP request to the subscription target)",
+     "Q0": {
+      "fields": [
+       "body: the event payload as ingested",
+       "Content-Type (the payload content type)",
+       "X-Event-Id (the event UUID)",
+       "X-Event-Type",
+       "X-Hook0-Signature (name configurable): t = Unix seconds at signing, h = signed header names, v1 = HMAC",
+       "User-Agent: the worker's crate name and version",
+       "the target's own configured headers"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/output-worker/src/work.rs",
+        "quote": "headers.insert(\"Content-Type\", content_type); headers.insert(\"X-Event-Id\", event_id); headers.insert(\"X-Event-Type\", et);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/output-worker/src/work.rs",
+        "quote": "Ok(sig) => { headers.insert(&config.signature_header_name, sig);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/output-worker/src/work.rs",
+        "quote": ".body(attempt.payload.clone())"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/output-worker/src/work.rs",
+        "quote": "const USER_AGENT: &str = concat!(crate_name!(), \"/\", crate_version!());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/output-worker/src/main.rs",
+        "quote": "#[clap(long, env, default_value = \"X-Hook0-Signature\")]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/documentation/tutorials/webhook-authentication.md",
+        "quote": "X-Hook0-Signature: t=1765443663,h=content-type x-custom-header,v1=85da0586ae0b711d..."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/src/handlers/events.rs",
+        "quote": "INSERT INTO event.event (application__id, event__id, event_type__name, payload, payload_content_type, ip, metadata, occurred_at, received_at, labels)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/src/handlers/events.rs",
+        "quote": "VALUES ($1, COALESCE($2, uuidv7()), $3, $4, $5, $6, $7, $8, statement_timestamp(), $9) RETURNING application__id AS application_id, event__id AS event_id, received_at"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/src/handlers/events.rs",
+        "quote": "pub struct Event { event_id: Uuid, event_type_name: String, payload_content_type: String, ip: String, metadata: Option<Value>, occurred_at: DateTime<Utc>, received_at: DateTime<Utc>, labels: Value, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/src/handlers/events.rs",
+        "quote": "Optional unique identifier for this event (client-generated UUID). If not provided, a UUIDv7 will be generated by the server. event_id: Option<Uuid>,"
+       }
+      ],
+      "field": "the time in X-Event-Id, a UUIDv7 the database makes with uuidv7() when the producer leaves out event_id; received_at (statement_timestamp() of the INSERT that stores the event) is kept for every event and not sent",
+      "resolution": "ms (the UUIDv7 delivered); us (received_at, kept)",
+      "setting": "the producer leaves out the optional event_id (the default)",
+      "default_on": true,
+      "note": "The delivered time is the database's only when the producer leaves out its own event id; see Q2.",
+      "changed_on_read_back": {
+       "from": "always",
+       "why": "Reading 10: a broker time that a choice of the producer's can replace is 'by configuration', on by default.",
+       "at": "integration, 30 October 2026"
+      }
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/output-worker/src/work.rs",
+        "quote": "headers.insert(\"Content-Type\", content_type); headers.insert(\"X-Event-Id\", event_id); headers.insert(\"X-Event-Type\", et);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/src/handlers/events.rs",
+        "quote": "Optional unique identifier for this event (client-generated UUID). If not provided, a UUIDv7 will be generated by the server. event_id: Option<Uuid>,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/src/handlers/events.rs",
+        "quote": "VALUES ($1, COALESCE($2, uuidv7()), $3, $4, $5, $6, $7, $8, statement_timestamp(), $9) RETURNING application__id AS application_id, event__id AS event_id, received_at"
+       },
+       {
+        "url": "https://www.postgresql.org/docs/18/functions-uuid.html",
+        "quote": "Generates a version 7 (time-ordered) UUID. The timestamp is computed using UNIX timestamp with millisecond precision + sub-millisecond timestamp + random."
+       }
+      ],
+      "note": "Judgment (reading 4): only inside X-Event-Id, and only when the producer leaves out the optional event_id, so that the database makes a UUIDv7 with uuidv7() from its own clock (millisecond resolution). A producer-supplied id carries no server time."
+     },
+     "Q3": {
+      "answer": "send time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/output-worker/src/work.rs",
+        "quote": "let s = Signature::new( &attempt.secret.to_string(), &attempt.payload, Utc::now(), &headers, )"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/output-worker/src/work.rs",
+        "quote": "pub fn new( secret: &str, payload: &[u8], signed_at: DateTime<Utc>, headers: &HeaderMap, ) -> Result<Self, HeaderName> { let timestamp = signed_at.timestamp(); let timestamp_str = timestamp.to_string();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/output-worker/src/work.rs",
+        "quote": "Ok(sig) => { headers.insert(&config.signature_header_name, sig);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/documentation/tutorials/webhook-authentication.md",
+        "quote": "- **t**: Unix timestamp (seconds)"
+       }
+      ],
+      "field": "X-Hook0-Signature t (Utc::now() when each attempt is signed, just before the request)",
+      "resolution": "s",
+      "note": "The worker also keeps picked_at for each attempt (statement_timestamp() when it takes the attempt)."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/documentation/tutorials/webhook-authentication.md",
+        "quote": "X-Hook0-Signature: t=1765443663,h=content-type x-custom-header,v1=85da0586ae0b711d..."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/documentation/tutorials/webhook-authentication.md",
+        "quote": "- **t**: Unix timestamp (seconds)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/output-worker/src/work.rs",
+        "quote": "Ok(sig) => { headers.insert(&config.signature_header_name, sig);"
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/output-worker/src/work.rs",
+        "quote": "headers.insert(\"Content-Type\", content_type); headers.insert(\"X-Event-Id\", event_id); headers.insert(\"X-Event-Type\", et);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/output-worker/src/work.rs",
+        "quote": "Ok(sig) => { headers.insert(&config.signature_header_name, sig);"
+       }
+      ],
+      "note": "No header holds a duration. The signature's t less the time in a server-made X-Event-Id would compare the worker's clock with the database's clock, which are not stated to be the same."
+     },
+     "Q6": {
+      "answer": "per message",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/src/handlers/request_attempts.rs",
+        "quote": "pub picked_at: Option<DateTime<Utc>>,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/src/handlers/responses.rs",
+        "quote": "pub elapsed_time_ms: Option<i32>,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/src/handlers/events.rs",
+        "quote": "pub struct Event { event_id: Uuid, event_type_name: String, payload_content_type: String, ip: String, metadata: Option<Value>, occurred_at: DateTime<Utc>, received_at: DateTime<Utc>, labels: Value, }"
+       }
+      ],
+      "note": "The API of the application's owner returns each request attempt's picked_at and each response's elapsed_time_ms; the worker's logs were not searched."
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/migrations/20260406201833_fix_dispatch_race_condition.up.sql",
+        "quote": "insert into webhook.request_attempt (event__id, subscription__id, application__id)"
+       }
+      ],
+      "note": "A database trigger creates a request attempt for every enabled subscription that matches the event, and the worker pushes it to the endpoint; the consumer sends no request or credit."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q2",
+       "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/output-worker/src/work.rs",
+       "read": "The delivered X-Event-Id is a UUIDv7 that the database makes from its own clock, with millisecond time, when the producer omits the optional event_id; an id the producer supplies carries no server time.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/output-worker/src/work.rs",
+       "read": "The worker calls Utc::now() inside its per-attempt work function to build the t value of X-Hook0-Signature (Unix seconds), so every attempt is stamped anew with its own send time.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/hook0/hook0/output-worker/v1.0.7/documentation/tutorials/webhook-authentication.md",
+       "read": "The X-Hook0-Signature header, with t as a Unix timestamp in seconds, is inserted into every request the worker sends.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/migrations/20260406201833_fix_dispatch_race_condition.up.sql",
+       "read": "A database trigger creates a request attempt for every enabled subscription that matches the event and the worker pushes it to the endpoint, which sends no request or credit.",
+       "agrees": true
+      },
+      {
+       "question": "Q1",
+       "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/src/handlers/events.rs",
+       "read": "The event's INSERT stores received_at with statement_timestamp() and makes the event id with uuidv7() only when the producer gives none; X-Event-Id carries that id to the endpoint, and received_at is not sent.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "ingest an event (POST /event)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "application_id",
+       "event_id",
+       "received_at"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/src/handlers/events.rs",
+        "quote": "pub struct IngestedEvent { application_id: Uuid, event_id: Uuid, received_at: DateTime<Utc>, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/src/handlers/events.rs",
+        "quote": "VALUES ($1, COALESCE($2, uuidv7()), $3, $4, $5, $6, $7, $8, statement_timestamp(), $9) RETURNING application__id AS application_id, event__id AS event_id, received_at"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/src/handlers/events.rs",
+        "quote": "pub struct IngestedEvent { application_id: Uuid, event_id: Uuid, received_at: DateTime<Utc>, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/src/handlers/events.rs",
+        "quote": "INSERT INTO event.event (application__id, event__id, event_type__name, payload, payload_content_type, ip, metadata, occurred_at, received_at, labels)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/src/handlers/events.rs",
+        "quote": "VALUES ($1, COALESCE($2, uuidv7()), $3, $4, $5, $6, $7, $8, statement_timestamp(), $9) RETURNING application__id AS application_id, event__id AS event_id, received_at"
+       }
+      ],
+      "which": "store time",
+      "field": "received_at",
+      "resolution": "us",
+      "note": "Judgment: the field is named received_at, but it is the database's start time for the INSERT that stores the event, taken after authorization and validation, so it is coded as store time."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/src/handlers/events.rs",
+        "quote": "pub struct IngestedEvent { application_id: Uuid, event_id: Uuid, received_at: DateTime<Utc>, }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/src/handlers/events.rs",
+        "quote": "pub struct IngestedEvent { application_id: Uuid, event_id: Uuid, received_at: DateTime<Utc>, }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/hook0/hook0/api/v1.0.2/api/src/handlers/events.rs",
+       "read": "The ingest reply returns received_at, which the database sets as statement_timestamp() in the insert and never takes from the request, whose own time field is the separate occurred_at.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "Hookdeck Outpost",
+   "group": "C",
+   "kind": "webhook service",
+   "version": "v1.7.0",
+   "version_evidence": [
+    {
+     "url": "https://github.com/hookdeck/outpost/releases/tag/v1.7.0",
+     "quote": "v1.7.0"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list ishandutta2007/Awesome-Event-Driven-Messaging-Platform",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "webhook destination (default mode)",
+     "Q0": {
+      "fields": [
+       "body: the event data as JSON",
+       "Content-Type: application/json",
+       "x-outpost-event-id",
+       "x-outpost-topic",
+       "x-outpost-timestamp",
+       "x-outpost-signature",
+       "x-outpost-timestamp-ms (when enabled)",
+       "the event's metadata keys and the destination's delivery metadata as x-outpost-<key> headers",
+       "the destination's custom headers"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/docs/content/destinations/webhook.mdoc",
+        "quote": "Outpost sends an HTTP POST request: ``` POST /webhooks HTTP/1.1 Content-Type: application/json x-outpost-event-id: evt_abc123 x-outpost-topic: user.created x-outpost-timestamp: 2024-06-01T08:23:36Z x-outpost-signature: v0=abc123def456... x-outpost-source: signup-service"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/docs/content/destinations/webhook.mdoc",
+        "quote": "The `metadata` field is translated to headers using the configured prefix."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/internal/destregistry/basepublisher.go",
+        "quote": "systemMetadata := map[string]string{ \"timestamp\": timestamp.UTC().Format(time.RFC3339), \"event-id\": event.ID, \"topic\": event.Topic, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/internal/destregistry/basepublisher.go",
+        "quote": "// Add millisecond timestamp if enabled if p.includeMillisecondTimestamp { systemMetadata[\"timestamp-ms\"] = timestamp.UTC().Format(time.RFC3339Nano) }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/internal/apirouter/publish_handlers.go",
+        "quote": "eventTime := p.Time if eventTime.IsZero() { eventTime = time.Now() }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/docs/content/publishing/events.mdoc",
+        "quote": "| `time` | No | ISO 8601 timestamp of the event. |"
+       }
+      ],
+      "field": "event time (time, set to the server's clock when the publisher omits it)",
+      "resolution": "us",
+      "note": "The publisher's choice to leave out the optional time field is the setting; the server then uses time.Now() when it handles the publish request. A publisher-supplied time is the publisher's."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/internal/destregistry/providers/destwebhook/destwebhook.go",
+        "quote": "func (p *WebhookPublisher) Format(ctx context.Context, event *models.Event) (*http.Request, error) { now := time.Now() rawBody := []byte(event.Data)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/internal/destregistry/providers/destwebhook/destwebhook.go",
+        "quote": "payload := SignaturePayload{ EventID: event.ID, Topic: event.Topic, Timestamp: now, Body: string(rawBody), }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/internal/destregistry/basepublisher.go",
+        "quote": "systemMetadata := map[string]string{ \"timestamp\": timestamp.UTC().Format(time.RFC3339), \"event-id\": event.ID, \"topic\": event.Topic, }"
+       }
+      ],
+      "note": "The webhook request is built from the event's data, id, topic and metadata, with a time taken at delivery; the event time is not sent."
+     },
+     "Q3": {
+      "answer": "send time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/internal/destregistry/providers/destwebhook/destwebhook.go",
+        "quote": "func (p *WebhookPublisher) Format(ctx context.Context, event *models.Event) (*http.Request, error) { now := time.Now() rawBody := []byte(event.Data)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/internal/destregistry/providers/destwebhook/destwebhook.go",
+        "quote": "WithTimestampFormat sets how the timestamp header renders the delivery time: // TimestampFormatRFC3339 (the default), TimestampFormatUnix or // TimestampFormatISO8601MilliNoOffset."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/internal/destregistry/basepublisher.go",
+        "quote": "systemMetadata := map[string]string{ \"timestamp\": timestamp.UTC().Format(time.RFC3339), \"event-id\": event.ID, \"topic\": event.Topic, }"
+       }
+      ],
+      "field": "x-outpost-timestamp (time.Now() when each request is formatted)",
+      "resolution": "s",
+      "note": "Seconds in the default RFC 3339 form and in the Unix form, milliseconds in the third form or in x-outpost-timestamp-ms when that is enabled."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/docs/content/destinations/webhook.mdoc",
+        "quote": "Outpost sends an HTTP POST request: ``` POST /webhooks HTTP/1.1 Content-Type: application/json x-outpost-event-id: evt_abc123 x-outpost-topic: user.created x-outpost-timestamp: 2024-06-01T08:23:36Z x-outpost-signature: v0=abc123def456... x-outpost-source: signup-service"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/internal/destregistry/basepublisher.go",
+        "quote": "systemMetadata := map[string]string{ \"timestamp\": timestamp.UTC().Format(time.RFC3339), \"event-id\": event.ID, \"topic\": event.Topic, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/internal/destregistry/providers/destwebhook/destwebhook.go",
+        "quote": "disabled omits the // header."
+       }
+      ],
+      "note": "Sent by default; a destination can omit the header."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/docs/content/destinations/webhook.mdoc",
+        "quote": "Outpost sends an HTTP POST request: ``` POST /webhooks HTTP/1.1 Content-Type: application/json x-outpost-event-id: evt_abc123 x-outpost-topic: user.created x-outpost-timestamp: 2024-06-01T08:23:36Z x-outpost-signature: v0=abc123def456... x-outpost-source: signup-service"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/internal/destregistry/basepublisher.go",
+        "quote": "systemMetadata := map[string]string{ \"timestamp\": timestamp.UTC().Format(time.RFC3339), \"event-id\": event.ID, \"topic\": event.Topic, }"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per message",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/sdks/outpost-typescript/src/models/components/attempt.ts",
+        "quote": "Time the attempt was made. */ time?: Date | undefined;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/sdks/outpost-typescript/src/models/components/attempt.ts",
+        "quote": "Time in milliseconds from sending the attempt to receiving the destination"
+       }
+      ],
+      "note": "The API of the tenant lists each delivery attempt with its time and its latency in milliseconds; the logs were not searched."
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/docs/content/publishing/events.mdoc",
+        "quote": "When an event is published, Outpost evaluates it against all tenant destinations. Events matching multiple destinations are independently delivered to each"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/docs/content/destinations/webhook.mdoc",
+        "quote": "Send events via HTTP POST to a URL endpoint. Outpost supports two webhook modes:"
+       }
+      ],
+      "note": "Outpost pushes each published event to the matching destinations; the receiver sends no request or credit."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/internal/destregistry/providers/destwebhook/destwebhook.go",
+       "read": "Every delivery attempt runs the destination's Publish, which calls Format, which reads time.Now() for that attempt, and the docs name .Timestamp the delivery timestamp, so the stamp is made anew at each attempt (seconds by default, milliseconds in the optional forms).",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/docs/content/destinations/webhook.mdoc",
+       "read": "The x-outpost-timestamp header (RFC 3339, in seconds) is sent by default unless the destination disables it, although a timestamp key in the publisher's own event metadata can replace its value.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/docs/content/publishing/events.mdoc",
+       "read": "Outpost evaluates each published event against the tenant's destinations and delivers it to every match, and the receiving endpoint sends no request or credit.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "publish API (POST /publish)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "id",
+       "duplicate",
+       "destination_ids (HTTP 202)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/sdks/outpost-typescript/src/models/components/publishresponse.ts",
+        "quote": "export type PublishResponse = { /** * The ID of the event that was accepted for publishing."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/sdks/outpost-typescript/src/models/components/publishresponse.ts",
+        "quote": "Whether this event was already processed (idempotency hit). If true, the event was not queued again. */ duplicate: boolean; /** * The IDs of destinations that matched this event. Empty array if no destinations matched. */ destinationIds: Array<string>; };"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/internal/apirouter/publish_handlers.go",
+        "quote": "c.JSON(http.StatusAccepted, result)"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/sdks/outpost-typescript/src/models/components/publishresponse.ts",
+        "quote": "export type PublishResponse = { /** * The ID of the event that was accepted for publishing."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/sdks/outpost-typescript/src/models/components/publishresponse.ts",
+        "quote": "Whether this event was already processed (idempotency hit). If true, the event was not queued again. */ duplicate: boolean; /** * The IDs of destinations that matched this event. Empty array if no destinations matched. */ destinationIds: Array<string>; };"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/sdks/outpost-typescript/src/models/components/publishresponse.ts",
+        "quote": "export type PublishResponse = { /** * The ID of the event that was accepted for publishing."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/sdks/outpost-typescript/src/models/components/publishresponse.ts",
+        "quote": "Whether this event was already processed (idempotency hit). If true, the event was not queued again. */ duplicate: boolean; /** * The IDs of destinations that matched this event. Empty array if no destinations matched. */ destinationIds: Array<string>; };"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/sdks/outpost-typescript/src/models/components/publishresponse.ts",
+        "quote": "export type PublishResponse = { /** * The ID of the event that was accepted for publishing."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/hookdeck/outpost/v1.7.0/sdks/outpost-typescript/src/models/components/publishresponse.ts",
+        "quote": "Whether this event was already processed (idempotency hit). If true, the event was not queued again. */ duplicate: boolean; /** * The IDs of destinations that matched this event. Empty array if no destinations matched. */ destinationIds: Array<string>; };"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "HookDeploy",
+   "group": "C",
+   "kind": "webhook service",
+   "version": "API v1 (documentation read 2026-10-29)",
+   "version_evidence": [
+    {
+     "url": "https://hookdeploy.dev/llms.txt",
+     "quote": "Base URL: https://api.hookdeploy.dev/v1 Auth: Bearer token (API key from dashboard)"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "Hacker News",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "forward to a destination (HTTPS URL or private destination)",
+     "Q0": {
+      "fields": [
+       "the captured HTTP method",
+       "the original headers (proxy headers excluded)",
+       "headers injected for the destination",
+       "the original body, or the body after a per-destination transformation",
+       "the captured query parameters (not the endpoint token)",
+       "x-hookdeploy-forward",
+       "x-hookdeploy-destination",
+       "x-hookdeploy-request-id"
+      ],
+      "evidence": [
+       {
+        "url": "https://hookdeploy.dev/docs/concepts/forwarding",
+        "quote": "HookDeploy forwards from the original inbound request , not from the privacy-filtered storage copy: The captured HTTP method (or your override) Captured headers, excluding proxy headers"
+       },
+       {
+        "url": "https://hookdeploy.dev/docs/concepts/forwarding",
+        "quote": "Your injected headers, which replace any original header with the same name The original request body (then any per-destination transformation) Captured query parameters, except the endpoint token"
+       },
+       {
+        "url": "https://hookdeploy.dev/docs/concepts/forwarding",
+        "quote": "Plus HookDeploy adds: x-hookdeploy-forward: 1 x-hookdeploy-destination: {destination name} x-hookdeploy-request-id: {request id}"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://hookdeploy.dev/docs/api/requests",
+        "quote": "\"body_size_bytes\" : 563 , \"source_ip\" : \"1.2.3.4\" , \"captured_at\" : \"2026-05-24T12:00:00Z\" , \"has_body\" : true"
+       }
+      ],
+      "field": "captured_at (request record, API)",
+      "resolution": "s",
+      "note": "The API examples show whole seconds; the actual resolution is not stated. The time is kept with every captured request and is not part of the forwarded request."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://hookdeploy.dev/docs/concepts/forwarding",
+        "quote": "HookDeploy forwards from the original inbound request , not from the privacy-filtered storage copy: The captured HTTP method (or your override) Captured headers, excluding proxy headers"
+       },
+       {
+        "url": "https://hookdeploy.dev/docs/concepts/forwarding",
+        "quote": "Your injected headers, which replace any original header with the same name The original request body (then any per-destination transformation) Captured query parameters, except the endpoint token"
+       },
+       {
+        "url": "https://hookdeploy.dev/docs/concepts/forwarding",
+        "quote": "Plus HookDeploy adds: x-hookdeploy-forward: 1 x-hookdeploy-destination: {destination name} x-hookdeploy-request-id: {request id}"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "send time",
+      "evidence": [
+       {
+        "url": "https://hookdeploy.dev/docs/api/requests",
+        "quote": "forwarded_at ISO 8601 timestamp of the forwarding attempt transformation_applied Whether a destination transformation rule was applied before forwarding."
+       },
+       {
+        "url": "https://hookdeploy.dev/docs/concepts/forwarding",
+        "quote": "Forward results (status code, response time, errors) are recorded per destination"
+       }
+      ],
+      "field": "forwarded_at (forward result, API)",
+      "resolution": "s",
+      "note": "Kept for each forwarding attempt and returned by the API to the account holder; the forwarded request has no time of its own."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://hookdeploy.dev/docs/concepts/forwarding",
+        "quote": "HookDeploy forwards from the original inbound request , not from the privacy-filtered storage copy: The captured HTTP method (or your override) Captured headers, excluding proxy headers"
+       },
+       {
+        "url": "https://hookdeploy.dev/docs/concepts/forwarding",
+        "quote": "Your injected headers, which replace any original header with the same name The original request body (then any per-destination transformation) Captured query parameters, except the endpoint token"
+       },
+       {
+        "url": "https://hookdeploy.dev/docs/concepts/forwarding",
+        "quote": "Plus HookDeploy adds: x-hookdeploy-forward: 1 x-hookdeploy-destination: {destination name} x-hookdeploy-request-id: {request id}"
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://hookdeploy.dev/docs/concepts/forwarding",
+        "quote": "HookDeploy forwards from the original inbound request , not from the privacy-filtered storage copy: The captured HTTP method (or your override) Captured headers, excluding proxy headers"
+       },
+       {
+        "url": "https://hookdeploy.dev/docs/concepts/forwarding",
+        "quote": "Your injected headers, which replace any original header with the same name The original request body (then any per-destination transformation) Captured query parameters, except the endpoint token"
+       },
+       {
+        "url": "https://hookdeploy.dev/docs/concepts/forwarding",
+        "quote": "Plus HookDeploy adds: x-hookdeploy-forward: 1 x-hookdeploy-destination: {destination name} x-hookdeploy-request-id: {request id}"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per message",
+      "evidence": [
+       {
+        "url": "https://hookdeploy.dev/docs/api/requests",
+        "quote": "\"body_size_bytes\" : 563 , \"source_ip\" : \"1.2.3.4\" , \"captured_at\" : \"2026-05-24T12:00:00Z\" , \"has_body\" : true"
+       },
+       {
+        "url": "https://hookdeploy.dev/docs/api/requests",
+        "quote": "forwarded_at ISO 8601 timestamp of the forwarding attempt transformation_applied Whether a destination transformation rule was applied before forwarding."
+       },
+       {
+        "url": "https://hookdeploy.dev/docs/api/requests",
+        "quote": "response_time_ms Round-trip time in milliseconds success true if status code is 2xx"
+       }
+      ],
+      "note": "Each captured request carries captured_at and, per attempt, forwarded_at and response_time_ms in the account's API and dashboard."
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://hookdeploy.dev/docs/concepts/forwarding",
+        "quote": "HookDeploy forwards the original request body to each enabled destination in parallel"
+       }
+      ],
+      "note": "HookDeploy pushes each captured request to every enabled destination (an HTTPS URL, or a private destination reached over an outbound connection); the destination sends no request or credit."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://hookdeploy.dev/docs/api/requests",
+       "read": "The requests API returns forwarded_at, the timestamp of the forwarding attempt, to the account holder, while the forwarded request itself adds only the x-hookdeploy-forward, -destination and -request-id headers.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://hookdeploy.dev/docs/concepts/forwarding",
+       "read": "HookDeploy forwards each captured request to every enabled destination in parallel, to its URL or over the private destination's outbound connection, and the destination sends no request or credit.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "capture endpoint (POST from the sender)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "HTTP 200 OK, or the endpoint's configured custom response"
+      ],
+      "evidence": [
+       {
+        "url": "https://hookdeploy.dev/docs/concepts/forwarding",
+        "quote": "Once a webhook is captured, HookDeploy responds to the sender right away with 200 OK, or with your custom response"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://hookdeploy.dev/docs/concepts/forwarding",
+        "quote": "Once a webhook is captured, HookDeploy responds to the sender right away with 200 OK, or with your custom response"
+       }
+      ],
+      "note": "The documentation describes the reply only as a 200 OK or a custom response and names no time field."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://hookdeploy.dev/docs/concepts/forwarding",
+        "quote": "Once a webhook is captured, HookDeploy responds to the sender right away with 200 OK, or with your custom response"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://hookdeploy.dev/docs/concepts/forwarding",
+        "quote": "Once a webhook is captured, HookDeploy responds to the sender right away with 200 OK, or with your custom response"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  }
+ ]
+}

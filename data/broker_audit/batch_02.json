@@ -659,6 +659,400 @@
       }
      ]
     }
+   ],
+   "producers": [
+    {
+     "interface": "AMQP 0-9-1 basic.publish, channel not in confirm mode",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-rabbitmq-0.9.1.json",
+        "quote": "{\"type\": \"bit\", \"name\": \"mandatory\", \"default-value\": false}, {\"type\": \"bit\", \"name\": \"immediate\", \"default-value\": false}], \"name\": \"publish\"}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/confirms.md",
+        "quote": "cannot assume that the message has reached the server and was successfully processed. It could have been lost along the way or its delivery can be significantly delayed."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/confirms.md",
+        "quote": "Using standard AMQP 0-9-1, the only way to guarantee that a message isn't lost is by using transactions"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-rabbitmq-0.9.1.json",
+        "quote": "{\"id\": 21, \"arguments\": [], \"name\": \"commit-ok\"}"
+       }
+      ],
+      "note": "Outside confirm mode the broker sends nothing back for a publish; a mandatory message it cannot route comes back as basic.return, which returns the message rather than acknowledging it. A transactional channel gets tx.commit-ok for each commit, a method with no fields."
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "AMQP 0-9-1 publisher confirms (confirm.select)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "basic.ack: delivery-tag, multiple",
+       "basic.nack: delivery-tag, multiple, requeue",
+       "basic.return (unroutable mandatory message, sent before its ack): reply-code, reply-text, exchange, routing-key, with the message"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-rabbitmq-0.9.1.json",
+        "quote": "{\"id\": 80, \"arguments\": [{\"type\": \"longlong\", \"name\": \"delivery-tag\", \"default-value\": 0}, {\"type\": \"bit\", \"name\": \"multiple\", \"default-value\": false}], \"name\": \"ack\"}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-rabbitmq-0.9.1.json",
+        "quote": "{\"id\": 120, \"arguments\": [{\"type\": \"longlong\", \"name\": \"delivery-tag\", \"default-value\": 0}, {\"type\": \"bit\", \"name\": \"multiple\", \"default-value\": false}, {\"type\": \"bit\", \"name\": \"requeue\", \"default-value\": true}], \"name\": \"nack\"}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-rabbitmq-0.9.1.json",
+        "quote": "{\"content\": true, \"id\": 50, \"arguments\": [{\"type\": \"short\", \"name\": \"reply-code\"}, {\"type\": \"shortstr\", \"name\": \"reply-text\", \"default-value\": \"\"}, {\"domain\": \"exchange-name\", \"name\": \"exchange\"}, {\"type\": \"shortstr\", \"name\": \"routing-key\"}], \"name\": \"return\"}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/confirms.md",
+        "quote": "The broker then confirms messages as it handles them by sending a `basic.ack` on the same channel. The `delivery-tag` field contains the sequence number of the confirmed message."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-website/a284a068ab720672b40ceed40f3f151d9829fb70/versioned_docs/version-4.4/confirms.md",
+        "quote": "Once a channel is in confirm mode, both the broker and the client count messages (counting starts at 1 on the first `confirm.select`)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_channel.erl",
+        "quote": "send_confirms([MsgSeqNo], _, State) -> ok = send(#'basic.ack'{delivery_tag = MsgSeqNo}, State), State;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_channel.erl",
+        "quote": "fun(MsgSeqNo, Multiple) -> #'basic.ack'{delivery_tag = MsgSeqNo, multiple = Multiple} end, State)."
+       }
+      ],
+      "note": "delivery-tag is the channel's publish sequence number, counted from 1 at confirm.select; with multiple set, the ack covers every message up to it."
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-rabbitmq-0.9.1.json",
+        "quote": "{\"id\": 80, \"arguments\": [{\"type\": \"longlong\", \"name\": \"delivery-tag\", \"default-value\": 0}, {\"type\": \"bit\", \"name\": \"multiple\", \"default-value\": false}], \"name\": \"ack\"}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-rabbitmq-0.9.1.json",
+        "quote": "{\"id\": 120, \"arguments\": [{\"type\": \"longlong\", \"name\": \"delivery-tag\", \"default-value\": 0}, {\"type\": \"bit\", \"name\": \"multiple\", \"default-value\": false}, {\"type\": \"bit\", \"name\": \"requeue\", \"default-value\": true}], \"name\": \"nack\"}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_channel.erl",
+        "quote": "send_confirms([MsgSeqNo], _, State) -> ok = send(#'basic.ack'{delivery_tag = MsgSeqNo}, State), State;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_channel.erl",
+        "quote": "fun(MsgSeqNo, Multiple) -> #'basic.ack'{delivery_tag = MsgSeqNo, multiple = Multiple} end, State)."
+       }
+      ],
+      "note": "The broker always records the message's arrival (rts) and can deliver it to consumers by configuration, but a confirm carries only the sequence number and the multiple flag."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-rabbitmq-0.9.1.json",
+        "quote": "{\"id\": 80, \"arguments\": [{\"type\": \"longlong\", \"name\": \"delivery-tag\", \"default-value\": 0}, {\"type\": \"bit\", \"name\": \"multiple\", \"default-value\": false}], \"name\": \"ack\"}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-rabbitmq-0.9.1.json",
+        "quote": "{\"id\": 120, \"arguments\": [{\"type\": \"longlong\", \"name\": \"delivery-tag\", \"default-value\": 0}, {\"type\": \"bit\", \"name\": \"multiple\", \"default-value\": false}, {\"type\": \"bit\", \"name\": \"requeue\", \"default-value\": true}], \"name\": \"nack\"}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_channel.erl",
+        "quote": "send_confirms([MsgSeqNo], _, State) -> ok = send(#'basic.ack'{delivery_tag = MsgSeqNo}, State), State;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_channel.erl",
+        "quote": "fun(MsgSeqNo, Multiple) -> #'basic.ack'{delivery_tag = MsgSeqNo, multiple = Multiple} end, State)."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-rabbitmq-0.9.1.json",
+        "quote": "{\"id\": 80, \"arguments\": [{\"type\": \"longlong\", \"name\": \"delivery-tag\", \"default-value\": 0}, {\"type\": \"bit\", \"name\": \"multiple\", \"default-value\": false}], \"name\": \"ack\"}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-rabbitmq-0.9.1.json",
+        "quote": "{\"id\": 120, \"arguments\": [{\"type\": \"longlong\", \"name\": \"delivery-tag\", \"default-value\": 0}, {\"type\": \"bit\", \"name\": \"multiple\", \"default-value\": false}, {\"type\": \"bit\", \"name\": \"requeue\", \"default-value\": true}], \"name\": \"nack\"}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_channel.erl",
+        "quote": "send_confirms([MsgSeqNo], _, State) -> ok = send(#'basic.ack'{delivery_tag = MsgSeqNo}, State), State;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_channel.erl",
+        "quote": "fun(MsgSeqNo, Multiple) -> #'basic.ack'{delivery_tag = MsgSeqNo, multiple = Multiple} end, State)."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "AMQP 1.0, unsettled transfers (disposition)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "disposition frame: role, first, last, settled, state, batchable",
+       "state (outcome): accepted (no fields), released (no fields) or rejected (error)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/transport.xml",
+        "quote": "<type name=\"disposition\" class=\"composite\" source=\"list\" provides=\"frame\"> <descriptor name=\"amqp:disposition:list\" code=\"0x00000000:0x00000015\"/> <field name=\"role\" type=\"role\" mandatory=\"true\"/> <field name=\"first\" type=\"delivery-number\" mandatory=\"true\"/>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/transport.xml",
+        "quote": "<field name=\"last\" type=\"delivery-number\"/> <field name=\"settled\" type=\"boolean\" default=\"false\"/> <field name=\"state\" type=\"*\" requires=\"delivery-state\"/> <field name=\"batchable\" type=\"boolean\" default=\"false\"/> </type> <type name=\"detach\""
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/messaging.xml",
+        "quote": "<type name=\"accepted\" class=\"composite\" source=\"list\" provides=\"delivery-state, outcome\"> <descriptor name=\"amqp:accepted:list\" code=\"0x00000000:0x00000024\"/> </type>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/messaging.xml",
+        "quote": "<descriptor name=\"amqp:released:list\" code=\"0x00000000:0x00000026\"/> </type>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/messaging.xml",
+        "quote": "<descriptor name=\"amqp:rejected:list\" code=\"0x00000000:0x00000025\"/> <field name=\"error\" type=\"error\"/> </type>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_amqp_session.erl",
+        "quote": "send_dispositions(AcceptedIds, #'v1_0.accepted'{}, ?AMQP_ROLE_RECEIVER, true, Writer, ChannelNum),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_amqp_session.erl",
+        "quote": "send_dispositions(ReleasedIds, #'v1_0.released'{}, ?AMQP_ROLE_RECEIVER, true, Writer, ChannelNum),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_amqp_session.erl",
+        "quote": "#'v1_0.disposition'{role = Role, settled = Settled, state = DeliveryState, first = ?UINT(First),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_amqp_session.erl",
+        "quote": "state = #'v1_0.rejected'{error = Error}}."
+       }
+      ],
+      "note": "The session settles confirmed transfers with a disposition sent by the receiver role; contiguous delivery ids share one disposition (first, last)."
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/transport.xml",
+        "quote": "<type name=\"disposition\" class=\"composite\" source=\"list\" provides=\"frame\"> <descriptor name=\"amqp:disposition:list\" code=\"0x00000000:0x00000015\"/> <field name=\"role\" type=\"role\" mandatory=\"true\"/> <field name=\"first\" type=\"delivery-number\" mandatory=\"true\"/>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/transport.xml",
+        "quote": "<field name=\"last\" type=\"delivery-number\"/> <field name=\"settled\" type=\"boolean\" default=\"false\"/> <field name=\"state\" type=\"*\" requires=\"delivery-state\"/> <field name=\"batchable\" type=\"boolean\" default=\"false\"/> </type> <type name=\"detach\""
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/messaging.xml",
+        "quote": "<type name=\"accepted\" class=\"composite\" source=\"list\" provides=\"delivery-state, outcome\"> <descriptor name=\"amqp:accepted:list\" code=\"0x00000000:0x00000024\"/> </type>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_amqp_session.erl",
+        "quote": "send_dispositions(AcceptedIds, #'v1_0.accepted'{}, ?AMQP_ROLE_RECEIVER, true, Writer, ChannelNum),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_amqp_session.erl",
+        "quote": "#'v1_0.disposition'{role = Role, settled = Settled, state = DeliveryState, first = ?UINT(First),"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/transport.xml",
+        "quote": "<type name=\"disposition\" class=\"composite\" source=\"list\" provides=\"frame\"> <descriptor name=\"amqp:disposition:list\" code=\"0x00000000:0x00000015\"/> <field name=\"role\" type=\"role\" mandatory=\"true\"/> <field name=\"first\" type=\"delivery-number\" mandatory=\"true\"/>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/transport.xml",
+        "quote": "<field name=\"last\" type=\"delivery-number\"/> <field name=\"settled\" type=\"boolean\" default=\"false\"/> <field name=\"state\" type=\"*\" requires=\"delivery-state\"/> <field name=\"batchable\" type=\"boolean\" default=\"false\"/> </type> <type name=\"detach\""
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/messaging.xml",
+        "quote": "<type name=\"accepted\" class=\"composite\" source=\"list\" provides=\"delivery-state, outcome\"> <descriptor name=\"amqp:accepted:list\" code=\"0x00000000:0x00000024\"/> </type>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_amqp_session.erl",
+        "quote": "send_dispositions(AcceptedIds, #'v1_0.accepted'{}, ?AMQP_ROLE_RECEIVER, true, Writer, ChannelNum),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_amqp_session.erl",
+        "quote": "#'v1_0.disposition'{role = Role, settled = Settled, state = DeliveryState, first = ?UINT(First),"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/transport.xml",
+        "quote": "<type name=\"disposition\" class=\"composite\" source=\"list\" provides=\"frame\"> <descriptor name=\"amqp:disposition:list\" code=\"0x00000000:0x00000015\"/> <field name=\"role\" type=\"role\" mandatory=\"true\"/> <field name=\"first\" type=\"delivery-number\" mandatory=\"true\"/>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/transport.xml",
+        "quote": "<field name=\"last\" type=\"delivery-number\"/> <field name=\"settled\" type=\"boolean\" default=\"false\"/> <field name=\"state\" type=\"*\" requires=\"delivery-state\"/> <field name=\"batchable\" type=\"boolean\" default=\"false\"/> </type> <type name=\"detach\""
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_codegen/amqp-1.0/messaging.xml",
+        "quote": "<type name=\"accepted\" class=\"composite\" source=\"list\" provides=\"delivery-state, outcome\"> <descriptor name=\"amqp:accepted:list\" code=\"0x00000000:0x00000024\"/> </type>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_amqp_session.erl",
+        "quote": "send_dispositions(AcceptedIds, #'v1_0.accepted'{}, ?AMQP_ROLE_RECEIVER, true, Writer, ChannelNum),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_amqp_session.erl",
+        "quote": "#'v1_0.disposition'{role = Role, settled = Settled, state = DeliveryState, first = ?UINT(First),"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "AMQP 1.0, pre-settled transfers",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbit/src/rabbit_amqp_session.erl",
+        "quote": "Ids1 = case Settled of true -> Ids0; false -> [DeliveryId | Ids0] end,"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "For example if the sending application settles the delivery before sending it, this results in an at-most-once guarantee."
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "If this delivery makes it to the receiver, the receiver clearly has no obligation to respond with updates of the receiver's delivery state, as they would be meaningless and ignored by the sender."
+       }
+      ],
+      "note": "A transfer the publisher settles at sending is never added to the dispositions the session sends."
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "streams (stream protocol Publish)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "PublishConfirm: key, version, publisher id, publishing ids[]",
+       "PublishError: key, version, publisher id, [publishing id, code]"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/docs/PROTOCOL.adoc",
+        "quote": "=== PublishConfirm ``` PublishConfirm => Key Version PublishingIds Key => uint16 // 0x0003 Version => uint16 PublisherId => uint8 PublishingIds => [uint64] // to correlate with the messages sent ```"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/docs/PROTOCOL.adoc",
+        "quote": "=== PublishError ``` PublishError => Key Version [PublishingError] Key => uint16 // 0x0004 Version => uint16 PublisherId => uint8 PublishingError => PublishingId Code PublishingId => uint64 Code => uint16 // code to identify the problem ```"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream_common/src/rabbit_stream_core.erl",
+        "quote": "wrap_in_frame([<<?REQUEST:1, ?COMMAND_PUBLISH_CONFIRM:15, ?VERSION_1:16, PublisherId:8, PublishingIdCount:32>>, PubIds]);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/src/rabbit_stream_reader.erl",
+        "quote": "Command = {publish_confirm, PublisherId, PublishingIds}, send(Transport, S, rabbit_stream_core:frame(Command)),"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/docs/PROTOCOL.adoc",
+        "quote": "=== PublishConfirm ``` PublishConfirm => Key Version PublishingIds Key => uint16 // 0x0003 Version => uint16 PublisherId => uint8 PublishingIds => [uint64] // to correlate with the messages sent ```"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream_common/src/rabbit_stream_core.erl",
+        "quote": "wrap_in_frame([<<?REQUEST:1, ?COMMAND_PUBLISH_CONFIRM:15, ?VERSION_1:16, PublisherId:8, PublishingIdCount:32>>, PubIds]);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/src/rabbit_stream_reader.erl",
+        "quote": "Command = {publish_confirm, PublisherId, PublishingIds}, send(Transport, S, rabbit_stream_core:frame(Command)),"
+       }
+      ],
+      "note": "The chunk timestamp the stream records (Q1 of the stream mode) is not put in the confirm."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/docs/PROTOCOL.adoc",
+        "quote": "=== PublishConfirm ``` PublishConfirm => Key Version PublishingIds Key => uint16 // 0x0003 Version => uint16 PublisherId => uint8 PublishingIds => [uint64] // to correlate with the messages sent ```"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream_common/src/rabbit_stream_core.erl",
+        "quote": "wrap_in_frame([<<?REQUEST:1, ?COMMAND_PUBLISH_CONFIRM:15, ?VERSION_1:16, PublisherId:8, PublishingIdCount:32>>, PubIds]);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/src/rabbit_stream_reader.erl",
+        "quote": "Command = {publish_confirm, PublisherId, PublishingIds}, send(Transport, S, rabbit_stream_core:frame(Command)),"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/docs/PROTOCOL.adoc",
+        "quote": "=== PublishConfirm ``` PublishConfirm => Key Version PublishingIds Key => uint16 // 0x0003 Version => uint16 PublisherId => uint8 PublishingIds => [uint64] // to correlate with the messages sent ```"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream_common/src/rabbit_stream_core.erl",
+        "quote": "wrap_in_frame([<<?REQUEST:1, ?COMMAND_PUBLISH_CONFIRM:15, ?VERSION_1:16, PublisherId:8, PublishingIdCount:32>>, PubIds]);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.4.0/deps/rabbitmq_stream/src/rabbit_stream_reader.erl",
+        "quote": "Command = {publish_confirm, PublisherId, PublishingIds}, send(Transport, S, rabbit_stream_core:frame(Command)),"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
    ]
   },
   {
@@ -1251,6 +1645,252 @@
       }
      ]
     }
+   ],
+   "producers": [
+    {
+     "interface": "core publish (PUB, HPUB), verbose false",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "Most clients set `verbose` to `false` by default. This means that the server should not confirm each message it receives"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "| `verbose` | Turns on [`+OK`](./#okerr) protocol acknowledgements. | bool | true |"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/client.go",
+        "quote": "func (c *client) processInboundClientMsg(msg []byte) (bool, bool) {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/client.go",
+        "quote": "if c.opts.Verbose { c.sendOK() }"
+       }
+      ],
+      "note": "Most clients connect with verbose set to false, and then the server sends nothing back for a publish."
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "core publish (PUB, HPUB), verbose true",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "+OK (a protocol line with no fields)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "When the `verbose` connection option is set to `true` (the default value), the server acknowledges each well-formed protocol message from the client with a `+OK` message."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/client.go",
+        "quote": "okProto = \"+OK\" + _CRLF_"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/client.go",
+        "quote": "func (c *client) processInboundClientMsg(msg []byte) (bool, bool) {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/client.go",
+        "quote": "if c.opts.Verbose { c.sendOK() }"
+       }
+      ],
+      "note": "With verbose true (the protocol's default when a client omits it) the server answers each well-formed protocol message, a publish included, with +OK."
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/client.go",
+        "quote": "okProto = \"+OK\" + _CRLF_"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "When the `verbose` connection option is set to `true` (the default value), the server acknowledges each well-formed protocol message from the client with a `+OK` message."
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/client.go",
+        "quote": "okProto = \"+OK\" + _CRLF_"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "When the `verbose` connection option is set to `true` (the default value), the server acknowledges each well-formed protocol message from the client with a `+OK` message."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/client.go",
+        "quote": "okProto = \"+OK\" + _CRLF_"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats.docs/f115becf6563e3bbe16bb94cbf87bfceb84199c1/reference/nats-protocol/nats-protocol/README.md",
+        "quote": "When the `verbose` connection option is set to `true` (the default value), the server acknowledges each well-formed protocol message from the client with a `+OK` message."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "JetStream publish with a reply subject (PubAck)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "PubAck (JSON): stream, seq, domain (when set), duplicate (on a duplicate), val (counter streams), batch and count (on an atomic batch's commit)",
+       "on error: error (code, err_code, description) beside the PubAck fields",
+       "fast batch publishing: flow messages BatchFlowAck (type, seq, msgs), BatchFlowGap (type, last_seq, seq) and BatchFlowErr (type, seq, error), then a PubAck"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "type PubAck struct { Stream string `json:\"stream\"` Sequence uint64 `json:\"seq\"` Domain string `json:\"domain,omitempty\"` Duplicate bool `json:\"duplicate,omitempty\"` Value string `json:\"val,omitempty\"` BatchId string `json:\"batch,omitempty\"` BatchSize uint64 `json:\"count,omitempty\"` }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "type JSPubAckResponse struct { Error *ApiError `json:\"error,omitempty\"` *PubAck }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "mset.pubAck = fmt.Appendf(nil, \"{%q:%q,%q:%q,%q:\", \"stream\", cfg.Name, \"domain\", domain, \"seq\")"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "response = append(pubAck, strconv.FormatUint(seq, 10)...)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "canRespond := doAck && len(reply) > 0 && isLeader"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "type BatchFlowAck struct { // Type: \"ack\" Type string `json:\"type\"`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "Sequence uint64 `json:\"seq\"` // Messages indicates acknowledgements will be sent every N messages. Messages uint16 `json:\"msgs\"` }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "ExpectedLastSequence uint64 `json:\"last_seq\"` // CurrentSequence is the sequence of the message that just came in and detected the gap. CurrentSequence uint64 `json:\"seq\"` }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "type PubAck struct { Stream string `json:\"stream\"` Sequence uint64 `json:\"seq\"` Domain string `json:\"domain,omitempty\"` Duplicate bool `json:\"duplicate,omitempty\"` Value string `json:\"val,omitempty\"` BatchId string `json:\"batch,omitempty\"` BatchSize uint64 `json:\"count,omitempty\"` }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "mset.pubAck = fmt.Appendf(nil, \"{%q:%q,%q:%q,%q:\", \"stream\", cfg.Name, \"domain\", domain, \"seq\")"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "response = append(pubAck, strconv.FormatUint(seq, 10)...)"
+       }
+      ],
+      "note": "The stored message's timestamp (ns), which consumers receive in the ack subject, is not put in the PubAck."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "type PubAck struct { Stream string `json:\"stream\"` Sequence uint64 `json:\"seq\"` Domain string `json:\"domain,omitempty\"` Duplicate bool `json:\"duplicate,omitempty\"` Value string `json:\"val,omitempty\"` BatchId string `json:\"batch,omitempty\"` BatchSize uint64 `json:\"count,omitempty\"` }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "mset.pubAck = fmt.Appendf(nil, \"{%q:%q,%q:%q,%q:\", \"stream\", cfg.Name, \"domain\", domain, \"seq\")"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "response = append(pubAck, strconv.FormatUint(seq, 10)...)"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "type PubAck struct { Stream string `json:\"stream\"` Sequence uint64 `json:\"seq\"` Domain string `json:\"domain,omitempty\"` Duplicate bool `json:\"duplicate,omitempty\"` Value string `json:\"val,omitempty\"` BatchId string `json:\"batch,omitempty\"` BatchSize uint64 `json:\"count,omitempty\"` }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "mset.pubAck = fmt.Appendf(nil, \"{%q:%q,%q:%q,%q:\", \"stream\", cfg.Name, \"domain\", domain, \"seq\")"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "response = append(pubAck, strconv.FormatUint(seq, 10)...)"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "JetStream publish without a reply subject, or to a stream with no_ack",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "canRespond := doAck && len(reply) > 0 && isLeader"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "js, jsa, doAck := mset.js, mset.jsa, !mset.cfg.NoAck"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-server/v2.15.2/server/stream.go",
+        "quote": "NoAck bool `json:\"no_ack,omitempty\"`"
+       }
+      ],
+      "note": "The stream answers only when the publish has a reply subject and the stream's no_ack is false."
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    }
    ]
   },
   {
@@ -1483,6 +2123,94 @@
       }
      ]
     }
+   ],
+   "producers": [
+    {
+     "interface": "publish (PubMsg, answered by PubAck)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "PubAck: guid, error (empty when the publish succeeded)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "message PubAck { string guid = 1; // guid string error = 2; // err string, empty/omitted if no error }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/go.mod",
+        "quote": "github.com/nats-io/stan.go v0.10.4"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "func (s *StanServer) ackPublisher(iopm *ioPendingMsg) { msgAck := &iopm.pa msgAck.Guid = iopm.pm.Guid"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "s.ncs.Publish(iopm.m.Reply, s.tmpBuf[:n])"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "badMsgAck := &pb.PubAck{Guid: guid, Error: err.Error()}"
+       }
+      ],
+      "note": "The server publishes the PubAck to the reply subject of the publish."
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "message PubAck { string guid = 1; // guid string error = 2; // err string, empty/omitted if no error }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "func (s *StanServer) ackPublisher(iopm *ioPendingMsg) { msgAck := &iopm.pa msgAck.Guid = iopm.pm.Guid"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "s.ncs.Publish(iopm.m.Reply, s.tmpBuf[:n])"
+       }
+      ],
+      "note": "The message's stored timestamp (ns), delivered to subscribers, is not put in the PubAck."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "message PubAck { string guid = 1; // guid string error = 2; // err string, empty/omitted if no error }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "func (s *StanServer) ackPublisher(iopm *ioPendingMsg) { msgAck := &iopm.pa msgAck.Guid = iopm.pm.Guid"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "s.ncs.Publish(iopm.m.Reply, s.tmpBuf[:n])"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/stan.go/v0.10.4/pb/protocol.proto",
+        "quote": "message PubAck { string guid = 1; // guid string error = 2; // err string, empty/omitted if no error }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "func (s *StanServer) ackPublisher(iopm *ioPendingMsg) { msgAck := &iopm.pa msgAck.Guid = iopm.pm.Guid"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nats-io/nats-streaming-server/v0.25.6/server/server.go",
+        "quote": "s.ncs.Publish(iopm.m.Reply, s.tmpBuf[:n])"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
    ]
   },
   {
@@ -1694,6 +2422,127 @@
        "agrees": true
       }
      ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "PUB, MPUB and DPUB over TCP (also /pub and /mpub over HTTP)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "response frame: size, frame type 0 (response), data OK",
+       "error frame (frame type 1): E_INVALID, E_BAD_TOPIC, E_BAD_BODY, E_BAD_MESSAGE, E_PUB_FAILED, E_MPUB_FAILED or E_DPUB_FAILED",
+       "HTTP /pub and /mpub: body OK"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsqio.github.io/379c3b493cd08dd868d4adb27274883267f7065d/_posts/2013-01-01-tcp_protocol_spec.md",
+        "quote": "FrameTypeResponse int32 = 0 FrameTypeError int32 = 1 FrameTypeMessage int32 = 2"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsqio.github.io/379c3b493cd08dd868d4adb27274883267f7065d/_posts/2013-01-01-tcp_protocol_spec.md",
+        "quote": "Success Response: OK Error Responses: E_INVALID E_BAD_TOPIC E_BAD_MESSAGE E_PUB_FAILED"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsqio.github.io/379c3b493cd08dd868d4adb27274883267f7065d/_posts/2013-01-01-tcp_protocol_spec.md",
+        "quote": "Success Response: OK Error Responses: E_INVALID E_BAD_TOPIC E_BAD_BODY E_BAD_MESSAGE E_MPUB_FAILED"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsqio.github.io/379c3b493cd08dd868d4adb27274883267f7065d/_posts/2013-01-01-tcp_protocol_spec.md",
+        "quote": "Success Response: OK Error Responses: E_INVALID E_BAD_TOPIC E_BAD_MESSAGE E_DPUB_FAILED"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "var okBytes = []byte(\"OK\")"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "func (p *protocolV2) PUB(client *clientV2, params [][]byte) ([]byte, error) {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "return okBytes, nil"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "err = p.Send(client, frameTypeResponse, response)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/http.go",
+        "quote": "func (s *httpServer) doPUB(w http.ResponseWriter, req *http.Request, ps httprouter.Params) (interface{}, error) {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/http.go",
+        "quote": "return \"OK\", nil"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsqio.github.io/379c3b493cd08dd868d4adb27274883267f7065d/_posts/2013-01-01-tcp_protocol_spec.md",
+        "quote": "Success Response: OK Error Responses: E_INVALID E_BAD_TOPIC E_BAD_MESSAGE E_PUB_FAILED"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "var okBytes = []byte(\"OK\")"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "return okBytes, nil"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "err = p.Send(client, frameTypeResponse, response)"
+       }
+      ],
+      "note": "nsqd stamps each message with its receive time (ns) for consumers, but the response is the constant OK."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsqio.github.io/379c3b493cd08dd868d4adb27274883267f7065d/_posts/2013-01-01-tcp_protocol_spec.md",
+        "quote": "Success Response: OK Error Responses: E_INVALID E_BAD_TOPIC E_BAD_MESSAGE E_PUB_FAILED"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "var okBytes = []byte(\"OK\")"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "return okBytes, nil"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "err = p.Send(client, frameTypeResponse, response)"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsqio.github.io/379c3b493cd08dd868d4adb27274883267f7065d/_posts/2013-01-01-tcp_protocol_spec.md",
+        "quote": "Success Response: OK Error Responses: E_INVALID E_BAD_TOPIC E_BAD_MESSAGE E_PUB_FAILED"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "var okBytes = []byte(\"OK\")"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "return okBytes, nil"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/nsqio/nsq/v1.3.0/nsqd/protocol_v2.go",
+        "quote": "err = p.Send(client, frameTypeResponse, response)"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
     }
    ]
   },
@@ -2263,6 +3112,256 @@
        "agrees": true
       }
      ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "XADD (streams)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "the added entry's ID, <ms>-<seq> (bulk string)",
+       "or null with NOMKSTREAM when the key does not exist"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xadd.json",
+        "quote": "\"reply_schema\": { \"oneOf\":[ { \"description\": \"The ID of the added entry. The ID is the one auto-generated if * is passed as ID argument, otherwise the command just returns the same ID specified by the user during insertion.\", \"type\": \"string\", \"pattern\": \"[0-9]+-[0-9]+\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xadd.json",
+        "quote": "{ \"description\": \"The NOMKSTREAM option is given and the key doesn't exist.\", \"type\": \"null\" }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_stream.c",
+        "quote": "sds replyid = createStreamIDString(&id); addReplyBulkCBuffer(c, replyid, sdslen(replyid));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/client-reply.json",
+        "quote": "\"description\": \"When called with either OFF or SKIP subcommands, no reply is made. When called with ON, reply is OK.\""
+       }
+      ],
+      "note": "With CLIENT REPLY OFF or SKIP the server sends no reply."
+     },
+     "P1": {
+      "answer": "by configuration",
+      "field": "the reply's entry ID, its milliseconds part",
+      "resolution": "ms",
+      "which": "store time",
+      "setting": "the producer passes * as the XADD ID (auto-generated); an explicit ID or the <ms>-* form carries the producer's time",
+      "default_on": null,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xadd.json",
+        "quote": "\"reply_schema\": { \"oneOf\":[ { \"description\": \"The ID of the added entry. The ID is the one auto-generated if * is passed as ID argument, otherwise the command just returns the same ID specified by the user during insertion.\", \"type\": \"string\", \"pattern\": \"[0-9]+-[0-9]+\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_stream.c",
+        "quote": "void streamNextID(streamID *last_id, streamID *new_id) { uint64_t ms = commandTimeSnapshot(); if (ms > last_id->ms) { new_id->ms = ms; new_id->seq = 0; } else { *new_id = *last_id; streamIncrID(new_id); } }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/server.c",
+        "quote": "if (server.execution_nesting++ == 0 && update_cached_time) { if (us == 0) { us = ustime(); } updateCachedTimeWithUs(0, us); server.cmd_time_snapshot = server.mstime; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/docs/d52abb80c3987c5a95db40a7bdf0965494c89d38/content/commands/xadd.md",
+        "quote": "When Redis auto-generates an ID, the first part is the Unix time in milliseconds of the Redis instance generating the ID."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_stream.c",
+        "quote": "sds replyid = createStreamIDString(&id); addReplyBulkCBuffer(c, replyid, sdslen(replyid));"
+       }
+      ],
+      "note": "XADD has no default ID: * asks the server to make it from the command's time snapshot, taken when the command starts and stored as the entry's ID, never below the stream's last ID (when the clock has not passed the last ID's milliseconds, the ID keeps them and the sequence grows). It is the same stamp consumers receive. Under IDMP (since 8.6.0) a repeated publish is answered with the ID of the entry first added."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xadd.json",
+        "quote": "\"reply_schema\": { \"oneOf\":[ { \"description\": \"The ID of the added entry. The ID is the one auto-generated if * is passed as ID argument, otherwise the command just returns the same ID specified by the user during insertion.\", \"type\": \"string\", \"pattern\": \"[0-9]+-[0-9]+\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_stream.c",
+        "quote": "sds replyid = createStreamIDString(&id); addReplyBulkCBuffer(c, replyid, sdslen(replyid));"
+       }
+      ],
+      "note": "The reply is the ID alone."
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/xadd.json",
+        "quote": "\"reply_schema\": { \"oneOf\":[ { \"description\": \"The ID of the added entry. The ID is the one auto-generated if * is passed as ID argument, otherwise the command just returns the same ID specified by the user during insertion.\", \"type\": \"string\", \"pattern\": \"[0-9]+-[0-9]+\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_stream.c",
+        "quote": "sds replyid = createStreamIDString(&id); addReplyBulkCBuffer(c, replyid, sdslen(replyid));"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_stream.c",
+       "read": "With * the entry ID comes from streamNextID: the milliseconds of commandTimeSnapshot(), the server's clock cached as the command's execution unit starts (server.c), or, when that clock has not passed the stream's last ID, the last ID's milliseconds with the sequence incremented; XADD replies with that ID, and an explicit ID is the producer's. The server makes the ID from its own clock at the command that stores the entry, as reading 4 requires.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "interface": "PUBLISH and SPUBLISH (Pub/Sub)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "integer: the number of clients that received the message (in a cluster, only clients of the publishing node)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/publish.json",
+        "quote": "\"reply_schema\": { \"description\": \"the number of clients that received the message. Note that in a Redis Cluster, only clients that are connected to the same node as the publishing client are included in the count\", \"type\": \"integer\", \"minimum\": 0 }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/spublish.json",
+        "quote": "\"reply_schema\": { \"description\": \"the number of clients that received the message. Note that in a Redis Cluster, only clients that are connected to the same node as the publishing client are included in the count\", \"type\": \"integer\", \"minimum\": 0 }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/pubsub.c",
+        "quote": "addReplyLongLong(c,receivers);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/client-reply.json",
+        "quote": "\"description\": \"When called with either OFF or SKIP subcommands, no reply is made. When called with ON, reply is OK.\""
+       }
+      ],
+      "note": "With CLIENT REPLY OFF or SKIP the server sends no reply."
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/publish.json",
+        "quote": "\"reply_schema\": { \"description\": \"the number of clients that received the message. Note that in a Redis Cluster, only clients that are connected to the same node as the publishing client are included in the count\", \"type\": \"integer\", \"minimum\": 0 }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/pubsub.c",
+        "quote": "addReplyLongLong(c,receivers);"
+       }
+      ],
+      "note": "Pub/Sub keeps no message and no time."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/publish.json",
+        "quote": "\"reply_schema\": { \"description\": \"the number of clients that received the message. Note that in a Redis Cluster, only clients that are connected to the same node as the publishing client are included in the count\", \"type\": \"integer\", \"minimum\": 0 }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/pubsub.c",
+        "quote": "addReplyLongLong(c,receivers);"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/publish.json",
+        "quote": "\"reply_schema\": { \"description\": \"the number of clients that received the message. Note that in a Redis Cluster, only clients that are connected to the same node as the publishing client are included in the count\", \"type\": \"integer\", \"minimum\": 0 }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/pubsub.c",
+        "quote": "addReplyLongLong(c,receivers);"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "LPUSH and RPUSH (lists)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "integer: the length of the list after the push"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/lpush.json",
+        "quote": "\"reply_schema\": { \"description\": \"Length of the list after the push operations.\", \"type\": \"integer\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/rpush.json",
+        "quote": "\"reply_schema\": { \"description\": \"Length of the list after the push operations.\", \"type\": \"integer\", \"minimum\": 1 },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_list.c",
+        "quote": "llen = listTypeLength(lobj); addReplyLongLong(c, llen);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/client-reply.json",
+        "quote": "\"description\": \"When called with either OFF or SKIP subcommands, no reply is made. When called with ON, reply is OK.\""
+       }
+      ],
+      "note": "With CLIENT REPLY OFF or SKIP the server sends no reply."
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/lpush.json",
+        "quote": "\"reply_schema\": { \"description\": \"Length of the list after the push operations.\", \"type\": \"integer\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/rpush.json",
+        "quote": "\"reply_schema\": { \"description\": \"Length of the list after the push operations.\", \"type\": \"integer\", \"minimum\": 1 },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_list.c",
+        "quote": "llen = listTypeLength(lobj); addReplyLongLong(c, llen);"
+       }
+      ],
+      "note": "A list element keeps no time."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/lpush.json",
+        "quote": "\"reply_schema\": { \"description\": \"Length of the list after the push operations.\", \"type\": \"integer\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/rpush.json",
+        "quote": "\"reply_schema\": { \"description\": \"Length of the list after the push operations.\", \"type\": \"integer\", \"minimum\": 1 },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_list.c",
+        "quote": "llen = listTypeLength(lobj); addReplyLongLong(c, llen);"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/lpush.json",
+        "quote": "\"reply_schema\": { \"description\": \"Length of the list after the push operations.\", \"type\": \"integer\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/commands/rpush.json",
+        "quote": "\"reply_schema\": { \"description\": \"Length of the list after the push operations.\", \"type\": \"integer\", \"minimum\": 1 },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redis/redis/8.10.3/src/t_list.c",
+        "quote": "llen = listTypeLength(lobj); addReplyLongLong(c, llen);"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
     }
    ]
   }

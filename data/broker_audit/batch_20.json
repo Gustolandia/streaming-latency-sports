@@ -1,0 +1,4011 @@
+{
+ "audited_utc": "2026-10-29",
+ "brokers": [
+  {
+   "broker": "Mochi MQTT",
+   "group": "C",
+   "kind": "broker",
+   "version": "v2.7.9",
+   "version_evidence": [
+    {
+     "url": "https://github.com/mochi-mqtt/server/releases/tag/v2.7.9",
+     "quote": "v2.7.9"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub topic mqtt-broker",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "MQTT 5.0 subscription",
+     "Q0": {
+      "fields": [
+       "topic name",
+       "payload",
+       "QoS",
+       "retain flag",
+       "duplicate flag",
+       "packet id (QoS 1 and 2)",
+       "MQTT 5.0 properties, among them the message expiry interval, which holds the time left"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "PublishEncode encodes a Publish packet. func (pk *Packet) PublishEncode(buf *bytes.Buffer) error { nb := mempool.GetBuffer() defer mempool.PutBuffer(nb) nb.Write(encodeString(pk.TopicName)) // [MQTT-3.3.2-1]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "nb.Write(encodeUint16(pk.PacketID)) } if pk.ProtocolVersion == 5 { pb := mempool.GetBuffer() defer mempool.PutBuffer(pb) pk.Properties.Encode(pk.FixedHeader.Type, pk.Mods, pb, nb.Len()+len(pk.Payload)) nb.Write(pb.Bytes()) } pk.FixedHeader.Remaining = nb.Len() + len(pk.Payload)"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+        "quote": "pk.Origin = cl.ID pk.Created = time.Now().Unix() if expiry := minimum(s.Options.Capabilities.MaximumMessageExpiryInterval, int64(pk.Properties.MessageExpiryInterval)); expiry > 0 { pk.Expiry = pk.Created + expiry }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "Created int64 // unix timestamp indicating time packet was created/received on the server Expiry int64 // unix timestamp indicating when the packet will expire and should be deleted"
+       }
+      ],
+      "field": "Created",
+      "resolution": "s"
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "PublishEncode encodes a Publish packet. func (pk *Packet) PublishEncode(buf *bytes.Buffer) error { nb := mempool.GetBuffer() defer mempool.PutBuffer(nb) nb.Write(encodeString(pk.TopicName)) // [MQTT-3.3.2-1]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "nb.Write(encodeUint16(pk.PacketID)) } if pk.ProtocolVersion == 5 { pb := mempool.GetBuffer() defer mempool.PutBuffer(pb) pk.Properties.Encode(pk.FixedHeader.Type, pk.Mods, pb, nb.Len()+len(pk.Payload)) nb.Write(pb.Bytes()) } pk.FixedHeader.Remaining = nb.Len() + len(pk.Payload)"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "nb.Write(encodeUint16(pk.PacketID)) } if pk.ProtocolVersion == 5 { pb := mempool.GetBuffer() defer mempool.PutBuffer(pb) pk.Properties.Encode(pk.FixedHeader.Type, pk.Mods, pb, nb.Len()+len(pk.Payload)) nb.Write(pb.Bytes()) } pk.FixedHeader.Remaining = nb.Len() + len(pk.Payload)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/clients.go",
+        "quote": "if pk.Expiry > 0 { expiry := pk.Expiry - time.Now().Unix() if expiry < 1 { expiry = 1 } pk.Properties.MessageExpiryInterval = uint32(expiry) // [MQTT-3.3.2-6] }"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/clients.go",
+        "quote": "if pk.Expiry > 0 { expiry := pk.Expiry - time.Now().Unix() if expiry < 1 { expiry = 1 } pk.Properties.MessageExpiryInterval = uint32(expiry) // [MQTT-3.3.2-6] }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+        "quote": "pk.Origin = cl.ID pk.Created = time.Now().Unix() if expiry := minimum(s.Options.Capabilities.MaximumMessageExpiryInterval, int64(pk.Properties.MessageExpiryInterval)); expiry > 0 { pk.Expiry = pk.Created + expiry }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+        "quote": "MaximumMessageExpiryInterval: 60 * 60 * 24, // maximum message expiry if message expiry is 0 or over"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+        "quote": "minimum differs from built-in min, it returns minimum of the non-zero value a and b."
+       }
+      ],
+      "resolution": "s",
+      "note": "The delivered message expiry interval is the expiry minus the time now, so the stay is the publisher's interval, or the server maximum (86,400 s by default) when the publisher sent none, less the delivered interval. The interval is never sent below 1 s."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "Created int64 // unix timestamp indicating time packet was created/received on the server Expiry int64 // unix timestamp indicating when the packet will expire and should be deleted"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+        "quote": "publishes a publish packet to all subscribers with matching topic filters."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q5",
+       "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/clients.go",
+       "read": "The client's WritePacket sets the delivered message expiry interval to the packet's deadline less the current second at the moment it writes, after any wait for send quota or in the outbound queue; the deadline is arrival plus the smaller non-zero of the publisher's interval and the server maximum (86,400 s by default), so the stay is that interval less the delivered one, to the second, floored at 1 s.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+       "read": "The server publishes each packet to all subscribers with a matching topic filter, with no request or credit from the consumer.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "MQTT 3.1 and 3.1.1 subscription",
+     "Q0": {
+      "fields": [
+       "topic name",
+       "payload",
+       "QoS",
+       "retain flag",
+       "duplicate flag",
+       "packet id (QoS 1 and 2)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "PublishEncode encodes a Publish packet. func (pk *Packet) PublishEncode(buf *bytes.Buffer) error { nb := mempool.GetBuffer() defer mempool.PutBuffer(nb) nb.Write(encodeString(pk.TopicName)) // [MQTT-3.3.2-1]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "nb.Write(encodeUint16(pk.PacketID)) } if pk.ProtocolVersion == 5 { pb := mempool.GetBuffer() defer mempool.PutBuffer(pb) pk.Properties.Encode(pk.FixedHeader.Type, pk.Mods, pb, nb.Len()+len(pk.Payload)) nb.Write(pb.Bytes()) } pk.FixedHeader.Remaining = nb.Len() + len(pk.Payload)"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+        "quote": "pk.Origin = cl.ID pk.Created = time.Now().Unix() if expiry := minimum(s.Options.Capabilities.MaximumMessageExpiryInterval, int64(pk.Properties.MessageExpiryInterval)); expiry > 0 { pk.Expiry = pk.Created + expiry }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "Created int64 // unix timestamp indicating time packet was created/received on the server Expiry int64 // unix timestamp indicating when the packet will expire and should be deleted"
+       }
+      ],
+      "field": "Created",
+      "resolution": "s"
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "PublishEncode encodes a Publish packet. func (pk *Packet) PublishEncode(buf *bytes.Buffer) error { nb := mempool.GetBuffer() defer mempool.PutBuffer(nb) nb.Write(encodeString(pk.TopicName)) // [MQTT-3.3.2-1]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "nb.Write(encodeUint16(pk.PacketID)) } if pk.ProtocolVersion == 5 { pb := mempool.GetBuffer() defer mempool.PutBuffer(pb) pk.Properties.Encode(pk.FixedHeader.Type, pk.Mods, pb, nb.Len()+len(pk.Payload)) nb.Write(pb.Bytes()) } pk.FixedHeader.Remaining = nb.Len() + len(pk.Payload)"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "nb.Write(encodeUint16(pk.PacketID)) } if pk.ProtocolVersion == 5 { pb := mempool.GetBuffer() defer mempool.PutBuffer(pb) pk.Properties.Encode(pk.FixedHeader.Type, pk.Mods, pb, nb.Len()+len(pk.Payload)) nb.Write(pb.Bytes()) } pk.FixedHeader.Remaining = nb.Len() + len(pk.Payload)"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "nb.Write(encodeUint16(pk.PacketID)) } if pk.ProtocolVersion == 5 { pb := mempool.GetBuffer() defer mempool.PutBuffer(pb) pk.Properties.Encode(pk.FixedHeader.Type, pk.Mods, pb, nb.Len()+len(pk.Payload)) nb.Write(pb.Bytes()) } pk.FixedHeader.Remaining = nb.Len() + len(pk.Payload)"
+       }
+      ],
+      "note": "The property block that carries the expiry interval is written only for version 5."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "Created int64 // unix timestamp indicating time packet was created/received on the server Expiry int64 // unix timestamp indicating when the packet will expire and should be deleted"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+        "quote": "publishes a publish packet to all subscribers with matching topic filters."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+       "read": "The same publish path serves MQTT 3.1 and 3.1.1 subscribers, so delivery is standing.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "inline subscription (Go callback, needs Options.InlineClient)",
+     "Q0": {
+      "fields": [
+       "whole packet: topic name, payload, QoS, retain flag, properties, packet id, origin client id, Created, Expiry"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/topics.go",
+        "quote": "type InlineSubFn func(cl *Client, sub packets.Subscription, pk packets.Packet)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "Created int64 // unix timestamp indicating time packet was created/received on the server Expiry int64 // unix timestamp indicating when the packet will expire and should be deleted"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+        "quote": "pk.Origin = cl.ID pk.Created = time.Now().Unix() if expiry := minimum(s.Options.Capabilities.MaximumMessageExpiryInterval, int64(pk.Properties.MessageExpiryInterval)); expiry > 0 { pk.Expiry = pk.Created + expiry }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "Created int64 // unix timestamp indicating time packet was created/received on the server Expiry int64 // unix timestamp indicating when the packet will expire and should be deleted"
+       }
+      ],
+      "field": "Created",
+      "resolution": "s"
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/topics.go",
+        "quote": "type InlineSubFn func(cl *Client, sub packets.Subscription, pk packets.Packet)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+        "quote": "for _, inlineSubscription := range subscribers.InlineSubscriptions { inlineSubscription.Handler(s.inlineClient, inlineSubscription.Subscription, pk) }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "Created int64 // unix timestamp indicating time packet was created/received on the server Expiry int64 // unix timestamp indicating when the packet will expire and should be deleted"
+       }
+      ],
+      "note": "The callback receives the whole packet struct, which holds Created. The interface exists only when the embedding program sets InlineClient, which is off by default."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+        "quote": "for _, inlineSubscription := range subscribers.InlineSubscriptions { inlineSubscription.Handler(s.inlineClient, inlineSubscription.Subscription, pk) }"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/topics.go",
+        "quote": "type InlineSubFn func(cl *Client, sub packets.Subscription, pk packets.Packet)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "Created int64 // unix timestamp indicating time packet was created/received on the server Expiry int64 // unix timestamp indicating when the packet will expire and should be deleted"
+       }
+      ],
+      "note": "Created and Expiry are absolute times; no duration is passed."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/packets/packets.go",
+        "quote": "Created int64 // unix timestamp indicating time packet was created/received on the server Expiry int64 // unix timestamp indicating when the packet will expire and should be deleted"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+        "quote": "for _, inlineSubscription := range subscribers.InlineSubscriptions { inlineSubscription.Handler(s.inlineClient, inlineSubscription.Subscription, pk) }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+        "quote": "publishes a publish packet to all subscribers with matching topic filters."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+       "read": "The server calls each inline subscription's handler as part of publishing to matching subscribers, so the callback is standing.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQTT publish, QoS 1 and 2",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet id",
+       "reason code",
+       "MQTT 5.0 properties"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+        "quote": "buildAck builds a standardised ack message for Puback, Pubrec, Pubrel, Pubcomp packets. func (s *Server) buildAck(packetID uint16, pkt, qos byte, properties packets.Properties, reason packets.Code) packets.Packet {"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+        "quote": "buildAck builds a standardised ack message for Puback, Pubrec, Pubrel, Pubcomp packets. func (s *Server) buildAck(packetID uint16, pkt, qos byte, properties packets.Properties, reason packets.Code) packets.Packet {"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+        "quote": "buildAck builds a standardised ack message for Puback, Pubrec, Pubrel, Pubcomp packets. func (s *Server) buildAck(packetID uint16, pkt, qos byte, properties packets.Properties, reason packets.Code) packets.Packet {"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+        "quote": "buildAck builds a standardised ack message for Puback, Pubrec, Pubrel, Pubcomp packets. func (s *Server) buildAck(packetID uint16, pkt, qos byte, properties packets.Properties, reason packets.Code) packets.Packet {"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "MQTT publish, QoS 0",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+        "quote": "if pk.FixedHeader.Qos == 0 || cl.Net.Inline { s.publishToSubscribers(pk) s.hooks.OnPublished(cl, pk) return nil } cl.State.Inflight.DecreaseReceiveQuota() ack := s.buildAck(pk.PacketID, packets.Puback, 0,"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "inline publish (Go call, needs Options.InlineClient)",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mochi-mqtt/server/v2.7.9/server.go",
+        "quote": "func (s *Server) Publish(topic string, payload []byte, retain bool, qos byte) error { if !s.Options.InlineClient { return ErrInlineClientNotEnabled } return s.InjectPacket(s.inlineClient,"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "MongooseIM",
+   "group": "C",
+   "kind": "broker",
+   "version": "6.10.0",
+   "version_evidence": [
+    {
+     "url": "https://github.com/esl/MongooseIM/releases/tag/6.10.0",
+     "quote": "6.10.0"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list awesome-selfhosted/awesome-selfhosted",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "live delivery to a connected client (one-to-one chat), with the message archive on",
+     "Q0": {
+      "fields": [
+       "the stanza as sent (from, to, type, id, body and other child elements)",
+       "stanza-id element (by, id) added by mod_mam"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+        "quote": "-spec maybe_add_arcid_elems(To :: jid:simple_jid() | jid:jid(), MessID :: binary(), Packet :: exml:element(), AddStanzaid :: boolean()) -> AlteredPacket :: exml:element()."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_pm.erl",
+        "quote": "{MessID, Acc2} -> Packet2 = mod_mam_utils:maybe_add_arcid_elems( To, MessID, Packet, mod_mam_params:add_stanzaid_element(?MODULE, HostType)), {archived, Packet2, Acc2}"
+       },
+       {
+        "url": "https://www.rfc-editor.org/rfc/rfc6120.txt",
+        "quote": "mechanism whereby one entity pushes information to another entity, similar to the communications that occur in a system such as email."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mongoose_acc.erl",
+        "quote": "mongoose_acc => true, ref => make_ref(), timestamp => erlang:system_time(microsecond), origin_pid => self(),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+        "quote": "get_or_generate_mam_id(Acc) -> case mongoose_acc:get(mam, mam_id, undefined, Acc) of undefined -> CandidateStamp = mongoose_acc:timestamp(Acc), generate_message_id(CandidateStamp);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_pm.erl",
+        "quote": "{MessID, Acc2} -> Packet2 = mod_mam_utils:maybe_add_arcid_elems( To, MessID, Packet, mod_mam_params:add_stanzaid_element(?MODULE, HostType)), {archived, Packet2, Acc2}"
+       }
+      ],
+      "field": "stanza-id",
+      "resolution": "us",
+      "note": "Setting: the mod_mam module enabled (no_stanzaid_element is false by default). Without it the server adds no time."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+        "quote": "get_or_generate_mam_id(Acc) -> case mongoose_acc:get(mam, mam_id, undefined, Acc) of undefined -> CandidateStamp = mongoose_acc:timestamp(Acc), generate_message_id(CandidateStamp);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+        "quote": "encode_compact_uuid(Microseconds, NodeNum) when is_integer(Microseconds), is_integer(NodeNum) -> (Microseconds bsl 8) + NodeNum."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mongoose_acc.erl",
+        "quote": "mongoose_acc => true, ref => make_ref(), timestamp => erlang:system_time(microsecond), origin_pid => self(),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/doc/modules/mod_mam.md",
+        "quote": "### `modules.mod_mam.no_stanzaid_element` * **Syntax:** boolean * **Default:** `false`"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_pm.erl",
+        "quote": "{MessID, Acc2} -> Packet2 = mod_mam_utils:maybe_add_arcid_elems( To, MessID, Packet, mod_mam_params:add_stanzaid_element(?MODULE, HostType)), {archived, Packet2, Acc2}"
+       }
+      ],
+      "note": "Judgment call, reading 4: the time is decoded from the id. The archive id is the server's own microsecond clock reading taken when the stanza arrived (accumulator timestamp), shifted left by 8 bits plus a node number, and the stanza-id element is added by default."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+        "quote": "-spec maybe_add_arcid_elems(To :: jid:simple_jid() | jid:jid(), MessID :: binary(), Packet :: exml:element(), AddStanzaid :: boolean()) -> AlteredPacket :: exml:element()."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_pm.erl",
+        "quote": "{MessID, Acc2} -> Packet2 = mod_mam_utils:maybe_add_arcid_elems( To, MessID, Packet, mod_mam_params:add_stanzaid_element(?MODULE, HostType)), {archived, Packet2, Acc2}"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+        "quote": "-spec maybe_add_arcid_elems(To :: jid:simple_jid() | jid:jid(), MessID :: binary(), Packet :: exml:element(), AddStanzaid :: boolean()) -> AlteredPacket :: exml:element()."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_pm.erl",
+        "quote": "{MessID, Acc2} -> Packet2 = mod_mam_utils:maybe_add_arcid_elems( To, MessID, Packet, mod_mam_params:add_stanzaid_element(?MODULE, HostType)), {archived, Packet2, Acc2}"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mongoose_acc.erl",
+        "quote": "mongoose_acc => true, ref => make_ref(), timestamp => erlang:system_time(microsecond), origin_pid => self(),"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://www.rfc-editor.org/rfc/rfc6120.txt",
+        "quote": "mechanism whereby one entity pushes information to another entity, similar to the communications that occur in a system such as email."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q2",
+       "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+       "read": "The packet filter archives the stanza and routes the packet with a stanza-id element (added unless no_stanzaid_element is set), whose id is the compact archive id of the server's microsecond clock reading taken when the stanza arrived, shifted left by 8 bits plus the node number, so the arrival time is decodable from the delivered id under reading 4.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://www.rfc-editor.org/rfc/rfc6120.txt",
+       "read": "XMPP delivers a message stanza by push from the server to the connected client, with no request or credit from the client.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "offline messages delivered when the recipient logs in, with offline storage on",
+     "Q0": {
+      "fields": [
+       "the stored stanza (from, to, type, id, body and other child elements)",
+       "delay element (from the server, stamp, text Offline Storage)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/offline/mod_offline.erl",
+        "quote": "resend_offline_message_packet(LServer, #offline_msg{timestamp=TimeStamp, packet = Packet}) -> add_timestamp(TimeStamp, LServer, Packet)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/offline/mod_offline.erl",
+        "quote": "FromJID = jid:make_noprep(<<>>, LServer, <<>>), TS = calendar:system_time_to_rfc3339(Time,"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/offline/mod_offline.erl",
+        "quote": "store_packet(Acc, From, To = #jid{luser = LUser, lserver = LServer}, Packet = #xmlel{children = Els}) -> TimeStamp = get_or_build_timestamp_from_packet(Packet), Expire = find_x_expire(TimeStamp, Els),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/offline/mod_offline.erl",
+        "quote": "of undefined -> erlang:system_time(microsecond); Stamp -> try calendar:rf"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/doc/modules/mod_offline.md",
+        "quote": "If this module is disabled, an error 503"
+       }
+      ],
+      "field": "delay stamp",
+      "resolution": "us",
+      "note": "Setting: the mod_offline module enabled. The stored time is the server's microsecond clock reading when the message is stored, unless the stanza already carried a delay stamp."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/offline/mod_offline.erl",
+        "quote": "resend_offline_message_packet(LServer, #offline_msg{timestamp=TimeStamp, packet = Packet}) -> add_timestamp(TimeStamp, LServer, Packet)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/offline/mod_offline.erl",
+        "quote": "FromJID = jid:make_noprep(<<>>, LServer, <<>>), TS = calendar:system_time_to_rfc3339(Time,"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/offline/mod_offline.erl",
+        "quote": "resend_offline_message_packet(LServer, #offline_msg{timestamp=TimeStamp, packet = Packet}) -> add_timestamp(TimeStamp, LServer, Packet)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/offline/mod_offline.erl",
+        "quote": "FromJID = jid:make_noprep(<<>>, LServer, <<>>), TS = calendar:system_time_to_rfc3339(Time,"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/offline/mod_offline.erl",
+        "quote": "resend_offline_message_packet(LServer, #offline_msg{timestamp=TimeStamp, packet = Packet}) -> add_timestamp(TimeStamp, LServer, Packet)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/offline/mod_offline.erl",
+        "quote": "FromJID = jid:make_noprep(<<>>, LServer, <<>>), TS = calendar:system_time_to_rfc3339(Time,"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/offline/mod_offline.erl",
+        "quote": "store_packet(Acc, From, To = #jid{luser = LUser, lserver = LServer}, Packet = #xmlel{children = Els}) -> TimeStamp = get_or_build_timestamp_from_packet(Packet), Expire = find_x_expire(TimeStamp, Els),"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://www.rfc-editor.org/rfc/rfc6120.txt",
+        "quote": "mechanism whereby one entity pushes information to another entity, similar to the communications that occur in a system such as email."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/doc/modules/mod_offline.md",
+        "quote": "It can store one-to-one and groupchat messages only when the recipient has no online resources."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://www.rfc-editor.org/rfc/rfc6120.txt",
+       "read": "The server stores messages only when the recipient has no online resources and pushes them to the session on login, with no per-message request.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "archive query result (XEP-0313), with the message archive on",
+     "Q0": {
+      "fields": [
+       "result element (query id, archive id)",
+       "forwarded element holding a delay stamp and the archived stanza"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+        "quote": "wrap_message(MamNs, Packet, QueryID, MessageUID, WrapperID, TS, SrcJID) -> #xmlel{"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+        "quote": "children = [delay(TS, SrcJID), replace_from_attribute(SrcJID, Packet)]}. -spec delay(jlib:rfc3339_string(), jid:jid()) -> exml:element(). delay(TS, SrcJID) -> jlib:timestamp_to_xml(TS, SrcJID, <<>>)."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+        "quote": "get_or_generate_mam_id(Acc) -> case mongoose_acc:get(mam, mam_id, undefined, Acc) of undefined -> CandidateStamp = mongoose_acc:timestamp(Acc), generate_message_id(CandidateStamp);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+        "quote": "get_msg_id_and_timestamp(#{id := MsgID}) -> {Microseconds, _NodeMessID} = decode_compact_uuid(MsgID), TS = calendar:system_time_to_rfc3339(Microseconds,"
+       }
+      ],
+      "field": "delay stamp",
+      "resolution": "us",
+      "note": "Setting: the mod_mam module enabled."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+        "quote": "get_msg_id_and_timestamp(#{id := MsgID}) -> {Microseconds, _NodeMessID} = decode_compact_uuid(MsgID), TS = calendar:system_time_to_rfc3339(Microseconds,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+        "quote": "children = [delay(TS, SrcJID), replace_from_attribute(SrcJID, Packet)]}. -spec delay(jlib:rfc3339_string(), jid:jid()) -> exml:element(). delay(TS, SrcJID) -> jlib:timestamp_to_xml(TS, SrcJID, <<>>)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+        "quote": "encode_compact_uuid(Microseconds, NodeNum) when is_integer(Microseconds), is_integer(NodeNum) -> (Microseconds bsl 8) + NodeNum."
+       }
+      ],
+      "note": "The delay stamp of each result is decoded from the archive id."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+        "quote": "wrap_message(MamNs, Packet, QueryID, MessageUID, WrapperID, TS, SrcJID) -> #xmlel{"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+        "quote": "children = [delay(TS, SrcJID), replace_from_attribute(SrcJID, Packet)]}. -spec delay(jlib:rfc3339_string(), jid:jid()) -> exml:element(). delay(TS, SrcJID) -> jlib:timestamp_to_xml(TS, SrcJID, <<>>)."
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+        "quote": "wrap_message(MamNs, Packet, QueryID, MessageUID, WrapperID, TS, SrcJID) -> #xmlel{"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+        "quote": "children = [delay(TS, SrcJID), replace_from_attribute(SrcJID, Packet)]}. -spec delay(jlib:rfc3339_string(), jid:jid()) -> exml:element(). delay(TS, SrcJID) -> jlib:timestamp_to_xml(TS, SrcJID, <<>>)."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+        "quote": "get_msg_id_and_timestamp(#{id := MsgID}) -> {Microseconds, _NodeMessID} = decode_compact_uuid(MsgID), TS = calendar:system_time_to_rfc3339(Microseconds,"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/src/mam/mod_mam_utils.erl",
+        "quote": "result_set/4, result_query/2, result_prefs/4, make_fin_element/7, parse_prefs/1"
+       }
+      ],
+      "note": "A query is answered from the stored archive and ends with a fin element."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": []
+    }
+   ],
+   "producers": [
+    {
+     "interface": "XMPP message stanza sent by a client, stream management off",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/doc/modules/mod_stream_management.md",
+        "quote": "Enables [XEP-0198: Stream Management](http://xmpp.org/extensions/xep-0198.html). Implements logic regarding session resumption and acknowledgement"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "XMPP message stanza sent by a client, stream management on (mod_stream_management)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "count of stanzas handled (h)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/esl/MongooseIM/6.10.0/doc/modules/mod_stream_management.md",
+        "quote": "Enables [XEP-0198: Stream Management](http://xmpp.org/extensions/xep-0198.html). Implements logic regarding session resumption and acknowledgement"
+       },
+       {
+        "url": "https://xmpp.org/extensions/xep-0198.html",
+        "quote": "<r xmlns='urn:xmpp:sm:3'/> <!-- Server --> <a xmlns='urn:xmpp:sm:3' h='1'/>"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://xmpp.org/extensions/xep-0198.html",
+        "quote": "<r xmlns='urn:xmpp:sm:3'/> <!-- Server --> <a xmlns='urn:xmpp:sm:3' h='1'/>"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://xmpp.org/extensions/xep-0198.html",
+        "quote": "<r xmlns='urn:xmpp:sm:3'/> <!-- Server --> <a xmlns='urn:xmpp:sm:3' h='1'/>"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://xmpp.org/extensions/xep-0198.html",
+        "quote": "<r xmlns='urn:xmpp:sm:3'/> <!-- Server --> <a xmlns='urn:xmpp:sm:3' h='1'/>"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "MQTTnet",
+   "group": "C",
+   "kind": "broker",
+   "version": "v5.2.0",
+   "version_evidence": [
+    {
+     "url": "https://github.com/dotnet/MQTTnet/releases/tag/v5.2.0",
+     "quote": "v5.2.0"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list quozd/awesome-dotnet",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "MQTT subscription (3.1, 3.1.1 and 5.0)",
+     "Q0": {
+      "fields": [
+       "topic",
+       "payload",
+       "QoS",
+       "retain flag",
+       "duplicate flag",
+       "packet identifier (QoS 1 and 2)",
+       "MQTT 5.0 only: content type, correlation data, message expiry interval (as published), payload format indicator, response topic, topic alias, subscription identifiers, user properties"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet/Packets/MqttPublishPacket.cs",
+        "quote": "public sealed class MqttPublishPacket : MqttPacketWithIdentifier { public string ContentType { get; set; } public byte[] CorrelationData { get; set; } public bool Dup { get; set; } public uint MessageExpiryInterval { get; set; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet/Packets/MqttPublishPacket.cs",
+        "quote": "public ReadOnlySequence<byte> Payload { get; set; } public MqttQualityOfServiceLevel QualityOfServiceLevel { get; set; } = MqttQualityOfServiceLevel.AtMostOnce; public string ResponseTopic { get; set; } public bool Retain { get; set; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet/Packets/MqttPublishPacket.cs",
+        "quote": "public List<uint> SubscriptionIdentifiers { get; set; } public string Topic { get; set; } public ushort TopicAlias { get; set; } public List<MqttUserProperty> UserProperties { get; set; }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet/Packets/MqttPublishPacket.cs",
+        "quote": "public sealed class MqttPublishPacket : MqttPacketWithIdentifier { public string ContentType { get; set; } public byte[] CorrelationData { get; set; } public bool Dup { get; set; } public uint MessageExpiryInterval { get; set; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet/Packets/MqttPublishPacket.cs",
+        "quote": "public ReadOnlySequence<byte> Payload { get; set; } public MqttQualityOfServiceLevel QualityOfServiceLevel { get; set; } = MqttQualityOfServiceLevel.AtMostOnce; public string ResponseTopic { get; set; } public bool Retain { get; set; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet/Packets/MqttPublishPacket.cs",
+        "quote": "public List<uint> SubscriptionIdentifiers { get; set; } public string Topic { get; set; } public ushort TopicAlias { get; set; } public List<MqttUserProperty> UserProperties { get; set; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet.Server/Internal/MqttClientSessionsManager.cs",
+        "quote": "var publishPacketCopy = MqttPublishPacketFactory.Create(applicationMessage);"
+       }
+      ],
+      "note": "The library sets no time. A handler written by the embedding program (the intercepting-publish event) could add a user property; that is not counted."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet/Packets/MqttPublishPacket.cs",
+        "quote": "public sealed class MqttPublishPacket : MqttPacketWithIdentifier { public string ContentType { get; set; } public byte[] CorrelationData { get; set; } public bool Dup { get; set; } public uint MessageExpiryInterval { get; set; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet/Packets/MqttPublishPacket.cs",
+        "quote": "public ReadOnlySequence<byte> Payload { get; set; } public MqttQualityOfServiceLevel QualityOfServiceLevel { get; set; } = MqttQualityOfServiceLevel.AtMostOnce; public string ResponseTopic { get; set; } public bool Retain { get; set; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet/Packets/MqttPublishPacket.cs",
+        "quote": "public List<uint> SubscriptionIdentifiers { get; set; } public string Topic { get; set; } public ushort TopicAlias { get; set; } public List<MqttUserProperty> UserProperties { get; set; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet.Server/Internal/MqttClientSessionsManager.cs",
+        "quote": "var result = session.EnqueueDataPacket(new MqttPacketBusItem(publishPacketCopy));"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet.Server/Internal/Formatter/MqttPublishPacketFactory.cs",
+        "quote": "MessageExpiryInterval = applicationMessage.MessageExpiryInterval, PayloadFormatIndicator = applicationMessage.PayloadFormatIndicator, ResponseTopic = applicationMessage.ResponseTopic,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet/MqttApplicationMessage.cs",
+        "quote": "Gets or sets the message expiry interval. /// A client can set the message expiry interval in seconds for each PUBLISH message individually. /// This interval defines the period of time that the broker stores the PUBLISH message for any matching subscribers /// that are not currently connected."
+       }
+      ],
+      "note": "The message expiry interval is copied unchanged from the published message into the delivered packet; the time spent in the server is not subtracted."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet.Server/Internal/MqttClientSessionsManager.cs",
+        "quote": "var publishPacketCopy = MqttPublishPacketFactory.Create(applicationMessage);"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet.Server/Internal/MqttClientSessionsManager.cs",
+        "quote": "foreach (var session in subscriberSessions) { if (!session.TryCheckSubscriptions(applicationMessage.Topic, topicHash, applicationMessage.QualityOfServiceLevel, senderId, out"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet.Server/Internal/MqttClientSessionsManager.cs",
+        "quote": "var publishPacketCopy = MqttPublishPacketFactory.Create(applicationMessage);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet.Server/Internal/MqttClientSessionsManager.cs",
+        "quote": "var result = session.EnqueueDataPacket(new MqttPacketBusItem(publishPacketCopy));"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet.Server/Internal/MqttClientSessionsManager.cs",
+       "read": "For each published message the server loops over the subscriber sessions whose subscriptions match and enqueues a copy of the packet in each, with no request or credit from the consumer.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQTT publish, QoS 1 and 2",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet identifier",
+       "reason code",
+       "reason string",
+       "user properties"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet.Server/Internal/Formatter/MqttPubAckPacketFactory.cs",
+        "quote": "var pubAckPacket = new MqttPubAckPacket { PacketIdentifier = publishPacket.PacketIdentifier, ReasonCode = (MqttPubAckReasonCode)dispatchApplicationMessageResult.ReasonCode, ReasonString = dispatchApplicationMessageResult.ReasonString, UserPr"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet.Server/Internal/Formatter/MqttPubRecPacketFactory.cs",
+        "quote": "var pubRecPacket = new MqttPubRecPacket { PacketIdentifier = publishPacket.PacketIdentifier, ReasonCode = (MqttPubRecReasonCode)dispatchApplicationMessageResult.ReasonCode, ReasonString = dispatchApplicationMessageResult.ReasonString, UserPr"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet.Server/Internal/Formatter/MqttPubAckPacketFactory.cs",
+        "quote": "var pubAckPacket = new MqttPubAckPacket { PacketIdentifier = publishPacket.PacketIdentifier, ReasonCode = (MqttPubAckReasonCode)dispatchApplicationMessageResult.ReasonCode, ReasonString = dispatchApplicationMessageResult.ReasonString, UserPr"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet.Server/Internal/Formatter/MqttPubRecPacketFactory.cs",
+        "quote": "var pubRecPacket = new MqttPubRecPacket { PacketIdentifier = publishPacket.PacketIdentifier, ReasonCode = (MqttPubRecReasonCode)dispatchApplicationMessageResult.ReasonCode, ReasonString = dispatchApplicationMessageResult.ReasonString, UserPr"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet.Server/Internal/Formatter/MqttPubAckPacketFactory.cs",
+        "quote": "var pubAckPacket = new MqttPubAckPacket { PacketIdentifier = publishPacket.PacketIdentifier, ReasonCode = (MqttPubAckReasonCode)dispatchApplicationMessageResult.ReasonCode, ReasonString = dispatchApplicationMessageResult.ReasonString, UserPr"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet.Server/Internal/Formatter/MqttPubRecPacketFactory.cs",
+        "quote": "var pubRecPacket = new MqttPubRecPacket { PacketIdentifier = publishPacket.PacketIdentifier, ReasonCode = (MqttPubRecReasonCode)dispatchApplicationMessageResult.ReasonCode, ReasonString = dispatchApplicationMessageResult.ReasonString, UserPr"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet.Server/Internal/Formatter/MqttPubAckPacketFactory.cs",
+        "quote": "var pubAckPacket = new MqttPubAckPacket { PacketIdentifier = publishPacket.PacketIdentifier, ReasonCode = (MqttPubAckReasonCode)dispatchApplicationMessageResult.ReasonCode, ReasonString = dispatchApplicationMessageResult.ReasonString, UserPr"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet.Server/Internal/Formatter/MqttPubRecPacketFactory.cs",
+        "quote": "var pubRecPacket = new MqttPubRecPacket { PacketIdentifier = publishPacket.PacketIdentifier, ReasonCode = (MqttPubRecReasonCode)dispatchApplicationMessageResult.ReasonCode, ReasonString = dispatchApplicationMessageResult.ReasonString, UserPr"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "MQTT publish, QoS 0",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet.Server/Internal/MqttConnectedClient.cs",
+        "quote": "case MqttQualityOfServiceLevel.AtMostOnce: { // Do nothing since QoS 0 has no ACK at all! break; }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "in-process injection (InjectApplicationMessage)",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/dotnet/MQTTnet/v5.2.0/Source/MQTTnet.Server/MqttServer.cs",
+        "quote": "public Task InjectApplicationMessage(InjectedMqttApplicationMessage injectedApplicationMessage, CancellationToken cancellationToken = default)"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Openfire",
+   "group": "C",
+   "kind": "broker",
+   "version": "v5.1.2",
+   "version_evidence": [
+    {
+     "url": "https://github.com/igniterealtime/Openfire/releases/tag/v5.1.2",
+     "quote": "v5.1.2"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list awesome-selfhosted/awesome-selfhosted",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "live delivery to a connected client (one-to-one chat)",
+     "Q0": {
+      "fields": [
+       "the stanza as sent (from, to, type, id, body and other child elements)",
+       "stanza-id element (by, id) holding a random UUID"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/stanzaid/StanzaIDUtil.java",
+        "quote": "final String id = UUID.randomUUID().toString(); Log.debug("
+       },
+       {
+        "url": "https://www.rfc-editor.org/rfc/rfc6120.txt",
+        "quote": "mechanism whereby one entity pushes information to another entity, similar to the communications that occur in a system such as email."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/stanzaid/StanzaIDUtil.java",
+        "quote": "final String id = UUID.randomUUID().toString(); Log.debug("
+       },
+       {
+        "url": "https://www.rfc-editor.org/rfc/rfc6120.txt",
+        "quote": "mechanism whereby one entity pushes information to another entity, similar to the communications that occur in a system such as email."
+       }
+      ],
+      "note": "The core server adds a stanza-id made from a random UUID, which carries no time. Message archiving is a separate plugin and was not read."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/stanzaid/StanzaIDUtil.java",
+        "quote": "final String id = UUID.randomUUID().toString(); Log.debug("
+       },
+       {
+        "url": "https://www.rfc-editor.org/rfc/rfc6120.txt",
+        "quote": "mechanism whereby one entity pushes information to another entity, similar to the communications that occur in a system such as email."
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/stanzaid/StanzaIDUtil.java",
+        "quote": "final String id = UUID.randomUUID().toString(); Log.debug("
+       },
+       {
+        "url": "https://www.rfc-editor.org/rfc/rfc6120.txt",
+        "quote": "mechanism whereby one entity pushes information to another entity, similar to the communications that occur in a system such as email."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/stanzaid/StanzaIDUtil.java",
+        "quote": "final String id = UUID.randomUUID().toString(); Log.debug("
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://www.rfc-editor.org/rfc/rfc6120.txt",
+        "quote": "mechanism whereby one entity pushes information to another entity, similar to the communications that occur in a system such as email."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://www.rfc-editor.org/rfc/rfc6120.txt",
+       "read": "XMPP delivers a message stanza by push from the server to the connected client, with no request or credit from the client.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "offline messages delivered when the recipient logs in",
+     "Q0": {
+      "fields": [
+       "the stored stanza (from, to, type, id, body and other child elements)",
+       "delay element (from the server domain, stamp)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/OfflineMessageStore.java",
+        "quote": "Add a delayed delivery (XEP-0203) element to the message. Element delay = message.addChildElement("
+       },
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/OfflineMessageStore.java",
+        "quote": "delay.addAttribute(\"stamp\", XMPPDateTimeFormat.format(creationDate));"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/OfflineMessageStore.java",
+        "quote": "Date creationDate = new java.util.Date(); pstmt.setString(1, username); pstmt.setLong(2, messageID); pstmt.setString(3, StringUtils.dateToMillis(creationDate));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/OfflineMessage.java",
+        "quote": "Returns the date when the offline message was stored in the database."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/OfflineMessageStore.java",
+        "quote": "if there is already a delay stamp, we shouldn't add another. Element delaytest = message.getChildElement("
+       },
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/OfflineMessageStore.java",
+        "quote": "Add a delayed delivery (XEP-0203) element to the message. Element delay = message.addChildElement("
+       }
+      ],
+      "field": "delay stamp (creation date)",
+      "resolution": "ms",
+      "note": "The creation date is the server's clock reading when the message is stored. A stanza that already carries a delay element keeps it, and no second one is added."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/OfflineMessageStore.java",
+        "quote": "Add a delayed delivery (XEP-0203) element to the message. Element delay = message.addChildElement("
+       },
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/OfflineMessageStore.java",
+        "quote": "delay.addAttribute(\"stamp\", XMPPDateTimeFormat.format(creationDate));"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/util/XMPPDateTimeFormat.java",
+        "quote": "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/OfflineMessageStore.java",
+        "quote": "Add a delayed delivery (XEP-0203) element to the message. Element delay = message.addChildElement("
+       },
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/OfflineMessageStore.java",
+        "quote": "delay.addAttribute(\"stamp\", XMPPDateTimeFormat.format(creationDate));"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/OfflineMessageStore.java",
+        "quote": "Add a delayed delivery (XEP-0203) element to the message. Element delay = message.addChildElement("
+       },
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/OfflineMessageStore.java",
+        "quote": "delay.addAttribute(\"stamp\", XMPPDateTimeFormat.format(creationDate));"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/OfflineMessageStore.java",
+        "quote": "Date creationDate = new java.util.Date(); pstmt.setString(1, username); pstmt.setLong(2, messageID); pstmt.setString(3, StringUtils.dateToMillis(creationDate));"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://www.rfc-editor.org/rfc/rfc6120.txt",
+        "quote": "mechanism whereby one entity pushes information to another entity, similar to the communications that occur in a system such as email."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://www.rfc-editor.org/rfc/rfc6120.txt",
+       "read": "Stored messages are pushed to the session on login as XMPP message stanzas, with no per-message request.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "multi-user chat room history sent to an occupant who joins",
+     "Q0": {
+      "fields": [
+       "the room message",
+       "delay element (stamp)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/muc/MUCRoomHistory.java",
+        "quote": "Add the delay information to the message Element delayInformation = packetToAdd.addChildElement("
+       },
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/muc/MUCRoomHistory.java",
+        "quote": "Date current = new Date(); delayInformation.addAttribute("
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/muc/MUCRoomHistory.java",
+        "quote": "Add the delay information to the message Element delayInformation = packetToAdd.addChildElement("
+       },
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/muc/MUCRoomHistory.java",
+        "quote": "Date current = new Date(); delayInformation.addAttribute("
+       },
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/muc/HistoryStrategy.java",
+        "quote": "private Type type = Type.number; /** * Default max number. */ private static final int DEFAULT_MAX_NUMBER = 25;"
+       }
+      ],
+      "field": "delay stamp",
+      "resolution": "ms",
+      "note": "Setting: the room's history strategy. The default keeps the last 25 messages and stamps each as the room adds it to its history; a room set to keep no history stamps nothing."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/muc/MUCRoomHistory.java",
+        "quote": "Add the delay information to the message Element delayInformation = packetToAdd.addChildElement("
+       },
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/muc/MUCRoomHistory.java",
+        "quote": "Date current = new Date(); delayInformation.addAttribute("
+       },
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/util/XMPPDateTimeFormat.java",
+        "quote": "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/muc/MUCRoomHistory.java",
+        "quote": "Add the delay information to the message Element delayInformation = packetToAdd.addChildElement("
+       },
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/muc/MUCRoomHistory.java",
+        "quote": "Date current = new Date(); delayInformation.addAttribute("
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/muc/MUCRoomHistory.java",
+        "quote": "Add the delay information to the message Element delayInformation = packetToAdd.addChildElement("
+       },
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/muc/MUCRoomHistory.java",
+        "quote": "Date current = new Date(); delayInformation.addAttribute("
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/muc/MUCRoomHistory.java",
+        "quote": "Date current = new Date(); delayInformation.addAttribute("
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://www.rfc-editor.org/rfc/rfc6120.txt",
+        "quote": "mechanism whereby one entity pushes information to another entity, similar to the communications that occur in a system such as email."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://www.rfc-editor.org/rfc/rfc6120.txt",
+       "read": "The room pushes its history stanzas to the occupant on joining, with no per-message request or credit.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "XMPP message stanza sent by a client, stream management off",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/streammanagement/StreamManager.java",
+        "quote": "XEP-0198 Stream Manager. * Handles client/server messages acknowledgement."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "XMPP message stanza sent by a client, stream management on (XEP-0198)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "count of stanzas handled (h)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/streammanagement/StreamManager.java",
+        "quote": "XEP-0198 Stream Manager. * Handles client/server messages acknowledgement."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/igniterealtime/Openfire/v5.1.2/xmppserver/src/main/java/org/jivesoftware/openfire/streammanagement/StreamManager.java",
+        "quote": "Count of how many stanzas/packets * sent from the client that the server has processed"
+       },
+       {
+        "url": "https://xmpp.org/extensions/xep-0198.html",
+        "quote": "<r xmlns='urn:xmpp:sm:3'/> <!-- Server --> <a xmlns='urn:xmpp:sm:3' h='1'/>"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://xmpp.org/extensions/xep-0198.html",
+        "quote": "<r xmlns='urn:xmpp:sm:3'/> <!-- Server --> <a xmlns='urn:xmpp:sm:3' h='1'/>"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://xmpp.org/extensions/xep-0198.html",
+        "quote": "<r xmlns='urn:xmpp:sm:3'/> <!-- Server --> <a xmlns='urn:xmpp:sm:3' h='1'/>"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://xmpp.org/extensions/xep-0198.html",
+        "quote": "<r xmlns='urn:xmpp:sm:3'/> <!-- Server --> <a xmlns='urn:xmpp:sm:3' h='1'/>"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Oracle Java CAPS JMS IQ Manager",
+   "group": "C",
+   "kind": "broker",
+   "version": "Java CAPS 6 documentation (JMS Reference 820-2239)",
+   "version_evidence": [
+    {
+     "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+     "quote": "The following sections provide information on the implementation of JMS in Java CAPS 6."
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 2",
+     "source": "times-first search",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "queue receivers (JMS receive)",
+     "Q0": {
+      "fields": [
+       "correlation id",
+       "delivery mode",
+       "destination",
+       "expiration (time to live, ms)",
+       "message id",
+       "priority",
+       "redelivered flag",
+       "reply-to",
+       "timestamp (ms)",
+       "type",
+       "message body and user properties"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Property Values Equivalent JMS Methods CorrelationID Correlation ID getJMSCorrelationID() setJMSCorrelationID(string) CorrelationIDAsBytes Correlation ID getCorrelationIDAsBytes setCorrelationIDAsBytes(byte[]) DeliveryMode Persistent, nonpersistent (default = persistent)"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Expiration Number in milliseconds (default = 0 ms = never expire) getTimeToLive() setTimeToLive(arg0) MessageID Message ID getJMSMessageID() setJMSMessageID(string) Priority 0 - 9 where 9 is the highest priority (default = 4)"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Redelivered True, false getJMSRedelivered() setJMSRedelivered(boolean) ReplyTo Destination getJMSReplyTo() setJMSReplyTo(destination) Timestamp Number in milliseconds getJMSTimestamp() setJMSTimestamp(long) Type Text, Bytes, Map, Stream getJMSMessageType() setJMSMessageType(arg0)"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/bpadb/index.html",
+        "quote": "Each message is given a message enqueue time by the JMS IQ Manager when a message is added into a queue or topic. This value is determined by the server side and is unique across a topic or a queue."
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/bpadb/index.html",
+        "quote": "For a non-transaction session, the message enqueue time is determined by the JMS IQ Manager when the JMS IQ Manager receives the message."
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/bpadb/index.html",
+        "quote": "Queue Name: PTP First enqueue time: 03212005:08:33:09 Last enqueue time: 03212005:08:33:10 Number of current receivers: 2 Message count: 4"
+       }
+      ],
+      "field": "enqueue time",
+      "resolution": "s",
+      "note": "Set by the server for every message when it is added to a queue or topic; at commit in a transacted session. The resolution is the one shown in the status display."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Property Values Equivalent JMS Methods CorrelationID Correlation ID getJMSCorrelationID() setJMSCorrelationID(string) CorrelationIDAsBytes Correlation ID getCorrelationIDAsBytes setCorrelationIDAsBytes(byte[]) DeliveryMode Persistent, nonpersistent (default = persistent)"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Expiration Number in milliseconds (default = 0 ms = never expire) getTimeToLive() setTimeToLive(arg0) MessageID Message ID getJMSMessageID() setJMSMessageID(string) Priority 0 - 9 where 9 is the highest priority (default = 4)"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Redelivered True, false getJMSRedelivered() setJMSRedelivered(boolean) ReplyTo Destination getJMSReplyTo() setJMSReplyTo(destination) Timestamp Number in milliseconds getJMSTimestamp() setJMSTimestamp(long) Type Text, Bytes, Map, Stream getJMSMessageType() setJMSMessageType(arg0)"
+       }
+      ],
+      "note": "Judgment call: the header lists a timestamp that has a setter (setJMSTimestamp), so the sending side sets it; the reference does not say it is the enqueue time."
+     },
+     "Q3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Property Values Equivalent JMS Methods CorrelationID Correlation ID getJMSCorrelationID() setJMSCorrelationID(string) CorrelationIDAsBytes Correlation ID getCorrelationIDAsBytes setCorrelationIDAsBytes(byte[]) DeliveryMode Persistent, nonpersistent (default = persistent)"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Expiration Number in milliseconds (default = 0 ms = never expire) getTimeToLive() setTimeToLive(arg0) MessageID Message ID getJMSMessageID() setJMSMessageID(string) Priority 0 - 9 where 9 is the highest priority (default = 4)"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Redelivered True, false getJMSRedelivered() setJMSRedelivered(boolean) ReplyTo Destination getJMSReplyTo() setJMSReplyTo(destination) Timestamp Number in milliseconds getJMSTimestamp() setJMSTimestamp(long) Type Text, Bytes, Map, Stream getJMSMessageType() setJMSMessageType(arg0)"
+       }
+      ],
+      "note": "not found in the reference"
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Property Values Equivalent JMS Methods CorrelationID Correlation ID getJMSCorrelationID() setJMSCorrelationID(string) CorrelationIDAsBytes Correlation ID getCorrelationIDAsBytes setCorrelationIDAsBytes(byte[]) DeliveryMode Persistent, nonpersistent (default = persistent)"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Expiration Number in milliseconds (default = 0 ms = never expire) getTimeToLive() setTimeToLive(arg0) MessageID Message ID getJMSMessageID() setJMSMessageID(string) Priority 0 - 9 where 9 is the highest priority (default = 4)"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Redelivered True, false getJMSRedelivered() setJMSRedelivered(boolean) ReplyTo Destination getJMSReplyTo() setJMSReplyTo(destination) Timestamp Number in milliseconds getJMSTimestamp() setJMSTimestamp(long) Type Text, Bytes, Map, Stream getJMSMessageType() setJMSMessageType(arg0)"
+       }
+      ],
+      "note": "No delivery time appears among the delivered header fields."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Expiration Number in milliseconds (default = 0 ms = never expire) getTimeToLive() setTimeToLive(arg0) MessageID Message ID getJMSMessageID() setJMSMessageID(string) Priority 0 - 9 where 9 is the highest priority (default = 4)"
+       }
+      ],
+      "note": "The expiration is a time to live in ms that the sender sets; no remaining time is shown."
+     },
+     "Q6": {
+      "answer": "aggregate only",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "These properties are displayed when you check the status of the message destination using either Enterprise Manager or the command-line MS Control utility."
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/bpadb/index.html",
+        "quote": "Queue Name: PTP First enqueue time: 03212005:08:33:09 Last enqueue time: 03212005:08:33:10 Number of current receivers: 2 Message count: 4"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "You can monitor message destinations, and view message properties and payloads."
+       }
+      ],
+      "note": "The status display shows the first and last enqueue times of a destination and its sequence numbers. Enterprise Manager is also documented to show message properties; whether it lists the enqueue time per message was not read."
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "receive(timeout) Description Receives the next message of type com.stc.connectors.jms.Message that arrives from the destination configured in the Connectivity Map Editor during the specified timeout interval."
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/bpadb/index.html",
+        "quote": "Queue Name: PTP First enqueue time: 03212005:08:33:09 Last enqueue time: 03212005:08:33:10 Number of current receivers: 2 Message count: 4"
+       }
+      ],
+      "note": "A receive call waits up to its timeout for the next message, and the status display counts several current receivers of one queue."
+     },
+     "not_determined": [
+      "Q3"
+     ],
+     "read_back": [
+      {
+       "question": "Q2",
+       "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+       "read": "The property table lists Timestamp with getJMSTimestamp and setJMSTimestamp and never says the server sets it, and another page says the server gives each message an enqueue time; the two stcmsctrlutil examples show Message.Timestamp and the JMS timestamp property with identical values, so the pages do not settle whether the delivered timestamp is the server's enqueue time.",
+       "agrees": false
+      },
+      {
+       "question": "Q7",
+       "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+       "read": "A receive call waits up to its timeout for the next message, and the status display counts several current receivers of one queue, so a consumer can keep requests waiting.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "topic subscribers (JMS, durable subscription)",
+     "Q0": {
+      "fields": [
+       "correlation id",
+       "delivery mode",
+       "destination",
+       "expiration (time to live, ms)",
+       "message id",
+       "priority",
+       "redelivered flag",
+       "reply-to",
+       "timestamp (ms)",
+       "type",
+       "message body and user properties"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Property Values Equivalent JMS Methods CorrelationID Correlation ID getJMSCorrelationID() setJMSCorrelationID(string) CorrelationIDAsBytes Correlation ID getCorrelationIDAsBytes setCorrelationIDAsBytes(byte[]) DeliveryMode Persistent, nonpersistent (default = persistent)"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Expiration Number in milliseconds (default = 0 ms = never expire) getTimeToLive() setTimeToLive(arg0) MessageID Message ID getJMSMessageID() setJMSMessageID(string) Priority 0 - 9 where 9 is the highest priority (default = 4)"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Redelivered True, false getJMSRedelivered() setJMSRedelivered(boolean) ReplyTo Destination getJMSReplyTo() setJMSReplyTo(destination) Timestamp Number in milliseconds getJMSTimestamp() setJMSTimestamp(long) Type Text, Bytes, Map, Stream getJMSMessageType() setJMSMessageType(arg0)"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/bpadb/index.html",
+        "quote": "Each message is given a message enqueue time by the JMS IQ Manager when a message is added into a queue or topic. This value is determined by the server side and is unique across a topic or a queue."
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/bpadb/index.html",
+        "quote": "For a non-transaction session, the message enqueue time is determined by the JMS IQ Manager when the JMS IQ Manager receives the message."
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/bpadb/index.html",
+        "quote": "Queue Name: PTP First enqueue time: 03212005:08:33:09 Last enqueue time: 03212005:08:33:10 Number of current receivers: 2 Message count: 4"
+       }
+      ],
+      "field": "enqueue time",
+      "resolution": "s"
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Property Values Equivalent JMS Methods CorrelationID Correlation ID getJMSCorrelationID() setJMSCorrelationID(string) CorrelationIDAsBytes Correlation ID getCorrelationIDAsBytes setCorrelationIDAsBytes(byte[]) DeliveryMode Persistent, nonpersistent (default = persistent)"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Expiration Number in milliseconds (default = 0 ms = never expire) getTimeToLive() setTimeToLive(arg0) MessageID Message ID getJMSMessageID() setJMSMessageID(string) Priority 0 - 9 where 9 is the highest priority (default = 4)"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Redelivered True, false getJMSRedelivered() setJMSRedelivered(boolean) ReplyTo Destination getJMSReplyTo() setJMSReplyTo(destination) Timestamp Number in milliseconds getJMSTimestamp() setJMSTimestamp(long) Type Text, Bytes, Map, Stream getJMSMessageType() setJMSMessageType(arg0)"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Property Values Equivalent JMS Methods CorrelationID Correlation ID getJMSCorrelationID() setJMSCorrelationID(string) CorrelationIDAsBytes Correlation ID getCorrelationIDAsBytes setCorrelationIDAsBytes(byte[]) DeliveryMode Persistent, nonpersistent (default = persistent)"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Expiration Number in milliseconds (default = 0 ms = never expire) getTimeToLive() setTimeToLive(arg0) MessageID Message ID getJMSMessageID() setJMSMessageID(string) Priority 0 - 9 where 9 is the highest priority (default = 4)"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Redelivered True, false getJMSRedelivered() setJMSRedelivered(boolean) ReplyTo Destination getJMSReplyTo() setJMSReplyTo(destination) Timestamp Number in milliseconds getJMSTimestamp() setJMSTimestamp(long) Type Text, Bytes, Map, Stream getJMSMessageType() setJMSMessageType(arg0)"
+       }
+      ],
+      "note": "not found in the reference"
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Property Values Equivalent JMS Methods CorrelationID Correlation ID getJMSCorrelationID() setJMSCorrelationID(string) CorrelationIDAsBytes Correlation ID getCorrelationIDAsBytes setCorrelationIDAsBytes(byte[]) DeliveryMode Persistent, nonpersistent (default = persistent)"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Expiration Number in milliseconds (default = 0 ms = never expire) getTimeToLive() setTimeToLive(arg0) MessageID Message ID getJMSMessageID() setJMSMessageID(string) Priority 0 - 9 where 9 is the highest priority (default = 4)"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Redelivered True, false getJMSRedelivered() setJMSRedelivered(boolean) ReplyTo Destination getJMSReplyTo() setJMSReplyTo(destination) Timestamp Number in milliseconds getJMSTimestamp() setJMSTimestamp(long) Type Text, Bytes, Map, Stream getJMSMessageType() setJMSMessageType(arg0)"
+       }
+      ],
+      "note": "No delivery time appears among the delivered header fields."
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Expiration Number in milliseconds (default = 0 ms = never expire) getTimeToLive() setTimeToLive(arg0) MessageID Message ID getJMSMessageID() setJMSMessageID(string) Priority 0 - 9 where 9 is the highest priority (default = 4)"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "aggregate only",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "These properties are displayed when you check the status of the message destination using either Enterprise Manager or the command-line MS Control utility."
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/bpadb/index.html",
+        "quote": "Queue Name: PTP First enqueue time: 03212005:08:33:09 Last enqueue time: 03212005:08:33:10 Number of current receivers: 2 Message count: 4"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "You can monitor message destinations, and view message properties and payloads."
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "When a durable subscriber is disconnected from the message server, the server stores messages until the subscriber reconnects. It then delivers all accumulated messages that have not expired."
+       }
+      ],
+      "note": "A durable subscriber receives the messages of its topic, and the server stores them while it is disconnected."
+     },
+     "not_determined": [
+      "Q3"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+       "read": "A durable subscriber receives the messages of its topic and the server stores them while it is disconnected and delivers them on reconnection; the page shows no per-message request or credit for a topic subscriber.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "JMS send (queue sender or topic publisher)",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E19509-01/820-2239/6ndrt6vej/index.html",
+        "quote": "Return Value None. Exceptions Throws JMSException if a message is null or if the JMS provider fails to send the message due to an internal error."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Oracle Tuxedo /Q",
+   "group": "C",
+   "kind": "broker",
+   "version": "Oracle Tuxedo 12c Release 2 (12.2.2)",
+   "version_evidence": [
+    {
+     "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+     "quote": "Oracle Tuxedo ATMI C Function Reference, 12c Release 2 (12.2.2)"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "Wikipedia (en): Category:Message-oriented middleware",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "tpdequeue without TPQWAIT (an empty queue returns an error at once)",
+     "Q0": {
+      "fields": [
+       "message buffer",
+       "priority",
+       "message id",
+       "correlation id",
+       "delivery quality of service",
+       "reply quality of service",
+       "reply queue name",
+       "failure queue name",
+       "application key",
+       "user-return code",
+       "originating client id"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "On output from tpdequeue(), the following elements may be set in the TPQCTL structure: long flags; /* indicates which of the values * should be set */ long priority; /* enqueue priority */ char msgid[32]; /* ID of message dequeued */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "char corrid[32]; /* correlation identifier used to * identify the message */ long delivery_qos; /* delivery quality of service */ long reply_qos; /* reply message quality of service */ char replyqueue[128]; /* queue name for reply */ char failurequeue[128]; /* queue name for failure */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "long diagnostic; /* reason for failure */ long appkey; /* application authentication client * key */ long urcode; /* user-return code */ CLIENTID cltid; /* client identifier for originating * client */"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "TPQEXPTIME_REL If this flag is set, the message has a relative expiration time, which is the number of seconds after the message arrives at the queue that the message is removed from the queue."
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "If none of these flags is set, the default expiration time associated with the target queue is applied to the message."
+       }
+      ],
+      "field": "expiration time (arrival plus relative expiration)",
+      "resolution": "s",
+      "note": "Judgment call, reading 2: the source states what the expiration counts from (arrival at the queue) and its length in seconds. Setting: the TPQEXPTIME_REL flag with exp_time on the message, or the target queue's default expiration."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "On output from tpdequeue(), the following elements may be set in the TPQCTL structure: long flags; /* indicates which of the values * should be set */ long priority; /* enqueue priority */ char msgid[32]; /* ID of message dequeued */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "char corrid[32]; /* correlation identifier used to * identify the message */ long delivery_qos; /* delivery quality of service */ long reply_qos; /* reply message quality of service */ char replyqueue[128]; /* queue name for reply */ char failurequeue[128]; /* queue name for failure */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "long diagnostic; /* reason for failure */ long appkey; /* application authentication client * key */ long urcode; /* user-return code */ CLIENTID cltid; /* client identifier for originating * client */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "remaining bits for the flags parameter are cleared (set to zero) when tpdequeue() is called: TPQTOP, TPQBEFOREMSGID, TPQTIME_ABS, TPQTIME_REL, TPQEXPTIME_ABS, TPQEXPTIME_REL, and TPQEXPTIME_NONE."
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "On output from tpdequeue(), the following elements may be set in the TPQCTL structure: long flags; /* indicates which of the values * should be set */ long priority; /* enqueue priority */ char msgid[32]; /* ID of message dequeued */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "char corrid[32]; /* correlation identifier used to * identify the message */ long delivery_qos; /* delivery quality of service */ long reply_qos; /* reply message quality of service */ char replyqueue[128]; /* queue name for reply */ char failurequeue[128]; /* queue name for failure */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "long diagnostic; /* reason for failure */ long appkey; /* application authentication client * key */ long urcode; /* user-return code */ CLIENTID cltid; /* client identifier for originating * client */"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "On output from tpdequeue(), the following elements may be set in the TPQCTL structure: long flags; /* indicates which of the values * should be set */ long priority; /* enqueue priority */ char msgid[32]; /* ID of message dequeued */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "char corrid[32]; /* correlation identifier used to * identify the message */ long delivery_qos; /* delivery quality of service */ long reply_qos; /* reply message quality of service */ char replyqueue[128]; /* queue name for reply */ char failurequeue[128]; /* queue name for failure */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "long diagnostic; /* reason for failure */ long appkey; /* application authentication client * key */ long urcode; /* user-return code */ CLIENTID cltid; /* client identifier for originating * client */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "remaining bits for the flags parameter are cleared (set to zero) when tpdequeue() is called: TPQTOP, TPQBEFOREMSGID, TPQTIME_ABS, TPQTIME_REL, TPQEXPTIME_ABS, TPQEXPTIME_REL, and TPQEXPTIME_NONE."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "struct tpqctl_t { /* control parameters to queue primitives */ long flags; /* indicates which values are set */ long deq_time; /* absolute/relative time for dequeuing */ long priority; /* enqueue priority */ long diagnostic; /* indicates reason for failure */"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "TPQWAIT Setting this flag indicates that an error should not be returned if the queue is empty. Instead, the process should wait until a message is available."
+       }
+      ],
+      "note": "Without TPQWAIT an empty queue returns an error."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q1",
+       "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+       "read": "TPQEXPTIME_REL states the expiration as a number of seconds after the message arrives at the queue, and the queue's default expiration applies when no flag is set, so an arrival-based deadline with a stated start and length exists only when a message or queue sets it.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "tpdequeue with TPQWAIT (the request waits for a message)",
+     "Q0": {
+      "fields": [
+       "message buffer",
+       "priority",
+       "message id",
+       "correlation id",
+       "delivery quality of service",
+       "reply quality of service",
+       "reply queue name",
+       "failure queue name",
+       "application key",
+       "user-return code",
+       "originating client id"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "On output from tpdequeue(), the following elements may be set in the TPQCTL structure: long flags; /* indicates which of the values * should be set */ long priority; /* enqueue priority */ char msgid[32]; /* ID of message dequeued */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "char corrid[32]; /* correlation identifier used to * identify the message */ long delivery_qos; /* delivery quality of service */ long reply_qos; /* reply message quality of service */ char replyqueue[128]; /* queue name for reply */ char failurequeue[128]; /* queue name for failure */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "long diagnostic; /* reason for failure */ long appkey; /* application authentication client * key */ long urcode; /* user-return code */ CLIENTID cltid; /* client identifier for originating * client */"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "TPQEXPTIME_REL If this flag is set, the message has a relative expiration time, which is the number of seconds after the message arrives at the queue that the message is removed from the queue."
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "If none of these flags is set, the default expiration time associated with the target queue is applied to the message."
+       }
+      ],
+      "field": "expiration time (arrival plus relative expiration)",
+      "resolution": "s"
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "On output from tpdequeue(), the following elements may be set in the TPQCTL structure: long flags; /* indicates which of the values * should be set */ long priority; /* enqueue priority */ char msgid[32]; /* ID of message dequeued */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "char corrid[32]; /* correlation identifier used to * identify the message */ long delivery_qos; /* delivery quality of service */ long reply_qos; /* reply message quality of service */ char replyqueue[128]; /* queue name for reply */ char failurequeue[128]; /* queue name for failure */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "long diagnostic; /* reason for failure */ long appkey; /* application authentication client * key */ long urcode; /* user-return code */ CLIENTID cltid; /* client identifier for originating * client */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "remaining bits for the flags parameter are cleared (set to zero) when tpdequeue() is called: TPQTOP, TPQBEFOREMSGID, TPQTIME_ABS, TPQTIME_REL, TPQEXPTIME_ABS, TPQEXPTIME_REL, and TPQEXPTIME_NONE."
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "On output from tpdequeue(), the following elements may be set in the TPQCTL structure: long flags; /* indicates which of the values * should be set */ long priority; /* enqueue priority */ char msgid[32]; /* ID of message dequeued */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "char corrid[32]; /* correlation identifier used to * identify the message */ long delivery_qos; /* delivery quality of service */ long reply_qos; /* reply message quality of service */ char replyqueue[128]; /* queue name for reply */ char failurequeue[128]; /* queue name for failure */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "long diagnostic; /* reason for failure */ long appkey; /* application authentication client * key */ long urcode; /* user-return code */ CLIENTID cltid; /* client identifier for originating * client */"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "On output from tpdequeue(), the following elements may be set in the TPQCTL structure: long flags; /* indicates which of the values * should be set */ long priority; /* enqueue priority */ char msgid[32]; /* ID of message dequeued */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "char corrid[32]; /* correlation identifier used to * identify the message */ long delivery_qos; /* delivery quality of service */ long reply_qos; /* reply message quality of service */ char replyqueue[128]; /* queue name for reply */ char failurequeue[128]; /* queue name for failure */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "long diagnostic; /* reason for failure */ long appkey; /* application authentication client * key */ long urcode; /* user-return code */ CLIENTID cltid; /* client identifier for originating * client */"
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "remaining bits for the flags parameter are cleared (set to zero) when tpdequeue() is called: TPQTOP, TPQBEFOREMSGID, TPQTIME_ABS, TPQTIME_REL, TPQEXPTIME_ABS, TPQEXPTIME_REL, and TPQEXPTIME_NONE."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "struct tpqctl_t { /* control parameters to queue primitives */ long flags; /* indicates which values are set */ long deq_time; /* absolute/relative time for dequeuing */ long priority; /* enqueue priority */ long diagnostic; /* indicates reason for failure */"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "TPQWAIT Setting this flag indicates that an error should not be returned if the queue is empty. Instead, the process should wait until a message is available."
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "each tpdequeue() request specifying the TPQWAIT control parameter requires that a queue manager (TMQUEUE) action object be available if a message satisfying the condition is not immediately available."
+       },
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "The number of available queue manager actions are specified when a queue space is created or modified."
+       }
+      ],
+      "note": "Each waiting request holds one action object of the queue manager, and the number of action objects is set when the queue space is created or modified."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+       "read": "Each tpdequeue with TPQWAIT that finds no message needs a queue manager action object while it waits, and the number of action objects is set when the queue space is created or modified, so several requests can wait up to that number.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "tpenqueue",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "message id (when the TPQMSGID flag is set)",
+       "diagnostic code on failure"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "On output from tpenqueue(), the following elements may be set in the TPQCTL structure: long flags; /* indicates which of the values * are set */ char msgid[32]; /* ID of enqueued message */ long diagnostic; /* indicates reason for failure */"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "On output from tpenqueue(), the following elements may be set in the TPQCTL structure: long flags; /* indicates which of the values * are set */ char msgid[32]; /* ID of enqueued message */ long diagnostic; /* indicates reason for failure */"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "On output from tpenqueue(), the following elements may be set in the TPQCTL structure: long flags; /* indicates which of the values * are set */ char msgid[32]; /* ID of enqueued message */ long diagnostic; /* indicates reason for failure */"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oracle.com/cd/E72452_01/tuxedo/docs1222/pdf/rf3c.pdf",
+        "quote": "On output from tpenqueue(), the following elements may be set in the TPQCTL structure: long flags; /* indicates which of the values * are set */ char msgid[32]; /* ID of enqueued message */ long diagnostic; /* indicates reason for failure */"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "rocketmq-rust",
+   "group": "C",
+   "kind": "broker",
+   "version": "v1.0.0",
+   "version_evidence": [
+    {
+     "url": "https://github.com/mxsm/rocketmq-rust/releases/tag/v1.0.0",
+     "quote": "v1.0.0"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list rust-unofficial/awesome-rust",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "pull consumption (long polling)",
+     "Q0": {
+      "fields": [
+       "message body, topic, flag and properties",
+       "broker name",
+       "queue id",
+       "queue offset",
+       "commit log offset",
+       "store size",
+       "system flag",
+       "born timestamp",
+       "born host",
+       "store timestamp",
+       "store host",
+       "message id",
+       "body CRC",
+       "reconsume times",
+       "prepared transaction offset",
+       "response header: suggested broker id, next begin offset, min offset, max offset, offset delta, topic and group system flags, forbidden type"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-model/src/common/message/message_ext.rs",
+        "quote": "pub struct MessageExt { pub message: Message, pub broker_name: CheetahString, pub queue_id: i32, pub store_size: i32, pub queue_offset: i64, pub sys_flag: i32, pub born_timestamp: i64, pub born_host: SocketAddr, pub store_timestamp: i64, pub store_host: SocketAddr,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-model/src/common/message/message_ext.rs",
+        "quote": "pub msg_id: CheetahString, pub commit_log_offset: i64, pub body_crc: u32, pub reconsume_times: i32, pub prepared_transaction_offset: i64, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-protocol/src/protocol/header/pull_message_response_header.rs",
+        "quote": "pub suggest_which_broker_id: u64, #[header(required)] pub next_begin_offset: i64, #[header(required)] pub min_offset: i64, #[header(required)] pub max_offset: i64, pub offset_delta: Option<i64>, pub topic_sys_flag: Option<i32>, pub group_sys_flag: Option<i32>, pub forbidden_type: Option<i32>, }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-store/src/log_file/commit_log/append_sequencer.rs",
+        "quote": "if !duplication_enable { message.message_ext_inner.store_timestamp = rocketmq_runtime::common::time_utils::current_millis() as i64; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-model/src/common/message/message_ext.rs",
+        "quote": "pub struct MessageExt { pub message: Message, pub broker_name: CheetahString, pub queue_id: i32, pub store_size: i32, pub queue_offset: i64, pub sys_flag: i32, pub born_timestamp: i64, pub born_host: SocketAddr, pub store_timestamp: i64, pub store_host: SocketAddr,"
+       }
+      ],
+      "field": "store timestamp",
+      "resolution": "ms",
+      "note": "Set from the broker's clock when the message is appended to the commit log, unless the store is in duplication mode, where the timestamp the message already carries is kept."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-protocol/src/common/message/message_decoder.rs",
+        "quote": "msg_ext.set_born_timestamp(frame.born_timestamp); msg_ext.set_born_host(frame.born_host); msg_ext.set_store_timestamp(frame.store_timestamp); msg_ext.set_store_host(frame.store_host);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-protocol/src/common/message/message_decoder.rs",
+        "quote": "pub const MESSAGE_STORE_TIMESTAMP_POSITION: usize = 56;"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "request arrival",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-broker/src/long_polling/pull_deferred/deadline.rs",
+        "quote": "Preserves the legacy inclusive `now >= suspend_start + timeout` rule."
+       }
+      ],
+      "note": "Reading 8: a held pull request has a timeout deadline of suspend start plus timeout, kept at the broker."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-protocol/src/protocol/header/pull_message_response_header.rs",
+        "quote": "pub suggest_which_broker_id: u64, #[header(required)] pub next_begin_offset: i64, #[header(required)] pub min_offset: i64, #[header(required)] pub max_offset: i64, pub offset_delta: Option<i64>, pub topic_sys_flag: Option<i32>, pub group_sys_flag: Option<i32>, pub forbidden_type: Option<i32>, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-model/src/common/message/message_ext.rs",
+        "quote": "pub struct MessageExt { pub message: Message, pub broker_name: CheetahString, pub queue_id: i32, pub store_size: i32, pub queue_offset: i64, pub sys_flag: i32, pub born_timestamp: i64, pub born_host: SocketAddr, pub store_timestamp: i64, pub store_host: SocketAddr,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-model/src/common/message/message_ext.rs",
+        "quote": "pub msg_id: CheetahString, pub commit_log_offset: i64, pub body_crc: u32, pub reconsume_times: i32, pub prepared_transaction_offset: i64, }"
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-protocol/src/protocol/header/pull_message_response_header.rs",
+        "quote": "pub suggest_which_broker_id: u64, #[header(required)] pub next_begin_offset: i64, #[header(required)] pub min_offset: i64, #[header(required)] pub max_offset: i64, pub offset_delta: Option<i64>, pub topic_sys_flag: Option<i32>, pub group_sys_flag: Option<i32>, pub forbidden_type: Option<i32>, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-model/src/common/message/message_ext.rs",
+        "quote": "pub struct MessageExt { pub message: Message, pub broker_name: CheetahString, pub queue_id: i32, pub store_size: i32, pub queue_offset: i64, pub sys_flag: i32, pub born_timestamp: i64, pub born_host: SocketAddr, pub store_timestamp: i64, pub store_host: SocketAddr,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-model/src/common/message/message_ext.rs",
+        "quote": "pub msg_id: CheetahString, pub commit_log_offset: i64, pub body_crc: u32, pub reconsume_times: i32, pub prepared_transaction_offset: i64, }"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-store/src/log_file/commit_log/append_sequencer.rs",
+        "quote": "if !duplication_enable { message.message_ext_inner.store_timestamp = rocketmq_runtime::common::time_utils::current_millis() as i64; }"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "one at a time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-broker/src/long_polling/pull_deferred/data.rs",
+        "quote": "pub(crate) struct PullMatchCriteria { physical_topic: CheetahString, physical_queue_id: i32, pull_from_offset: i64, subscription: SubscriptionData, filter: ArcMessageFilter, }"
+       }
+      ],
+      "note": "Judgment call: a held pull request names one topic, one queue and one start offset, and a consumer keeps one outstanding request per queue."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-broker/src/long_polling/pull_deferred/deadline.rs",
+       "read": "A held pull request keeps the broker's wall-clock reading at suspension plus its effective timeout as its deadline, which is the request's arrival kept at the broker under reading 8.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-broker/src/long_polling/pull_deferred/data.rs",
+       "read": "A held pull request is addressed by one topic, one queue and one start offset, so its requests are not interchangeable the way pop requests are; the index also bounds the held requests per queue key.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "pop consumption",
+     "Q0": {
+      "fields": [
+       "message as in pull consumption, with store timestamp",
+       "response header: pop time, invisible time, revive queue id, rest number, start offset info, message offset info, order count info"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-model/src/common/message/message_ext.rs",
+        "quote": "pub struct MessageExt { pub message: Message, pub broker_name: CheetahString, pub queue_id: i32, pub store_size: i32, pub queue_offset: i64, pub sys_flag: i32, pub born_timestamp: i64, pub born_host: SocketAddr, pub store_timestamp: i64, pub store_host: SocketAddr,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-model/src/common/message/message_ext.rs",
+        "quote": "pub msg_id: CheetahString, pub commit_log_offset: i64, pub body_crc: u32, pub reconsume_times: i32, pub prepared_transaction_offset: i64, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-broker/src/processor/pop_message_processor/resume.rs",
+        "quote": "let response_header = PopMessageResponseHeader { pop_time, invisible_time: request_header.invisible_time, revive_qid: revive_qid as u32, rest_num: rest_num as u64,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-protocol/src/protocol/header/pop_message_response_header.rs",
+        "quote": "pub rest_num: u64, #[serde(rename = \"startOffsetInfo\", skip_serializing_if = \"Option::is_none\")] pub start_offset_info: Option<CheetahString>,"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-store/src/log_file/commit_log/append_sequencer.rs",
+        "quote": "if !duplication_enable { message.message_ext_inner.store_timestamp = rocketmq_runtime::common::time_utils::current_millis() as i64; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-model/src/common/message/message_ext.rs",
+        "quote": "pub struct MessageExt { pub message: Message, pub broker_name: CheetahString, pub queue_id: i32, pub store_size: i32, pub queue_offset: i64, pub sys_flag: i32, pub born_timestamp: i64, pub born_host: SocketAddr, pub store_timestamp: i64, pub store_host: SocketAddr,"
+       }
+      ],
+      "field": "store timestamp",
+      "resolution": "ms"
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-protocol/src/common/message/message_decoder.rs",
+        "quote": "msg_ext.set_born_timestamp(frame.born_timestamp); msg_ext.set_born_host(frame.born_host); msg_ext.set_store_timestamp(frame.store_timestamp); msg_ext.set_store_host(frame.store_host);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-protocol/src/common/message/message_decoder.rs",
+        "quote": "pub const MESSAGE_STORE_TIMESTAMP_POSITION: usize = 56;"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "send time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-broker/src/processor/pop_message_processor/resume.rs",
+        "quote": "let pop_time = current_millis(); let mut rest_num = 0;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-broker/src/processor/pop_message_processor/resume.rs",
+        "quote": "let response_header = PopMessageResponseHeader { pop_time, invisible_time: request_header.invisible_time, revive_qid: revive_qid as u32, rest_num: rest_num as u64,"
+       }
+      ],
+      "note": "Judgment call: the pop time is the broker clock reading taken when it serves the pop request, which is after any wait; the request's own arrival (born time plus poll time) sets only its wait deadline."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-broker/src/processor/pop_message_processor/resume.rs",
+        "quote": "let response_header = PopMessageResponseHeader { pop_time, invisible_time: request_header.invisible_time, revive_qid: revive_qid as u32, rest_num: rest_num as u64,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-protocol/src/protocol/header/pop_message_response_header.rs",
+        "quote": "pub rest_num: u64, #[serde(rename = \"startOffsetInfo\", skip_serializing_if = \"Option::is_none\")] pub start_offset_info: Option<CheetahString>,"
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-broker/src/processor/pop_message_processor/resume.rs",
+        "quote": "let response_header = PopMessageResponseHeader { pop_time, invisible_time: request_header.invisible_time, revive_qid: revive_qid as u32, rest_num: rest_num as u64,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-model/src/common/message/message_ext.rs",
+        "quote": "pub struct MessageExt { pub message: Message, pub broker_name: CheetahString, pub queue_id: i32, pub store_size: i32, pub queue_offset: i64, pub sys_flag: i32, pub born_timestamp: i64, pub born_host: SocketAddr, pub store_timestamp: i64, pub store_host: SocketAddr,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-broker/src/processor/pop_message_processor/resume.rs",
+        "quote": "let pop_time = current_millis(); let mut rest_num = 0;"
+       }
+      ],
+      "resolution": "ms",
+      "note": "The pop time minus the store timestamp, both on the broker's clock, is the stay. The invisible time in the header is the consumer's own request value echoed back, not a stay."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-broker/src/processor/pop_message_processor/resume.rs",
+        "quote": "let pop_time = current_millis(); let mut rest_num = 0;"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-broker/src/long_polling/pop_deferred/service.rs",
+        "quote": "Typed POP request data retained without a channel or connection context."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-broker/src/long_polling/pop_deferred/service.rs",
+        "quote": "fn polling_count(&self, topic: &CheetahString, consumer_group: &CheetahString, queue_id: i32) -> i32;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-broker/src/long_polling/pop_deferred/deadline.rs",
+        "quote": "The old predicate was `now > (born + poll).saturating_sub(50)`."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-protocol/src/protocol/header/pop_message_request_header.rs",
+        "quote": "pub fn is_timeout_too_much_at(&self, now_millis: i64) -> bool { now_millis - self.born_time as i64 - self.poll_time as i64 > 500 }"
+       }
+      ],
+      "note": "The broker keeps pending pop requests and counts them per topic, consumer group and queue."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-broker/src/processor/pop_message_processor/resume.rs",
+       "read": "The pop time is read from the broker's clock in the store read that serves the request, which also runs again on each resume after a wait; the held request's deadline is built from the born time in the request header plus its poll time, not from a broker arrival stamp.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-broker/src/processor/pop_message_processor/resume.rs",
+       "read": "The pop response header has popTime as a required field, so the time is delivered with every response.",
+       "agrees": true
+      },
+      {
+       "question": "Q5",
+       "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-broker/src/processor/pop_message_processor/resume.rs",
+       "read": "The pop time is stamped when the request is served, after any wait, and each delivered message carries its store timestamp, so pop time less store timestamp is the whole stay up to hand-out; the invisible time in the header is the consumer's own requested window.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-broker/src/long_polling/pop_deferred/service.rs",
+       "read": "The broker keeps pending pop requests in an index limited per topic, group and queue and counts them, so a consumer can keep several waiting.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "send message (synchronous and asynchronous)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "message id",
+       "queue id",
+       "queue offset",
+       "transaction id",
+       "batch unique id",
+       "recall handle"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-protocol/src/protocol/header/message_operation_header/send_message_response_header.rs",
+        "quote": "pub struct SendMessageResponseHeader { #[header(required)] msg_id: CheetahString, #[header(required)] queue_id: i32, #[header(required)] queue_offset: i64, transaction_id: Option<CheetahString>, batch_uniq_id: Option<CheetahString>,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-protocol/src/protocol/header/message_operation_header/send_message_response_header.rs",
+        "quote": "recall_handle: Option<CheetahString>, }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-protocol/src/protocol/header/message_operation_header/send_message_response_header.rs",
+        "quote": "pub struct SendMessageResponseHeader { #[header(required)] msg_id: CheetahString, #[header(required)] queue_id: i32, #[header(required)] queue_offset: i64, transaction_id: Option<CheetahString>, batch_uniq_id: Option<CheetahString>,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-protocol/src/protocol/header/message_operation_header/send_message_response_header.rs",
+        "quote": "recall_handle: Option<CheetahString>, }"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-protocol/src/protocol/header/message_operation_header/send_message_response_header.rs",
+        "quote": "pub struct SendMessageResponseHeader { #[header(required)] msg_id: CheetahString, #[header(required)] queue_id: i32, #[header(required)] queue_offset: i64, transaction_id: Option<CheetahString>, batch_uniq_id: Option<CheetahString>,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-protocol/src/protocol/header/message_operation_header/send_message_response_header.rs",
+        "quote": "recall_handle: Option<CheetahString>, }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-protocol/src/protocol/header/message_operation_header/send_message_response_header.rs",
+        "quote": "pub struct SendMessageResponseHeader { #[header(required)] msg_id: CheetahString, #[header(required)] queue_id: i32, #[header(required)] queue_offset: i64, transaction_id: Option<CheetahString>, batch_uniq_id: Option<CheetahString>,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/mxsm/rocketmq-rust/v1.0.0/rocketmq-protocol/src/protocol/header/message_operation_header/send_message_response_header.rs",
+        "quote": "recall_handle: Option<CheetahString>, }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Rumqttd",
+   "group": "C",
+   "kind": "broker",
+   "version": "rumqttd-0.20.0",
+   "version_evidence": [
+    {
+     "url": "https://github.com/bytebeamio/rumqtt/releases/tag/rumqttd-0.20.0",
+     "quote": "rumqttd-0.20.0"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list rust-unofficial/awesome-rust",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "MQTT 5.0 subscription",
+     "Q0": {
+      "fields": [
+       "topic",
+       "payload",
+       "QoS",
+       "retain flag",
+       "duplicate flag",
+       "packet id (QoS 1 and 2)",
+       "payload format indicator",
+       "message expiry interval (time left)",
+       "topic alias",
+       "response topic",
+       "correlation data",
+       "user properties",
+       "subscription identifiers",
+       "content type"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/protocol/mod.rs",
+        "quote": "pub struct Publish { pub(crate) dup: bool, pub(crate) qos: QoS, pub(crate) pkid: u16, pub retain: bool, pub topic: Bytes, pub payload: Bytes, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/protocol/mod.rs",
+        "quote": "pub struct PublishProperties { pub payload_format_indicator: Option<u8>, pub message_expiry_interval: Option<u32>, pub topic_alias: Option<u16>,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/protocol/mod.rs",
+        "quote": "pub response_topic: Option<String>, pub correlation_data: Option<Bytes>, pub user_properties: Vec<(String, String)>, pub subscription_identifiers: Vec<usize>, pub content_type: Option<String>, }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/logs.rs",
+        "quote": "pub struct PublishData { pub publish: Publish, pub properties: Option<PublishProperties>, pub timestamp: Instant, } impl From<PubWithProp> for PublishData { fn from((publish, properties): PubWithProp) -> Self { PublishData { publish, properties, timestamp: Instant::now(), } } }"
+       }
+      ],
+      "field": "timestamp (monotonic Instant taken when the publish enters the commit log)",
+      "resolution": "ns",
+      "note": "The value is a monotonic clock reading, not wall time, and it is dropped before delivery."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/logs.rs",
+        "quote": "*message_expiry_interval -= time_spent; } is_valid }); // no need to include timestamp when returning"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/protocol/mod.rs",
+        "quote": "pub struct Publish { pub(crate) dup: bool, pub(crate) qos: QoS, pub(crate) pkid: u16, pub retain: bool, pub topic: Bytes, pub payload: Bytes, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/protocol/mod.rs",
+        "quote": "pub struct PublishProperties { pub payload_format_indicator: Option<u8>, pub message_expiry_interval: Option<u32>, pub topic_alias: Option<u16>,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/protocol/mod.rs",
+        "quote": "pub response_topic: Option<String>, pub correlation_data: Option<Bytes>, pub user_properties: Vec<(String, String)>, pub subscription_identifiers: Vec<usize>, pub content_type: Option<String>, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/logs.rs",
+        "quote": "*message_expiry_interval -= time_spent; } is_valid }); // no need to include timestamp when returning"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/logs.rs",
+        "quote": "let time_spent = (now - pubdata.timestamp).as_secs() as u32; let is_valid = time_spent < *message_expiry_interval; // ignore expired messages if is_valid { // set message_expiry_interval to (original value - time spent waiting in server)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/logs.rs",
+        "quote": "*message_expiry_interval -= time_spent; } is_valid }); // no need to include timestamp when returning"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/logs.rs",
+        "quote": "// Keep data if there is no message_expiry_interval let Some(message_expiry_interval) = properties.message_expiry_interval.as_mut() else { return true; };"
+       }
+      ],
+      "resolution": "s",
+      "note": "Only for a message whose publisher set a message expiry interval: the broker subtracts the time spent waiting in the server, so the stay is the publisher's interval less the delivered one. Without an interval nothing is delivered."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/logs.rs",
+        "quote": "pub struct PublishData { pub publish: Publish, pub properties: Option<PublishProperties>, pub timestamp: Instant, } impl From<PubWithProp> for PublishData { fn from((publish, properties): PubWithProp) -> Self { PublishData { publish, properties, timestamp: Instant::now(), } } }"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/logs.rs",
+        "quote": "This method is called when the subscriber has caught up with the commit log. In which case, /// instead of actively checking for commits in each `Router::run_inner` iteration, we instead /// wait and only try reading again when new messages have been added to the commit log."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q5",
+       "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/logs.rs",
+       "read": "The router reads the commit log for a connection only when a free inflight slot exists (QoS 1 and 2) and, on that read, subtracts the whole seconds since the message entered the log from its expiry interval and drops the message if none is left, so the published interval less the delivered one is the stay up to the read, to the second, for a message that has an interval; a message without one carries nothing.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/logs.rs",
+       "read": "A subscriber that has caught up with the commit log waits to be woken by new commits, so delivery is pushed on a standing subscription.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "MQTT 3.1.1 subscription",
+     "Q0": {
+      "fields": [
+       "topic",
+       "payload",
+       "QoS",
+       "retain flag",
+       "duplicate flag",
+       "packet id (QoS 1 and 2)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/protocol/mod.rs",
+        "quote": "pub struct Publish { pub(crate) dup: bool, pub(crate) qos: QoS, pub(crate) pkid: u16, pub retain: bool, pub topic: Bytes, pub payload: Bytes, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/logs.rs",
+        "quote": "which implies no message expiry! let Some(properties) = pubdata.properties.as_mut() else { return true; };"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/logs.rs",
+        "quote": "pub struct PublishData { pub publish: Publish, pub properties: Option<PublishProperties>, pub timestamp: Instant, } impl From<PubWithProp> for PublishData { fn from((publish, properties): PubWithProp) -> Self { PublishData { publish, properties, timestamp: Instant::now(), } } }"
+       }
+      ],
+      "field": "timestamp (monotonic Instant taken when the publish enters the commit log)",
+      "resolution": "ns",
+      "note": "The value is a monotonic clock reading, not wall time, and it is dropped before delivery."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/logs.rs",
+        "quote": "*message_expiry_interval -= time_spent; } is_valid }); // no need to include timestamp when returning"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/protocol/mod.rs",
+        "quote": "pub struct Publish { pub(crate) dup: bool, pub(crate) qos: QoS, pub(crate) pkid: u16, pub retain: bool, pub topic: Bytes, pub payload: Bytes, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/logs.rs",
+        "quote": "which implies no message expiry! let Some(properties) = pubdata.properties.as_mut() else { return true; };"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/protocol/mod.rs",
+        "quote": "pub struct Publish { pub(crate) dup: bool, pub(crate) qos: QoS, pub(crate) pkid: u16, pub retain: bool, pub topic: Bytes, pub payload: Bytes, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/logs.rs",
+        "quote": "which implies no message expiry! let Some(properties) = pubdata.properties.as_mut() else { return true; };"
+       }
+      ],
+      "note": "Version 3.1.1 packets carry no properties, so there is no expiry interval to reduce."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/logs.rs",
+        "quote": "pub struct PublishData { pub publish: Publish, pub properties: Option<PublishProperties>, pub timestamp: Instant, } impl From<PubWithProp> for PublishData { fn from((publish, properties): PubWithProp) -> Self { PublishData { publish, properties, timestamp: Instant::now(), } } }"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/logs.rs",
+        "quote": "This method is called when the subscriber has caught up with the commit log. In which case, /// instead of actively checking for commits in each `Router::run_inner` iteration, we instead /// wait and only try reading again when new messages have been added to the commit log."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/logs.rs",
+       "read": "The same commit-log wake-up serves MQTT 3.1.1 subscribers, so delivery is standing.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQTT publish, QoS 1 and 2",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet id",
+       "reason code (5.0)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/routing.rs",
+        "quote": "match qos { QoS::AtLeastOnce => { let puback = PubAck { pkid, reason: PubAckReason::Success, }; let ackslog = self.ackslog.get_mut(id).unwrap(); ackslog.puback(puback); force_ack = true; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/routing.rs",
+        "quote": "QoS::ExactlyOnce => { let pubrec = PubRec { pkid, reason: PubRecReason::Success, };"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/protocol/mod.rs",
+        "quote": "pub struct PubAck { pub pkid: u16, pub reason: PubAckReason, }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/protocol/mod.rs",
+        "quote": "pub struct PubAck { pub pkid: u16, pub reason: PubAckReason, }"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/protocol/mod.rs",
+        "quote": "pub struct PubAck { pub pkid: u16, pub reason: PubAckReason, }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/protocol/mod.rs",
+        "quote": "pub struct PubAck { pub pkid: u16, pub reason: PubAckReason, }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "MQTT publish, QoS 0",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/bytebeamio/rumqtt/rumqttd-0.20.0/rumqttd/src/router/routing.rs",
+        "quote": "QoS::AtMostOnce => { // Do nothing }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "SAP NetWeaver JMS provider",
+   "group": "C",
+   "kind": "broker",
+   "version": "SAP NetWeaver AS Java 7.4 (SAP Library saphelp_nw74, 7.4.16)",
+   "version_evidence": [
+    {
+     "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+     "quote": "The AS Java contains a JMS 1.1 compliant JMS Provider."
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "Wikipedia (de): Jakarta Messaging",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "queue receivers (JMS)",
+     "Q0": {
+      "fields": [
+       "destination",
+       "delivery mode",
+       "message id",
+       "timestamp (when the message was sent)",
+       "correlation id",
+       "reply-to",
+       "redelivered flag",
+       "type",
+       "expiration time",
+       "priority",
+       "custom properties",
+       "body"
+      ],
+      "evidence": [
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "The header of a message consists of the following fields: JMSDestination The destination the message is sent to. JMSDeliveryMode Defines the delivery mode for the message. JMSMessageID A unique identifier for this message. JMSTimestamp The timestamp when the message was sent."
+       },
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "JMSCorrelationID Shows whether the message is linked to another message. JMSReplyTo The destination the message reply should be sent to. JMSRedelivered If this field is set to true, this means that the message has been delivered in the past."
+       },
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "JMSType The message type identifier. JMSExpiration Contains the value that shows the expiration time of the message. JMSPriority Shows the priority of the message."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "The header of a message consists of the following fields: JMSDestination The destination the message is sent to. JMSDeliveryMode Defines the delivery mode for the message. JMSMessageID A unique identifier for this message. JMSTimestamp The timestamp when the message was sent."
+       }
+      ],
+      "note": "The documentation lists JMSTimestamp as the time the message was sent and does not say whose clock sets it; no broker arrival time is documented in the pages read."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "The header of a message consists of the following fields: JMSDestination The destination the message is sent to. JMSDeliveryMode Defines the delivery mode for the message. JMSMessageID A unique identifier for this message. JMSTimestamp The timestamp when the message was sent."
+       },
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "JMSCorrelationID Shows whether the message is linked to another message. JMSReplyTo The destination the message reply should be sent to. JMSRedelivered If this field is set to true, this means that the message has been delivered in the past."
+       },
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "JMSType The message type identifier. JMSExpiration Contains the value that shows the expiration time of the message. JMSPriority Shows the priority of the message."
+       }
+      ],
+      "note": "No delivered field is documented as a broker arrival time."
+     },
+     "Q3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "The header of a message consists of the following fields: JMSDestination The destination the message is sent to. JMSDeliveryMode Defines the delivery mode for the message. JMSMessageID A unique identifier for this message. JMSTimestamp The timestamp when the message was sent."
+       },
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "JMSCorrelationID Shows whether the message is linked to another message. JMSReplyTo The destination the message reply should be sent to. JMSRedelivered If this field is set to true, this means that the message has been delivered in the past."
+       },
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "JMSType The message type identifier. JMSExpiration Contains the value that shows the expiration time of the message. JMSPriority Shows the priority of the message."
+       }
+      ],
+      "note": "not found in the pages read"
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "The header of a message consists of the following fields: JMSDestination The destination the message is sent to. JMSDeliveryMode Defines the delivery mode for the message. JMSMessageID A unique identifier for this message. JMSTimestamp The timestamp when the message was sent."
+       },
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "JMSCorrelationID Shows whether the message is linked to another message. JMSReplyTo The destination the message reply should be sent to. JMSRedelivered If this field is set to true, this means that the message has been delivered in the past."
+       },
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "JMSType The message type identifier. JMSExpiration Contains the value that shows the expiration time of the message. JMSPriority Shows the priority of the message."
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "JMSType The message type identifier. JMSExpiration Contains the value that shows the expiration time of the message. JMSPriority Shows the priority of the message."
+       }
+      ],
+      "note": "The expiration is given as a time, not as a time left."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "The header of a message consists of the following fields: JMSDestination The destination the message is sent to. JMSDeliveryMode Defines the delivery mode for the message. JMSMessageID A unique identifier for this message. JMSTimestamp The timestamp when the message was sent."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "The behavior of the SAP JMS Provider for multiple receivers on a queue is configurable."
+       },
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "round-robin (multiple receivers are allowed and served in a round-robin fashion, which is the default one)."
+       }
+      ],
+      "note": "Setting: the receivers-per-queue policy, round-robin by default; the exclusive policy allows one receiver."
+     },
+     "not_determined": [
+      "Q1",
+      "Q3",
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+       "read": "The receivers-per-queue behavior is configurable and the default round-robin policy serves several receivers, so a consumer can keep requests waiting; the exclusive policy allows one receiver.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "topic subscribers (JMS)",
+     "Q0": {
+      "fields": [
+       "destination",
+       "delivery mode",
+       "message id",
+       "timestamp (when the message was sent)",
+       "correlation id",
+       "reply-to",
+       "redelivered flag",
+       "type",
+       "expiration time",
+       "priority",
+       "custom properties",
+       "body"
+      ],
+      "evidence": [
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "The header of a message consists of the following fields: JMSDestination The destination the message is sent to. JMSDeliveryMode Defines the delivery mode for the message. JMSMessageID A unique identifier for this message. JMSTimestamp The timestamp when the message was sent."
+       },
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "JMSCorrelationID Shows whether the message is linked to another message. JMSReplyTo The destination the message reply should be sent to. JMSRedelivered If this field is set to true, this means that the message has been delivered in the past."
+       },
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "JMSType The message type identifier. JMSExpiration Contains the value that shows the expiration time of the message. JMSPriority Shows the priority of the message."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "The header of a message consists of the following fields: JMSDestination The destination the message is sent to. JMSDeliveryMode Defines the delivery mode for the message. JMSMessageID A unique identifier for this message. JMSTimestamp The timestamp when the message was sent."
+       }
+      ],
+      "note": "The documentation lists JMSTimestamp as the time the message was sent and does not say whose clock sets it; no broker arrival time is documented in the pages read."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "The header of a message consists of the following fields: JMSDestination The destination the message is sent to. JMSDeliveryMode Defines the delivery mode for the message. JMSMessageID A unique identifier for this message. JMSTimestamp The timestamp when the message was sent."
+       },
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "JMSCorrelationID Shows whether the message is linked to another message. JMSReplyTo The destination the message reply should be sent to. JMSRedelivered If this field is set to true, this means that the message has been delivered in the past."
+       },
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "JMSType The message type identifier. JMSExpiration Contains the value that shows the expiration time of the message. JMSPriority Shows the priority of the message."
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "The header of a message consists of the following fields: JMSDestination The destination the message is sent to. JMSDeliveryMode Defines the delivery mode for the message. JMSMessageID A unique identifier for this message. JMSTimestamp The timestamp when the message was sent."
+       },
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "JMSCorrelationID Shows whether the message is linked to another message. JMSReplyTo The destination the message reply should be sent to. JMSRedelivered If this field is set to true, this means that the message has been delivered in the past."
+       },
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "JMSType The message type identifier. JMSExpiration Contains the value that shows the expiration time of the message. JMSPriority Shows the priority of the message."
+       }
+      ],
+      "note": "not found in the pages read"
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "The header of a message consists of the following fields: JMSDestination The destination the message is sent to. JMSDeliveryMode Defines the delivery mode for the message. JMSMessageID A unique identifier for this message. JMSTimestamp The timestamp when the message was sent."
+       },
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "JMSCorrelationID Shows whether the message is linked to another message. JMSReplyTo The destination the message reply should be sent to. JMSRedelivered If this field is set to true, this means that the message has been delivered in the past."
+       },
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "JMSType The message type identifier. JMSExpiration Contains the value that shows the expiration time of the message. JMSPriority Shows the priority of the message."
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "JMSType The message type identifier. JMSExpiration Contains the value that shows the expiration time of the message. JMSPriority Shows the priority of the message."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "The header of a message consists of the following fields: JMSDestination The destination the message is sent to. JMSDeliveryMode Defines the delivery mode for the message. JMSMessageID A unique identifier for this message. JMSTimestamp The timestamp when the message was sent."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "An arbitrary number of JMS clients can subscribe to a topic and receive a copy of all messages sent to that topic."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q1",
+      "Q3",
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+       "read": "Any number of JMS clients can subscribe to a topic and each receives a copy of all messages sent to it, with no per-message request or credit described.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "JMS send (queue sender or topic publisher)",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://help.sap.com/doc/saphelp_nw74/7.4.16/en-US/4b/1d0fe7218d74fee10000000a421937/content.htm?no_cache=true",
+        "quote": "message = topicSession.createTextMessage();topicPublisher.send(message);"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Semantik",
+   "group": "C",
+   "kind": "broker",
+   "version": "hosted service, documentation and Go SDK commit 24d4313a376ac35fe30b89fb7125a2d9c6740e24 as read on 2026-10-29",
+   "version_evidence": [
+    {
+     "url": "https://docs.noetive.io/semantik/quickstart",
+     "quote": "Semantik is a semantic message broker at https://semantik.noetive.io ."
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "Hacker News",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "subscription stream (server-sent events, POST /v1/subscribe)",
+     "Q0": {
+      "fields": [
+       "message id",
+       "sequence number (seq)",
+       "score"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "event: match data: {\"message_id\":\"msg_01je9c40f1b2c4937a2\",\"seq\":150,\"score\":0.61}"
+       },
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "A match frame carries identifiers, not bodies. Read the body with the search call from step 2. Delivery is at-least-once, so dedupe on message_id if your consumer cannot take a repeat."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/noetive/noetive-sdk-go/24d4313a376ac35fe30b89fb7125a2d9c6740e24/semantik/subscribe.go",
+        "quote": "type MatchEvent struct { MessageID string `json:\"message_id\"` Score float32 `json:\"score\"` }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "event: match data: {\"message_id\":\"msg_01je9c40f1b2c4937a2\",\"seq\":150,\"score\":0.61}"
+       },
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "A match frame carries identifiers, not bodies. Read the body with the search call from step 2. Delivery is at-least-once, so dedupe on message_id if your consumer cannot take a repeat."
+       }
+      ],
+      "note": "The pages read name no time field of a message; whether the service records an arrival time was not found."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "event: match data: {\"message_id\":\"msg_01je9c40f1b2c4937a2\",\"seq\":150,\"score\":0.61}"
+       },
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "A match frame carries identifiers, not bodies. Read the body with the search call from step 2. Delivery is at-least-once, so dedupe on message_id if your consumer cannot take a repeat."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/noetive/noetive-sdk-go/24d4313a376ac35fe30b89fb7125a2d9c6740e24/semantik/subscribe.go",
+        "quote": "type MatchEvent struct { MessageID string `json:\"message_id\"` Score float32 `json:\"score\"` }"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "event: match data: {\"message_id\":\"msg_01je9c40f1b2c4937a2\",\"seq\":150,\"score\":0.61}"
+       },
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "A match frame carries identifiers, not bodies. Read the body with the search call from step 2. Delivery is at-least-once, so dedupe on message_id if your consumer cannot take a repeat."
+       }
+      ],
+      "note": "not found in the pages read"
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "event: match data: {\"message_id\":\"msg_01je9c40f1b2c4937a2\",\"seq\":150,\"score\":0.61}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/noetive/noetive-sdk-go/24d4313a376ac35fe30b89fb7125a2d9c6740e24/semantik/subscribe.go",
+        "quote": "type MatchEvent struct { MessageID string `json:\"message_id\"` Score float32 `json:\"score\"` }"
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "event: match data: {\"message_id\":\"msg_01je9c40f1b2c4937a2\",\"seq\":150,\"score\":0.61}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/noetive/noetive-sdk-go/24d4313a376ac35fe30b89fb7125a2d9c6740e24/semantik/subscribe.go",
+        "quote": "type MatchEvent struct { MessageID string `json:\"message_id\"` Score float32 `json:\"score\"` }"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "A match frame carries identifiers, not bodies. Read the body with the search call from step 2. Delivery is at-least-once, so dedupe on message_id if your consumer cannot take a repeat."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "The subscription lives as long as the connection, and it matches messages published while it is open. It does not replay history; that is what step 2 is for."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q1",
+      "Q3",
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://docs.noetive.io/semantik/quickstart",
+       "read": "The subscription lives as long as the connection and matches messages published while it is open, so the stream is standing.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "one-shot search (POST /v1/search)",
+     "Q0": {
+      "fields": [
+       "message body",
+       "metadata",
+       "message id",
+       "namespace",
+       "score"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "Results come back ranked, each with the message body, its score and its message_id."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/noetive/noetive-sdk-go/24d4313a376ac35fe30b89fb7125a2d9c6740e24/semantik/search.go",
+        "quote": "type ResultItem struct { Metadata map[string]string `json:\"metadata,omitempty\"` Content string `json:\"content,omitempty\"` MessageID string `json:\"message_id,omitempty\"` Namespace string `json:\"namespace,omitempty\"` Score float32 `json:\"score,omitempty\"` }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "Results come back ranked, each with the message body, its score and its message_id."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/noetive/noetive-sdk-go/24d4313a376ac35fe30b89fb7125a2d9c6740e24/semantik/search.go",
+        "quote": "type ResultItem struct { Metadata map[string]string `json:\"metadata,omitempty\"` Content string `json:\"content,omitempty\"` MessageID string `json:\"message_id,omitempty\"` Namespace string `json:\"namespace,omitempty\"` Score float32 `json:\"score,omitempty\"` }"
+       }
+      ],
+      "note": "The pages read name no time field of a message; whether the service records an arrival time was not found."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "Results come back ranked, each with the message body, its score and its message_id."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/noetive/noetive-sdk-go/24d4313a376ac35fe30b89fb7125a2d9c6740e24/semantik/search.go",
+        "quote": "type ResultItem struct { Metadata map[string]string `json:\"metadata,omitempty\"` Content string `json:\"content,omitempty\"` MessageID string `json:\"message_id,omitempty\"` Namespace string `json:\"namespace,omitempty\"` Score float32 `json:\"score,omitempty\"` }"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "Results come back ranked, each with the message body, its score and its message_id."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/noetive/noetive-sdk-go/24d4313a376ac35fe30b89fb7125a2d9c6740e24/semantik/search.go",
+        "quote": "type ResultItem struct { Metadata map[string]string `json:\"metadata,omitempty\"` Content string `json:\"content,omitempty\"` MessageID string `json:\"message_id,omitempty\"` Namespace string `json:\"namespace,omitempty\"` Score float32 `json:\"score,omitempty\"` }"
+       }
+      ],
+      "note": "not found in the pages read"
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/noetive/noetive-sdk-go/24d4313a376ac35fe30b89fb7125a2d9c6740e24/semantik/search.go",
+        "quote": "type ResultItem struct { Metadata map[string]string `json:\"metadata,omitempty\"` Content string `json:\"content,omitempty\"` MessageID string `json:\"message_id,omitempty\"` Namespace string `json:\"namespace,omitempty\"` Score float32 `json:\"score,omitempty\"` }"
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/noetive/noetive-sdk-go/24d4313a376ac35fe30b89fb7125a2d9c6740e24/semantik/search.go",
+        "quote": "type ResultItem struct { Metadata map[string]string `json:\"metadata,omitempty\"` Content string `json:\"content,omitempty\"` MessageID string `json:\"message_id,omitempty\"` Namespace string `json:\"namespace,omitempty\"` Score float32 `json:\"score,omitempty\"` }"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "Results come back ranked, each with the message body, its score and its message_id."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "You publish messages, describe what you care about as a SemQL query rather than a topic name, and receive matching messages either on a live stream or through a one-shot search."
+       }
+      ],
+      "note": "A search is a single request that returns the current matches."
+     },
+     "not_determined": [
+      "Q1",
+      "Q3",
+      "Q6"
+     ],
+     "read_back": []
+    }
+   ],
+   "producers": [
+    {
+     "interface": "publish (POST /v1/publish)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "message id",
+       "epoch",
+       "sequence number (seq)"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "A publish is acknowledged once the write is durable, and the message becomes searchable shortly after."
+       },
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "{ \"message_id\" : \"msg_01jd7a21de40f1b2c493\" , \"epoch\" : 7 , \"seq\" : 149 }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/noetive/noetive-sdk-go/24d4313a376ac35fe30b89fb7125a2d9c6740e24/semantik/publish.go",
+        "quote": "PublishResponse carries the server-assigned identifiers for the // newly-published message."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "{ \"message_id\" : \"msg_01jd7a21de40f1b2c493\" , \"epoch\" : 7 , \"seq\" : 149 }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/noetive/noetive-sdk-go/24d4313a376ac35fe30b89fb7125a2d9c6740e24/semantik/publish.go",
+        "quote": "PublishResponse carries the server-assigned identifiers for the // newly-published message."
+       }
+      ],
+      "note": "The message id and the ordering tokens are not documented as made from a clock."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "{ \"message_id\" : \"msg_01jd7a21de40f1b2c493\" , \"epoch\" : 7 , \"seq\" : 149 }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/noetive/noetive-sdk-go/24d4313a376ac35fe30b89fb7125a2d9c6740e24/semantik/publish.go",
+        "quote": "PublishResponse carries the server-assigned identifiers for the // newly-published message."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.noetive.io/semantik/quickstart",
+        "quote": "{ \"message_id\" : \"msg_01jd7a21de40f1b2c493\" , \"epoch\" : 7 , \"seq\" : 149 }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/noetive/noetive-sdk-go/24d4313a376ac35fe30b89fb7125a2d9c6740e24/semantik/publish.go",
+        "quote": "PublishResponse carries the server-assigned identifiers for the // newly-published message."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "SmoothMQ",
+   "group": "C",
+   "kind": "broker",
+   "version": "v0.2.3",
+   "version_evidence": [
+    {
+     "url": "https://github.com/poundifdef/smoothmq/releases/tag/v0.2.3",
+     "quote": "v0.2.3"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub topic message-queue",
+     "query": "as logged in search_log.json"
+    },
+    {
+     "route": "route 2",
+     "source": "times-first search",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "SQS ReceiveMessage (long polling with WaitTimeSeconds)",
+     "Q0": {
+      "fields": [
+       "message id",
+       "receipt handle (the same number as the message id)",
+       "MD5 of body",
+       "body",
+       "message attributes (the sender's own key-value pairs)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/protocols/sqs/sqs.go",
+        "quote": "Message{ MessageId: fmt.Sprintf(\"%d\", message.ID), ReceiptHandle: fmt.Sprintf(\"%d\", message.ID), Body: string(message.Message), MessageAttributes: make(map[string]MessageAttribute), MD5OfBody: hex.EncodeToString(hasher.Sum(nil)), }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/protocols/sqs/models.go",
+        "quote": "type ReceiveMessageResponse struct { Messages []Message `json:\"Messages\"` } type Message struct { MessageId string `json:\"MessageId\"` ReceiptHandle string `json:\"ReceiptHandle\"` MD5OfBody string `json:\"MD5OfBody\"` Body string `json:\"Body\"` Attributes map[string]string `json:\"Attributes\"`"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/queue/sqlite/sqlite.go",
+        "quote": "messageSnow := q.snow.Generate() messageId := messageSnow.Int64()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/go.mod",
+        "quote": "github.com/bwmarrin/snowflake v0.3.0"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/bwmarrin/snowflake/v0.3.0/snowflake.go",
+        "quote": "now := time.Since(n.epoch).Nanoseconds() / 1000000"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/bwmarrin/snowflake/v0.3.0/snowflake.go",
+        "quote": "r := ID((now)<<n.timeShift | (n.node << n.nodeShift) | (n.step), )"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/bwmarrin/snowflake/v0.3.0/snowflake.go",
+        "quote": "Epoch int64 = 1288834974657"
+       }
+      ],
+      "field": "message id (snowflake: milliseconds since 2010-11-04 01:42:54.657 UTC in the upper bits)",
+      "resolution": "ms",
+      "note": "Judgment call, reading 4: the server makes each id with the snowflake generator, which reads the server's own clock."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/protocols/sqs/sqs.go",
+        "quote": "Message{ MessageId: fmt.Sprintf(\"%d\", message.ID), ReceiptHandle: fmt.Sprintf(\"%d\", message.ID), Body: string(message.Message), MessageAttributes: make(map[string]MessageAttribute), MD5OfBody: hex.EncodeToString(hasher.Sum(nil)), }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/queue/sqlite/sqlite.go",
+        "quote": "messageSnow := q.snow.Generate() messageId := messageSnow.Int64()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/bwmarrin/snowflake/v0.3.0/snowflake.go",
+        "quote": "r := ID((now)<<n.timeShift | (n.node << n.nodeShift) | (n.step), )"
+       }
+      ],
+      "note": "The delivered message id is the decimal of the 64-bit snowflake id, so the enqueue time can be decoded from it."
+     },
+     "Q3": {
+      "answer": "send time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/queue/sqlite/sqlite.go",
+        "quote": "\"delivered_at\": now, \"deliver_at\": gorm.Expr(\"?\", now+int64(visibilityTimeout)),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/queue/sqlite/sqlite.go",
+        "quote": "now := time.Now().UTC().Unix() q.Mu.Lock() defer q.Mu.Unlock()"
+       }
+      ],
+      "note": "Judgment call: the server stores delivered_at, the clock reading (seconds) when it hands the message out, and a visibility deadline of that time plus the visibility timeout. A waiting request also has its own deadline of arrival plus WaitTimeSeconds."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/protocols/sqs/sqs.go",
+        "quote": "Message{ MessageId: fmt.Sprintf(\"%d\", message.ID), ReceiptHandle: fmt.Sprintf(\"%d\", message.ID), Body: string(message.Message), MessageAttributes: make(map[string]MessageAttribute), MD5OfBody: hex.EncodeToString(hasher.Sum(nil)), }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/protocols/sqs/models.go",
+        "quote": "type ReceiveMessageResponse struct { Messages []Message `json:\"Messages\"` } type Message struct { MessageId string `json:\"MessageId\"` ReceiptHandle string `json:\"ReceiptHandle\"` MD5OfBody string `json:\"MD5OfBody\"` Body string `json:\"Body\"` Attributes map[string]string `json:\"Attributes\"`"
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/protocols/sqs/sqs.go",
+        "quote": "Message{ MessageId: fmt.Sprintf(\"%d\", message.ID), ReceiptHandle: fmt.Sprintf(\"%d\", message.ID), Body: string(message.Message), MessageAttributes: make(map[string]MessageAttribute), MD5OfBody: hex.EncodeToString(hasher.Sum(nil)), }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/protocols/sqs/models.go",
+        "quote": "type ReceiveMessageResponse struct { Messages []Message `json:\"Messages\"` } type Message struct { MessageId string `json:\"MessageId\"` ReceiptHandle string `json:\"ReceiptHandle\"` MD5OfBody string `json:\"MD5OfBody\"` Body string `json:\"Body\"` Attributes map[string]string `json:\"Attributes\"`"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/queue/sqlite/sqlite.go",
+        "quote": "now := time.Now().UTC().Unix() q.Mu.Lock() defer q.Mu.Unlock()"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/protocols/sqs/sqs.go",
+        "quote": "waitTime := min(req.WaitTimeSeconds, s.cfg.MaxDelaySeconds) maxRequestTime := time.Now().Add(time.Duration(waitTime) * time.Second) sleepIncrement := time.Duration(s.cfg.DelayRetryMillis) * time.Millisecond for { messages, err = s.queue.Dequeue("
+       }
+      ],
+      "note": "The handler holds a receive request and retries the dequeue until a message arrives or WaitTimeSeconds ends; concurrent requests each dequeue different messages."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q1",
+       "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/queue/sqlite/sqlite.go",
+       "read": "Each message id is a snowflake id generated in Enqueue by a node whose epoch is set from the server's own clock at start and whose time part is the server's elapsed milliseconds, and every receive response returns that id as MessageId, so the enqueue time is decodable from the id (default epoch, node 1) under reading 4.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/queue/sqlite/sqlite.go",
+       "read": "The server stores delivered_at, the clock reading in seconds when it hands the message out (send time), but the handler also holds a deadline of its own clock at arrival plus WaitTimeSeconds while the request waits, which reading 8 counts as request arrival, kept; the readings do not say which Q3 takes when both exist, and request arrival would replace send time if it takes precedence.",
+       "agrees": false
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/protocols/sqs/sqs.go",
+       "read": "The handler holds each receive request and retries the dequeue until a message arrives or WaitTimeSeconds ends, and the dequeue runs under a lock that moves a taken message out of reach, so several concurrent requests can wait and each takes a different message.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "SQS SendMessage and SendMessageBatch",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "message id",
+       "MD5 of message body"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/protocols/sqs/sqs.go",
+        "quote": "response := SendMessageResponse{ MessageId: fmt.Sprintf(\"%d\", messageId), MD5OfMessageBody: hex.EncodeToString(hasher.Sum(nil)), } return c.JSON(response) }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/protocols/sqs/models.go",
+        "quote": "type SendMessageResponse struct { MD5OfMessageBody string `json:\"MD5OfMessageBody\"` MD5OfMessageAttributes string `json:\"MD5OfMessageAttributes\"` MessageId string `json:\"MessageId\"` SequenceNumber string `json:\"SequenceNumber,omitempty\"` }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/protocols/sqs/sqs.go",
+        "quote": "response := SendMessageResponse{ MessageId: fmt.Sprintf(\"%d\", messageId), MD5OfMessageBody: hex.EncodeToString(hasher.Sum(nil)), } return c.JSON(response) }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/queue/sqlite/sqlite.go",
+        "quote": "messageSnow := q.snow.Generate() messageId := messageSnow.Int64()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/bwmarrin/snowflake/v0.3.0/snowflake.go",
+        "quote": "now := time.Since(n.epoch).Nanoseconds() / 1000000"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/bwmarrin/snowflake/v0.3.0/snowflake.go",
+        "quote": "r := ID((now)<<n.timeShift | (n.node << n.nodeShift) | (n.step), )"
+       }
+      ],
+      "which": "receive time",
+      "resolution": "ms",
+      "note": "Judgment call, reading 4: the returned message id is the snowflake id made from the server's clock when the message is enqueued."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/protocols/sqs/sqs.go",
+        "quote": "response := SendMessageResponse{ MessageId: fmt.Sprintf(\"%d\", messageId), MD5OfMessageBody: hex.EncodeToString(hasher.Sum(nil)), } return c.JSON(response) }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/protocols/sqs/models.go",
+        "quote": "type SendMessageResponse struct { MD5OfMessageBody string `json:\"MD5OfMessageBody\"` MD5OfMessageAttributes string `json:\"MD5OfMessageAttributes\"` MessageId string `json:\"MessageId\"` SequenceNumber string `json:\"SequenceNumber,omitempty\"` }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/protocols/sqs/sqs.go",
+        "quote": "response := SendMessageResponse{ MessageId: fmt.Sprintf(\"%d\", messageId), MD5OfMessageBody: hex.EncodeToString(hasher.Sum(nil)), } return c.JSON(response) }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/protocols/sqs/models.go",
+        "quote": "type SendMessageResponse struct { MD5OfMessageBody string `json:\"MD5OfMessageBody\"` MD5OfMessageAttributes string `json:\"MD5OfMessageAttributes\"` MessageId string `json:\"MessageId\"` SequenceNumber string `json:\"SequenceNumber,omitempty\"` }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/poundifdef/smoothmq/v0.2.3/protocols/sqs/sqs.go",
+       "read": "SendMessage and SendMessageBatch return MessageId as the snowflake id that Enqueue generates from the server's own clock before storing the message, in milliseconds, so the acknowledgment always carries a decodable server time under reading 4.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

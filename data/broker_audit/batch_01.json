@@ -515,6 +515,226 @@
       }
      ]
     }
+   ],
+   "producers": [
+    {
+     "interface": "produce request, acks=1 or acks=-1 (all)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "response header: CorrelationId",
+       "Responses[] per topic: Name (versions 0-12) or TopicId (13+)",
+       "PartitionResponses[] per partition: Index, ErrorCode, BaseOffset, LogAppendTimeMs (2+), LogStartOffset (5+), RecordErrors[] of BatchIndex and BatchIndexErrorMessage (8+), ErrorMessage (8+), CurrentLeader of LeaderId and LeaderEpoch (tagged, 10+)",
+       "ThrottleTimeMs (1+)",
+       "NodeEndpoints[] of NodeId, Host, Port, Rack (tagged, 10+)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ResponseHeader.json",
+        "quote": "{ \"name\": \"CorrelationId\", \"type\": \"int32\", \"versions\": \"0+\", \"about\": \"The correlation ID of this response.\" }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"Name\", \"type\": \"string\", \"versions\": \"0-12\", \"entityType\": \"topicName\", \"mapKey\": true, \"ignorable\": true, \"about\": \"The topic name.\" }, { \"name\": \"TopicId\", \"type\": \"uuid\", \"versions\": \"13+\", \"mapKey\": true, \"ignorable\": true, \"about\": \"The unique topic ID\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"Index\", \"type\": \"int32\", \"versions\": \"0+\", \"about\": \"The partition index.\" }, { \"name\": \"ErrorCode\", \"type\": \"int16\", \"versions\": \"0+\", \"about\": \"The error code, or 0 if there was no error.\" }, { \"name\": \"BaseOffset\", \"type\": \"int64\", \"versions\": \"0+\", \"about\": \"The base offset.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"LogAppendTimeMs\", \"type\": \"int64\", \"versions\": \"2+\", \"default\": \"-1\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"LogStartOffset\", \"type\": \"int64\", \"versions\": \"5+\", \"default\": \"-1\", \"ignorable\": true, \"about\": \"The log start offset.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"RecordErrors\", \"type\": \"[]BatchIndexAndErrorMessage\", \"versions\": \"8+\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"ErrorMessage\", \"type\": \"string\", \"default\": \"null\", \"versions\": \"8+\", \"nullableVersions\": \"8+\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"CurrentLeader\", \"type\": \"LeaderIdAndEpoch\", \"versions\": \"10+\", \"taggedVersions\": \"10+\", \"tag\": 0,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"ThrottleTimeMs\", \"type\": \"int32\", \"versions\": \"1+\", \"ignorable\": true, \"default\": \"0\", \"about\": \"The duration in milliseconds for which the request was throttled due to a quota violation, or zero if the request did not violate any quota.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"NodeEndpoints\", \"type\": \"[]NodeEndpoint\", \"versions\": \"10+\", \"taggedVersions\": \"10+\", \"tag\": 0,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/server/KafkaApis.scala",
+        "quote": "requestChannel.sendResponse(request, new ProduceResponse(mergedResponseStatus.asJava, maxThrottleTimeMs, nodeEndpoints.values.toList.asJava))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/server/ReplicaManager.scala",
+        "quote": "new PartitionResponse( result.error, result.logAppendSummary.firstOffset, result.logAppendSummary.logAppendTime, result.logAppendSummary.logStartOffset, result.logAppendSummary.recordErrors, result.errorMessage )"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceRequest.json",
+        "quote": "{ \"name\": \"Acks\", \"type\": \"int16\", \"versions\": \"0+\", \"about\": \"The number of acknowledgments the producer requires the leader to have received before considering a request complete. Allowed values: 0 for no acknowledgments, 1 for only the leader and -1 for the full ISR.\" },"
+       }
+      ],
+      "note": "The leader answers after its append (acks=1) or after the in-sync replicas have the batch (acks=-1)."
+     },
+     "P1": {
+      "answer": "by configuration",
+      "field": "LogAppendTimeMs (per partition)",
+      "resolution": "ms",
+      "which": "store time",
+      "setting": "topic config message.timestamp.type=LogAppendTime, or the broker default log.message.timestamp.type=LogAppendTime; the default is CreateTime, under which the field is -1",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"LogAppendTimeMs\", \"type\": \"int64\", \"versions\": \"2+\", \"default\": \"-1\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "\"about\": \"The timestamp returned by broker after appending the messages. If CreateTime is used for the topic, the timestamp will be -1. If LogAppendTime is used for the topic, the timestamp will be the broker local time when the messages are appended.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/server/ReplicaManager.scala",
+        "quote": "new PartitionResponse( result.error, result.logAppendSummary.firstOffset, result.logAppendSummary.logAppendTime, result.logAppendSummary.logStartOffset, result.logAppendSummary.recordErrors, result.errorMessage )"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/storage/src/main/java/org/apache/kafka/storage/internals/log/UnifiedLog.java",
+        "quote": "if (config().messageTimestampType == TimestampType.LOG_APPEND_TIME) { appendInfo.setLogAppendTime(validateAndOffsetAssignResult.logAppendTimeMs()); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/storage/src/main/java/org/apache/kafka/storage/internals/log/LogValidator.java",
+        "quote": "public record ValidationResult(long logAppendTimeMs, MemoryRecords validatedRecords, long maxTimestampMs,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/storage/src/main/java/org/apache/kafka/storage/internals/log/LogValidator.java",
+        "quote": "long now = time.milliseconds();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/storage/src/main/java/org/apache/kafka/storage/internals/log/LogValidator.java",
+        "quote": "batch.setMaxTimestamp(TimestampType.LOG_APPEND_TIME, now);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/utils/SystemTime.java",
+        "quote": "return System.currentTimeMillis();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/server-common/src/main/java/org/apache/kafka/server/config/ServerLogConfigs.java",
+        "quote": "public static final String LOG_MESSAGE_TIMESTAMP_TYPE_DEFAULT = \"CreateTime\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/storage/src/main/java/org/apache/kafka/storage/internals/log/UnifiedLog.java",
+        "quote": "appendInfo.setLogAppendTime(duplicate.timestamp());"
+       }
+      ],
+      "note": "Under LogAppendTime the partition leader reads its wall clock (ms) while it appends the batch, stamps the batch with it, and returns the same value as LogAppendTimeMs: the stamp consumers receive as the arrival time. For a batch the leader recognises as a retried duplicate, the response repeats the timestamp kept for the original batch. With acks=-1 the response waits for the in-sync replicas after the stamp is taken."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"Index\", \"type\": \"int32\", \"versions\": \"0+\", \"about\": \"The partition index.\" }, { \"name\": \"ErrorCode\", \"type\": \"int16\", \"versions\": \"0+\", \"about\": \"The error code, or 0 if there was no error.\" }, { \"name\": \"BaseOffset\", \"type\": \"int64\", \"versions\": \"0+\", \"about\": \"The base offset.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"LogAppendTimeMs\", \"type\": \"int64\", \"versions\": \"2+\", \"default\": \"-1\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"ThrottleTimeMs\", \"type\": \"int32\", \"versions\": \"1+\", \"ignorable\": true, \"default\": \"0\", \"about\": \"The duration in milliseconds for which the request was throttled due to a quota violation, or zero if the request did not violate any quota.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/server/KafkaApis.scala",
+        "quote": "requestChannel.sendResponse(request, new ProduceResponse(mergedResponseStatus.asJava, maxThrottleTimeMs, nodeEndpoints.values.toList.asJava))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/server/ReplicaManager.scala",
+        "quote": "new PartitionResponse( result.error, result.logAppendSummary.firstOffset, result.logAppendSummary.logAppendTime, result.logAppendSummary.logStartOffset, result.logAppendSummary.recordErrors, result.errorMessage )"
+       }
+      ],
+      "note": "No field carries the time the response was sent: the partition responses are built from the append result, and the response adds only the throttle time and the leader endpoints."
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"ThrottleTimeMs\", \"type\": \"int32\", \"versions\": \"1+\", \"ignorable\": true, \"default\": \"0\", \"about\": \"The duration in milliseconds for which the request was throttled due to a quota violation, or zero if the request did not violate any quota.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/server/KafkaApis.scala",
+        "quote": "val bandwidthThrottleTimeMs = quotas.produce.maybeRecordAndGetThrottleTimeMs(request.session, request.header.clientId(), requestSize, timeMs)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/server/KafkaApis.scala",
+        "quote": "// Record both bandwidth and request quota-specific values and throttle by muting the channel if any of the quotas"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/server/KafkaApis.scala",
+        "quote": "requestChannel.sendResponse(request, new ProduceResponse(mergedResponseStatus.asJava, maxThrottleTimeMs, nodeEndpoints.values.toList.asJava))"
+       }
+      ],
+      "note": "ThrottleTimeMs is the delay the broker imposes on the client's channel for exceeding a byte-rate or request quota, computed from the client's recorded rates; it is not a measurement of this request's hold. The broker times each request only in its request log (Q6 of the consumer modes)."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/storage/src/main/java/org/apache/kafka/storage/internals/log/LogValidator.java",
+       "read": "ProduceResponse.json defines LogAppendTimeMs as the broker's local time when the messages are appended under LogAppendTime, and -1 under CreateTime. LogValidator reads time.milliseconds() once as validation starts, sets each batch's max timestamp to it under LOG_APPEND_TIME and returns it as logAppendTimeMs; UnifiedLog puts it in the append info only for a LogAppendTime topic, and ReplicaManager copies it into each partition response.",
+       "agrees": true
+      },
+      {
+       "question": "P3",
+       "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/server/KafkaApis.scala",
+       "read": "ThrottleTimeMs is the larger of the bandwidth-quota and request-quota throttle times, computed from the client's recorded rates when the response is ready, and the channel is muted for it when it is positive; it is zero when no quota is violated and does not measure the request's hold.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "interface": "produce request, acks=0",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceRequest.json",
+        "quote": "{ \"name\": \"Acks\", \"type\": \"int16\", \"versions\": \"0+\", \"about\": \"The number of acknowledgments the producer requires the leader to have received before considering a request complete. Allowed values: 0 for no acknowledgments, 1 for only the leader and -1 for the full ISR.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/server/KafkaApis.scala",
+        "quote": "if (produceRequest.acks == 0) { // no operation needed if producer request.required.acks = 0; however, if there is any error in handling // the request, since no response is expected by the producer, the server will close socket server so that"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/core/src/main/scala/kafka/server/KafkaApis.scala",
+        "quote": "requestHelper.sendNoOpResponseExemptThrottle(request)"
+       }
+      ],
+      "note": "With acks=0 the broker sends no response; if handling the request fails it closes the connection instead."
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    }
    ]
   },
   {
@@ -825,6 +1045,199 @@
        "agrees": true
       }
      ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "Kafka API produce request, acks=1 or acks=-1 (all)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "response header: CorrelationId (Kafka protocol)",
+       "Responses[] per topic: Name",
+       "Partitions[] per partition: PartitionIndex, ErrorCode, BaseOffset, LogAppendTimeMs (2+), LogStartOffset (5+), RecordErrors[] of BatchIndex and BatchIndexErrorMessage (8+), ErrorMessage (8+)",
+       "ThrottleTimeMs (1+)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ResponseHeader.json",
+        "quote": "{ \"name\": \"CorrelationId\", \"type\": \"int32\", \"versions\": \"0+\", \"about\": \"The correlation ID of this response.\" }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/schemata/produce_response.json",
+        "quote": "\"validVersions\": \"0-8\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/schemata/produce_response.json",
+        "quote": "{ \"name\": \"PartitionIndex\", \"type\": \"int32\", \"versions\": \"0+\", \"about\": \"The partition index.\" }, { \"name\": \"ErrorCode\", \"type\": \"int16\", \"versions\": \"0+\", \"about\": \"The error code, or 0 if there was no error.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/schemata/produce_response.json",
+        "quote": "{ \"name\": \"BaseOffset\", \"type\": \"int64\", \"versions\": \"0+\", \"about\": \"The base offset.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/schemata/produce_response.json",
+        "quote": "{ \"name\": \"LogAppendTimeMs\", \"type\": \"int64\", \"versions\": \"2+\", \"default\": \"-1\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/schemata/produce_response.json",
+        "quote": "{ \"name\": \"LogStartOffset\", \"type\": \"int64\", \"versions\": \"5+\", \"default\": \"-1\", \"ignorable\": true, \"about\": \"The log start offset.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/schemata/produce_response.json",
+        "quote": "{ \"name\": \"RecordErrors\", \"type\": \"[]BatchIndexAndErrorMessage\", \"versions\": \"8+\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/schemata/produce_response.json",
+        "quote": "{ \"name\": \"ThrottleTimeMs\", \"type\": \"int32\", \"versions\": \"1+\", \"ignorable\": true, \"about\": \"The duration in milliseconds for which the request was throttled due to a quota violation, or zero if the request did not violate any quota.\" }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/produce.cc",
+        "quote": "produce_response::partition p{.partition_index = id};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/produce.cc",
+        "quote": "p.log_append_time_ms = log_append_time_ms;"
+       }
+      ],
+      "note": "Redpanda's own copy of the schema accepts produce versions 0 to 8, so the tagged CurrentLeader and NodeEndpoints of later Kafka versions are absent."
+     },
+     "P1": {
+      "answer": "by configuration",
+      "field": "LogAppendTimeMs (per partition)",
+      "resolution": "ms",
+      "which": "store time",
+      "setting": "cluster property log_message_timestamp_type=LogAppendTime, or topic property message.timestamp.type=LogAppendTime; the default is CreateTime, under which the field is -1",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/schemata/produce_response.json",
+        "quote": "{ \"name\": \"LogAppendTimeMs\", \"type\": \"int64\", \"versions\": \"2+\", \"default\": \"-1\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/schemata/produce_response.json",
+        "quote": "\"about\": \"The timestamp returned by broker after appending the messages. If CreateTime is used for the topic, the timestamp will be -1. If LogAppendTime is used for the topic, the timestamp will be the broker local time when the messages are appended.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/produce.cc",
+        "quote": "auto log_append_time_ms = batch->header().attrs.timestamp_type() == model::timestamp_type::create_time ? model::timestamp::missing() : batch->header().max_timestamp;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/produce.cc",
+        "quote": "p.log_append_time_ms = log_append_time_ms;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/produce_validation.cc",
+        "quote": "const auto broker_time = model::timestamp::now();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/produce_validation.cc",
+        "quote": "max_ts = broker_time;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/produce_validation.cc",
+        "quote": "batch.set_max_timestamp(timestamp_type, max_ts.value());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/config/configuration.cc",
+        "quote": "\"Default timestamp type for topic messages (CreateTime or \" \"LogAppendTime). The topic property `message.timestamp.type` overrides \""
+       }
+      ],
+      "note": "The produce path reads the broker's clock (model::timestamp::now(), ms) when it validates the batch, before replication, and sets it as the batch's max timestamp; the response returns that stored value as LogAppendTimeMs. Coded as the store time because it is the stamp stored with the batch."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/schemata/produce_response.json",
+        "quote": "{ \"name\": \"PartitionIndex\", \"type\": \"int32\", \"versions\": \"0+\", \"about\": \"The partition index.\" }, { \"name\": \"ErrorCode\", \"type\": \"int16\", \"versions\": \"0+\", \"about\": \"The error code, or 0 if there was no error.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/schemata/produce_response.json",
+        "quote": "{ \"name\": \"BaseOffset\", \"type\": \"int64\", \"versions\": \"0+\", \"about\": \"The base offset.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/schemata/produce_response.json",
+        "quote": "{ \"name\": \"LogAppendTimeMs\", \"type\": \"int64\", \"versions\": \"2+\", \"default\": \"-1\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/schemata/produce_response.json",
+        "quote": "{ \"name\": \"ThrottleTimeMs\", \"type\": \"int32\", \"versions\": \"1+\", \"ignorable\": true, \"about\": \"The duration in milliseconds for which the request was throttled due to a quota violation, or zero if the request did not violate any quota.\" }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/produce.cc",
+        "quote": "produce_response::partition p{.partition_index = id};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/produce.cc",
+        "quote": "p.log_append_time_ms = log_append_time_ms;"
+       }
+      ],
+      "note": "No field carries the time the response was sent."
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/protocol/schemata/produce_response.json",
+        "quote": "{ \"name\": \"ThrottleTimeMs\", \"type\": \"int32\", \"versions\": \"1+\", \"ignorable\": true, \"about\": \"The duration in milliseconds for which the request was throttled due to a quota violation, or zero if the request did not violate any quota.\" }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/produce.cc",
+        "quote": "produce_response::partition p{.partition_index = id};"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/produce.cc",
+        "quote": "p.log_append_time_ms = log_append_time_ms;"
+       }
+      ],
+      "note": "ThrottleTimeMs is a quota throttle, as in Kafka, not a measurement of the request's hold."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/produce_validation.cc",
+       "read": "validate_batch reads model::timestamp::now() (the system clock, ms) once per batch and, in every validation mode, sets it as the batch's max timestamp for an append-time topic; produce.cc's partition_append returns that max timestamp as LogAppendTimeMs when replication finishes, and -1 for a create-time topic, the cluster default. It is read before the append and is the stamp stored with the batch, so store time is a fair name.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "interface": "Kafka API produce request, acks=0",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceRequest.json",
+        "quote": "{ \"name\": \"Acks\", \"type\": \"int16\", \"versions\": \"0+\", \"about\": \"The number of acknowledgments the producer requires the leader to have received before considering a request complete. Allowed values: 0 for no acknowledgments, 1 for only the leader and -1 for the full ISR.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/produce.cc",
+        "quote": "// in the absence of errors, acks = 0 results in // the response being dropped, as the client // does not expect a response. here we mark the"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/redpanda-data/redpanda/v26.2.2/src/v/kafka/server/handlers/produce.cc",
+        "quote": "resp->mark_noop();"
+       }
+      ],
+      "note": "The response is built for quota and statistics accounting and then dropped; an error closes the connection."
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
     }
    ]
   },
@@ -1623,6 +2036,336 @@
       }
      ]
     }
+   ],
+   "producers": [
+    {
+     "interface": "producer (binary protocol: CommandSend, answered by CommandSendReceipt or CommandSendError)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "CommandSendReceipt: producer_id, sequence_id, message_id, highest_sequence_id",
+       "message_id (MessageIdData): ledgerId, entryId, partition, batch_index, ack_set, batch_size, first_chunk_message_id",
+       "CommandSendError: producer_id, sequence_id, error, message"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message CommandSendReceipt { required uint64 producer_id = 1; required uint64 sequence_id = 2; optional MessageIdData message_id = 3; optional uint64 highest_sequence_id = 4 [default = 0]; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message MessageIdData { required uint64 ledgerId = 1; required uint64 entryId = 2; optional int32 partition = 3 [default = -1]; optional int32 batch_index = 4 [default = -1]; repeated int64 ack_set = 5; optional int32 batch_size = 6;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message CommandSendError { required uint64 producer_id = 1; required uint64 sequence_id = 2; required ServerError error = 3; required string message = 4; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/common/protocol/Commands.java",
+        "quote": "cmd.setSendReceipt() .setProducerId(producerId) .setSequenceId(sequenceId) .setHighestSequenceId(highestId) .setMessageId() .setLedgerId(ledgerId) .setEntryId(entryId);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/Producer.java",
+        "quote": "producer.cnx.getCommandSender().sendSendReceiptResponse(producer.producerId, sequenceId, highestSequenceId, ledgerId, entryId);"
+       }
+      ],
+      "note": "The broker builds the receipt from the producer and sequence ids and the ledger and entry ids of the stored entry."
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message CommandSendReceipt { required uint64 producer_id = 1; required uint64 sequence_id = 2; optional MessageIdData message_id = 3; optional uint64 highest_sequence_id = 4 [default = 0]; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message MessageIdData { required uint64 ledgerId = 1; required uint64 entryId = 2; optional int32 partition = 3 [default = -1]; optional int32 batch_index = 4 [default = -1]; repeated int64 ack_set = 5; optional int32 batch_size = 6;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/common/protocol/Commands.java",
+        "quote": "cmd.setSendReceipt() .setProducerId(producerId) .setSequenceId(sequenceId) .setHighestSequenceId(highestId) .setMessageId() .setLedgerId(ledgerId) .setEntryId(entryId);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/Producer.java",
+        "quote": "producer.cnx.getCommandSender().sendSendReceiptResponse(producer.producerId, sequenceId, highestSequenceId, ledgerId, entryId);"
+       }
+      ],
+      "note": "The broker's own stamp, BrokerEntryMetadata.broker_timestamp (by configuration), is stored with the entry for consumers; the receipt carries only ids. publish_time is the producer's."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message CommandSendReceipt { required uint64 producer_id = 1; required uint64 sequence_id = 2; optional MessageIdData message_id = 3; optional uint64 highest_sequence_id = 4 [default = 0]; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message MessageIdData { required uint64 ledgerId = 1; required uint64 entryId = 2; optional int32 partition = 3 [default = -1]; optional int32 batch_index = 4 [default = -1]; repeated int64 ack_set = 5; optional int32 batch_size = 6;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/common/protocol/Commands.java",
+        "quote": "cmd.setSendReceipt() .setProducerId(producerId) .setSequenceId(sequenceId) .setHighestSequenceId(highestId) .setMessageId() .setLedgerId(ledgerId) .setEntryId(entryId);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/Producer.java",
+        "quote": "producer.cnx.getCommandSender().sendSendReceiptResponse(producer.producerId, sequenceId, highestSequenceId, ledgerId, entryId);"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message CommandSendReceipt { required uint64 producer_id = 1; required uint64 sequence_id = 2; optional MessageIdData message_id = 3; optional uint64 highest_sequence_id = 4 [default = 0]; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/proto/PulsarApi.proto",
+        "quote": "message MessageIdData { required uint64 ledgerId = 1; required uint64 entryId = 2; optional int32 partition = 3 [default = -1]; optional int32 batch_index = 4 [default = -1]; repeated int64 ack_set = 5; optional int32 batch_size = 6;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/common/protocol/Commands.java",
+        "quote": "cmd.setSendReceipt() .setProducerId(producerId) .setSequenceId(sequenceId) .setHighestSequenceId(highestId) .setMessageId() .setLedgerId(ledgerId) .setEntryId(entryId);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/service/Producer.java",
+        "quote": "producer.cnx.getCommandSender().sendSendReceiptResponse(producer.producerId, sequenceId, highestSequenceId, ledgerId, entryId);"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "REST produce and WebSocket producer (ProducerAck)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "REST response ProducerAcks: messagePublishResults[], schemaVersion",
+       "ProducerAck (REST result and WebSocket acknowledgment): result, errorMsg, messageId, context, errorCode, schemaVersion"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/websocket/data/ProducerAcks.java",
+        "quote": "public class ProducerAcks { List<ProducerAck> messagePublishResults; // Version of schema used to encode messages. long schemaVersion; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/websocket/data/ProducerAck.java",
+        "quote": "// Message publishing result public String result; // Error message if fail to publish a message. public String errorMsg; public String messageId; public String context;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/websocket/data/ProducerAck.java",
+        "quote": "// Indicating if error is retriable error. public int errorCode; // Version of schema used to encode the message. public long schemaVersion;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/rest/TopicsBase.java",
+        "quote": "asyncResponse.resume(Response.ok().entity(new ProducerAcks(produceMessageResults,"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/websocket/data/ProducerAck.java",
+        "quote": "// Message publishing result public String result; // Error message if fail to publish a message. public String errorMsg; public String messageId; public String context;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/websocket/data/ProducerAck.java",
+        "quote": "// Indicating if error is retriable error. public int errorCode; // Version of schema used to encode the message. public long schemaVersion;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/websocket/data/ProducerAcks.java",
+        "quote": "public class ProducerAcks { List<ProducerAck> messagePublishResults; // Version of schema used to encode messages. long schemaVersion; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-broker/src/main/java/org/apache/pulsar/broker/rest/TopicsBase.java",
+        "quote": "messageMetadata.setPublishTime(System.currentTimeMillis());"
+       }
+      ],
+      "note": "The REST produce path sets the stored message's publish_time from the broker's clock (ms), but the acknowledgment returns only the message id and status."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/websocket/data/ProducerAck.java",
+        "quote": "// Message publishing result public String result; // Error message if fail to publish a message. public String errorMsg; public String messageId; public String context;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/websocket/data/ProducerAck.java",
+        "quote": "// Indicating if error is retriable error. public int errorCode; // Version of schema used to encode the message. public long schemaVersion;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/websocket/data/ProducerAcks.java",
+        "quote": "public class ProducerAcks { List<ProducerAck> messagePublishResults; // Version of schema used to encode messages. long schemaVersion; }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/websocket/data/ProducerAck.java",
+        "quote": "// Message publishing result public String result; // Error message if fail to publish a message. public String errorMsg; public String messageId; public String context;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/websocket/data/ProducerAck.java",
+        "quote": "// Indicating if error is retriable error. public int errorCode; // Version of schema used to encode the message. public long schemaVersion;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/pulsar/v5.0.1/pulsar-common/src/main/java/org/apache/pulsar/websocket/data/ProducerAcks.java",
+        "quote": "public class ProducerAcks { List<ProducerAck> messagePublishResults; // Version of schema used to encode messages. long schemaVersion; }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "Kafka protocol on Pulsar (KoP): produce request, acks=1 or acks=-1 (all)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "response header: CorrelationId (Kafka protocol)",
+       "Responses[] per topic: Name",
+       "PartitionResponses[] per partition: Index, ErrorCode, BaseOffset, LogAppendTimeMs, LogStartOffset, RecordErrors, ErrorMessage",
+       "ThrottleTimeMs"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/pom.xml",
+        "quote": "<kafka.version>3.4.1</kafka.version>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/3.4.1/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "\"validVersions\": \"0-9\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/3.4.1/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"Index\", \"type\": \"int32\", \"versions\": \"0+\", \"about\": \"The partition index.\" }, { \"name\": \"ErrorCode\", \"type\": \"int16\", \"versions\": \"0+\", \"about\": \"The error code, or 0 if there was no error.\" }, { \"name\": \"BaseOffset\", \"type\": \"int64\", \"versions\": \"0+\", \"about\": \"The base offset.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/3.4.1/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"LogAppendTimeMs\", \"type\": \"int64\", \"versions\": \"2+\", \"default\": \"-1\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/3.4.1/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"LogStartOffset\", \"type\": \"int64\", \"versions\": \"5+\", \"default\": \"-1\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/3.4.1/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"RecordErrors\", \"type\": \"[]BatchIndexAndErrorMessage\", \"versions\": \"8+\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/3.4.1/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"ThrottleTimeMs\", \"type\": \"int32\", \"versions\": \"1+\", \"ignorable\": true, \"default\": \"0\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ResponseHeader.json",
+        "quote": "{ \"name\": \"CorrelationId\", \"type\": \"int32\", \"versions\": \"0+\", \"about\": \"The correlation ID of this response.\" }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/storage/ReplicaManager.java",
+        "quote": "partitionLog.appendRecords(memoryRecords, origin, appendRecordsContext) .thenAccept(offset -> addPartitionResponse.accept(topicPartition, new ProduceResponse.PartitionResponse(Errors.NONE, offset, -1L, -1L)))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/3.4.1/clients/src/main/java/org/apache/kafka/common/requests/ProduceResponse.java",
+        "quote": "public PartitionResponse(Errors error, long baseOffset, long logAppendTime, long logStartOffset) {"
+       }
+      ],
+      "note": "KoP 3.1.1.1 (archived) builds its responses with Kafka's 3.4.1 client classes, produce versions 0 to 9."
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/storage/ReplicaManager.java",
+        "quote": "partitionLog.appendRecords(memoryRecords, origin, appendRecordsContext) .thenAccept(offset -> addPartitionResponse.accept(topicPartition, new ProduceResponse.PartitionResponse(Errors.NONE, offset, -1L, -1L)))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/3.4.1/clients/src/main/java/org/apache/kafka/common/requests/ProduceResponse.java",
+        "quote": "public PartitionResponse(Errors error, long baseOffset, long logAppendTime, long logStartOffset) {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/3.4.1/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"LogAppendTimeMs\", \"type\": \"int64\", \"versions\": \"2+\", \"default\": \"-1\", \"ignorable\": true,"
+       }
+      ],
+      "note": "KoP returns -1 as LogAppendTimeMs (and as LogStartOffset) for every successful append, whatever the entry format; the time KoP stamps on Kafka-format entries is not returned."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/3.4.1/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"Index\", \"type\": \"int32\", \"versions\": \"0+\", \"about\": \"The partition index.\" }, { \"name\": \"ErrorCode\", \"type\": \"int16\", \"versions\": \"0+\", \"about\": \"The error code, or 0 if there was no error.\" }, { \"name\": \"BaseOffset\", \"type\": \"int64\", \"versions\": \"0+\", \"about\": \"The base offset.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/3.4.1/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"LogAppendTimeMs\", \"type\": \"int64\", \"versions\": \"2+\", \"default\": \"-1\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/3.4.1/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"ThrottleTimeMs\", \"type\": \"int32\", \"versions\": \"1+\", \"ignorable\": true, \"default\": \"0\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/storage/ReplicaManager.java",
+        "quote": "partitionLog.appendRecords(memoryRecords, origin, appendRecordsContext) .thenAccept(offset -> addPartitionResponse.accept(topicPartition, new ProduceResponse.PartitionResponse(Errors.NONE, offset, -1L, -1L)))"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/3.4.1/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"ThrottleTimeMs\", \"type\": \"int32\", \"versions\": \"1+\", \"ignorable\": true, \"default\": \"0\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/storage/ReplicaManager.java",
+        "quote": "partitionLog.appendRecords(memoryRecords, origin, appendRecordsContext) .thenAccept(offset -> addPartitionResponse.accept(topicPartition, new ProduceResponse.PartitionResponse(Errors.NONE, offset, -1L, -1L)))"
+       }
+      ],
+      "note": "KoP builds the response without a throttle time (zero)."
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "Kafka protocol on Pulsar (KoP): produce request, acks=0",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/storage/ReplicaManager.java",
+        "quote": "if (requiredAcks == 0) { partitionLog.appendRecords(memoryRecords, origin, appendRecordsContext); return; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/streamnative/kop/v3.1.1.1/kafka-impl/src/main/java/io/streamnative/pulsar/handlers/kop/KafkaCommandDecoder.java",
+        "quote": "if (produceRequest.acks() == 0) { if (requestQueue.remove(responseAndRequest)) { RequestStats.REQUEST_QUEUE_SIZE_INSTANCE.decrementAndGet(); } continue; }"
+       }
+      ],
+      "note": "KoP appends the records and writes no response."
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    }
    ]
   },
   {
@@ -1867,6 +2610,125 @@
       }
      ]
     }
+   ],
+   "producers": [
+    {
+     "interface": "add entry (bookie protocol v3 or v2), as the DistributedLog writer of OMB's driver uses it",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "v3 (protobuf) Response: header (BKPacketHeader: version, operation, txnId, priority), status, addResponse",
+       "AddResponse: status, ledgerId, entryId",
+       "v2 (binary) add response: frame size, packet header (protocol version, opcode, flags), errorCode, ledgerId, entryId",
+       "the DistributedLog writer's result: a DLSN (logSegmentSequenceNo, entryId, slotId)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-proto/src/main/proto/BookkeeperProtocol.proto",
+        "quote": "message Response { required BKPacketHeader header = 1; // EOK if the underlying request succeeded. Each individual response // has a more meaningful status. EBADREQ if we have an unsupported request. required StatusCode status = 2;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-proto/src/main/proto/BookkeeperProtocol.proto",
+        "quote": "message BKPacketHeader { required ProtocolVersion version = 1; required OperationType operation = 2; required uint64 txnId = 3; optional uint32 priority = 4 [default = 0]; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-proto/src/main/proto/BookkeeperProtocol.proto",
+        "quote": "message AddResponse { required StatusCode status = 1; required int64 ledgerId = 2; required int64 entryId = 3; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/WriteEntryProcessorV3.java",
+        "quote": "final AddResponse addResponse = new AddResponse() .setLedgerId(ledgerId) .setEntryId(entryId);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/BookieProtoEncoding.java",
+        "quote": "buf.writeInt(PacketHeader.toInt(r.getProtocolVersion(), r.getOpCode(), (short) 0)); buf.writeInt(r.getErrorCode()); buf.writeLong(r.getLedgerId()); buf.writeLong(r.getEntryId());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/ResponseBuilder.java",
+        "quote": "static BookieProtocol.Response buildAddResponse(BookieProtocol.Request r) { return BookieProtocol.AddResponse.create(r.getProtocolVersion(), BookieProtocol.EOK, r.getLedgerId(), r.getEntryId()); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/stream/distributedlog/core/src/main/java/org/apache/distributedlog/api/AsyncLogWriter.java",
+        "quote": "CompletableFuture<DLSN> write(LogRecord record);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/stream/distributedlog/protocol/src/main/java/org/apache/distributedlog/DLSN.java",
+        "quote": "private final long logSegmentSequenceNo; private final long entryId; private final long slotId;"
+       }
+      ],
+      "note": "Each bookie answers an add with the add response; the DistributedLog writer completes each write with a DLSN."
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-proto/src/main/proto/BookkeeperProtocol.proto",
+        "quote": "message AddResponse { required StatusCode status = 1; required int64 ledgerId = 2; required int64 entryId = 3; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/WriteEntryProcessorV3.java",
+        "quote": "final AddResponse addResponse = new AddResponse() .setLedgerId(ledgerId) .setEntryId(entryId);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/BookieProtoEncoding.java",
+        "quote": "buf.writeInt(PacketHeader.toInt(r.getProtocolVersion(), r.getOpCode(), (short) 0)); buf.writeInt(r.getErrorCode()); buf.writeLong(r.getLedgerId()); buf.writeLong(r.getEntryId());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/ResponseBuilder.java",
+        "quote": "static BookieProtocol.Response buildAddResponse(BookieProtocol.Request r) { return BookieProtocol.AddResponse.create(r.getProtocolVersion(), BookieProtocol.EOK, r.getLedgerId(), r.getEntryId()); }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/stream/distributedlog/protocol/src/main/java/org/apache/distributedlog/DLSN.java",
+        "quote": "private final long logSegmentSequenceNo; private final long entryId; private final long slotId;"
+       }
+      ],
+      "note": "A stored entry holds no time of the bookie's (Q1 of the consumer mode), and the add response echoes only the ledger and entry ids."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-proto/src/main/proto/BookkeeperProtocol.proto",
+        "quote": "message AddResponse { required StatusCode status = 1; required int64 ledgerId = 2; required int64 entryId = 3; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/WriteEntryProcessorV3.java",
+        "quote": "final AddResponse addResponse = new AddResponse() .setLedgerId(ledgerId) .setEntryId(entryId);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/BookieProtoEncoding.java",
+        "quote": "buf.writeInt(PacketHeader.toInt(r.getProtocolVersion(), r.getOpCode(), (short) 0)); buf.writeInt(r.getErrorCode()); buf.writeLong(r.getLedgerId()); buf.writeLong(r.getEntryId());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/stream/distributedlog/protocol/src/main/java/org/apache/distributedlog/DLSN.java",
+        "quote": "private final long logSegmentSequenceNo; private final long entryId; private final long slotId;"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-proto/src/main/proto/BookkeeperProtocol.proto",
+        "quote": "message AddResponse { required StatusCode status = 1; required int64 ledgerId = 2; required int64 entryId = 3; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/WriteEntryProcessorV3.java",
+        "quote": "final AddResponse addResponse = new AddResponse() .setLedgerId(ledgerId) .setEntryId(entryId);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/bookkeeper-server/src/main/java/org/apache/bookkeeper/proto/BookieProtoEncoding.java",
+        "quote": "buf.writeInt(PacketHeader.toInt(r.getProtocolVersion(), r.getOpCode(), (short) 0)); buf.writeInt(r.getErrorCode()); buf.writeLong(r.getLedgerId()); buf.writeLong(r.getEntryId());"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/bookkeeper/release-4.18.1/stream/distributedlog/protocol/src/main/java/org/apache/distributedlog/DLSN.java",
+        "quote": "private final long logSegmentSequenceNo; private final long entryId; private final long slotId;"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
    ]
   },
   {
@@ -2086,6 +2948,96 @@
        "agrees": true
       }
      ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "event writer (appends to a segment, answered by DataAppended)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "DataAppended: requestId, writerId, eventNumber, previousEventNumber, currentSegmentWriteOffset",
+       "or an error reply such as SegmentIsSealed",
+       "the writer's result: CompletableFuture<Void> (no value)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/shared/protocol/src/main/java/io/pravega/shared/protocol/netty/WireCommands.java",
+        "quote": "public static final class DataAppended implements Reply, WireCommand { final WireCommandType type = WireCommandType.DATA_APPENDED; final long requestId; final UUID writerId; final long eventNumber; final long previousEventNumber; final long currentSegmentWriteOffset;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/shared/protocol/src/main/java/io/pravega/shared/protocol/netty/WireCommands.java",
+        "quote": "out.writeLong(writerId.getMostSignificantBits()); out.writeLong(writerId.getLeastSignificantBits()); out.writeLong(eventNumber); out.writeLong(previousEventNumber); out.writeLong(requestId); out.writeLong(currentSegmentWriteOffset);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/host/src/main/java/io/pravega/segmentstore/server/host/handler/AppendProcessor.java",
+        "quote": "final DataAppended dataAppendedAck = new DataAppended(append.getRequestId(), append.getWriterId(), append.getEventNumber(), previousLastAcked, newWriteOffset);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/shared/protocol/src/main/java/io/pravega/shared/protocol/netty/WireCommands.java",
+        "quote": "public static final class SegmentIsSealed implements Reply, WireCommand {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/client/src/main/java/io/pravega/client/stream/EventStreamWriter.java",
+        "quote": "CompletableFuture<Void> writeEvent(Type event);"
+       }
+      ],
+      "note": "DataAppended acknowledges the writer's events up to eventNumber; previousEventNumber is the last one acknowledged before it."
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/shared/protocol/src/main/java/io/pravega/shared/protocol/netty/WireCommands.java",
+        "quote": "public static final class DataAppended implements Reply, WireCommand { final WireCommandType type = WireCommandType.DATA_APPENDED; final long requestId; final UUID writerId; final long eventNumber; final long previousEventNumber; final long currentSegmentWriteOffset;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/shared/protocol/src/main/java/io/pravega/shared/protocol/netty/WireCommands.java",
+        "quote": "out.writeLong(writerId.getMostSignificantBits()); out.writeLong(writerId.getLeastSignificantBits()); out.writeLong(eventNumber); out.writeLong(previousEventNumber); out.writeLong(requestId); out.writeLong(currentSegmentWriteOffset);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/host/src/main/java/io/pravega/segmentstore/server/host/handler/AppendProcessor.java",
+        "quote": "final DataAppended dataAppendedAck = new DataAppended(append.getRequestId(), append.getWriterId(), append.getEventNumber(), previousLastAcked, newWriteOffset);"
+       }
+      ],
+      "note": "The segment store keeps no per-event time (Q1 of the consumer mode); the acknowledgment carries event numbers and the segment's write offset."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/shared/protocol/src/main/java/io/pravega/shared/protocol/netty/WireCommands.java",
+        "quote": "public static final class DataAppended implements Reply, WireCommand { final WireCommandType type = WireCommandType.DATA_APPENDED; final long requestId; final UUID writerId; final long eventNumber; final long previousEventNumber; final long currentSegmentWriteOffset;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/shared/protocol/src/main/java/io/pravega/shared/protocol/netty/WireCommands.java",
+        "quote": "out.writeLong(writerId.getMostSignificantBits()); out.writeLong(writerId.getLeastSignificantBits()); out.writeLong(eventNumber); out.writeLong(previousEventNumber); out.writeLong(requestId); out.writeLong(currentSegmentWriteOffset);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/host/src/main/java/io/pravega/segmentstore/server/host/handler/AppendProcessor.java",
+        "quote": "final DataAppended dataAppendedAck = new DataAppended(append.getRequestId(), append.getWriterId(), append.getEventNumber(), previousLastAcked, newWriteOffset);"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/shared/protocol/src/main/java/io/pravega/shared/protocol/netty/WireCommands.java",
+        "quote": "public static final class DataAppended implements Reply, WireCommand { final WireCommandType type = WireCommandType.DATA_APPENDED; final long requestId; final UUID writerId; final long eventNumber; final long previousEventNumber; final long currentSegmentWriteOffset;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/shared/protocol/src/main/java/io/pravega/shared/protocol/netty/WireCommands.java",
+        "quote": "out.writeLong(writerId.getMostSignificantBits()); out.writeLong(writerId.getLeastSignificantBits()); out.writeLong(eventNumber); out.writeLong(previousEventNumber); out.writeLong(requestId); out.writeLong(currentSegmentWriteOffset);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/pravega/pravega/v0.13.0/segmentstore/server/host/src/main/java/io/pravega/segmentstore/server/host/handler/AppendProcessor.java",
+        "quote": "final DataAppended dataAppendedAck = new DataAppended(append.getRequestId(), append.getWriterId(), append.getEventNumber(), previousLastAcked, newWriteOffset);"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
     }
    ]
   }

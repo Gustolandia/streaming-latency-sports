@@ -1,0 +1,1689 @@
+{
+ "audited_utc": "2026-10-27",
+ "precedents": [
+  {
+   "name": "Network Time Protocol (NTP), version 4",
+   "standard": "RFC 5905, Section 6 (the 64-bit timestamp format), Section 7.3 (packet header variables) and Section 8 (on-wire protocol)",
+   "sends": [
+    {
+     "field": "Origin Timestamp (org), T1",
+     "what": "the client's send time of the request, returned to it",
+     "clock": "client",
+     "resolution": "2^-32 s (232 ps), NTP 64-bit timestamp format"
+    },
+    {
+     "field": "Receive Timestamp (rec), T2",
+     "what": "the time the request arrived at the server",
+     "clock": "server",
+     "resolution": "2^-32 s (232 ps)"
+    },
+    {
+     "field": "Transmit Timestamp (xmt), T3",
+     "what": "the time the response left the server",
+     "clock": "server",
+     "resolution": "2^-32 s (232 ps)"
+    }
+   ],
+   "split": "The client records the reply's arrival T4 itself and computes the round-trip delay as (T4 - T1) - (T3 - T2): the server's hold T3 - T2 is taken out, and each difference is on one clock, so no shared clock is needed. The offset, 1/2 [(T2 - T1) + (T3 - T4)], comes from the same four times.",
+   "evidence": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc5905.txt",
+     "quote": "Origin Timestamp (org): Time at the client when the request departed for the server, in NTP timestamp format."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc5905.txt",
+     "quote": "Receive Timestamp (rec): Time at the server when the request arrived from the client, in NTP timestamp format."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc5905.txt",
+     "quote": "Transmit Timestamp (xmt): Time at the server when the response left for the client, in NTP timestamp format."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc5905.txt",
+     "quote": "Destination Timestamp (dst): Time at the client when the reply arrived from the server, in NTP timestamp format."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc5905.txt",
+     "quote": "It includes a 32-bit unsigned seconds field spanning 136 years and a 32-bit fraction field resolving 232 picoseconds."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc5905.txt",
+     "quote": "The four most recent timestamps, T1 through T4, are used to compute the offset of B relative to A theta = T(B) - T(A) = 1/2 * [(T2-T1) + (T3-T4)] and the round-trip delay delta = T(ABA) = (T4-T1) - (T3-T2)."
+    }
+   ]
+  },
+  {
+   "name": "ICMP Timestamp and Timestamp Reply",
+   "standard": "RFC 792, 'Timestamp or Timestamp Reply Message'",
+   "sends": [
+    {
+     "field": "Originate Timestamp",
+     "what": "the time the sender last touched the request before sending it, returned to it",
+     "clock": "requester",
+     "resolution": "1 ms (milliseconds since midnight UT, 32 bits)"
+    },
+    {
+     "field": "Receive Timestamp",
+     "what": "the time the echoer first touched the request on receipt",
+     "clock": "echoer",
+     "resolution": "1 ms"
+    },
+    {
+     "field": "Transmit Timestamp",
+     "what": "the time the echoer last touched the reply on sending it",
+     "clock": "echoer",
+     "resolution": "1 ms"
+    }
+   ],
+   "split": "RFC 792 defines the three times and refers their use to Mills; it states no formula. From the definitions, the echoer's hold is the Transmit less the Receive Timestamp, both on the echoer's clock, and the requester can take it out of its round trip without a shared clock.",
+   "evidence": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc792.txt",
+     "quote": "The timestamp is 32 bits of milliseconds since midnight UT."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc792.txt",
+     "quote": "The Originate Timestamp is the time the sender last touched the message before sending it, the Receive Timestamp is the time the echoer first touched it on receipt, and the Transmit Timestamp is the time the echoer last touched the message on sending it."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc792.txt",
+     "quote": "If the time is not available in miliseconds or cannot be provided with respect to midnight UT then any time can be inserted in a timestamp provided the high order bit of the timestamp is also set to indicate this non-standard value."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc792.txt",
+     "quote": "One use of these timestamps is described by Mills [5]."
+    }
+   ]
+  },
+  {
+   "name": "ICMP Echo and Echo Reply (ping)",
+   "standard": "RFC 792, 'Echo or Echo Reply Message'",
+   "sends": [
+    {
+     "field": "Data",
+     "what": "whatever the sender put in the echo request, returned unchanged",
+     "clock": "the sender's, if it put a time in the data; the echoer adds none",
+     "resolution": "set by the sender"
+    }
+   ],
+   "split": "Carries none: the echoer returns the sender's data and adds no time of its own, so the round trip the sender measures includes the echoer's turnaround.",
+   "evidence": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc792.txt",
+     "quote": "The data received in the echo message must be returned in the echo reply message."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc5357.txt",
+     "quote": "However, the most common facility for round-trip measurements is the ICMP Echo Request/Reply (used by the ping tool), and issues with this method are documented in Section 2.6 of [RFC2681]."
+    }
+   ]
+  },
+  {
+   "name": "RTCP sender and receiver reports (LSR and DLSR)",
+   "standard": "RFC 3550, Section 6.4.1 (sender report and reception report blocks)",
+   "sends": [
+    {
+     "field": "NTP timestamp (sender report)",
+     "what": "the wallclock time the sender report was sent",
+     "clock": "media sender",
+     "resolution": "NTP 64-bit format"
+    },
+    {
+     "field": "last SR timestamp (LSR)",
+     "what": "the middle 32 bits of the NTP timestamp of the last sender report received, returned to its sender",
+     "clock": "media sender (its own time, returned)",
+     "resolution": "1/65536 s (16-bit seconds, 16-bit fraction)"
+    },
+    {
+     "field": "delay since last SR (DLSR)",
+     "what": "the time between receiving that sender report and sending this reception report block",
+     "clock": "receiver (the far end)",
+     "resolution": "1/65536 s (about 15.3 us)"
+    }
+   ],
+   "split": "The media sender records the arrival time A of a reception report and computes the round trip as A - LSR - DLSR: LSR is its own earlier time and DLSR is the receiver's hold, measured on the receiver's clock, so no shared clock is needed.",
+   "evidence": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc3550.txt",
+     "quote": "NTP timestamp: 64 bits Indicates the wallclock time (see Section 4) when this report was sent so that it may be used in combination with timestamps returned in reception reports from other receivers to measure round-trip propagation to those receivers."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc3550.txt",
+     "quote": "last SR timestamp (LSR): 32 bits The middle 32 bits out of 64 in the NTP timestamp (as explained in Section 4) received as part of the most recent RTCP sender report (SR) packet from source SSRC_n."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc3550.txt",
+     "quote": "delay since last SR (DLSR): 32 bits The delay, expressed in units of 1/65536 seconds, between receiving the last SR packet from source SSRC_n and sending this reception report block."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc3550.txt",
+     "quote": "It calculates the total round-trip time A-LSR using the last SR timestamp (LSR) field, and then subtracting this field to leave the round-trip propagation delay as (A - LSR - DLSR)."
+    }
+   ]
+  },
+  {
+   "name": "RTCP Extended Reports: Receiver Reference Time and DLRR blocks",
+   "standard": "RFC 3611, Sections 4.4 and 4.5",
+   "sends": [
+    {
+     "field": "NTP timestamp (Receiver Reference Time block)",
+     "what": "the time the block was sent by a participant that sends no media",
+     "clock": "that participant",
+     "resolution": "NTP 64-bit format"
+    },
+    {
+     "field": "last RR timestamp (LRR)",
+     "what": "the middle 32 bits of that NTP timestamp, returned",
+     "clock": "the participant (its own time, returned)",
+     "resolution": "1/65536 s"
+    },
+    {
+     "field": "delay since last RR (DLRR)",
+     "what": "the time between receiving the Receiver Reference Time block and sending the DLRR block",
+     "clock": "the far end",
+     "resolution": "1/65536 s"
+    }
+   ],
+   "split": "The same arithmetic as RTCP's receiver reports, for a participant that sends no media: it sends its own timestamp, and takes the far end's hold (DLRR) out of the time since that timestamp to get its round trip.",
+   "evidence": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc3611.txt",
+     "quote": "This block extends RTCP's timestamp reporting so that non-senders may also send timestamps."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc3611.txt",
+     "quote": "A non-sender may estimate its round trip time (RTT) to other participants, as proposed in [18], by sending this report block and receiving DLRR Report Blocks (see next section) in reply."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc3611.txt",
+     "quote": "last RR timestamp (LRR): 32 bits The middle 32 bits out of 64 in the NTP timestamp (as explained in the previous section), received as part of a Receiver Reference Time Report Block from participant SSRC_n."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc3611.txt",
+     "quote": "delay since last RR (DLRR): 32 bits The delay, expressed in units of 1/65536 seconds, between receiving the last Receiver Reference Time Report Block from participant SSRC_n and sending this DLRR Report Block."
+    }
+   ]
+  },
+  {
+   "name": "RTCP congestion control feedback (per-packet arrival times)",
+   "standard": "RFC 8888, Section 3.1",
+   "sends": [
+    {
+     "field": "Arrival time offset (ATO), per RTP packet",
+     "what": "the packet's arrival at the receiver, as an offset before the Report Timestamp",
+     "clock": "receiver",
+     "resolution": "1/1024 s, 13 bits"
+    },
+    {
+     "field": "Report Timestamp (RTS)",
+     "what": "the instant the report is reporting on, from which the offsets are counted",
+     "clock": "receiver (the clock of its sender-report NTP timestamps)",
+     "resolution": "1/65536 s (middle 32 bits of an NTP timestamp)"
+    }
+   ],
+   "split": "For every RTP packet the receiver reports when it arrived, as RTS less ATO on the receiver's own clock, for use in congestion control. RFC 8888 defines no round-trip computation from these fields; the arrival times are on the receiver's clock only.",
+   "evidence": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc8888.txt",
+     "quote": "Arrival time offset (ATO, 13 bits): The arrival time of the RTP packet at the receiver, as an offset before the time represented by the Report Timestamp (RTS) field of this RTCP congestion control feedback report. The ATO field is in units of 1/1024 seconds"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc8888.txt",
+     "quote": "The RTCP congestion control feedback report packet concludes with the Report Timestamp field (RTS, 32 bits). This denotes the time instant on which this packet is reporting and is the instant from which the arrival time offset values are calculated."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc8888.txt",
+     "quote": "The value of the RTS field is derived from the same clock used to generate the NTP timestamp field in RTCP Sender Report (SR) packets. It is formatted as the middle 32 bits of an NTP format timestamp, as described in Section 4 of [RFC3550]."
+    }
+   ]
+  },
+  {
+   "name": "SIP Timestamp header",
+   "standard": "RFC 3261, Sections 8.2.6.1 and 20.38, and the Timestamp rule of the ABNF in Section 25.1",
+   "sends": [
+    {
+     "field": "Timestamp value",
+     "what": "when the UAC sent the request, copied into the response",
+     "clock": "UAC (the client)",
+     "resolution": "decimal number with an optional fraction"
+    },
+    {
+     "field": "delay",
+     "what": "the time between the UAS receiving the request and sending the response",
+     "clock": "UAS (the far end)",
+     "resolution": "seconds, decimal with an optional fraction"
+    }
+   ],
+   "split": "A UAS that delays its response adds the delay value, its hold of the request in seconds on its own clock, to the Timestamp it returns, and the UAC can subtract it from its round trip. RFC 3261 states the rule for 100 (Trying) responses and leaves the use for RTT estimates to extensions and applications.",
+   "evidence": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc3261.txt",
+     "quote": "When a 100 (Trying) response is generated, any Timestamp header field present in the request MUST be copied into this 100 (Trying) response."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc3261.txt",
+     "quote": "If there is a delay in generating the response, the UAS SHOULD add a delay value into the Timestamp value in the response. This value MUST contain the difference between the time of sending of the response and receipt of the request, measured in seconds."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc3261.txt",
+     "quote": "The Timestamp header field describes when the UAC sent the request to the UAS."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc3261.txt",
+     "quote": "Although there is no normative behavior defined here that makes use of the header, it allows for extensions or SIP applications to obtain RTT estimates."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc3261.txt",
+     "quote": "Timestamp = \"Timestamp\" HCOLON 1*(DIGIT) [ \".\" *(DIGIT) ] [ LWS delay ] delay = *(DIGIT) [ \".\" *(DIGIT) ]"
+    }
+   ]
+  },
+  {
+   "name": "Two-Way Active Measurement Protocol (TWAMP)",
+   "standard": "RFC 5357, Sections 1, 4.2 and 4.2.1; timestamp format of RFC 4656, Section 4.1.2; the PTP format option of RFC 8186",
+   "sends": [
+    {
+     "field": "Receive Timestamp",
+     "what": "the time the test packet was received by the reflector",
+     "clock": "reflector",
+     "resolution": "NTP 64-bit format (2^-32 s), or PTPv2 truncated format when the Z bit is set"
+    },
+    {
+     "field": "Timestamp",
+     "what": "the reflector's transmit time of the reflected packet",
+     "clock": "reflector",
+     "resolution": "as above"
+    },
+    {
+     "field": "Sender Timestamp",
+     "what": "a copy of the sender's transmit time",
+     "clock": "sender (returned)",
+     "resolution": "as above"
+    },
+    {
+     "field": "Error Estimate",
+     "what": "the reflector's estimate of its timestamps' error and whether its clock is synchronized",
+     "clock": "reflector",
+     "resolution": "not a time"
+    }
+   ],
+   "split": "The reflector stamps the test packet's arrival and its own transmission; the difference, the time the packet spent in the reflector, comes out of the round trip, which needs no synchronized clocks.",
+   "evidence": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc5357.txt",
+     "quote": "TWAMP employs time stamps applied at the echo destination (reflector) to enable greater accuracy (processing delays can be accounted for)."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc5357.txt",
+     "quote": "Two-way measurements are common in IP networks, primarily because synchronization between local and remote clocks is unnecessary for round-trip delay"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc5357.txt",
+     "quote": "Prior to the transmission of the test packet, the Session-Reflector MUST enter the best possible approximation of its actual sending time as its Timestamp (in the packet). This permits the determination of the elapsed time between the reception of the packet and its transmission."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc5357.txt",
+     "quote": "Receive Timestamp is the time the test packet was received by the reflector. The difference between Timestamp and Receive Timestamp is the amount of time the packet was in transition in the Session- Reflector."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc5357.txt",
+     "quote": "Timestamp and Error Estimate are the Session-Reflector's transmit timestamp and error estimate for the reflected test packet, respectively. The format of all timestamp and error estimate fields follow the definition and formats defined by OWAMP, Section 4.1.2 in [RFC4656]."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc8186.txt",
+     "quote": "o 0 - NTP 64-bit format of a timestamp. o 1 - PTPv2-truncated format of a timestamp."
+    }
+   ]
+  },
+  {
+   "name": "Simple Two-way Active Measurement Protocol (STAMP)",
+   "standard": "RFC 8762, Sections 4.2.1 and 4.3.1",
+   "sends": [
+    {
+     "field": "Receive Timestamp",
+     "what": "the time the test packet was received by the Session-Reflector",
+     "clock": "reflector",
+     "resolution": "NTP 64-bit format (2^-32 s) by default; PTPv2 truncated format if configured (Z field)"
+    },
+    {
+     "field": "Timestamp",
+     "what": "the time taken by the Session-Reflector at the start of transmitting the reflected packet",
+     "clock": "reflector",
+     "resolution": "as above"
+    },
+    {
+     "field": "Session-Sender Timestamp",
+     "what": "a copy of the sender's timestamp",
+     "clock": "sender (returned)",
+     "resolution": "as above"
+    }
+   ],
+   "split": "As in TWAMP: the sender takes the reflector's hold, Timestamp less Receive Timestamp, out of the round trip, with no shared clock.",
+   "evidence": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc8762.txt",
+     "quote": "Receive Timestamp is the time the test packet was received by the Session-Reflector. Timestamp is the time taken by the Session-Reflector at the start of transmitting the test packet."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc8762.txt",
+     "quote": "The Timestamp field is eight octets long. The STAMP node MUST support the Network Time Protocol (NTP) version 4 64-bit timestamp format [RFC5905], the format used in [RFC5357]."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc8762.txt",
+     "quote": "The Z field is interpreted as it is defined in Section 2.3 of [RFC8186]: 0: NTP 64-bit format of a timestamp 1: PTPv2 truncated format of a timestamp"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc8762.txt",
+     "quote": "The Session-Sender Sequence Number, Session-Sender Timestamp, and Session-Sender Error Estimate fields are copies of the corresponding fields in the STAMP-Test packet sent by the Session- Sender."
+    }
+   ]
+  },
+  {
+   "name": "One-Way Active Measurement Protocol (OWAMP)",
+   "standard": "RFC 4656, Sections 3.9 (Fetch-Session records) and 4.1.2 (timestamp and error estimate formats)",
+   "sends": [
+    {
+     "field": "Send timestamp",
+     "what": "the sender's transmit time of the test packet",
+     "clock": "sender",
+     "resolution": "NTP 64-bit format (2^-32 s)"
+    },
+    {
+     "field": "Receive timestamp",
+     "what": "the receiver's time of receipt, returned in the session's packet records",
+     "clock": "receiver",
+     "resolution": "NTP 64-bit format (2^-32 s)"
+    },
+    {
+     "field": "Error estimates (S bit)",
+     "what": "whether each party's clock is synchronized to UTC from an external source",
+     "clock": "each party",
+     "resolution": "not a time"
+    }
+   ],
+   "split": "Carries no hold: one-way delay is the receiver's receive time less the sender's send time, on two clocks, usable only when the clocks are synchronized, which the error estimate's S bit reports.",
+   "evidence": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc4656.txt",
+     "quote": "Each packet record is 25 octets and includes 4 octets of sequence number, 8 octets of send timestamp, 2 octets of send timestamp error estimate, 8 octets of receive timestamp, 2 octets of receive timestamp error estimate, and 1 octet of Time To Live (TTL), or Hop Limit in IPv6:"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc4656.txt",
+     "quote": "The format of the timestamp is the same as in [RFC1305] and is as follows: the first 32 bits represent the unsigned integer number of seconds elapsed since 0h on 1 January 1900; the next 32 bits represent the fractional part of a second that has elapsed since then."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc4656.txt",
+     "quote": "The first bit, S, SHOULD be set if the party generating the timestamp has a clock that is synchronized to UTC using an external source"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc4656.txt",
+     "quote": "Although OWAMP is often run on hosts with well-synchronized clocks, it is also possible to run it on hosts with clocks completely untrained. The delays obtained thus are, of course, not directly usable;"
+    }
+   ]
+  },
+  {
+   "name": "MPLS delay measurement",
+   "standard": "RFC 6374, Sections 2.4, 3.2 and 9.2",
+   "sends": [
+    {
+     "field": "Timestamp 3 (T1)",
+     "what": "the querier's transmit time, returned",
+     "clock": "querier",
+     "resolution": "NTP 64-bit format or truncated IEEE 1588v2 PTP format, as the timestamp format fields say"
+    },
+    {
+     "field": "Timestamp 4 (T2)",
+     "what": "the time the query was received at the responder",
+     "clock": "responder",
+     "resolution": "as above"
+    },
+    {
+     "field": "Timestamp 1 (T3)",
+     "what": "the time the responder transmits the response",
+     "clock": "responder",
+     "resolution": "as above"
+    }
+   ],
+   "split": "The querier records T4 and computes the two-way channel delay as (T4 - T1) - (T3 - T2), the responder's hold taken out, with no synchronized clocks; one-way values need synchronized clocks.",
+   "evidence": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc6374.txt",
+     "quote": "Measurement of the one-way delay quantities requires that the clocks of A and B be synchronized, whereas the two-way delay metrics can be measured directly even when this is not the case (provided A and B have stable clocks)."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc6374.txt",
+     "quote": "When the query is received at B, Timestamp 2 is set to T2. At this point, B copies Timestamp 1 to Timestamp 3 and Timestamp 2 to Timestamp 4, and re-initializes Timestamp 1 and Timestamp 2 to 0. When B transmits the response, Timestamp 1 is set to T3."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc6374.txt",
+     "quote": "At this point, A can compute the two-way channel delay associated with the channel as two-way channel delay = (T4 - T1) - (T3 - T2) and the round-trip delay as round-trip delay = T4 - T1."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc6374.txt",
+     "quote": "2 Network Time Protocol version 4 64-bit 64 RFC 6374 Timestamp 3 Truncated IEEE 1588v2 PTP Timestamp 64 RFC 6374"
+    }
+   ]
+  },
+  {
+   "name": "Precision Time Protocol (IEEE 1588), as implemented by linuxptp",
+   "standard": "IEEE 1588-2008 (not freely published); message layouts and arithmetic as implemented in linuxptp v4.4 (msg.h, ddt.h, port.c, tc.c, tsproc.c)",
+   "sends": [
+    {
+     "field": "Delay_Resp receiveTimestamp",
+     "what": "the time the master received the slave's Delay_Req",
+     "clock": "master",
+     "resolution": "1 ns (48-bit seconds, 32-bit nanoseconds)"
+    },
+    {
+     "field": "Pdelay_Resp requestReceiptTimestamp (t2)",
+     "what": "the time the peer received the Pdelay_Req",
+     "clock": "responding peer",
+     "resolution": "1 ns"
+    },
+    {
+     "field": "Pdelay_Resp_Follow_Up responseOriginTimestamp (t3)",
+     "what": "the time the peer sent the Pdelay_Resp",
+     "clock": "responding peer",
+     "resolution": "1 ns"
+    },
+    {
+     "field": "correctionField (every message header)",
+     "what": "residence times added by each transparent clock the message crossed; in a one-step peer delay response, the responder's turnaround",
+     "clock": "each transparent clock or responder that adds to it",
+     "resolution": "2^-16 ns (scaled nanoseconds, 64-bit signed)"
+    }
+   ],
+   "split": "In the peer delay exchange the responder sends the time it received the request and the time it sent the response (or their difference in the correction field), and the requester computes the link delay as ((t2 - t3) + (t4 - t1)) / 2, the responder's turnaround taken out, with no shared clock. Transparent clocks add each message's residence time in them to the correction field, which the receiver subtracts, so time queued in a switch comes out too.",
+   "note": "The IEEE standard itself is not public; the fields and the arithmetic are cited from linuxptp's source, pinned to its tag v4.4 on the project's GitHub repository. The reading that a one-step peer delay response carries the turnaround in its correction field rests on port.c, which sets t2 and t3 to zero for such a response and adds the correction to t3.",
+   "evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/richardcochran/linuxptp/v4.4/msg.h",
+     "quote": "struct delay_resp_msg { struct ptp_header hdr; struct Timestamp receiveTimestamp; struct PortIdentity requestingPortIdentity; uint8_t suffix[0]; } PACKED;"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/richardcochran/linuxptp/v4.4/msg.h",
+     "quote": "struct pdelay_resp_msg { struct ptp_header hdr; struct Timestamp requestReceiptTimestamp; struct PortIdentity requestingPortIdentity; uint8_t suffix[0]; } PACKED;"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/richardcochran/linuxptp/v4.4/msg.h",
+     "quote": "struct pdelay_resp_fup_msg { struct ptp_header hdr; struct Timestamp responseOriginTimestamp; struct PortIdentity requestingPortIdentity; uint8_t suffix[0]; } PACKED;"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/richardcochran/linuxptp/v4.4/msg.h",
+     "quote": "Octet flagField[2]; Integer64 correction; UInteger32 reserved2;"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/richardcochran/linuxptp/v4.4/ddt.h",
+     "quote": "typedef Integer64 TimeInterval; /* nanoseconds << 16 */"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/richardcochran/linuxptp/v4.4/ddt.h",
+     "quote": "struct Timestamp { uint16_t seconds_msb; /* 16 bits + */ uint32_t seconds_lsb; /* 32 bits = 48 bits*/ UInteger32 nanoseconds; } PACKED;"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/richardcochran/linuxptp/v4.4/tsproc.c",
+     "quote": "/* delay = ((t2 - t3) * rr + (t4 - t1)) / 2 */"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/richardcochran/linuxptp/v4.4/port.c",
+     "quote": "/* Process one-step response immediately. */ if (one_step(rsp)) { t2 = tmv_zero(); t3 = tmv_zero(); c2 = tmv_zero(); goto calc; }"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/richardcochran/linuxptp/v4.4/port.c",
+     "quote": "t3c = tmv_add(t3, tmv_add(c1, c2));"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/richardcochran/linuxptp/v4.4/tc.c",
+     "quote": "c1 = net2host64(resp->header.correction); c2 = c1 + tmv_to_TimeInterval(residence); resp->header.correction = host2net64(c2);"
+    }
+   ]
+  },
+  {
+   "name": "QUIC ACK Delay",
+   "standard": "RFC 9000, Sections 13.2.5, 18.2 and 19.3; RFC 9002, Sections 5.2 and 5.3",
+   "sends": [
+    {
+     "field": "ACK Delay (ACK frame)",
+     "what": "the delay the acknowledging endpoint introduced on purpose between receiving the largest acknowledged packet and sending the ACK",
+     "clock": "the acknowledging endpoint (the far end)",
+     "resolution": "microseconds times 2^ack_delay_exponent (default exponent 3, so 8 us units)"
+    }
+   ],
+   "split": "The sender subtracts the peer's ACK Delay, capped at max_ack_delay once the handshake is confirmed, from its RTT sample, unless that would take the sample below min_rtt; min_rtt itself uses local times only. The field covers only delays the peer controls, not time the packet waited in its kernel.",
+   "evidence": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9000.txt",
+     "quote": "An endpoint measures the delays intentionally introduced between the time the packet with the largest packet number is received and the time an acknowledgment is sent. The endpoint encodes this acknowledgment delay in the ACK Delay field of an ACK frame; see Section 19.3."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9000.txt",
+     "quote": "A packet might be held in the OS kernel or elsewhere on the host before being processed. An endpoint MUST NOT include delays that it does not control when populating the ACK Delay field in an ACK frame."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9000.txt",
+     "quote": "ACK Delay: A variable-length integer encoding the acknowledgment delay in microseconds; see Section 13.2.5. It is decoded by multiplying the value in the field by 2 to the power of the ack_delay_exponent transport parameter sent by the sender of the ACK frame; see Section 18.2."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9000.txt",
+     "quote": "If this value is absent, a default value of 3 is assumed (indicating a multiplier of 8). Values above 20 are invalid."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9002.txt",
+     "quote": "adjusted_rtt = latest_rtt if (latest_rtt >= min_rtt + ack_delay): adjusted_rtt = latest_rtt - ack_delay"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9002.txt",
+     "quote": "MUST NOT subtract the acknowledgment delay from the RTT sample if the resulting value is smaller than the min_rtt."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9002.txt",
+     "quote": "An endpoint uses only locally observed times in computing the min_rtt and does not adjust for acknowledgment delays reported by the peer."
+    }
+   ]
+  },
+  {
+   "name": "TCP Timestamps option",
+   "standard": "RFC 7323, Sections 3, 4 and 5.4",
+   "sends": [
+    {
+     "field": "TSval",
+     "what": "the current value of the sending TCP's timestamp clock",
+     "clock": "the sender of the segment",
+     "resolution": "1 ms to 1 s per tick (the RFC's chosen range)"
+    },
+    {
+     "field": "TSecr",
+     "what": "a TSval received from the other end, echoed",
+     "clock": "the other end (its own value, returned)",
+     "resolution": "the other end's tick"
+    }
+   ],
+   "split": "Carries no hold: the receiver echoes a TSval and sends no time of its own that the other end can relate to it. With delayed ACKs the RFC wants the measured RTT to include the delay, so the receiver echoes the TSval of the earliest unacknowledged segment.",
+   "evidence": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7323.txt",
+     "quote": "The Timestamps option carries two four-byte timestamp fields. The TSval field contains the current value of the timestamp clock of the TCP sending the option."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7323.txt",
+     "quote": "These TSval values are echoed in TSecr values in the reverse direction. The difference between a received TSecr value and the current timestamp clock value provides an RTT measurement."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7323.txt",
+     "quote": "The data-sender TCP must measure the effective RTT, including the additional time due to delayed ACKs, or else it will retransmit unnecessarily. Thus, when delayed ACKs are in use, the receiver SHOULD reply with the TSval field from the earliest unacknowledged segment."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7323.txt",
+     "quote": "Based upon these considerations, we choose a timestamp clock frequency in the range 1 ms to 1 sec per tick."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc7323.txt",
+     "quote": "The receiver treats the timestamp value as simply a monotonically non-decreasing serial number, without any connection to time."
+    }
+   ]
+  },
+  {
+   "name": "HTTP/2 PING frame",
+   "standard": "RFC 9113, Section 6.7",
+   "sends": [
+    {
+     "field": "Opaque Data (8 octets)",
+     "what": "the sender's payload, returned unchanged",
+     "clock": "the sender's, if it put a time in it; the receiver adds none",
+     "resolution": "set by the sender"
+    }
+   ],
+   "split": "Carries none: the receiver returns the payload and is asked to answer before any other frame, so the measured round trip includes its turnaround.",
+   "evidence": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9113.txt",
+     "quote": "The PING frame (type=0x06) is a mechanism for measuring a minimal round-trip time from the sender, as well as determining whether an idle connection is still functional."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9113.txt",
+     "quote": "Receivers of a PING frame that does not include an ACK flag MUST send a PING frame with the ACK flag set in response, with an identical frame payload. PING responses SHOULD be given higher priority than any other frame."
+    }
+   ]
+  },
+  {
+   "name": "gRPC over HTTP/2",
+   "standard": "gRPC, doc/PROTOCOL-HTTP2.md, 'Responses' (release v1.85.0)",
+   "sends": [
+    {
+     "field": "Custom-Metadata",
+     "what": "application-defined response headers and trailers; the protocol defines no time field in a response",
+     "clock": "none defined",
+     "resolution": "none defined"
+    }
+   ],
+   "split": "Carries none: a response's headers and trailers hold the status, the encodings and custom metadata, so any server time is an application's own metadata.",
+   "evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/grpc/grpc/v1.85.0/doc/PROTOCOL-HTTP2.md",
+     "quote": "**Response-Headers** → HTTP-Status [Message-Encoding] [Message-Accept-Encoding] Content-Type \\*Custom-Metadata"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/grpc/grpc/v1.85.0/doc/PROTOCOL-HTTP2.md",
+     "quote": "**Trailers** → Status [Status-Message] [Status-Details] \\*Custom-Metadata"
+    }
+   ]
+  },
+  {
+   "name": "HTTP Server-Timing header (W3C Server Timing)",
+   "standard": "W3C Server Timing, Working Draft of 7 April 2026, Sections 2 and 3.2",
+   "sends": [
+    {
+     "field": "dur parameter of a metric",
+     "what": "a duration the server chose to report for the request-response cycle, under a metric name of its own",
+     "clock": "server",
+     "resolution": "a decimal number, milliseconds by recommendation"
+    },
+    {
+     "field": "desc parameter",
+     "what": "a description of the metric",
+     "clock": "not a time",
+     "resolution": "not a time"
+    }
+   ],
+   "split": "A server can report durations it measured, such as its own processing of the request, and a client can subtract them from its round trip; the specification defines no standard metric for the server's hold, so each metric means what the server says it does.",
+   "evidence": [
+    {
+     "url": "https://www.w3.org/TR/server-timing/",
+     "quote": "The Server-Timing header field is used to communicate one or more metrics and descriptions for the given request-response cycle."
+    },
+    {
+     "url": "https://www.w3.org/TR/server-timing/",
+     "quote": "This specification establishes the server-timing-params for server-timing-param-names \"dur\" for duration and \"desc\" for description , both optional."
+    },
+    {
+     "url": "https://www.w3.org/TR/server-timing/",
+     "quote": "Since duration is a DOMHighResTimeStamp , it usually represents a duration in milliseconds. Since this is not enforceable in practice, duration can represent any unit of time, and having it represent a duration in milliseconds is a recommendation."
+    }
+   ]
+  },
+  {
+   "name": "Amazon CloudFront's Server-Timing metrics",
+   "standard": "Amazon CloudFront Developer Guide, 'Understand response headers policies', section 'Server-Timing header' (as retrieved 27 October 2026)",
+   "sends": [
+    {
+     "field": "cdn-downstream-fbl",
+     "what": "the time from the edge location finishing receiving the request to its sending the first byte of the response",
+     "clock": "the CloudFront edge",
+     "resolution": "ms"
+    },
+    {
+     "field": "cdn-upstream-fbl",
+     "what": "the time from the origin request being completed to the first byte of the origin's response",
+     "clock": "the CloudFront edge",
+     "resolution": "ms"
+    }
+   ],
+   "split": "With the setting on (it is off unless a response headers policy enables it, for a sampled share of responses), a viewer can subtract cdn-downstream-fbl, the edge's hold from receiving the request to sending the first byte, measured on the edge's clock, from its own round trip.",
+   "evidence": [
+    {
+     "url": "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/understanding-response-headers-policies.html",
+     "quote": "Use the Server-Timing header setting to enable the Server-Timing header in HTTP responses sent from CloudFront."
+    },
+    {
+     "url": "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/understanding-response-headers-policies.html",
+     "quote": "cdn-downstream-fbl Contains a value with the number of milliseconds between when the edge location finished receiving the request and when it sent the first byte of the response to the viewer."
+    },
+    {
+     "url": "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/understanding-response-headers-policies.html",
+     "quote": "cdn-upstream-fbl Contains a value with the number of milliseconds between when the origin HTTP request is completed and when the first byte is received in the response from the origin (first byte latency)."
+    },
+    {
+     "url": "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/understanding-response-headers-policies.html",
+     "quote": "The sampling rate is a number 0–100 (inclusive) that specifies the percentage of responses that you want CloudFront to add the Server-Timing header to."
+    }
+   ]
+  },
+  {
+   "name": "Envoy's x-envoy-upstream-service-time response header",
+   "standard": "Envoy documentation, router filter, 'HTTP response headers set on downstream responses' (source of release v1.40.2)",
+   "sends": [
+    {
+     "field": "x-envoy-upstream-service-time",
+     "what": "the time the upstream host spent processing the request plus the network latency between Envoy and the upstream host",
+     "clock": "Envoy (the proxy)",
+     "resolution": "ms"
+    }
+   ],
+   "split": "A client can subtract it from its round trip to leave the path between itself and Envoy plus Envoy's own handling; it is Envoy's round trip to the upstream, network included, not the upstream's hold alone.",
+   "evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/envoyproxy/envoy/v1.40.2/docs/root/configuration/http/http_filters/router_filter.rst",
+     "quote": "Contains the time in milliseconds spent by the upstream host processing the request and the network latency between Envoy and upstream host. This is useful if the client wants to determine service time compared to network latency between client and Envoy. This header is set on responses."
+    }
+   ]
+  },
+  {
+   "name": "Rack's x-runtime response header",
+   "standard": "Rack v3.2.6, lib/rack/runtime.rb (the Rack::Runtime middleware)",
+   "sends": [
+    {
+     "field": "x-runtime",
+     "what": "the time the wrapped application took over the request, measured around the call inside the server process",
+     "clock": "server process",
+     "resolution": "seconds printed with six decimals (1 us)"
+    }
+   ],
+   "split": "A client can subtract it from its round trip; what remains includes the network, the server's queues and every layer outside the middleware.",
+   "evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/rack/rack/v3.2.6/lib/rack/runtime.rb",
+     "quote": "# Sets an \"x-runtime\" response header, indicating the response # time of the request, in seconds"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/rack/rack/v3.2.6/lib/rack/runtime.rb",
+     "quote": "FORMAT_STRING = \"%0.6f\" # :nodoc:"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/rack/rack/v3.2.6/lib/rack/runtime.rb",
+     "quote": "start_time = Utils.clock_time _, headers, _ = response = @app.call(env) request_time = Utils.clock_time - start_time"
+    }
+   ]
+  },
+  {
+   "name": "Request-start header of web routers (X-Request-Start, X-Queue-Start)",
+   "standard": "Heroku Dev Center, 'HTTP Routing', 'Heroku Headers'; nginx ngx_http_core_module, variable $msec; newrelic-ruby-agent 10.9.1, queue_time.rb; Datadog dd-trace-rb v2.47.0, request_queue.rb",
+   "sends": [
+    {
+     "field": "X-Request-Start (or X-Queue-Start)",
+     "what": "the time the router or proxy received the request, added to the request it forwards to the application",
+     "clock": "router or proxy",
+     "resolution": "Heroku: Unix time in ms; nginx with $msec: seconds with ms resolution; Apache: microseconds"
+    }
+   ],
+   "split": "The stamp travels forward to the application, not back to the client. The application's performance-monitoring library subtracts it from its own clock reading to report the request's queueing between router and application, which needs the two hosts' clocks to agree; both libraries read drop or zero a negative result.",
+   "evidence": [
+    {
+     "url": "https://devcenter.heroku.com/articles/http-routing",
+     "quote": "X-Request-Start : unix timestamp (milliseconds) when the request was received by the router"
+    },
+    {
+     "url": "https://nginx.org/en/docs/http/ngx_http_core_module.html",
+     "quote": "$msec current time in seconds with the milliseconds resolution (1.3.9, 1.2.6)"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/newrelic/newrelic-ruby-agent/10.9.1/lib/new_relic/agent/instrumentation/queue_time.rb",
+     "quote": "# Record queue time metrics based on any of three headers # which can be set on the request."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/newrelic/newrelic-ruby-agent/10.9.1/lib/new_relic/agent/instrumentation/queue_time.rb",
+     "quote": "REQUEST_START_HEADER = 'HTTP_X_REQUEST_START'.freeze QUEUE_START_HEADER = 'HTTP_X_QUEUE_START'.freeze"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/newrelic/newrelic-ruby-agent/10.9.1/lib/new_relic/agent/instrumentation/queue_time.rb",
+     "quote": "NewRelic::Agent.logger.debug(\"Negative queue time detected, treating as zero: start=#{earliest.to_f} > now=#{now}\")"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/DataDog/dd-trace-rb/v2.47.0/lib/datadog/tracing/contrib/rack/request_queue.rb",
+     "quote": "# Retrieves the time spent in an upstream proxy # for the current Rack request."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/DataDog/dd-trace-rb/v2.47.0/lib/datadog/tracing/contrib/rack/request_queue.rb",
+     "quote": "# nginx header is seconds in the format \"t=1512379167.574\" # apache header is microseconds in the format \"t=1570633834463123\" # heroku header is milliseconds in the format \"1570634024294\""
+    },
+    {
+     "url": "https://raw.githubusercontent.com/DataDog/dd-trace-rb/v2.47.0/lib/datadog/tracing/contrib/rack/request_queue.rb",
+     "quote": "# return the request_start only if it's lesser than # current time, to avoid significant clock skew"
+    }
+   ]
+  },
+  {
+   "name": "HTTP Age header",
+   "standard": "RFC 9111, Sections 4.2.3 and 5.1",
+   "sends": [
+    {
+     "field": "Age",
+     "what": "the sender's estimate of the time since the response was generated or validated at the origin; each cache adds the time the response stayed with it and the round trip of its own request",
+     "clock": "each cache in turn, as a duration",
+     "resolution": "1 s (non-negative integer seconds)"
+    }
+   ],
+   "split": "A client learns how long the response has been held along the path, in whole seconds; it is a stay of the response in caches, not a hold of the client's own request.",
+   "evidence": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9111.txt",
+     "quote": "The \"Age\" response header field conveys the sender's estimate of the time since the response was generated or successfully validated at the origin server."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9111.txt",
+     "quote": "The Age field value is a non-negative integer, representing time in seconds (see Section 1.2.2)."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9111.txt",
+     "quote": "apparent_age = max(0, response_time - date_value); response_delay = response_time - request_time; corrected_age_value = age_value + response_delay;"
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9111.txt",
+     "quote": "resident_time = now - response_time; current_age = corrected_initial_age + resident_time;"
+    }
+   ]
+  },
+  {
+   "name": "In Situ OAM (IOAM) trace data",
+   "standard": "RFC 9197, Sections 4.4 and 4.4.2.3 to 4.4.2.5",
+   "sends": [
+    {
+     "field": "timestamp seconds and timestamp fraction",
+     "what": "the time the packet was received by the node",
+     "clock": "each node on the path",
+     "resolution": "PTP, NTP or POSIX formats"
+    },
+    {
+     "field": "transit delay",
+     "what": "the time the packet spent in the transit node",
+     "clock": "each node",
+     "resolution": "1 ns, 31 bits"
+    }
+   ],
+   "split": "Each node can write into the packet the time it received it and the time the packet spent in it, and the data travels with the packet to the node that removes it, so each node's transit delay, on that node's clock, can be taken out of the path's delay; times written by different nodes need synchronized clocks to compare.",
+   "evidence": [
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9197.txt",
+     "quote": "The \"timestamp seconds\" field is a 4-octet unsigned integer field. It contains the absolute timestamp in seconds that specifies the time at which the packet was received by the node."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9197.txt",
+     "quote": "This field has three possible formats, based on either the Precision Time Protocol (PTP) (see e.g., [RFC8877]), NTP [RFC5905], or POSIX [POSIX]."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9197.txt",
+     "quote": "An IOAM decapsulating node removes IOAM-Option-Type(s) from packets."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9197.txt",
+     "quote": "The \"transit delay\" field is a 4-octet unsigned integer in the range 0 to 2^31-1. It is the time in nanoseconds the packet spent in the transit node. This can serve as an indication of the queuing delay at the node."
+    },
+    {
+     "url": "https://www.rfc-editor.org/rfc/rfc9197.txt",
+     "quote": "Time of day when the packet was processed by the node, as well as the transit delay. Different definitions of processing time are feasible and expected, though it is important that all devices of an IOAM-Domain follow the same definition."
+    }
+   ]
+  },
+  {
+   "name": "Apache Kafka's ThrottleTimeMs",
+   "standard": "Apache Kafka 4.4.0, clients/src/main/resources/common/message/ProduceResponse.json",
+   "sends": [
+    {
+     "field": "ThrottleTimeMs",
+     "what": "the duration for which the request was throttled because of a quota violation, or zero",
+     "clock": "broker",
+     "resolution": "ms"
+    }
+   ],
+   "split": "A duration the broker measures and sends in the produce response, but it reports quota throttling only, not the broker's hold of the request, so it does not let a producer split its round trip.",
+   "note": "Kafka is one of the brokers coded in the audit; the field is recorded here because it is a broker-side duration sent in a response.",
+   "evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+     "quote": "{ \"name\": \"ThrottleTimeMs\", \"type\": \"int32\", \"versions\": \"1+\", \"ignorable\": true, \"default\": \"0\", \"about\": \"The duration in milliseconds for which the request was throttled due to a quota violation, or zero if the request did not violate any quota.\" },"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+     "quote": "// Version 1 added the throttle time."
+    }
+   ]
+  },
+  {
+   "name": "Eurex and Xetra T7 Enhanced Trading Interface (ETI) response header",
+   "standard": "T7 Release 15.0 ETI Manual, Section 4.24 'Timestamps'; T7 Release 15.0 ETI Derivatives Message Reference, ResponseHeaderME (for example in 6.3, New Order Response)",
+   "sends": [
+    {
+     "field": "RequestTime (5979)",
+     "what": "the time the T7 gateway read the request from the TCP socket",
+     "clock": "T7 gateway",
+     "resolution": "1 ns (UTC, nanoseconds past the UNIX epoch)"
+    },
+    {
+     "field": "TrdRegTSTimeIn (21002)",
+     "what": "the time the matching engine received the request",
+     "clock": "T7 matching engine",
+     "resolution": "1 ns"
+    },
+    {
+     "field": "TrdRegTSTimeOut (21003)",
+     "what": "the time the matching engine sent its message",
+     "clock": "T7 matching engine",
+     "resolution": "1 ns"
+    },
+    {
+     "field": "ResponseIn (7765)",
+     "what": "the time the gateway received the response from the matching engine",
+     "clock": "T7 gateway",
+     "resolution": "1 ns"
+    },
+    {
+     "field": "SendingTime (52)",
+     "what": "the time the gateway wrote the response to the TCP socket",
+     "clock": "T7 gateway",
+     "resolution": "1 ns"
+    }
+   ],
+   "split": "SendingTime less RequestTime is the gateway's hold of the request, both taken on the gateway, so a participant can take T7's whole part out of its round trip without sharing a clock with the exchange; TrdRegTSTimeIn and TrdRegTSTimeOut divide that hold further at the matching engine.",
+   "evidence": [
+    {
+     "url": "https://www.eurex.com/resource/blob/5411650/4cd5d3056b86c8ee4f111500938f5660/data/T7_R.15.0_Enhanced_Trading_Interface_-_Manual_Version_2.pdf",
+     "quote": "All ETI timestamps will provide date and time, in UTC, represented as nanoseconds past the UNIX epoch (00:00:00 UTC on 1 January 1970)."
+    },
+    {
+     "url": "https://www.eurex.com/resource/blob/5411650/4cd5d3056b86c8ee4f111500938f5660/data/T7_R.15.0_Enhanced_Trading_Interface_-_Manual_Version_2.pdf",
+     "quote": "Gateway request in RequestTime (5979) Provides the time the T7 application has read an inbound message on a gateway from the TCP socket."
+    },
+    {
+     "url": "https://www.eurex.com/resource/blob/5411650/4cd5d3056b86c8ee4f111500938f5660/data/T7_R.15.0_Enhanced_Trading_Interface_-_Manual_Version_2.pdf",
+     "quote": "Gateway response out SendingTime (52) Provides the time the T7 application has written an outbound message on a gateway to the TCP socket."
+    },
+    {
+     "url": "https://www.eurex.com/resource/blob/5411650/4cd5d3056b86c8ee4f111500938f5660/data/T7_R.15.0_Enhanced_Trading_Interface_-_Manual_Version_2.pdf",
+     "quote": "Matching engine in TrdRegTSTimeIn (21002) Provides the time the T7 application has received an inbound message on a matching engine. Matching engine out TrdRegTSTimeOut (21003) Provides the time the T7 application has sent an outbound message from a matching engine."
+    },
+    {
+     "url": "https://www.eurex.com/resource/blob/5411650/4cd5d3056b86c8ee4f111500938f5660/data/T7_R.15.0_Enhanced_Trading_Interface_-_Manual_Version_2.pdf",
+     "quote": "Gateway response in ResponseIn(7765) Provides the time the T7 application has received an inbound response message on a gateway from a matching engine."
+    },
+    {
+     "url": "https://www.cashmarket.deutsche-boerse.com/resource/blob/5409184/9ab9bb4fb7efacdd94d7a0e549f8ddd4/data/T7_R.15.0_Enhanced_Trading_Interface_-_Derivatives_Message_Reference_Version_1.pdf",
+     "quote": "<ResponseHeaderME> 5979 RequestTime Y 8 8 UTCTimestamp In timestamp; ﬁlled always by the gateway 21002 TrdRegTSTimeIn Y 8 16 UTCTimestamp Matching engine in timestamp. 21003 TrdRegTSTimeOut Y 8 24 UTCTimestamp Matching engine out timestamp."
+    },
+    {
+     "url": "https://www.cashmarket.deutsche-boerse.com/resource/blob/5409184/9ab9bb4fb7efacdd94d7a0e549f8ddd4/data/T7_R.15.0_Enhanced_Trading_Interface_-_Derivatives_Message_Reference_Version_1.pdf",
+     "quote": "7765 ResponseIn Y 8 32 UTCTimestamp Timestamp the gateway receives a message from the Matching Engine. 52 SendingTime Y 8 40 UTCTimestamp Outgoing delta timestamp; ﬁlled al- ways by the gateway"
+    }
+   ]
+  },
+  {
+   "name": "CME Globex iLink 3 execution reports",
+   "standard": "CME Client Systems Wiki, 'iLink Execution Report - New Order' (as retrieved 27 October 2026)",
+   "sends": [
+    {
+     "field": "TransactTime (60)",
+     "what": "the time the transaction the report represents occurred",
+     "clock": "CME",
+     "resolution": "1 ns (nanoseconds since the Unix epoch)"
+    },
+    {
+     "field": "SendingTimeEpoch (5297)",
+     "what": "the time the message is sent",
+     "clock": "CME",
+     "resolution": "1 ns"
+    },
+    {
+     "field": "DelayToTime (7552), optional",
+     "what": "for a message split among packets, out of order, or a previously submitted split message, the time it spent in additional processing; TransactTime less it is the original received time",
+     "clock": "CME",
+     "resolution": "1 ns"
+    }
+   ],
+   "split": "The acknowledgment gives the time of the transaction and the send time, both CME's, but not the time the order was received, except through DelayToTime for delayed messages; SendingTimeEpoch less TransactTime takes out the part after the match, and the rest of CME's part needs a clock shared with CME. The page does not say whether the two times are taken on one clock.",
+   "evidence": [
+    {
+     "url": "https://cmegroupclientsite.atlassian.net/wiki/spaces/EPICSANDBOX/pages/716275899/iLink+Execution+Report+-+New+Order",
+     "quote": "Execution Report - New message is sent in response to New Order Single as well as activation of stop orders."
+    },
+    {
+     "url": "https://cmegroupclientsite.atlassian.net/wiki/spaces/EPICSANDBOX/pages/716275899/iLink+Execution+Report+-+New+Order",
+     "quote": "60 TransactTime uInt64 8 Y Time the transaction represented by this Execution Report (35=8) occurred. Expressed as nanoseconds since epoch time."
+    },
+    {
+     "url": "https://cmegroupclientsite.atlassian.net/wiki/spaces/EPICSANDBOX/pages/716275899/iLink+Execution+Report+-+New+Order",
+     "quote": "5297 SendingTimeEpoch uInt64 8 Y Time when the message is sent. 64-bit integer expressing the number of nanoseconds since midnight January 1, 1970."
+    },
+    {
+     "url": "https://cmegroupclientsite.atlassian.net/wiki/spaces/EPICSANDBOX/pages/716275899/iLink+Execution+Report+-+New+Order",
+     "quote": "7552 DelayToTime uInt64NULL 8 N Indicates the amount of time in nanoseconds that a message was subject to additional processing as a result of being:"
+    },
+    {
+     "url": "https://cmegroupclientsite.atlassian.net/wiki/spaces/EPICSANDBOX/pages/716275899/iLink+Execution+Report+-+New+Order",
+     "quote": "split among multiple packets (tag 9553=0) out-of-order (tag 9553=1) a previously submitted split message (tag 9553=2)"
+    },
+    {
+     "url": "https://cmegroupclientsite.atlassian.net/wiki/spaces/EPICSANDBOX/pages/716275899/iLink+Execution+Report+-+New+Order",
+     "quote": "Subtracting this number from tag 60- TransactTime will represent original received time of in-flight message."
+    },
+    {
+     "url": "https://cmegroupclientsite.atlassian.net/wiki/spaces/EPICSANDBOX/pages/716275899/iLink+Execution+Report+-+New+Order",
+     "quote": "5904 DelayDuration uInt16NULL 2 N Not currently being used."
+    }
+   ]
+  },
+  {
+   "name": "CME MDP 3.0 market data",
+   "standard": "CME Client Systems Wiki, 'MDP 3.0 - SBE Technical Headers' and 'MDP 3.0 - Market Data Incremental Refresh - Volume' (as retrieved 27 October 2026)",
+   "sends": [
+    {
+     "field": "SendingTime (packet header)",
+     "what": "the time the gateway transmitted the packet",
+     "clock": "CME gateway, synced to a master clock to microsecond accuracy",
+     "resolution": "1 ns"
+    },
+    {
+     "field": "TransactTime (60), per message",
+     "what": "the start of the event's processing",
+     "clock": "CME",
+     "resolution": "1 ns"
+    }
+   ],
+   "split": "SendingTime less TransactTime is CME's time from the start of the event's processing to the packet's transmission; the time from transmission to the subscriber needs the subscriber's clock synchronized with CME's.",
+   "evidence": [
+    {
+     "url": "https://cmegroupclientsite.atlassian.net/wiki/spaces/EPICSANDBOX/pages/457638617/MDP+3.0+-+SBE+Technical+Headers",
+     "quote": "SendingTime uInt64 UTC Time of message transmission by the Gateway. UTC Timestamps are sent in number of nanoseconds since Unix epoch synced to a master clock to microsecond accuracy."
+    },
+    {
+     "url": "https://cmegroupclientsite.atlassian.net/wiki/spaces/EPICSANDBOX/pages/457423039/MDP+3.0+-+Market+Data+Incremental+Refresh+-+Volume",
+     "quote": "60 TransactTime uInt64 UTCTimestamp Start of event processing time in number of nanoseconds since Unix epoch"
+    }
+   ]
+  },
+  {
+   "name": "B3 Binary EntryPoint execution reports",
+   "standard": "B3 Binary EntryPoint Message Reference, version 8.4.2 (last modified December 10th, 2025): execution reports and the outbound business header",
+   "sends": [
+    {
+     "field": "receivedTime (35544), optional",
+     "what": "the time of receipt of the related inbound message in the gateway",
+     "clock": "B3 gateway",
+     "resolution": "1 ns"
+    },
+    {
+     "field": "marketSegmentReceivedTime (35543), optional",
+     "what": "the time of receipt of the related inbound message in the market segment path",
+     "clock": "B3",
+     "resolution": "1 ns"
+    },
+    {
+     "field": "transactTime (60)",
+     "what": "the time of execution or order creation",
+     "clock": "B3",
+     "resolution": "1 ns"
+    },
+    {
+     "field": "sendingTime (outbound business header), optional type",
+     "what": "the time of message transmission",
+     "clock": "B3",
+     "resolution": "1 ns"
+    }
+   ],
+   "split": "sendingTime less receivedTime is B3's hold of the request, so a participant can take it out of its round trip without a shared clock when both are filled; both are of optional types, and the reference does not say they are taken on one clock.",
+   "evidence": [
+    {
+     "url": "https://www.b3.com.br/data/files/E9/37/9F/18/47F6B9105B12E5A9AC094EA8/BinaryEntryPoint-MessageReference-8.4.2-enUS.pdf",
+     "quote": "35544 receivedTime O UTCTimestampNanosOptional 160 (8) Time of receipt of related inbound message in the gateway."
+    },
+    {
+     "url": "https://www.b3.com.br/data/files/E9/37/9F/18/47F6B9105B12E5A9AC094EA8/BinaryEntryPoint-MessageReference-8.4.2-enUS.pdf",
+     "quote": "35543 marketSegmentReceivedTime O UTCTimestampNanosOptional 80 (8) Time of receipt of related inbound message in the market segment path."
+    },
+    {
+     "url": "https://www.b3.com.br/data/files/E9/37/9F/18/47F6B9105B12E5A9AC094EA8/BinaryEntryPoint-MessageReference-8.4.2-enUS.pdf",
+     "quote": "60 transactTime R UTCTimestampNanos 64 (8) Time of execution/order creation."
+    },
+    {
+     "url": "https://www.b3.com.br/data/files/E9/37/9F/18/47F6B9105B12E5A9AC094EA8/BinaryEntryPoint-MessageReference-8.4.2-enUS.pdf",
+     "quote": "Header used for outbound business messages."
+    },
+    {
+     "url": "https://www.b3.com.br/data/files/E9/37/9F/18/47F6B9105B12E5A9AC094EA8/BinaryEntryPoint-MessageReference-8.4.2-enUS.pdf",
+     "quote": "sendingTime UTCTimestampNanosOpti onal 8 8 Time of message transmission, expressed in UTC. eventIndicator EventIndicator 1 16 Set of indicators for a given event."
+    },
+    {
+     "url": "https://www.b3.com.br/data/files/E9/37/9F/18/47F6B9105B12E5A9AC094EA8/BinaryEntryPoint-MessageReference-8.4.2-enUS.pdf",
+     "quote": "receivedTime field that is the instant when inbound message arrived in the gateway added in ExecutionReport_New, ExecutionReport_Modify, ExecutionReport_Cancel, ExecutionReport_Reject messages."
+    },
+    {
+     "url": "https://www.b3.com.br/data/files/E9/37/9F/18/47F6B9105B12E5A9AC094EA8/BinaryEntryPoint-MessageReference-8.4.2-enUS.pdf",
+     "quote": "UTCTimestampNanos 6 8 UTC timestamp with nanosecond precision."
+    }
+   ]
+  },
+  {
+   "name": "Nasdaq OUCH 5.0 order entry",
+   "standard": "Nasdaq OUCH 5.0 Order Entry Specification (updated October 2025), Section 3, outbound messages",
+   "sends": [
+    {
+     "field": "Timestamp (every outbound message)",
+     "what": "the message's timestamp; the field tables define it only as nanoseconds since midnight",
+     "clock": "Nasdaq",
+     "resolution": "1 ns (nanoseconds since midnight)"
+    }
+   ],
+   "split": "One time per message on Nasdaq's clock and no time at which Nasdaq received the order, so the exchange's part of a round trip cannot be taken out without a clock shared with Nasdaq.",
+   "evidence": [
+    {
+     "url": "https://www.nasdaqtrader.com/content/technicalsupport/specifications/TradingProducts/OUCH5.0.pdf",
+     "quote": "Order Accepted Name Offset Length Value Notes Type 0 1 ‘A’ Accepted Message Identifier Timestamp 1 8 Timestamp Expressed as nanoseconds since midnight"
+    },
+    {
+     "url": "https://www.nasdaqtrader.com/content/technicalsupport/specifications/TradingProducts/OUCH5.0.pdf",
+     "quote": "OUCH 5.0 Order Entry Specification Updated October, 2025"
+    }
+   ]
+  },
+  {
+   "name": "London Stock Exchange Millennium Exchange native trading gateway",
+   "standard": "MIT203 Native Trading Gateway Specification, Issue 18 (21 August 2024), Execution Report",
+   "sends": [
+    {
+     "field": "Transact Time",
+     "what": "the time the execution report was generated",
+     "clock": "LSEG",
+     "resolution": "1 us (Unix seconds and microseconds, UTC)"
+    }
+   ],
+   "split": "One time per message and no receive time of the order, so the venue's part of a round trip cannot be taken out without a clock shared with the venue.",
+   "evidence": [
+    {
+     "url": "https://www.lseg.com/content/dam/lseg/en_us/documents/londonstockexchange-backup/mit203-native-trading-gateway-specification-issue-18.0.0.1.pdf",
+     "quote": "Transact Time 127 8 UInt64 Time the Execution Report was generated."
+    },
+    {
+     "url": "https://www.lseg.com/content/dam/lseg/en_us/documents/londonstockexchange-backup/mit203-native-trading-gateway-specification-issue-18.0.0.1.pdf",
+     "quote": "The first four bytes of the TransactTime timestamp will represent the Unix (Posix) time, while the next four bytes will specify the micro seconds. The TransactTime will be in UTC."
+    }
+   ]
+  },
+  {
+   "name": "OMG Data Distribution Service (DDS) SampleInfo",
+   "standard": "OMG DDS 1.4 (formal/2015-04-10), Sections 2.2.2.4.2.11 and 2.2.2.5.1.1, and the Time_t of its IDL; RTI Connext 7.6.0 C API, DDS_SampleInfo",
+   "sends": [
+    {
+     "field": "source_timestamp",
+     "what": "the time provided by the DataWriter when the sample was produced",
+     "clock": "writer",
+     "resolution": "Time_t: seconds and nanoseconds"
+    },
+    {
+     "field": "reception_timestamp (RTI Connext extension)",
+     "what": "the time the sample was committed by the DataReader",
+     "clock": "reader",
+     "resolution": "DDS_Time_t: seconds and nanoseconds"
+    }
+   ],
+   "split": "A reader gets the writer's time of writing (and, in RTI Connext, its own time of receipt); their difference is the one-way latency only when the two clocks are synchronized. There is no hold, since the reader does not answer the writer.",
+   "evidence": [
+    {
+     "url": "https://www.omg.org/spec/DDS/1.4/PDF",
+     "quote": "The source_timestamp of the sample. This is the timestamp provided by the DataWriter at the time the sample was produced."
+    },
+    {
+     "url": "https://www.omg.org/spec/DDS/1.4/PDF",
+     "quote": "When this operation is used, the Service will automatically supply the value of the source_timestamp that is made available to DataReader objects by means of the source_timestamp attribute inside the SampleInfo."
+    },
+    {
+     "url": "https://www.omg.org/spec/DDS/1.4/PDF",
+     "quote": "struct Time_t { long sec; unsigned long nanosec; };"
+    },
+    {
+     "url": "https://community.rti.com/static/documentation/connext-dds/7.6.0/doc/api/connext_dds/api_c/structDDS__SampleInfo.html",
+     "quote": "struct DDS_Time_t source_timestamp The timestamp when the sample was written by a DataWriter."
+    },
+    {
+     "url": "https://community.rti.com/static/documentation/connext-dds/7.6.0/doc/api/connext_dds/api_c/structDDS__SampleInfo.html",
+     "quote": "struct DDS_Time_t reception_timestamp <<extension>> The timestamp when the sample was committed by a DataReader."
+    }
+   ]
+  },
+  {
+   "name": "ROS 2 message and service info (rmw)",
+   "standard": "ros2/rmw 7.11.2, rmw/include/rmw/types.h (rmw_message_info_s, rmw_service_info_s) and rmw/time.h; ros2/rcutils 7.2.3, include/rcutils/time.h",
+   "sends": [
+    {
+     "field": "source_timestamp",
+     "what": "the time the message was published",
+     "clock": "publisher",
+     "resolution": "1 ns (int64 nanoseconds since the Unix epoch)"
+    },
+    {
+     "field": "received_timestamp",
+     "what": "the time the message was received by the subscription",
+     "clock": "subscriber",
+     "resolution": "1 ns"
+    }
+   ],
+   "split": "The subscriber gets the publisher's time of publication and its own time of receipt; their difference needs synchronized clocks, and the exact points at which the times are taken are left to the middleware. Service takes carry the same two times.",
+   "evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/ros2/rmw/7.11.2/rmw/include/rmw/types.h",
+     "quote": "/// Time when the message was published by the publisher. /** * The exact point at which the timestamp is taken is not specified, but * it should be taken consistently at the same point in the * publishing process each time. */ rmw_time_point_value_t source_timestamp;"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/ros2/rmw/7.11.2/rmw/include/rmw/types.h",
+     "quote": "/// Time when the message was received by the subscription. /** * The exact point at which the timestamp is taken is not specified, but * it should be taken consistently at the same point in the * process of receiving a message each time. */ rmw_time_point_value_t received_timestamp;"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/ros2/rmw/7.11.2/rmw/include/rmw/types.h",
+     "quote": "typedef struct RMW_PUBLIC_TYPE rmw_service_info_s { rmw_time_point_value_t source_timestamp; rmw_time_point_value_t received_timestamp; rmw_request_id_t request_id; } rmw_service_info_t;"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/ros2/rmw/7.11.2/rmw/include/rmw/time.h",
+     "quote": "typedef rcutils_time_point_value_t rmw_time_point_value_t;"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/ros2/rcutils/7.2.3/include/rcutils/time.h",
+     "quote": "/// A single point in time, measured in nanoseconds since the Unix epoch. typedef int64_t rcutils_time_point_value_t;"
+    }
+   ]
+  },
+  {
+   "name": "Informatica Ultra Messaging, streaming (high-resolution and receive timestamps)",
+   "standard": "Ultra Messaging 6.17.2 Concepts Guide, 'High-resolution Timestamps'; UM C API 6.17.2, lbm_msg_t_stct",
+   "sends": [
+    {
+     "field": "hr_timestamp (lbm_msg_t)",
+     "what": "the time the subscriber's own network card received the message's packet (LBT-RM on Solarflare cards with Onload)",
+     "clock": "receiver (its network card)",
+     "resolution": "32-bit seconds and 32-bit nanoseconds; sub-microsecond"
+    },
+    {
+     "field": "LBM_SRC_EVENT_TIMESTAMP (source event)",
+     "what": "the time the publisher's own network card transmitted the message's packet, with the message's sequence number, delivered to the publisher",
+     "clock": "sender (its network card)",
+     "resolution": "32-bit seconds and 32-bit nanoseconds"
+    },
+    {
+     "field": "tsp (lbm_msg_t)",
+     "what": "the earliest time the message was received, up to 500 ms before its actual receipt",
+     "clock": "receiver",
+     "resolution": "seconds and microseconds; accurate only to 500 ms"
+    }
+   ],
+   "split": "Each end learns only its own times: the publisher its transmit time, the subscriber its receive time. Neither travels to the other end, so no far-end time or hold reaches either side; a one-way latency needs the application to carry the transmit time across, on clocks the network cards synchronize by PTP.",
+   "note": "The streaming core is brokerless (peer-to-peer); Ultra Messaging's persistent Store is coded among the brokers (batch_08.json).",
+   "evidence": [
+    {
+     "url": "https://ultramessaging.github.io/currdoc/doc/Design/html1/index.html",
+     "quote": "Ultra Messaging (Version 6.17.2) Concepts Guide"
+    },
+    {
+     "url": "https://ultramessaging.github.io/currdoc/doc/Design/html1/index.html",
+     "quote": "The Ultra Messaging (UM) high-resolution message timestamp feature leverages the hardware timestamping function of certain Solarflare network interface cards (NICs) to measure sub-microsecond times that packets are transmitted and received."
+    },
+    {
+     "url": "https://ultramessaging.github.io/currdoc/doc/Design/html1/index.html",
+     "quote": "For subscribers, each message's receive timestamp is delivered in the message's header structure (for C programs, lbm_msg_t field hr_timestamp , of type lbm_timespec_t )."
+    },
+    {
+     "url": "https://ultramessaging.github.io/currdoc/doc/Design/html1/index.html",
+     "quote": "Each timestamp is a structure of 32 bits worth of seconds and 32 bits worth of nanoseconds."
+    },
+    {
+     "url": "https://ultramessaging.github.io/currdoc/doc/Design/html1/index.html",
+     "quote": "For publishers, each message's transmit timestamp is delivered via the source event callback (for C programs, event type LBM_SRC_EVENT_TIMESTAMP)."
+    },
+    {
+     "url": "https://ultramessaging.github.io/currdoc/doc/Design/html1/index.html",
+     "quote": "Solarflare's NICs and Onload kernel-bypass driver implement PTP to synchronize timestamps across the network, allowing very accurate one-way latency measurements."
+    },
+    {
+     "url": "https://ultramessaging.github.io/currdoc/doc/API/structlbm__msg__t__stct.html",
+     "quote": "lbm_timeval_t tsp Timestamp indicating the earliest time that the message was received, in seconds and microseconds since midnight, January 1st, 1970 UTC. This time can be up to 500 milliseconds prior to actual receipt time"
+    },
+    {
+     "url": "https://ultramessaging.github.io/currdoc/doc/API/structlbm__msg__t__stct.html",
+     "quote": "lbm_timespec_t hr_timestamp High Resolution Timestamp of the received message."
+    },
+    {
+     "url": "https://ultramessaging.github.io/um_description.html",
+     "quote": "peer-to-peer design that removes messaging brokers and daemons for lower latency and higher reliability"
+    }
+   ]
+  },
+  {
+   "name": "Chronicle Queue message history (Chronicle Wire MessageHistory)",
+   "standard": "Chronicle Queue chronicle-queue-2026.7, README.adoc 'Detailed tracing of timings'; Chronicle Wire chronicle-wire-2026.10, MessageHistory.java and VanillaMessageHistory.java",
+   "sends": [
+    {
+     "field": "history sources",
+     "what": "the source id and index of each queue the message came through",
+     "clock": "none",
+     "resolution": "none (identifiers)"
+    },
+    {
+     "field": "history timings",
+     "what": "a time added by each service when it reads the message and another when it writes the message its reading triggered, carried to every later reader",
+     "clock": "each service's own: System.nanoTime() by default, wall-clock nanoseconds with history.wall.clock",
+     "resolution": "ns"
+    }
+   ],
+   "split": "A downstream reader, the first writer among them when it reads a reply, gets each service's read and write times on that service's own clock. A service's write time less its read time is its hold of the message, on one clock, so it can be taken out of a round trip without a shared clock; the time between services mixes clocks.",
+   "note": "Enabled by setting the queue's sourceId. The README also says Chronicle supports nano-time across machines with no special hardware; the default clock, System.nanoTime(), is a process's own.",
+   "evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/OpenHFT/Chronicle-Queue/chronicle-queue-2026.7/README.adoc",
+     "quote": "Chronicle Queue supports explicit, or implicit, nanosecond resolution timing for messages as they pass end-to-end over across your system."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/OpenHFT/Chronicle-Queue/chronicle-queue-2026.7/README.adoc",
+     "quote": "We support using nano-time across machines"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/OpenHFT/Chronicle-Queue/chronicle-queue-2026.7/README.adoc",
+     "quote": "To enable this, set the `sourceId` of the queue."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/OpenHFT/Chronicle-Queue/chronicle-queue-2026.7/README.adoc",
+     "quote": "A timestamp is added for each read and write as it passes from service to service."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/OpenHFT/Chronicle-Queue/chronicle-queue-2026.7/README.adoc",
+     "quote": "<1> First write <2> First read <3> Write of the result of the read. <4> What triggered this event."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/OpenHFT/Chronicle-Wire/chronicle-wire-2026.10/src/main/java/net/openhft/chronicle/wire/MessageHistory.java",
+     "quote": "Records the path a message takes as it moves through components. * Each processing step may append its source identifier and timestamp, * allowing tracing and latency analysis in distributed systems."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/OpenHFT/Chronicle-Wire/chronicle-wire-2026.10/src/main/java/net/openhft/chronicle/wire/VanillaMessageHistory.java",
+     "quote": "Sets whether the MessageHistory should automatically add a timestamp on read."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/OpenHFT/Chronicle-Wire/chronicle-wire-2026.10/src/main/java/net/openhft/chronicle/wire/VanillaMessageHistory.java",
+     "quote": "bytes.writeLong(nanoTime()); // add time for this output"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/OpenHFT/Chronicle-Wire/chronicle-wire-2026.10/src/main/java/net/openhft/chronicle/wire/VanillaMessageHistory.java",
+     "quote": "return historyWallClock ? CLOCK.currentTimeNanos() : System.nanoTime();"
+    }
+   ]
+  },
+  {
+   "name": "Aeron Cluster egress (a reply's sequencing time)",
+   "standard": "Aeron 1.53.3, aeron-cluster: client/EgressListener.java and service/ClusterClock.java",
+   "sends": [
+    {
+     "field": "timestamp (EgressListener.onMessage)",
+     "what": "the time at which the client's correlated ingress message was sequenced in the cluster",
+     "clock": "the cluster's (ClusterClock of the consensus log)",
+     "resolution": "the cluster clock's unit: milliseconds by default, or micro- or nanoseconds"
+    }
+   ],
+   "split": "A client learns when the cluster sequenced its request, on the cluster's clock, but not when the reply left, so the cluster's hold cannot be taken out of the round trip without a clock shared with the cluster.",
+   "note": "Aeron Cluster hosts the user's replicated service and is left out of the brokers (batch_08.json); Aeron Archive is coded among them.",
+   "evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/aeron-io/aeron/1.53.3/aeron-cluster/src/main/java/io/aeron/cluster/client/EgressListener.java",
+     "quote": "@param timestamp at which the correlated ingress was sequenced in the cluster."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/aeron-io/aeron/1.53.3/aeron-cluster/src/main/java/io/aeron/cluster/client/EgressListener.java",
+     "quote": "void onMessage( long clusterSessionId, long timestamp, DirectBuffer buffer, int offset, int length, Header header);"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/aeron-io/aeron/1.53.3/aeron-cluster/src/main/java/io/aeron/cluster/service/ClusterClock.java",
+     "quote": "A clock representing a number of {@link TimeUnit}s since 1 Jan 1970 UTC. Defaults to {@link TimeUnit#MILLISECONDS}."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/aeron-io/aeron/1.53.3/aeron-cluster/src/main/java/io/aeron/cluster/service/ClusterClock.java",
+     "quote": "This is the clock used to timestamp sequenced messages for the cluster log and timers."
+    }
+   ]
+  },
+  {
+   "name": "Aeron transport RTT Measurement frames",
+   "standard": "Aeron 1.53.3: aeron-client protocol/RttMeasurementFlyweight.java; the Java media driver's PublicationImage.java and NetworkPublication.java; the C media driver's aeron_network_publication.c",
+   "sends": [
+    {
+     "field": "echo timestamp",
+     "what": "the requesting receiver's time, returned in the reply",
+     "clock": "requester (the stream's receiver)",
+     "resolution": "ns"
+    },
+    {
+     "field": "reception delta",
+     "what": "the time between the replier receiving the RTT Measurement and sending its reply: the replier's hold; both of Aeron's media drivers send 0",
+     "clock": "replier (the stream's sender)",
+     "resolution": "ns"
+    }
+   ],
+   "split": "The requester computes the round trip as its time now, less the echo timestamp, less the reception delta, so a replier's hold would come out with no shared clock. Aeron's own publications reply at once and send a reception delta of 0, so the hold is never measured.",
+   "note": "The receiver of a stream starts RTT measurements for congestion control.",
+   "evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/aeron-io/aeron/1.53.3/aeron-client/src/main/java/io/aeron/protocol/RttMeasurementFlyweight.java",
+     "quote": "Timestamp to echo in a reply or the timestamp in the original RTT Measurement."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/aeron-io/aeron/1.53.3/aeron-client/src/main/java/io/aeron/protocol/RttMeasurementFlyweight.java",
+     "quote": "Time in nanoseconds between receiving original RTT Measurement and sending Reply RTT Measurement."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/aeron-io/aeron/1.53.3/aeron-driver/src/main/java/io/aeron/driver/PublicationImage.java",
+     "quote": "channelEndpoint.sendRttMeasurement(imageConnections, sessionId, streamId, preciseTimeNs, 0, true);"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/aeron-io/aeron/1.53.3/aeron-driver/src/main/java/io/aeron/driver/PublicationImage.java",
+     "quote": "final long rttInNs = nowNs - header.echoTimestampNs() - header.receptionDelta();"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/aeron-io/aeron/1.53.3/aeron-driver/src/main/java/io/aeron/driver/NetworkPublication.java",
+     "quote": ".echoTimestampNs(msg.echoTimestampNs()) .receptionDelta(0)"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/aeron-io/aeron/1.53.3/aeron-driver/src/main/c/aeron_network_publication.c",
+     "quote": "rttm_out_header->echo_timestamp = rttm_in_header->echo_timestamp; rttm_out_header->reception_delta = 0;"
+    }
+   ]
+  },
+  {
+   "name": "ZeroMQ (ZMTP 3.1 and libzmq message properties)",
+   "standard": "ZMTP 3.1, 37/ZMTP (zeromq/rfc at 8416923d8849b1cbbdff3f9344bfdb0b701321eb); libzmq v4.3.5, doc/zmq_msg_gets.txt",
+   "sends": [
+    {
+     "field": "PING ping-ttl and ping-context; PONG ping-context",
+     "what": "a time-to-live the sender chooses and an opaque context the peer echoes; no time stamped by either peer",
+     "clock": "none (the TTL is a configured duration)",
+     "resolution": "0.1 s (TTL)"
+    },
+    {
+     "field": "message properties (Socket-Type, Routing-Id, Peer-Address, the security mechanism's and the application's metadata)",
+     "what": "per-connection metadata attached to each received message; none is a time",
+     "clock": "none",
+     "resolution": "none"
+    }
+   ],
+   "split": "Carries none: a message is frames of flags, size and body, and the heartbeat's PONG only echoes the PING's context, like ICMP Echo, so a round trip includes the peer's turnaround.",
+   "evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/zeromq/rfc/8416923d8849b1cbbdff3f9344bfdb0b701321eb/content/docs/rfcs/37/README.md",
+     "quote": "message-more = ( %x01 short-size | %x03 long-size ) message-body message-last = ( %x00 short-size | %x02 long-size ) message-body"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/zeromq/rfc/8416923d8849b1cbbdff3f9344bfdb0b701321eb/content/docs/rfcs/37/README.md",
+     "quote": "ping = command-size %d4 \"PING\" ping-ttl ping-context ping-ttl = 2OCTET ping-context = 0*16OCTET"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/zeromq/rfc/8416923d8849b1cbbdff3f9344bfdb0b701321eb/content/docs/rfcs/37/README.md",
+     "quote": "The ping-ttl is a 16-bit unsigned integer in network order that MAY be zero or MAY contain a time-to-live measured in tenths of seconds."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/zeromq/rfc/8416923d8849b1cbbdff3f9344bfdb0b701321eb/content/docs/rfcs/37/README.md",
+     "quote": "When a peer receives a PING command it SHALL respond with a PONG command that echoes the ping-context, which may be empty and MUST not exceed 16 octets:"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/zeromq/libzmq/v4.3.5/doc/zmq_msg_gets.txt",
+     "quote": "Metadata is defined on a per-connection basis during the ZeroMQ connection handshake"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/zeromq/libzmq/v4.3.5/doc/zmq_msg_gets.txt",
+     "quote": "In addition to application metadata, the following ZMTP properties can be retrieved with the _zmq_msg_gets()_ function: Socket-Type Routing-Id"
+    }
+   ]
+  },
+  {
+   "name": "Scalability protocols of nanomsg and NNG (request-reply header)",
+   "standard": "NNG v2.0.0, docs/ref/proto/req.md; nanomsg 1.3.0, rfc/sp-request-reply-01.txt",
+   "sends": [
+    {
+     "field": "backtrace header: request ID and peer (channel) IDs",
+     "what": "32-bit identifiers that route a reply back to its requester; no time",
+     "clock": "none",
+     "resolution": "none"
+    }
+   ],
+   "split": "Carries none: the reply carries the request's header back and no time of the replier, so a requester's round trip includes the replier's turnaround.",
+   "evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/nanomsg/nng/v2.0.0/docs/ref/proto/req.md",
+     "quote": "This protocol uses a {{ii:backtrace}} in the header. This form uses a stack of 32-bit big-endian identifiers."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/nanomsg/nng/v2.0.0/docs/ref/proto/req.md",
+     "quote": "There _must_ be at least one identifier, the **request ID**, which will be the last element in the array, and _must_ have the most significant bit set."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/nanomsg/nng/v2.0.0/docs/ref/proto/req.md",
+     "quote": "When a reply message is created, it is created using the same headers that the request contained."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/nanomsg/nanomsg/1.3.0/rfc/sp-request-reply-01.txt",
+     "quote": "Payload of the message is preceded by a stack of 32-bit tags."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/nanomsg/nanomsg/1.3.0/rfc/sp-request-reply-01.txt",
+     "quote": "As for the remaining 31 bits, they are either request ID (in the last tag) or a channel ID (in all the remaining tags)."
+    }
+   ]
+  },
+  {
+   "name": "LMAX Disruptor",
+   "standard": "Disruptor 4.0.0, src/main/java/com/lmax/disruptor/EventHandler.java",
+   "sends": [
+    {
+     "field": "onEvent(event, sequence, endOfBatch)",
+     "what": "the event object, its sequence in the ring buffer and an end-of-batch flag; the library adds no time",
+     "clock": "none",
+     "resolution": "none"
+    }
+   ],
+   "split": "Carries none: a consumer learns the event's sequence, not when it was published, so any time is the application's own, written into the event. The ring buffer is in-process and has no reply.",
+   "evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/LMAX-Exchange/disruptor/4.0.0/src/main/java/com/lmax/disruptor/EventHandler.java",
+     "quote": "void onEvent(T event, long sequence, boolean endOfBatch) throws Exception;"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/LMAX-Exchange/disruptor/4.0.0/src/main/java/com/lmax/disruptor/EventHandler.java",
+     "quote": "@param event published to the {@link RingBuffer} * @param sequence of the event being processed * @param endOfBatch flag to indicate if this is the last event in a batch from the {@link RingBuffer}"
+    }
+   ]
+  },
+  {
+   "name": "OMG DDSI-RTPS 2.5 (InfoTimestamp and the HeaderExtension's rtpsSendTimestamp)",
+   "standard": "OMG DDSI-RTPS 2.5: 8.3.7 HeaderExtension, 8.3.8.11 InfoTimestamp, 8.7 implementation requirements, 9.3.2.2 Time_t",
+   "sends": [
+    {
+     "field": "InfoTimestamp.timestamp (INFO_TS submessage)",
+     "what": "the source timestamp of the Data and DataFrag submessages that follow; required with every update when destination order is by source timestamp",
+     "clock": "writer",
+     "resolution": "Time_t: seconds and fractions of 2^-32 s"
+    },
+    {
+     "field": "HeaderExtension.rtpsSendTimestamp (when the TimestampFlag is set)",
+     "what": "when the RTPS message was sent from the originating participant",
+     "clock": "sending participant",
+     "resolution": "Time_t"
+    }
+   ],
+   "split": "A reader gets the writer's source time and, optionally, the message's send time, both on the writer's clock, and notes its own reception time; their difference is the one-way delay only with synchronized clocks. The standard adds reception less send time to the source timestamp when it detects clock skew. There is no hold: the reader returns no times.",
+   "note": "The DDS SampleInfo entry records the same source timestamp as the DDS API presents it.",
+   "evidence": [
+    {
+     "url": "https://www.omg.org/spec/DDSI-RTPS/2.5/PDF",
+     "quote": "This Submessage is used to send a timestamp which applies to the Submessages that follow within the same message."
+    },
+    {
+     "url": "https://www.omg.org/spec/DDSI-RTPS/2.5/PDF",
+     "quote": "timestamp Timestamp Present only if the InvalidateFlag is not set in the header. Contains the timestamp that should be used to interpret the subsequent Submessages."
+    },
+    {
+     "url": "https://www.omg.org/spec/DDSI-RTPS/2.5/PDF",
+     "quote": "The reception of the InfoTimestamp submessage sets the source timestamp associated with any subsequent Data and DataFrag submessages."
+    },
+    {
+     "url": "https://www.omg.org/spec/DDSI-RTPS/2.5/PDF",
+     "quote": "In order to implement the DDS_BY_SOURCE_TIMESTAMP_DESTINATIONORDER_QOS policy, implementations must include an InfoTimestamp Submessage with every update from a Writer."
+    },
+    {
+     "url": "https://www.omg.org/spec/DDSI-RTPS/2.5/PDF",
+     "quote": "rtpsSendTimestamp Time_t Present only if the TimestampFlag is set in the header. Contains the timestamp indicating when the RTPS Message was sent from the originating Participant."
+    },
+    {
+     "url": "https://www.omg.org/spec/DDSI-RTPS/2.5/PDF",
+     "quote": "The rtpsSendTimestamp represents the time the RTPS message was sent. It is measured using the clock of the sending Participant. The rtpsReceptionTimestamp represents the time when the RTPS message was received. It is measured using the clock of the receiving Participant."
+    },
+    {
+     "url": "https://www.omg.org/spec/DDSI-RTPS/2.5/PDF",
+     "quote": "Receiver.timestamp += Receiver.rtpsReceptionTime - Receiver.rtpsSendTimestamp"
+    },
+    {
+     "url": "https://www.omg.org/spec/DDSI-RTPS/2.5/PDF",
+     "quote": "time = seconds + (fraction / 2^(32))"
+    }
+   ]
+  },
+  {
+   "name": "Eclipse eCAL publish-subscribe (receive callback data)",
+   "standard": "eCAL v6.1.1, ecal/core/include/ecal/pubsub/types.h (SReceiveCallbackData); README.md",
+   "sends": [
+    {
+     "field": "send_timestamp",
+     "what": "the publisher's time of sending the message",
+     "clock": "publisher",
+     "resolution": "µs"
+    },
+    {
+     "field": "send_clock",
+     "what": "a counter each publisher increases by one per message sent; used to detect drops, not a time",
+     "clock": "none",
+     "resolution": "count"
+    }
+   ],
+   "split": "A subscriber gets the publisher's send time; its own receive time less send_timestamp is the one-way latency only when the two clocks are synchronized. There is no hold: the subscriber returns nothing.",
+   "evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/eclipse-ecal/ecal/v6.1.1/ecal/core/include/ecal/pubsub/types.h",
+     "quote": "int64_t send_timestamp = 0; //!< publisher send timestamp in µs"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/eclipse-ecal/ecal/v6.1.1/ecal/core/include/ecal/pubsub/types.h",
+     "quote": "int64_t send_clock = 0; //!< publisher send clock. Each publisher increases the counter by one, every time a message is sent. It can be used to detect message drops."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/eclipse-ecal/ecal/v6.1.1/ecal/core/include/ecal/pubsub/types.h",
+     "quote": "struct SReceiveCallbackData { const void* buffer = nullptr; //!< payload buffer, containing the sent data size_t buffer_size = 0; //!< payload buffer size"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/eclipse-ecal/ecal/v6.1.1/README.md",
+     "quote": "eCAL is brokerless"
+    }
+   ]
+  },
+  {
+   "name": "Apache Ignite messaging",
+   "standard": "Apache Ignite 2.18.0, docs/_docs/messaging.adoc",
+   "sends": [
+    {
+     "field": "listener arguments (nodeId, msg)",
+     "what": "the sending node's id and the message object; no time",
+     "clock": "none",
+     "resolution": "none"
+    }
+   ],
+   "split": "Carries none: a listener learns which node sent the message, not when, so any time is the application's own, inside the message.",
+   "note": "Ignite's node-to-node messaging keeps no message for a consumer and is left out of the brokers (batch_08.json).",
+   "evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/apache/ignite/2.18.0/docs/_docs/messaging.adoc",
+     "quote": "When one of the nodes sends a message `A` for topic `T`, it is published on all nodes that have subscribed to `T`."
+    },
+    {
+     "url": "https://raw.githubusercontent.com/apache/ignite/2.18.0/docs/_docs/messaging.adoc",
+     "quote": "rmtMsg.remoteListen(\"MyOrderedTopic\", (nodeId, msg) -> { System.out.println(\"Received ordered message [msg=\" + msg + \", from=\" + nodeId + ']');"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,1897 @@
+{
+ "audited_utc": "2026-10-29",
+ "brokers": [
+  {
+   "broker": "Azure IoT Operations MQTT broker",
+   "group": "C",
+   "kind": "broker",
+   "version": "documentation last updated 2026-07-31",
+   "version_evidence": [
+    {
+     "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+     "quote": "Last updated on 2026-07-31"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 2",
+     "source": "times-first search",
+     "query": "as logged in search_log.json"
+    },
+    {
+     "route": "route 1",
+     "source": "Azure product catalog",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "MQTT v5 subscription, QoS 0",
+     "Q0": {
+      "fields": [
+       "topic",
+       "payload",
+       "qos",
+       "retain flag",
+       "correlation data",
+       "response topic",
+       "payload format indicator",
+       "message expiry interval left (s), when the publisher set one",
+       "user properties"
+      ],
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS0 Delivery Supported Supported PUBLISH QoS1 Delivery Supported Supported PUBLISH QoS2 Delivery Not Supported Not Supported PUBLISH QoS1 Offline messages for persistent sessions Supported Supported"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS1 Flow control 2 N/A Supported PUBLISH Retain flag Supported Supported PUBLISH Correlation Data N/A Supported PUBLISH Response Topic N/A Supported PUBLISH Payload Format Indicator N/A Supported PUBLISH Message Expiry Interval N/A Supported"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH Message Expiry Interval N/A Supported PUBLISH Topic Alias N/A Not Supported PUBLISH User Properties N/A Supported"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/manage-mqtt-broker/howto-broker-mqtt-client-options",
+        "quote": "The maxMessageExpirySeconds setting controls how long a message can stay in the queue before it expires."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/manage-mqtt-broker/howto-broker-mqtt-client-options",
+        "quote": "The MQTT broker keeps a queue for each subscriber with QoS 1 (at-least-once delivery) messages waiting to be delivered. Messages are added to this queue when they're received from the publisher."
+       }
+      ],
+      "field": "expiry deadline of the queued message (internal, not named in the documentation)",
+      "resolution": "s",
+      "note": "The documentation states that maxMessageExpirySeconds sets how long a message can stay in the queue before it expires, so a deadline counted from the message's entry to the queue is kept; the publisher's Message Expiry Interval (v5) is the other setting. The documentation describes the queue for QoS 1 messages only; for QoS 0 this rests on the standard's expiry requirement."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS1 Flow control 2 N/A Supported PUBLISH Retain flag Supported Supported PUBLISH Correlation Data N/A Supported PUBLISH Response Topic N/A Supported PUBLISH Payload Format Indicator N/A Supported PUBLISH Message Expiry Interval N/A Supported"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH Message Expiry Interval N/A Supported PUBLISH Topic Alias N/A Not Supported PUBLISH User Properties N/A Supported"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS1 Flow control 2 N/A Supported PUBLISH Retain flag Supported Supported PUBLISH Correlation Data N/A Supported PUBLISH Response Topic N/A Supported PUBLISH Payload Format Indicator N/A Supported PUBLISH Message Expiry Interval N/A Supported"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH Message Expiry Interval N/A Supported PUBLISH Topic Alias N/A Not Supported PUBLISH User Properties N/A Supported"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS1 Flow control 2 N/A Supported PUBLISH Retain flag Supported Supported PUBLISH Correlation Data N/A Supported PUBLISH Response Topic N/A Supported PUBLISH Payload Format Indicator N/A Supported PUBLISH Message Expiry Interval N/A Supported"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The PUBLISH packet sent to a Client by the Server MUST contain a Message Expiry Interval set to the received value minus the time that the Application Message has been waiting in the Server [MQTT-3.3.2-6]"
+       }
+      ],
+      "resolution": "s",
+      "note": "The product lists the v5 PUBLISH Message Expiry Interval as supported, and the standard requires (MUST, MQTT-3.3.2-6) the server to send it reduced by the time the message waited in the server. The product's own pages do not describe the reduction. The stay is the publisher's interval less the delivered interval, if the consumer knows the publisher's interval."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS1 Flow control 2 N/A Supported PUBLISH Retain flag Supported Supported PUBLISH Correlation Data N/A Supported PUBLISH Response Topic N/A Supported PUBLISH Payload Format Indicator N/A Supported PUBLISH Message Expiry Interval N/A Supported"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS0 Delivery Supported Supported PUBLISH QoS1 Delivery Supported Supported PUBLISH QoS2 Delivery Not Supported Not Supported PUBLISH QoS1 Offline messages for persistent sessions Supported Supported"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/manage-mqtt-broker/howto-broker-mqtt-client-options",
+        "quote": "The MQTT broker keeps a queue for each subscriber with QoS 1 (at-least-once delivery) messages waiting to be delivered. Messages are added to this queue when they're received from the publisher."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q5",
+       "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+       "read": "The support page lists the v5 PUBLISH Message Expiry Interval as supported and does not describe the reduction, so the derivable stay rests on the standard's MUST that the forwarded interval is the received value less the time the message waited in the server; a QoS 0 message has no wait for credit.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://learn.microsoft.com/en-us/azure/iot-operations/manage-mqtt-broker/howto-broker-mqtt-client-options",
+       "read": "Receive Maximum flow control and the subscriber queue are described for QoS 1 messages only, so a QoS 0 consumer has no request or credit it can keep waiting.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "MQTT v5 subscription, QoS 1",
+     "Q0": {
+      "fields": [
+       "topic",
+       "payload",
+       "qos",
+       "retain flag",
+       "packet id",
+       "correlation data",
+       "response topic",
+       "payload format indicator",
+       "message expiry interval left (s), when the publisher set one",
+       "user properties"
+      ],
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS0 Delivery Supported Supported PUBLISH QoS1 Delivery Supported Supported PUBLISH QoS2 Delivery Not Supported Not Supported PUBLISH QoS1 Offline messages for persistent sessions Supported Supported"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS1 Flow control 2 N/A Supported PUBLISH Retain flag Supported Supported PUBLISH Correlation Data N/A Supported PUBLISH Response Topic N/A Supported PUBLISH Payload Format Indicator N/A Supported PUBLISH Message Expiry Interval N/A Supported"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH Message Expiry Interval N/A Supported PUBLISH Topic Alias N/A Not Supported PUBLISH User Properties N/A Supported"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/manage-mqtt-broker/howto-broker-mqtt-client-options",
+        "quote": "The maxMessageExpirySeconds setting controls how long a message can stay in the queue before it expires."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/manage-mqtt-broker/howto-broker-mqtt-client-options",
+        "quote": "The MQTT broker keeps a queue for each subscriber with QoS 1 (at-least-once delivery) messages waiting to be delivered. Messages are added to this queue when they're received from the publisher."
+       }
+      ],
+      "field": "expiry deadline of the queued message (internal, not named in the documentation)",
+      "resolution": "s",
+      "note": "The documentation states that maxMessageExpirySeconds sets how long a message can stay in the queue before it expires, so a deadline counted from the message's entry to the queue is kept; the publisher's Message Expiry Interval (v5) is the other setting."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS1 Flow control 2 N/A Supported PUBLISH Retain flag Supported Supported PUBLISH Correlation Data N/A Supported PUBLISH Response Topic N/A Supported PUBLISH Payload Format Indicator N/A Supported PUBLISH Message Expiry Interval N/A Supported"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH Message Expiry Interval N/A Supported PUBLISH Topic Alias N/A Not Supported PUBLISH User Properties N/A Supported"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS1 Flow control 2 N/A Supported PUBLISH Retain flag Supported Supported PUBLISH Correlation Data N/A Supported PUBLISH Response Topic N/A Supported PUBLISH Payload Format Indicator N/A Supported PUBLISH Message Expiry Interval N/A Supported"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH Message Expiry Interval N/A Supported PUBLISH Topic Alias N/A Not Supported PUBLISH User Properties N/A Supported"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS1 Flow control 2 N/A Supported PUBLISH Retain flag Supported Supported PUBLISH Correlation Data N/A Supported PUBLISH Response Topic N/A Supported PUBLISH Payload Format Indicator N/A Supported PUBLISH Message Expiry Interval N/A Supported"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The PUBLISH packet sent to a Client by the Server MUST contain a Message Expiry Interval set to the received value minus the time that the Application Message has been waiting in the Server [MQTT-3.3.2-6]"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/manage-mqtt-broker/howto-broker-mqtt-client-options",
+        "quote": "The maxMessageExpirySeconds setting controls how long a message can stay in the queue before it expires."
+       }
+      ],
+      "resolution": "s",
+      "note": "The product lists the v5 PUBLISH Message Expiry Interval as supported, and the standard requires (MUST, MQTT-3.3.2-6) the server to send it reduced by the time the message waited in the server. The product's own pages do not describe the reduction. The stay is the publisher's interval less the delivered interval, if the consumer knows the publisher's interval."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS1 Flow control 2 N/A Supported PUBLISH Retain flag Supported Supported PUBLISH Correlation Data N/A Supported PUBLISH Response Topic N/A Supported PUBLISH Payload Format Indicator N/A Supported PUBLISH Message Expiry Interval N/A Supported"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "2 The broker sends out as many publishes as possible without waiting up to the client's Receive Maximum."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "CONNECT Client Receive Maximum N/A Supported"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS1 Flow control 2 N/A Supported PUBLISH Retain flag Supported Supported PUBLISH Correlation Data N/A Supported PUBLISH Response Topic N/A Supported PUBLISH Payload Format Indicator N/A Supported PUBLISH Message Expiry Interval N/A Supported"
+       }
+      ],
+      "note": "The broker sends QoS 1 publishes up to the client's Receive Maximum, and an acknowledgment frees a place; judged as credit."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q5",
+       "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+       "read": "The support page lists the v5 PUBLISH Message Expiry Interval as supported and does not describe the reduction or when it is computed, so the derivable stay rests on the standard's MUST that the forwarded interval is the received value less all the time the message waited in the server, which includes the wait for Receive Maximum credit; no product text confirms this.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+       "read": "The support page states that for v5 QoS 1 the broker sends as many publishes as possible up to the client's Receive Maximum, so the consumer's acknowledgments act as credit.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "MQTT v3.1.1 subscription, QoS 0 and 1",
+     "Q0": {
+      "fields": [
+       "topic",
+       "payload",
+       "qos",
+       "retain flag",
+       "packet id, for QoS 1"
+      ],
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS0 Delivery Supported Supported PUBLISH QoS1 Delivery Supported Supported PUBLISH QoS2 Delivery Not Supported Not Supported PUBLISH QoS1 Offline messages for persistent sessions Supported Supported"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS1 Flow control 2 N/A Supported PUBLISH Retain flag Supported Supported PUBLISH Correlation Data N/A Supported PUBLISH Response Topic N/A Supported PUBLISH Payload Format Indicator N/A Supported PUBLISH Message Expiry Interval N/A Supported"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/manage-mqtt-broker/howto-broker-mqtt-client-options",
+        "quote": "The maxMessageExpirySeconds setting controls how long a message can stay in the queue before it expires."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/manage-mqtt-broker/howto-broker-mqtt-client-options",
+        "quote": "The MQTT broker keeps a queue for each subscriber with QoS 1 (at-least-once delivery) messages waiting to be delivered. Messages are added to this queue when they're received from the publisher."
+       }
+      ],
+      "field": "expiry deadline of the queued message (internal, not named in the documentation)",
+      "resolution": "s",
+      "note": "maxMessageExpirySeconds applies to the subscriber's queue of QoS 1 messages whatever the protocol version."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS1 Flow control 2 N/A Supported PUBLISH Retain flag Supported Supported PUBLISH Correlation Data N/A Supported PUBLISH Response Topic N/A Supported PUBLISH Payload Format Indicator N/A Supported PUBLISH Message Expiry Interval N/A Supported"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH Message Expiry Interval N/A Supported PUBLISH Topic Alias N/A Not Supported PUBLISH User Properties N/A Supported"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS1 Flow control 2 N/A Supported PUBLISH Retain flag Supported Supported PUBLISH Correlation Data N/A Supported PUBLISH Response Topic N/A Supported PUBLISH Payload Format Indicator N/A Supported PUBLISH Message Expiry Interval N/A Supported"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH Message Expiry Interval N/A Supported PUBLISH Topic Alias N/A Not Supported PUBLISH User Properties N/A Supported"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH Message Expiry Interval N/A Supported PUBLISH Topic Alias N/A Not Supported PUBLISH User Properties N/A Supported"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS1 Flow control 2 N/A Supported PUBLISH Retain flag Supported Supported PUBLISH Correlation Data N/A Supported PUBLISH Response Topic N/A Supported PUBLISH Payload Format Indicator N/A Supported PUBLISH Message Expiry Interval N/A Supported"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS0 Delivery Supported Supported PUBLISH QoS1 Delivery Supported Supported PUBLISH QoS2 Delivery Not Supported Not Supported PUBLISH QoS1 Offline messages for persistent sessions Supported Supported"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/manage-mqtt-broker/howto-broker-mqtt-client-options",
+        "quote": "The MQTT broker keeps a queue for each subscriber with QoS 1 (at-least-once delivery) messages waiting to be delivered. Messages are added to this queue when they're received from the publisher."
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS1 Flow control 2 N/A Supported PUBLISH Retain flag Supported Supported PUBLISH Correlation Data N/A Supported PUBLISH Response Topic N/A Supported PUBLISH Payload Format Indicator N/A Supported PUBLISH Message Expiry Interval N/A Supported"
+       }
+      ],
+      "note": "The documentation lists the QoS 1 flow control as v5 only."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+       "read": "The support page lists QoS 1 flow control by Receive Maximum as not applicable to v3.1.1, and the per-subscriber queue is limited by broker settings, so a v3.1.1 consumer sets no window.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "publish at QoS 0",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "QoS Level Expected Response QoS 0 None QoS 1 PUBACK packet QoS 2 PUBREC packet"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "publish at QoS 1",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet id",
+       "reason code (MQTT v5)",
+       "properties (MQTT v5)"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "QoS Level Expected Response QoS 0 None QoS 1 PUBACK packet QoS 2 PUBREC packet"
+       },
+       {
+        "url": "https://learn.microsoft.com/en-us/azure/iot-operations/reference/mqtt-support",
+        "quote": "PUBLISH QoS0 Delivery Supported Supported PUBLISH QoS1 Delivery Supported Supported PUBLISH QoS2 Delivery Not Supported Not Supported PUBLISH QoS1 Offline messages for persistent sessions Supported Supported"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the Properties."
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the Properties."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the Properties."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "comqtt",
+   "group": "C",
+   "kind": "broker",
+   "version": "v2.6.7",
+   "version_evidence": [
+    {
+     "url": "https://github.com/wind-c/comqtt/releases/tag/v2.6.7",
+     "quote": "v2.6.7"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list awesome-mqtt/awesome-mqtt",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "MQTT 5.0 subscription, QoS 0",
+     "Q0": {
+      "fields": [
+       "topic",
+       "payload",
+       "qos",
+       "retain flag",
+       "duplicate flag",
+       "v5 properties: payload format indicator, message expiry interval left (s), content type, response topic, correlation data, subscription identifier, and the others valid for PUBLISH"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "nb.Write(encodeString(pk.TopicName)) // [MQTT-3.3.2-1] if pk.FixedHeader.Qos > 0 { if pk.PacketID == 0 { return ErrProtocolViolationNoPacketID // [MQTT-2.2.1-2] } nb.Write(encodeUint16(pk.PacketID)) } if pk.ProtocolVersion == 5 {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "pk.Properties.Encode(pk.FixedHeader.Type, pk.Mods, pb, nb.Len()+len(pk.Payload)) nb.Write(pb.Bytes()) } pk.FixedHeader.Remaining = nb.Len() + len(pk.Payload) pk.FixedHeader.Encode(buf) buf.Write(nb.Bytes()) buf.Write(pk.Payload)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/properties.go",
+        "quote": "var validPacketProperties = map[byte]map[byte]byte{ PropPayloadFormat: {Publish: 1, WillProperties: 1}, PropMessageExpiryInterval: {Publish: 1, WillProperties: 1}, PropContentType: {Publish: 1, WillProperties: 1}, PropResponseTopic: {Publish: 1, WillProperties: 1},"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "pk.Origin = cl.ID pk.Created = time.Now().Unix() if !cl.Net.Inline {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "Created int64 // unix timestamp indicating time packet was created/received on the server Expiry int64 // unix timestamp indicating when the packet will expire and should be deleted"
+       }
+      ],
+      "field": "Created (packet received on the server)",
+      "resolution": "s"
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "nb.Write(encodeString(pk.TopicName)) // [MQTT-3.3.2-1] if pk.FixedHeader.Qos > 0 { if pk.PacketID == 0 { return ErrProtocolViolationNoPacketID // [MQTT-2.2.1-2] } nb.Write(encodeUint16(pk.PacketID)) } if pk.ProtocolVersion == 5 {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "pk.Properties.Encode(pk.FixedHeader.Type, pk.Mods, pb, nb.Len()+len(pk.Payload)) nb.Write(pb.Bytes()) } pk.FixedHeader.Remaining = nb.Len() + len(pk.Payload) pk.FixedHeader.Encode(buf) buf.Write(nb.Bytes()) buf.Write(pk.Payload)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/properties.go",
+        "quote": "var validPacketProperties = map[byte]map[byte]byte{ PropPayloadFormat: {Publish: 1, WillProperties: 1}, PropMessageExpiryInterval: {Publish: 1, WillProperties: 1}, PropContentType: {Publish: 1, WillProperties: 1}, PropResponseTopic: {Publish: 1, WillProperties: 1},"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "sentQuota := atomic.LoadInt32(&cl.State.Inflight.sendQuota) if ok := cl.State.Inflight.Set(out); ok { // [MQTT-4.3.2-3] [MQTT-4.3.3-3] atomic.AddInt64(&s.Info.Inflight, 1) s.hooks.OnQosPublish(cl, out, out.Created, 0) cl.State.Inflight.DecreaseSendQuota() }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "Created int64 // unix timestamp indicating time packet was created/received on the server Expiry int64 // unix timestamp indicating when the packet will expire and should be deleted"
+       }
+      ],
+      "note": "The outgoing copy keeps the arrival time Created; the hook for QoS publishes is given out.Created as its sent time, so no separate send time is recorded."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/clients.go",
+        "quote": "if pk.Expiry > 0 { pk.Properties.MessageExpiryInterval = uint32(pk.Expiry - time.Now().Unix()) // [MQTT-3.3.2-6] }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "if pk.Created == 0 { pk.Created = time.Now().Unix() } pk.Expiry = pk.Created + s.Options.Capabilities.MaximumMessageExpiryInterval if pk.Properties.MessageExpiryInterval > 0 { pk.Expiry = pk.Created + int64(pk.Properties.MessageExpiryInterval) }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "MaximumMessageExpiryInterval: 60 * 60 * 24, // maximum message expiry if message expiry is 0 or over"
+       }
+      ],
+      "resolution": "s",
+      "note": "Every received publish gets Expiry = Created plus the publisher's interval, or else the server's MaximumMessageExpiryInterval (86400 s by default), and the interval written to a v5 subscriber is Expiry less the current time. The stay is the publisher's interval (or the server's maximum) less the delivered interval, in whole seconds."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "Created int64 // unix timestamp indicating time packet was created/received on the server Expiry int64 // unix timestamp indicating when the packet will expire and should be deleted"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "PublishToSubscribers publishes a publish packet to all subscribers with matching topic filters."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q5",
+       "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/clients.go",
+       "read": "Each received publish gets Expiry set to its arrival second plus the publisher's interval (or the server maximum), and the write to the consumer sets the interval to Expiry less the current second, so a QoS 0 message, which never waits for credit, carries a whole-second reduction covering its wait.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+       "read": "The packet-id and send-quota block in publishToClient runs only when the QoS is above 0, so a QoS 0 message goes straight to the client's outbound channel and the consumer can keep no request or credit waiting.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "MQTT 5.0 subscription, QoS 1 and 2",
+     "Q0": {
+      "fields": [
+       "topic",
+       "payload",
+       "qos",
+       "retain flag",
+       "duplicate flag",
+       "packet id",
+       "v5 properties: payload format indicator, message expiry interval left (s), content type, response topic, correlation data, subscription identifier, and the others valid for PUBLISH"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "nb.Write(encodeString(pk.TopicName)) // [MQTT-3.3.2-1] if pk.FixedHeader.Qos > 0 { if pk.PacketID == 0 { return ErrProtocolViolationNoPacketID // [MQTT-2.2.1-2] } nb.Write(encodeUint16(pk.PacketID)) } if pk.ProtocolVersion == 5 {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "pk.Properties.Encode(pk.FixedHeader.Type, pk.Mods, pb, nb.Len()+len(pk.Payload)) nb.Write(pb.Bytes()) } pk.FixedHeader.Remaining = nb.Len() + len(pk.Payload) pk.FixedHeader.Encode(buf) buf.Write(nb.Bytes()) buf.Write(pk.Payload)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/properties.go",
+        "quote": "var validPacketProperties = map[byte]map[byte]byte{ PropPayloadFormat: {Publish: 1, WillProperties: 1}, PropMessageExpiryInterval: {Publish: 1, WillProperties: 1}, PropContentType: {Publish: 1, WillProperties: 1}, PropResponseTopic: {Publish: 1, WillProperties: 1},"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "pk.Origin = cl.ID pk.Created = time.Now().Unix() if !cl.Net.Inline {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "Created int64 // unix timestamp indicating time packet was created/received on the server Expiry int64 // unix timestamp indicating when the packet will expire and should be deleted"
+       }
+      ],
+      "field": "Created (packet received on the server)",
+      "resolution": "s"
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "nb.Write(encodeString(pk.TopicName)) // [MQTT-3.3.2-1] if pk.FixedHeader.Qos > 0 { if pk.PacketID == 0 { return ErrProtocolViolationNoPacketID // [MQTT-2.2.1-2] } nb.Write(encodeUint16(pk.PacketID)) } if pk.ProtocolVersion == 5 {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "pk.Properties.Encode(pk.FixedHeader.Type, pk.Mods, pb, nb.Len()+len(pk.Payload)) nb.Write(pb.Bytes()) } pk.FixedHeader.Remaining = nb.Len() + len(pk.Payload) pk.FixedHeader.Encode(buf) buf.Write(nb.Bytes()) buf.Write(pk.Payload)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/properties.go",
+        "quote": "var validPacketProperties = map[byte]map[byte]byte{ PropPayloadFormat: {Publish: 1, WillProperties: 1}, PropMessageExpiryInterval: {Publish: 1, WillProperties: 1}, PropContentType: {Publish: 1, WillProperties: 1}, PropResponseTopic: {Publish: 1, WillProperties: 1},"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "sentQuota := atomic.LoadInt32(&cl.State.Inflight.sendQuota) if ok := cl.State.Inflight.Set(out); ok { // [MQTT-4.3.2-3] [MQTT-4.3.3-3] atomic.AddInt64(&s.Info.Inflight, 1) s.hooks.OnQosPublish(cl, out, out.Created, 0) cl.State.Inflight.DecreaseSendQuota() }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "Created int64 // unix timestamp indicating time packet was created/received on the server Expiry int64 // unix timestamp indicating when the packet will expire and should be deleted"
+       }
+      ],
+      "note": "The outgoing copy keeps the arrival time Created; the hook for QoS publishes is given out.Created as its sent time, so no separate send time is recorded."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "if sentQuota == 0 && atomic.LoadInt32(&cl.State.Inflight.maximumSendQuota) > 0 { out.Expiry = -1 cl.State.Inflight.Set(out) return out, nil }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "next, ok := cl.State.Inflight.NextImmediate() if ok { _ = cl.WritePacket(next)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/inflight.go",
+        "quote": "if !immediate || (immediate && v.Expiry < 0) { m = append(m, v) }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/clients.go",
+        "quote": "if pk.Expiry > 0 { pk.Properties.MessageExpiryInterval = uint32(pk.Expiry - time.Now().Unix()) // [MQTT-3.3.2-6] }"
+       }
+      ],
+      "changed_on_read_back": {
+       "from": "derivable stay",
+       "why": "A QoS 1 or 2 message held for send quota is stored with Expiry -1 and released with the publisher's unreduced interval, so the delivered interval does not cover the message's wait for the consumer's credit."
+      }
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "Created int64 // unix timestamp indicating time packet was created/received on the server Expiry int64 // unix timestamp indicating when the packet will expire and should be deleted"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/clients.go",
+        "quote": "cl.State.Inflight.ResetSendQuota(int32(cl.Properties.Props.ReceiveMaximum)) // client receive max"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "sentQuota := atomic.LoadInt32(&cl.State.Inflight.sendQuota) if ok := cl.State.Inflight.Set(out); ok { // [MQTT-4.3.2-3] [MQTT-4.3.3-3] atomic.AddInt64(&s.Info.Inflight, 1) s.hooks.OnQosPublish(cl, out, out.Created, 0) cl.State.Inflight.DecreaseSendQuota() }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "if sentQuota == 0 && atomic.LoadInt32(&cl.State.Inflight.maximumSendQuota) > 0 { out.Expiry = -1 cl.State.Inflight.Set(out) return out, nil }"
+       }
+      ],
+      "note": "The client's Receive Maximum sets the send quota, each QoS 1 or 2 publish uses a place, and a message is held when none is left; judged as credit."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+       "read": "The send quota is reset from the Receive Maximum in the consumer's CONNECT, each QoS 1 or 2 publish takes a place, and a publish is held when none is left until an acknowledgment frees one, so the consumer's acknowledgments act as credit.",
+       "agrees": true
+      },
+      {
+       "question": "Q5",
+       "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+       "read": "The release of held messages in receivePacket writes the stored packet with Expiry -1, and the write reduces the interval only when Expiry is above 0, so a message that waited for credit carries the publisher's original interval (or none) and its stay cannot be derived; only messages sent at once are reduced.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "MQTT 3.0 and 3.1.1 subscription, all QoS",
+     "Q0": {
+      "fields": [
+       "topic",
+       "payload",
+       "qos",
+       "retain flag",
+       "duplicate flag",
+       "packet id, for QoS 1 and 2"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "nb.Write(encodeString(pk.TopicName)) // [MQTT-3.3.2-1] if pk.FixedHeader.Qos > 0 { if pk.PacketID == 0 { return ErrProtocolViolationNoPacketID // [MQTT-2.2.1-2] } nb.Write(encodeUint16(pk.PacketID)) } if pk.ProtocolVersion == 5 {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "pk.Properties.Encode(pk.FixedHeader.Type, pk.Mods, pb, nb.Len()+len(pk.Payload)) nb.Write(pb.Bytes()) } pk.FixedHeader.Remaining = nb.Len() + len(pk.Payload) pk.FixedHeader.Encode(buf) buf.Write(nb.Bytes()) buf.Write(pk.Payload)"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "pk.Origin = cl.ID pk.Created = time.Now().Unix() if !cl.Net.Inline {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "Created int64 // unix timestamp indicating time packet was created/received on the server Expiry int64 // unix timestamp indicating when the packet will expire and should be deleted"
+       }
+      ],
+      "field": "Created (packet received on the server)",
+      "resolution": "s"
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "nb.Write(encodeString(pk.TopicName)) // [MQTT-3.3.2-1] if pk.FixedHeader.Qos > 0 { if pk.PacketID == 0 { return ErrProtocolViolationNoPacketID // [MQTT-2.2.1-2] } nb.Write(encodeUint16(pk.PacketID)) } if pk.ProtocolVersion == 5 {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "pk.Properties.Encode(pk.FixedHeader.Type, pk.Mods, pb, nb.Len()+len(pk.Payload)) nb.Write(pb.Bytes()) } pk.FixedHeader.Remaining = nb.Len() + len(pk.Payload) pk.FixedHeader.Encode(buf) buf.Write(nb.Bytes()) buf.Write(pk.Payload)"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "sentQuota := atomic.LoadInt32(&cl.State.Inflight.sendQuota) if ok := cl.State.Inflight.Set(out); ok { // [MQTT-4.3.2-3] [MQTT-4.3.3-3] atomic.AddInt64(&s.Info.Inflight, 1) s.hooks.OnQosPublish(cl, out, out.Created, 0) cl.State.Inflight.DecreaseSendQuota() }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "Created int64 // unix timestamp indicating time packet was created/received on the server Expiry int64 // unix timestamp indicating when the packet will expire and should be deleted"
+       }
+      ],
+      "note": "The outgoing copy keeps the arrival time Created; the hook for QoS publishes is given out.Created as its sent time, so no separate send time is recorded."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "nb.Write(encodeString(pk.TopicName)) // [MQTT-3.3.2-1] if pk.FixedHeader.Qos > 0 { if pk.PacketID == 0 { return ErrProtocolViolationNoPacketID // [MQTT-2.2.1-2] } nb.Write(encodeUint16(pk.PacketID)) } if pk.ProtocolVersion == 5 {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "pk.Properties.Encode(pk.FixedHeader.Type, pk.Mods, pb, nb.Len()+len(pk.Payload)) nb.Write(pb.Bytes()) } pk.FixedHeader.Remaining = nb.Len() + len(pk.Payload) pk.FixedHeader.Encode(buf) buf.Write(nb.Bytes()) buf.Write(pk.Payload)"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/packets.go",
+        "quote": "Created int64 // unix timestamp indicating time packet was created/received on the server Expiry int64 // unix timestamp indicating when the packet will expire and should be deleted"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "PublishToSubscribers publishes a publish packet to all subscribers with matching topic filters."
+       }
+      ],
+      "note": "Receive Maximum exists only in v5; the code read shows no window that a v3 consumer sets."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/clients.go",
+       "read": "The send quota is reset from the Receive Maximum property of the CONNECT, which a v3 CONNECT does not carry, and the hold test applies only when the maximum send quota is above zero, so no window set by a v3 consumer was found.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "publish at QoS 0",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "if pk.FixedHeader.Qos == 0 || cl.Net.Inline { s.publishToSubscribers(pk) s.hooks.OnPublished(cl, pk) return nil } cl.State.Inflight.DecreaseReceiveQuota() ack := s.buildAck(pk.PacketID, packets.Puback, 0, pk.Properties, packets.QosCodes[pk.FixedHeader.Qos])"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "publish at QoS 1 and 2",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet id",
+       "reason code (MQTT 5.0)",
+       "reason string and user properties (MQTT 5.0)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "PacketID: packetID, // [MQTT-2.2.1-5] ReasonCode: reason.Code, // [MQTT-3.4.2-1] Properties: properties, Created: time.Now().Unix(), Expiry: time.Now().Unix() + s.Options.Capabilities.MaximumMessageExpiryInterval,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "if reason.Code >= packets.ErrUnspecifiedError.Code { properties.ReasonString = reason.Reason }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "if pk.FixedHeader.Qos == 0 || cl.Net.Inline { s.publishToSubscribers(pk) s.hooks.OnPublished(cl, pk) return nil } cl.State.Inflight.DecreaseReceiveQuota() ack := s.buildAck(pk.PacketID, packets.Puback, 0, pk.Properties, packets.QosCodes[pk.FixedHeader.Qos])"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "PacketID: packetID, // [MQTT-2.2.1-5] ReasonCode: reason.Code, // [MQTT-3.4.2-1] Properties: properties, Created: time.Now().Unix(), Expiry: time.Now().Unix() + s.Options.Capabilities.MaximumMessageExpiryInterval,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/properties.go",
+        "quote": "var validPacketProperties = map[byte]map[byte]byte{ PropPayloadFormat: {Publish: 1, WillProperties: 1}, PropMessageExpiryInterval: {Publish: 1, WillProperties: 1}, PropContentType: {Publish: 1, WillProperties: 1}, PropResponseTopic: {Publish: 1, WillProperties: 1},"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "PacketID: packetID, // [MQTT-2.2.1-5] ReasonCode: reason.Code, // [MQTT-3.4.2-1] Properties: properties, Created: time.Now().Unix(), Expiry: time.Now().Unix() + s.Options.Capabilities.MaximumMessageExpiryInterval,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/properties.go",
+        "quote": "var validPacketProperties = map[byte]map[byte]byte{ PropPayloadFormat: {Publish: 1, WillProperties: 1}, PropMessageExpiryInterval: {Publish: 1, WillProperties: 1}, PropContentType: {Publish: 1, WillProperties: 1}, PropResponseTopic: {Publish: 1, WillProperties: 1},"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/server.go",
+        "quote": "PacketID: packetID, // [MQTT-2.2.1-5] ReasonCode: reason.Code, // [MQTT-3.4.2-1] Properties: properties, Created: time.Now().Unix(), Expiry: time.Now().Unix() + s.Options.Capabilities.MaximumMessageExpiryInterval,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/wind-c/comqtt/v2.6.7/mqtt/packets/properties.go",
+        "quote": "var validPacketProperties = map[byte]map[byte]byte{ PropPayloadFormat: {Publish: 1, WillProperties: 1}, PropMessageExpiryInterval: {Publish: 1, WillProperties: 1}, PropContentType: {Publish: 1, WillProperties: 1}, PropResponseTopic: {Publish: 1, WillProperties: 1},"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "ElasticMQ",
+   "group": "C",
+   "kind": "broker",
+   "version": "v1.7.1",
+   "version_evidence": [
+    {
+     "url": "https://github.com/softwaremill/elasticmq/releases/tag/v1.7.1",
+     "quote": "v1.7.1"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub topic messaging (supplementary)",
+     "query": "as logged in search_log.json"
+    },
+    {
+     "route": "route 2",
+     "source": "times-first search",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "ReceiveMessage over the SQS-compatible HTTP API (long or short polling)",
+     "Q0": {
+      "fields": [
+       "message id",
+       "receipt handle",
+       "body",
+       "MD5 of body",
+       "message attributes",
+       "on request: SentTimestamp, ApproximateReceiveCount, ApproximateFirstReceiveTimestamp, SenderId, MessageDeduplicationId, MessageGroupId, AWSTraceHeader, SequenceNumber, DeadLetterQueueSourceArn"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/rest/rest-sqs/src/main/scala/org/elasticmq/rest/sqs/ReceiveMessageDirectives.scala",
+        "quote": "val AllAttributeNames = SentTimestampAttribute :: ApproximateReceiveCountAttribute :: ApproximateFirstReceiveTimestampAttribute :: SenderIdAttribute :: MessageDeduplicationIdAttribute :: MessageGroupIdAttribute :: AWSTraceHeaderAttribute :: SequenceNumberAttribute ::"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/rest/rest-sqs/src/main/scala/org/elasticmq/rest/sqs/ReceiveMessageDirectives.scala",
+        "quote": "Rule(SentTimestampAttribute, () => Some(msg.created.toInstant.toEpochMilli.toString)), Rule(ApproximateReceiveCountAttribute, () => Some(msg.statistics.approximateReceiveCount.toString)),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/rest/rest-sqs/src/main/scala/org/elasticmq/rest/sqs/ReceiveMessageDirectives.scala",
+        "quote": "Rule( ApproximateFirstReceiveTimestampAttribute, () => Some((msg.statistics.approximateFirstReceive match { case NeverReceived => 0 case OnDateTimeReceived(when) => when.toInstant.toEpochMilli }).toString) ),"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/core/src/main/scala/org/elasticmq/MessageData.scala",
+        "quote": "case class MessageData( id: MessageId, deliveryReceipt: Option[DeliveryReceipt], content: MessageContent, messageAttributes: Map[String, MessageAttribute], nextDelivery: MillisNextDelivery, created: OffsetDateTime, statistics: MessageStatistics,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/core/src/main/scala/org/elasticmq/actor/queue/InternalMessage.scala",
+        "quote": "FIFO messages should be ordered on when they were written to the queue val comp = -created.compareTo(other.created)"
+       }
+      ],
+      "field": "created",
+      "resolution": "ms"
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/rest/rest-sqs/src/main/scala/org/elasticmq/rest/sqs/ReceiveMessageDirectives.scala",
+        "quote": "Rule(SentTimestampAttribute, () => Some(msg.created.toInstant.toEpochMilli.toString)), Rule(ApproximateReceiveCountAttribute, () => Some(msg.statistics.approximateReceiveCount.toString)),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/rest/rest-sqs/src/main/scala/org/elasticmq/rest/sqs/ReceiveMessageDirectives.scala",
+        "quote": "val AllAttributeNames = SentTimestampAttribute :: ApproximateReceiveCountAttribute :: ApproximateFirstReceiveTimestampAttribute :: SenderIdAttribute :: MessageDeduplicationIdAttribute :: MessageGroupIdAttribute :: AWSTraceHeaderAttribute :: SequenceNumberAttribute ::"
+       }
+      ],
+      "note": "Only when the consumer asks for the SentTimestamp attribute (or All) on the request."
+     },
+     "Q3": {
+      "answer": "send time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/core/src/main/scala/org/elasticmq/actor/queue/InternalMessage.scala",
+        "quote": "nextDelivery = nextDeliveryMillis.millis receiveCount += 1 if (firstReceive == NeverReceived) { firstReceive = OnDateTimeReceived(nowProvider.now) }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/core/src/main/scala/org/elasticmq/MessageStatistics.scala",
+        "quote": "case class MessageStatistics(approximateFirstReceive: Received, approximateReceiveCount: Int)"
+       }
+      ],
+      "note": "The time of the first delivery is kept (firstReceive). Each delivery also sets nextDelivery, a deadline of the delivery time plus the visibility timeout, which is kept and not delivered. A long-polling request's timeout is also kept from its arrival; the delivered first-delivery time is reported here."
+     },
+     "Q4": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/rest/rest-sqs/src/main/scala/org/elasticmq/rest/sqs/ReceiveMessageDirectives.scala",
+        "quote": "Rule( ApproximateFirstReceiveTimestampAttribute, () => Some((msg.statistics.approximateFirstReceive match { case NeverReceived => 0 case OnDateTimeReceived(when) => when.toInstant.toEpochMilli }).toString) ),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/rest/rest-sqs/src/main/scala/org/elasticmq/rest/sqs/ReceiveMessageDirectives.scala",
+        "quote": "val AllAttributeNames = SentTimestampAttribute :: ApproximateReceiveCountAttribute :: ApproximateFirstReceiveTimestampAttribute :: SenderIdAttribute :: MessageDeduplicationIdAttribute :: MessageGroupIdAttribute :: AWSTraceHeaderAttribute :: SequenceNumberAttribute ::"
+       }
+      ],
+      "note": "Only the first delivery's time, and only when the consumer asks for ApproximateFirstReceiveTimestamp (or All); the value is 0 if the message was never received."
+     },
+     "Q5": {
+      "answer": "derivable stay",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/rest/rest-sqs/src/main/scala/org/elasticmq/rest/sqs/ReceiveMessageDirectives.scala",
+        "quote": "Rule(SentTimestampAttribute, () => Some(msg.created.toInstant.toEpochMilli.toString)), Rule(ApproximateReceiveCountAttribute, () => Some(msg.statistics.approximateReceiveCount.toString)),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/rest/rest-sqs/src/main/scala/org/elasticmq/rest/sqs/ReceiveMessageDirectives.scala",
+        "quote": "Rule( ApproximateFirstReceiveTimestampAttribute, () => Some((msg.statistics.approximateFirstReceive match { case NeverReceived => 0 case OnDateTimeReceived(when) => when.toInstant.toEpochMilli }).toString) ),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/core/src/main/scala/org/elasticmq/actor/queue/InternalMessage.scala",
+        "quote": "nextDelivery = nextDeliveryMillis.millis receiveCount += 1 if (firstReceive == NeverReceived) { firstReceive = OnDateTimeReceived(nowProvider.now) }"
+       }
+      ],
+      "resolution": "ms",
+      "note": "For a first delivery, ApproximateFirstReceiveTimestamp less SentTimestamp, both set by the server and both returned only when asked."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/core/src/main/scala/org/elasticmq/MessageData.scala",
+        "quote": "case class MessageData( id: MessageId, deliveryReceipt: Option[DeliveryReceipt], content: MessageContent, messageAttributes: Map[String, MessageAttribute], nextDelivery: MillisNextDelivery, created: OffsetDateTime, statistics: MessageStatistics,"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/core/src/main/scala/org/elasticmq/actor/queue/QueueActorWaitForMessagesOps.scala",
+        "quote": "private val awaitingReply = new collection.mutable.HashMap[Long, AwaitingData]() override def receive = super.receive orElse { case ReplyIfTimeout(seq, replyWith) => awaitingReply.remove(seq).foreach {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/rest/rest-sqs/src/main/scala/org/elasticmq/rest/sqs/ReceiveMessageDirectives.scala",
+        "quote": "val waitTimeSecondsAttributeOpt: Option[Long] = requestParameters.WaitTimeSeconds"
+       }
+      ],
+      "note": "A request with WaitTimeSeconds is held in awaitingReply with its own timeout; several such requests can be pending at once, each taking different messages."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/core/src/main/scala/org/elasticmq/actor/queue/InternalMessage.scala",
+       "read": "When a message is handed out, trackDelivery stamps firstReceive from the server clock once, at the first delivery only; each delivery also sets nextDelivery (delivery time plus visibility timeout), which stays inside the queue, and a long-polling request's timeout is scheduled from its arrival.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/rest/rest-sqs/src/main/scala/org/elasticmq/rest/sqs/ReceiveMessageDirectives.scala",
+       "read": "ApproximateFirstReceiveTimestamp is returned as the epoch milliseconds of firstReceive, or 0 if the message was never received, when the consumer asks for that attribute or for All.",
+       "agrees": true
+      },
+      {
+       "question": "Q5",
+       "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/rest/rest-sqs/src/main/scala/org/elasticmq/rest/sqs/ReceiveMessageDirectives.scala",
+       "read": "ApproximateFirstReceiveTimestamp less SentTimestamp, which is created with OffsetDateTime.now() when the message is added, both returned on request, spans sending to first delivery and so covers the wait for the consumer on a first delivery (receive count 1).",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/core/src/main/scala/org/elasticmq/actor/queue/QueueActorWaitForMessagesOps.scala",
+       "read": "A ReceiveMessages request that finds nothing and has a wait time above 0 is held in the awaitingReply map with its own scheduled timeout, and several such requests can wait at once, so a consumer can keep a request waiting.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "SendMessage over the SQS-compatible HTTP API",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "message id",
+       "MD5 of message body",
+       "MD5 of message attributes",
+       "MD5 of message system attributes",
+       "sequence number, for FIFO queues"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/rest/rest-sqs/src/main/scala/org/elasticmq/rest/sqs/SendMessageDirectives.scala",
+        "quote": "case class SendMessageResponse( MD5OfMessageAttributes: Option[String], MD5OfMessageBody: String, MD5OfMessageSystemAttributes: Option[String], MessageId: String, SequenceNumber: Option[String] )"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/rest/rest-sqs/src/main/scala/org/elasticmq/rest/sqs/SendMessageDirectives.scala",
+        "quote": "case class SendMessageResponse( MD5OfMessageAttributes: Option[String], MD5OfMessageBody: String, MD5OfMessageSystemAttributes: Option[String], MessageId: String, SequenceNumber: Option[String] )"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/rest/rest-sqs/src/main/scala/org/elasticmq/rest/sqs/SendMessageDirectives.scala",
+        "quote": "case class SendMessageResponse( MD5OfMessageAttributes: Option[String], MD5OfMessageBody: String, MD5OfMessageSystemAttributes: Option[String], MessageId: String, SequenceNumber: Option[String] )"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/softwaremill/elasticmq/v1.7.1/rest/rest-sqs/src/main/scala/org/elasticmq/rest/sqs/SendMessageDirectives.scala",
+        "quote": "case class SendMessageResponse( MD5OfMessageAttributes: Option[String], MD5OfMessageBody: String, MD5OfMessageSystemAttributes: Option[String], MessageId: String, SequenceNumber: Option[String] )"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Emitter",
+   "group": "C",
+   "kind": "broker",
+   "version": "v3.1",
+   "version_evidence": [
+    {
+     "url": "https://github.com/emitter-io/emitter/releases/tag/v3.1",
+     "quote": "v3.1"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list awesome-mqtt/awesome-mqtt",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "MQTT subscription over TCP or WebSocket",
+     "Q0": {
+      "fields": [
+       "topic (channel)",
+       "payload"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emitter-io/emitter/v3.1/internal/broker/conn.go",
+        "quote": "packet := mqtt.Publish{ Header: mqtt.Header{QOS: 0}, Topic: m.Channel, // The channel for this message. Payload: m.Payload, // The payload for this message. } _, err = packet.EncodeTo(c.socket)"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emitter-io/emitter/v3.1/internal/service/pubsub/publish.go",
+        "quote": "msg := message.New( message.NewSsid(key.Contract(), channel.Query), channel.Channel, packet.Payload, )"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emitter-io/emitter/v3.1/internal/message/id.go",
+        "quote": "NewID creates a new message identifier for the current time. func NewID(ssid Ssid) ID { id := make(ID, len(ssid)*4+fixed) now := uint32(time.Now().Unix() - offset) binary.BigEndian.PutUint32(id[0:4], ssid[0]^ssid[1]) binary.BigEndian.PutUint32(id[4:8], math.MaxUint32-now)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emitter-io/emitter/v3.1/internal/message/id.go",
+        "quote": "Time gets the time of the key, adjusted. func (id ID) Time() int64 { return int64(math.MaxUint32-binary.BigEndian.Uint32(id[4:8])) + offset }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emitter-io/emitter/v3.1/internal/message/message.go",
+        "quote": "Expires calculates the expiration time. func (m *Message) Expires() time.Time { return time.Unix(m.Time(), 0).Add(time.Second * time.Duration(m.TTL)) }"
+       }
+      ],
+      "field": "time component of the message ID",
+      "resolution": "s",
+      "note": "Every published message gets an ID made from the broker's own clock (time.Now) in message.New; the time is decoded from the ID and the expiry is that time plus the message TTL."
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emitter-io/emitter/v3.1/internal/broker/conn.go",
+        "quote": "packet := mqtt.Publish{ Header: mqtt.Header{QOS: 0}, Topic: m.Channel, // The channel for this message. Payload: m.Payload, // The payload for this message. } _, err = packet.EncodeTo(c.socket)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emitter-io/emitter/v3.1/internal/message/message.go",
+        "quote": "type Message struct { ID ID `json:\"id,omitempty\"` // The ID of the message Channel []byte `json:\"chan,omitempty\"` // The channel of the message Payload []byte `json:\"data,omitempty\"` // The payload of the message TTL uint32 `json:\"ttl,omitempty\"` // The time-to-live of the message }"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emitter-io/emitter/v3.1/internal/broker/conn.go",
+        "quote": "packet := mqtt.Publish{ Header: mqtt.Header{QOS: 0}, Topic: m.Channel, // The channel for this message. Payload: m.Payload, // The payload for this message. } _, err = packet.EncodeTo(c.socket)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emitter-io/emitter/v3.1/internal/message/message.go",
+        "quote": "type Message struct { ID ID `json:\"id,omitempty\"` // The ID of the message Channel []byte `json:\"chan,omitempty\"` // The channel of the message Payload []byte `json:\"data,omitempty\"` // The payload of the message TTL uint32 `json:\"ttl,omitempty\"` // The time-to-live of the message }"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emitter-io/emitter/v3.1/internal/broker/conn.go",
+        "quote": "packet := mqtt.Publish{ Header: mqtt.Header{QOS: 0}, Topic: m.Channel, // The channel for this message. Payload: m.Payload, // The payload for this message. } _, err = packet.EncodeTo(c.socket)"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emitter-io/emitter/v3.1/internal/message/message.go",
+        "quote": "type Message struct { ID ID `json:\"id,omitempty\"` // The ID of the message Channel []byte `json:\"chan,omitempty\"` // The channel of the message Payload []byte `json:\"data,omitempty\"` // The payload of the message TTL uint32 `json:\"ttl,omitempty\"` // The time-to-live of the message }"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emitter-io/emitter/v3.1/internal/service/pubsub/publish.go",
+        "quote": "Iterate through all subscribers and send them the message size := s.Publish(msg, func(s message.Subscriber) bool { return s.ID() != exclude })"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/emitter-io/emitter/v3.1/internal/broker/conn.go",
+        "quote": "packet := mqtt.Publish{ Header: mqtt.Header{QOS: 0}, Topic: m.Channel, // The channel for this message. Payload: m.Payload, // The payload for this message. } _, err = packet.EncodeTo(c.socket)"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/emitter-io/emitter/v3.1/internal/broker/conn.go",
+       "read": "Conn.Send writes every forwarded message to the subscriber's socket at once as a QoS 0 publish, and acknowledgments are handled only for the consumer's own publications, so a consumer has no request or credit to keep waiting.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQTT publish at QoS 0",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emitter-io/emitter/v3.1/internal/broker/conn.go",
+        "quote": "Acknowledge the publication if packet.Header.QOS > 0 { ack := mqtt.Puback{MessageID: packet.MessageID} if _, err := ack.EncodeTo(c.socket); err != nil { return err } }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "MQTT publish at QoS 1",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "message id"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emitter-io/emitter/v3.1/internal/broker/conn.go",
+        "quote": "Acknowledge the publication if packet.Header.QOS > 0 { ack := mqtt.Puback{MessageID: packet.MessageID} if _, err := ack.EncodeTo(c.socket); err != nil { return err } }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emitter-io/emitter/v3.1/internal/broker/conn.go",
+        "quote": "Acknowledge the publication if packet.Header.QOS > 0 { ack := mqtt.Puback{MessageID: packet.MessageID} if _, err := ack.EncodeTo(c.socket); err != nil { return err } }"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emitter-io/emitter/v3.1/internal/broker/conn.go",
+        "quote": "Acknowledge the publication if packet.Header.QOS > 0 { ack := mqtt.Puback{MessageID: packet.MessageID} if _, err := ack.EncodeTo(c.socket); err != nil { return err } }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/emitter-io/emitter/v3.1/internal/broker/conn.go",
+        "quote": "Acknowledge the publication if packet.Header.QOS > 0 { ack := mqtt.Puback{MessageID: packet.MessageID} if _, err := ack.EncodeTo(c.socket); err != nil { return err } }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "gmqtt",
+   "group": "C",
+   "kind": "broker",
+   "version": "v0.5.0",
+   "version_evidence": [
+    {
+     "url": "https://github.com/DrmagicE/gmqtt/releases/tag/v0.5.0",
+     "quote": "v0.5.0"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub topic mqtt-broker",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "MQTT 5.0 subscription, QoS 0",
+     "Q0": {
+      "fields": [
+       "topic",
+       "payload",
+       "qos",
+       "retain flag",
+       "duplicate flag",
+       "v5 properties: message expiry interval (when the publisher set one), content type, response topic, payload format indicator, correlation data, user properties, subscription identifier"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/message.go",
+        "quote": "func MessageToPublish(msg *Message, version packets.Version) *packets.Publish { pub := &packets.Publish{ Dup: msg.Dup, Qos: msg.QoS, PacketID: msg.PacketID, Retain: msg.Retained, TopicName: []byte(msg.Topic), Payload: msg.Payload, Version: version, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/message.go",
+        "quote": "if version == packets.Version5 { var msgExpiry *uint32 if e := msg.MessageExpiry; e != 0 { msgExpiry = &e }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/server/server.go",
+        "quote": "err := q.Add(&queue.Elem{ At: now, Expiry: expiry, MessageWithID: &queue.Publish{ Message: msg, }, })"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/persistence/queue/elem.go",
+        "quote": "Elem represents the element store in the queue. type Elem struct { // At represents the entry time. At time.Time // Expiry represents the expiry time. // Empty means never expire. Expiry time.Time MessageWithID }"
+       }
+      ],
+      "field": "At (entry time in the subscriber's queue)",
+      "resolution": "ns"
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/message.go",
+        "quote": "func MessageToPublish(msg *Message, version packets.Version) *packets.Publish { pub := &packets.Publish{ Dup: msg.Dup, Qos: msg.QoS, PacketID: msg.PacketID, Retain: msg.Retained, TopicName: []byte(msg.Topic), Payload: msg.Payload, Version: version, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/message.go",
+        "quote": "if version == packets.Version5 { var msgExpiry *uint32 if e := msg.MessageExpiry; e != 0 { msgExpiry = &e }"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/persistence/queue/elem.go",
+        "quote": "Elem represents the element store in the queue. type Elem struct { // At represents the entry time. At time.Time // Expiry represents the expiry time. // Empty means never expire. Expiry time.Time MessageWithID }"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "stay",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/server/client.go",
+        "quote": "if client.version == packets.Version5 && m.Message.MessageExpiry != 0 { d := uint32(now.Sub(v.At).Seconds()) m.Message.MessageExpiry = d } client.write(gmqtt.MessageToPublish(m.Message, client.version))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/persistence/queue/elem.go",
+        "quote": "Elem represents the element store in the queue. type Elem struct { // At represents the entry time. At time.Time // Expiry represents the expiry time. // Empty means never expire. Expiry time.Time MessageWithID }"
+       }
+      ],
+      "resolution": "s",
+      "note": "When the publisher set a Message Expiry Interval, the code sends a v5 subscriber the whole seconds since the message entered the queue (now less At) in place of the interval left that the standard requires, so the delivered property is the stay itself."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/persistence/queue/elem.go",
+        "quote": "Elem represents the element store in the queue. type Elem struct { // At represents the entry time. At time.Time // Expiry represents the expiry time. // Empty means never expire. Expiry time.Time MessageWithID }"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/server/server.go",
+        "quote": "deliverMessage send msg to matched client, must call under srv.mu.Lock func (srv *server) deliverMessage(srcClientID string, msg *gmqtt.Message, options subscription.IterationOptions) (matched bool) { now := time.Now()"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q5",
+       "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/server/client.go",
+       "read": "In pollNewMessages the code sets a v5 message's Expiry Interval to the whole seconds since the message entered the client's queue, the time already spent and not the interval left, with the clock read after the packet ids are polled; because that clock is read before the queue read that blocks while the queue is empty, a message reaching an idle poller gets a negative difference that converts to 0 or a wrapped value.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/server/client.go",
+       "read": "A QoS 0 message does not use a packet id, so a QoS 0 subscription is never held by the in-flight window and the broker pushes each message when it is queued.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "MQTT 5.0 subscription, QoS 1 and 2",
+     "Q0": {
+      "fields": [
+       "topic",
+       "payload",
+       "qos",
+       "retain flag",
+       "duplicate flag",
+       "packet id",
+       "v5 properties: message expiry interval (when the publisher set one), content type, response topic, payload format indicator, correlation data, user properties, subscription identifier"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/message.go",
+        "quote": "func MessageToPublish(msg *Message, version packets.Version) *packets.Publish { pub := &packets.Publish{ Dup: msg.Dup, Qos: msg.QoS, PacketID: msg.PacketID, Retain: msg.Retained, TopicName: []byte(msg.Topic), Payload: msg.Payload, Version: version, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/message.go",
+        "quote": "if version == packets.Version5 { var msgExpiry *uint32 if e := msg.MessageExpiry; e != 0 { msgExpiry = &e }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/server/server.go",
+        "quote": "err := q.Add(&queue.Elem{ At: now, Expiry: expiry, MessageWithID: &queue.Publish{ Message: msg, }, })"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/persistence/queue/elem.go",
+        "quote": "Elem represents the element store in the queue. type Elem struct { // At represents the entry time. At time.Time // Expiry represents the expiry time. // Empty means never expire. Expiry time.Time MessageWithID }"
+       }
+      ],
+      "field": "At (entry time in the subscriber's queue)",
+      "resolution": "ns"
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/message.go",
+        "quote": "func MessageToPublish(msg *Message, version packets.Version) *packets.Publish { pub := &packets.Publish{ Dup: msg.Dup, Qos: msg.QoS, PacketID: msg.PacketID, Retain: msg.Retained, TopicName: []byte(msg.Topic), Payload: msg.Payload, Version: version, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/message.go",
+        "quote": "if version == packets.Version5 { var msgExpiry *uint32 if e := msg.MessageExpiry; e != 0 { msgExpiry = &e }"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/persistence/queue/elem.go",
+        "quote": "Elem represents the element store in the queue. type Elem struct { // At represents the entry time. At time.Time // Expiry represents the expiry time. // Empty means never expire. Expiry time.Time MessageWithID }"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "stay",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/server/client.go",
+        "quote": "if client.version == packets.Version5 && m.Message.MessageExpiry != 0 { d := uint32(now.Sub(v.At).Seconds()) m.Message.MessageExpiry = d } client.write(gmqtt.MessageToPublish(m.Message, client.version))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/persistence/queue/elem.go",
+        "quote": "Elem represents the element store in the queue. type Elem struct { // At represents the entry time. At time.Time // Expiry represents the expiry time. // Empty means never expire. Expiry time.Time MessageWithID }"
+       }
+      ],
+      "resolution": "s",
+      "note": "When the publisher set a Message Expiry Interval, the code sends a v5 subscriber the whole seconds since the message entered the queue (now less At) in place of the interval left that the standard requires, so the delivered property is the stay itself."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/persistence/queue/elem.go",
+        "quote": "Elem represents the element store in the queue. type Elem struct { // At represents the entry time. At time.Time // Expiry represents the expiry time. // Empty means never expire. Expiry time.Time MessageWithID }"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/server/client.go",
+        "quote": "MaxInflight limits the number of QoS 1 and QoS 2 publications that the client is willing to process concurrently. // For v3 client, it is default to config.MQTT.MaxInflight. // For v5 client, it is the minimum of config.MQTT.MaxInflight and Receive Maximum property in CONNECT packet."
+       }
+      ],
+      "note": "The subscriber's Receive Maximum limits the QoS 1 and 2 publications in flight to it, and an acknowledgment frees a place; judged as credit."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q5",
+       "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/server/client.go",
+       "read": "The same pollNewMessages code applies: the packet ids (the consumer's in-flight window) are polled first, so a message that waited for credit in the queue gets the whole seconds since it entered the queue as its Expiry Interval, the time spent and not the interval left; a message reaching an idle poller gets a negative difference that converts to 0 or a wrapped value.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/server/client.go",
+       "read": "The client option comment states that a v5 client's in-flight limit is the minimum of the server setting and the Receive Maximum in its CONNECT, and the poller waits for a free packet id before it reads the queue, so the consumer's acknowledgments act as credit.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "MQTT 3.1.1 subscription, all QoS",
+     "Q0": {
+      "fields": [
+       "topic",
+       "payload",
+       "qos",
+       "retain flag",
+       "duplicate flag",
+       "packet id, for QoS 1 and 2"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/message.go",
+        "quote": "func MessageToPublish(msg *Message, version packets.Version) *packets.Publish { pub := &packets.Publish{ Dup: msg.Dup, Qos: msg.QoS, PacketID: msg.PacketID, Retain: msg.Retained, TopicName: []byte(msg.Topic), Payload: msg.Payload, Version: version, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/message.go",
+        "quote": "if version == packets.Version5 { var msgExpiry *uint32 if e := msg.MessageExpiry; e != 0 { msgExpiry = &e }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/server/server.go",
+        "quote": "err := q.Add(&queue.Elem{ At: now, Expiry: expiry, MessageWithID: &queue.Publish{ Message: msg, }, })"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/persistence/queue/elem.go",
+        "quote": "Elem represents the element store in the queue. type Elem struct { // At represents the entry time. At time.Time // Expiry represents the expiry time. // Empty means never expire. Expiry time.Time MessageWithID }"
+       }
+      ],
+      "field": "At (entry time in the subscriber's queue)",
+      "resolution": "ns"
+     },
+     "Q2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/message.go",
+        "quote": "func MessageToPublish(msg *Message, version packets.Version) *packets.Publish { pub := &packets.Publish{ Dup: msg.Dup, Qos: msg.QoS, PacketID: msg.PacketID, Retain: msg.Retained, TopicName: []byte(msg.Topic), Payload: msg.Payload, Version: version, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/message.go",
+        "quote": "if version == packets.Version5 { var msgExpiry *uint32 if e := msg.MessageExpiry; e != 0 { msgExpiry = &e }"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/persistence/queue/elem.go",
+        "quote": "Elem represents the element store in the queue. type Elem struct { // At represents the entry time. At time.Time // Expiry represents the expiry time. // Empty means never expire. Expiry time.Time MessageWithID }"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/server/client.go",
+        "quote": "if client.version == packets.Version5 && m.Message.MessageExpiry != 0 { d := uint32(now.Sub(v.At).Seconds()) m.Message.MessageExpiry = d } client.write(gmqtt.MessageToPublish(m.Message, client.version))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/message.go",
+        "quote": "if version == packets.Version5 { var msgExpiry *uint32 if e := msg.MessageExpiry; e != 0 { msgExpiry = &e }"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/persistence/queue/elem.go",
+        "quote": "Elem represents the element store in the queue. type Elem struct { // At represents the entry time. At time.Time // Expiry represents the expiry time. // Empty means never expire. Expiry time.Time MessageWithID }"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/server/server.go",
+        "quote": "deliverMessage send msg to matched client, must call under srv.mu.Lock func (srv *server) deliverMessage(srcClientID string, msg *gmqtt.Message, options subscription.IterationOptions) (matched bool) { now := time.Now()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/server/client.go",
+        "quote": "MaxInflight limits the number of QoS 1 and QoS 2 publications that the client is willing to process concurrently. // For v3 client, it is default to config.MQTT.MaxInflight. // For v5 client, it is the minimum of config.MQTT.MaxInflight and Receive Maximum property in CONNECT packet."
+       }
+      ],
+      "note": "A v3 subscriber's in-flight limit is the server's own MaxInflight setting, which the consumer cannot change; judged standing."
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/server/client.go",
+       "read": "The client option comment states that for a v3 client the in-flight limit is the server's own config.MQTT.MaxInflight, which the consumer cannot change, so a v3 consumer sets no window.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "publish at QoS 0",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/server/client.go",
+        "quote": "if pub.Qos == packets.Qos1 { ack = pub.NewPuback(code, ppt) } if pub.Qos == packets.Qos2 { ack = pub.NewPubrec(code, ppt)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/server/client.go",
+        "quote": "if ack != nil { client.write(ack) } return nil }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "publish at QoS 1 and 2",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet id",
+       "reason code (MQTT 5.0)",
+       "properties (MQTT 5.0)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/server/client.go",
+        "quote": "if pub.Qos == packets.Qos1 { ack = pub.NewPuback(code, ppt) } if pub.Qos == packets.Qos2 { ack = pub.NewPubrec(code, ppt)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/pkg/packets/puback.go",
+        "quote": "type Puback struct { Version Version FixHeader *FixHeader PacketID PacketID // V5 Code codes.Code Properties *Properties }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/pkg/packets/puback.go",
+        "quote": "type Puback struct { Version Version FixHeader *FixHeader PacketID PacketID // V5 Code codes.Code Properties *Properties }"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/pkg/packets/puback.go",
+        "quote": "type Puback struct { Version Version FixHeader *FixHeader PacketID PacketID // V5 Code codes.Code Properties *Properties }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/DrmagicE/gmqtt/v0.5.0/pkg/packets/puback.go",
+        "quote": "type Puback struct { Version Version FixHeader *FixHeader PacketID PacketID // V5 Code codes.Code Properties *Properties }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  }
+ ]
+}

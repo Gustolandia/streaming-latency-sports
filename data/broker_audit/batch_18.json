@@ -1,0 +1,1222 @@
+{
+ "audited_utc": "2026-10-29",
+ "brokers": [
+  {
+   "broker": "Adafruit IO",
+   "group": "C",
+   "kind": "IoT hub",
+   "version": "documentation as read on 2026-10-29",
+   "version_evidence": [
+    {
+     "url": "https://io.adafruit.com/api/docs/mqtt.html",
+     "quote": "Adafruit IO MQTT API"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list awesome-mqtt/awesome-mqtt",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "MQTT subscription to a feed or group topic",
+     "Q0": {
+      "fields": [
+       "topic (names the feed)",
+       "payload (the new value, or a JSON object with value and optional lat, lon, ele on the /json topics)"
+      ],
+      "evidence": [
+       {
+        "url": "https://learn.adafruit.com/adafruit-io/mqtt-api",
+        "quote": "When a new value is added to the feed then the Adafruit IO MQTT server will send a notification with the new feed value in the payload."
+       },
+       {
+        "url": "https://learn.adafruit.com/adafruit-io/mqtt-api",
+        "quote": "The topic will specify the feed that was updated, and the payload will have the new value."
+       },
+       {
+        "url": "https://io.adafruit.com/api/docs/mqtt.html",
+        "quote": "Specifically, JSON objects must include a value key, and may include lat, lon, and ele keys."
+       },
+       {
+        "url": "https://io.adafruit.com/api/docs/mqtt.html",
+        "quote": "By default, IO publishes values in JSON format. The formats your subscription will receive are the same as the formats IO expects to receive."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://learn.adafruit.com/adafruit-io/mqtt-api",
+        "quote": "When a new value is added to the feed then the Adafruit IO MQTT server will send a notification with the new feed value in the payload."
+       },
+       {
+        "url": "https://io.adafruit.com/api/docs/mqtt.html",
+        "quote": "Specifically, JSON objects must include a value key, and may include lat, lon, and ele keys."
+       }
+      ]
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://learn.adafruit.com/adafruit-io/mqtt-api",
+        "quote": "When a new value is added to the feed then the Adafruit IO MQTT server will send a notification with the new feed value in the payload."
+       },
+       {
+        "url": "https://io.adafruit.com/api/docs/mqtt.html",
+        "quote": "Specifically, JSON objects must include a value key, and may include lat, lon, and ele keys."
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://learn.adafruit.com/adafruit-io/mqtt-api",
+        "quote": "When a new value is added to the feed then the Adafruit IO MQTT server will send a notification with the new feed value in the payload."
+       },
+       {
+        "url": "https://io.adafruit.com/api/docs/mqtt.html",
+        "quote": "Specifically, JSON objects must include a value key, and may include lat, lon, and ele keys."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://learn.adafruit.com/adafruit-io/mqtt-api",
+        "quote": "When a new value is added to the feed then the Adafruit IO MQTT server will send a notification with the new feed value in the payload."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://learn.adafruit.com/adafruit-io/mqtt-api",
+        "quote": "To be notified of a change in a feed perform a MQTT subscribe against the feed path."
+       },
+       {
+        "url": "https://learn.adafruit.com/adafruit-io/mqtt-api",
+        "quote": "When a new value is added to the feed then the Adafruit IO MQTT server will send a notification with the new feed value in the payload."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://learn.adafruit.com/adafruit-io/mqtt-api",
+       "read": "The page says the MQTT server sends a notification with the new value when one is added to a subscribed feed and gives QoS levels for publishing only, and MQTT 3.1.1 gives a subscriber no way to set a window, so the consumer can keep no request or credit waiting.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQTT publish at QoS 0",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://io.adafruit.com/api/docs/mqtt.html",
+        "quote": "For publishing feed values the Adafruit IO MQTT API supports QoS level 0 (at most once) and 1 (at least once) only."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "MQTT publish at QoS 1",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet identifier"
+      ],
+      "evidence": [
+       {
+        "url": "https://io.adafruit.com/api/docs/mqtt.html",
+        "quote": "For publishing feed values the Adafruit IO MQTT API supports QoS level 0 (at most once) and 1 (at least once) only."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "This contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The PUBACK Packet has no payload."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "This contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The PUBACK Packet has no payload."
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "This contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The PUBACK Packet has no payload."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "This contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The PUBACK Packet has no payload."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Alibaba Cloud IoT Platform",
+   "group": "C",
+   "kind": "IoT hub",
+   "version": "documentation as read on 2026-10-29 (AMQP page last updated 5 August 2025)",
+   "version_evidence": [
+    {
+     "url": "https://www.alibabacloud.com/help/en/iot/developer-reference/connect-an-amqp-client-to-iot-platform",
+     "quote": "Connect an AMQP client to IoT Platform"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list awesome-mqtt/awesome-mqtt",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "AMQP 1.0 server-side subscription (consumer group)",
+     "Q0": {
+      "fields": [
+       "message body (binary payload)",
+       "topic",
+       "messageId",
+       "generateTime"
+      ],
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/iot/developer-reference/connect-an-amqp-client-to-iot-platform",
+        "quote": "Each message that is pushed by IoT Platform to the client consists of the following parts: Message body. The payload of the message is in the binary format."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/iot/developer-reference/connect-an-amqp-client-to-iot-platform",
+        "quote": "Message attributes, such as topic and message ID. You can obtain the attributes from the application-properties section that is defined in AMQP."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/iot/developer-reference/connect-an-amqp-client-to-iot-platform",
+        "quote": "topic The topic of the message. messageId The ID of the message. generateTime The time when the message was generated. Note You cannot determine the order of messages based on the generateTime parameter."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/iot/developer-reference/connect-an-amqp-client-to-iot-platform",
+        "quote": "topic The topic of the message. messageId The ID of the message. generateTime The time when the message was generated. Note You cannot determine the order of messages based on the generateTime parameter."
+       }
+      ],
+      "note": "generateTime is documented only as the time the message was generated; the page names neither the clock nor the moment it counts from, so it is not taken as an arrival stamp."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/iot/developer-reference/connect-an-amqp-client-to-iot-platform",
+        "quote": "topic The topic of the message. messageId The ID of the message. generateTime The time when the message was generated. Note You cannot determine the order of messages based on the generateTime parameter."
+       }
+      ],
+      "note": "Applies only if generateTime is the platform's arrival stamp; it is delivered with every message."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/iot/developer-reference/connect-an-amqp-client-to-iot-platform",
+        "quote": "Message attributes, such as topic and message ID. You can obtain the attributes from the application-properties section that is defined in AMQP."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/iot/developer-reference/connect-an-amqp-client-to-iot-platform",
+        "quote": "topic The topic of the message. messageId The ID of the message. generateTime The time when the message was generated. Note You cannot determine the order of messages based on the generateTime parameter."
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/iot/developer-reference/connect-an-amqp-client-to-iot-platform",
+        "quote": "Message attributes, such as topic and message ID. You can obtain the attributes from the application-properties section that is defined in AMQP."
+       },
+       {
+        "url": "https://www.alibabacloud.com/help/en/iot/developer-reference/connect-an-amqp-client-to-iot-platform",
+        "quote": "topic The topic of the message. messageId The ID of the message. generateTime The time when the message was generated. Note You cannot determine the order of messages based on the generateTime parameter."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/iot/developer-reference/connect-an-amqp-client-to-iot-platform",
+        "quote": "Messages are pushed in real time. Messages are accumulated."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/iot/developer-reference/connect-an-amqp-client-to-iot-platform",
+        "quote": "The server-side subscriptions of IoT Platform support only the AMQP 1.0 protocol."
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "If the link-credit is less than or equal to zero, i.e., the delivery-count is the same as or greater than the delivery-limit, a sender MUST NOT send more messages."
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "Links provide a credit-based flow control scheme based on the number of messages transmitted, allowing applications to control which nodes to receive messages from at a given point"
+       }
+      ],
+      "changed_on_read_back": {
+       "from": "standing",
+       "why": "The subscription supports only AMQP 1.0, in which the receiver's link credit gates the sender, so a consumer can keep credit open; the cited page describes pushing and accumulation but no behaviour that ignores credit."
+      }
+     },
+     "not_determined": [
+      "Q1",
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://www.alibabacloud.com/help/en/iot/developer-reference/connect-an-amqp-client-to-iot-platform",
+       "read": "The page says messages are pushed in real time and accumulate, and says nothing about a consumer window; it states that the server-side subscription supports only AMQP 1.0, and in AMQP 1.0 a sender must not send when the receiver's link-credit is zero, so the consumer sets its credit.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "device MQTT publish at QoS 0 or QoS 1",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet identifier (MQTT PUBACK at QoS 1)"
+      ],
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/iot/product-overview/limits",
+        "quote": "The maximum number of QoS 0 or QoS 1 messages that a device can report per second."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "This contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The PUBACK Packet has no payload."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/iot/product-overview/limits",
+        "quote": "The maximum number of QoS 0 or QoS 1 messages that a device can report per second."
+       }
+      ],
+      "note": "not reached"
+     },
+     "P2": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/iot/product-overview/limits",
+        "quote": "The maximum number of QoS 0 or QoS 1 messages that a device can report per second."
+       }
+      ],
+      "note": "not reached"
+     },
+     "P3": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://www.alibabacloud.com/help/en/iot/product-overview/limits",
+        "quote": "The maximum number of QoS 0 or QoS 1 messages that a device can report per second."
+       }
+      ],
+      "note": "not reached"
+     },
+     "not_determined": [
+      "P1",
+      "P2",
+      "P3"
+     ],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Losant",
+   "group": "C",
+   "kind": "IoT hub",
+   "version": "documentation as read on 2026-10-29 (Losant MQTT broker, MQTT 3.1.1)",
+   "version_evidence": [
+    {
+     "url": "https://docs.losant.com/mqtt/overview/",
+     "quote": "Losant supports MQTT version v3.1.1 with the following exceptions"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list HQarroum/awesome-iot",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "MQTT 3.1.1 subscription (QoS 0 only)",
+     "Q0": {
+      "fields": [
+       "topic",
+       "payload (for the losant/DEVICE_ID/command topic a JSON object with name and payload; on custom topics as published)"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.losant.com/mqtt/overview/",
+        "quote": "In order to support the existing MQTT implementations, Losant provides an MQTT message broker that can be used for any arbitrary topics and payloads."
+       },
+       {
+        "url": "https://docs.losant.com/mqtt/overview/",
+        "quote": "name —Command name. payload —Any JSON value that provides necessary arguments to your command."
+       },
+       {
+        "url": "https://docs.losant.com/mqtt/overview/",
+        "quote": "Commands include a name and an optional payload."
+       },
+       {
+        "url": "https://docs.losant.com/mqtt/overview/",
+        "quote": "Custom topics must be valid MQTT topics , and they cannot be an MQTT system topic"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.losant.com/mqtt/overview/",
+        "quote": "In order to support the existing MQTT implementations, Losant provides an MQTT message broker that can be used for any arbitrary topics and payloads."
+       },
+       {
+        "url": "https://docs.losant.com/mqtt/overview/",
+        "quote": "name —Command name. payload —Any JSON value that provides necessary arguments to your command."
+       },
+       {
+        "url": "https://docs.losant.com/mqtt/overview/",
+        "quote": "Clients may only subscribe to topics using QoS 0 . Clients may publish messages to the broker using QoS 0 or QoS 1 . Retained messages are not supported."
+       }
+      ],
+      "note": "A state report published to losant/DEVICE_ID/state is recorded with the current time when it carries no time field (statetime), but that time is for the time series; the page does not show it delivered to an MQTT subscriber."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.losant.com/mqtt/overview/",
+        "quote": "In order to support the existing MQTT implementations, Losant provides an MQTT message broker that can be used for any arbitrary topics and payloads."
+       },
+       {
+        "url": "https://docs.losant.com/mqtt/overview/",
+        "quote": "name —Command name. payload —Any JSON value that provides necessary arguments to your command."
+       },
+       {
+        "url": "https://docs.losant.com/mqtt/overview/",
+        "quote": "Clients may only subscribe to topics using QoS 0 . Clients may publish messages to the broker using QoS 0 or QoS 1 . Retained messages are not supported."
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.losant.com/mqtt/overview/",
+        "quote": "In order to support the existing MQTT implementations, Losant provides an MQTT message broker that can be used for any arbitrary topics and payloads."
+       },
+       {
+        "url": "https://docs.losant.com/mqtt/overview/",
+        "quote": "name —Command name. payload —Any JSON value that provides necessary arguments to your command."
+       },
+       {
+        "url": "https://docs.losant.com/mqtt/overview/",
+        "quote": "Clients may only subscribe to topics using QoS 0 . Clients may publish messages to the broker using QoS 0 or QoS 1 . Retained messages are not supported."
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.losant.com/mqtt/overview/",
+        "quote": "In order to support the existing MQTT implementations, Losant provides an MQTT message broker that can be used for any arbitrary topics and payloads."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://docs.losant.com/mqtt/overview/",
+        "quote": "All clients open a connection to the message broker and the broker is responsible for properly routing messages to subscribers."
+       },
+       {
+        "url": "https://docs.losant.com/mqtt/overview/",
+        "quote": "Clients may only subscribe to topics using QoS 0 . Clients may publish messages to the broker using QoS 0 or QoS 1 . Retained messages are not supported."
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://docs.losant.com/mqtt/overview/",
+       "read": "The page states that clients may only subscribe with QoS 0, so there are no acknowledgments and no window, and the broker routes each message to subscribers as it arrives.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQTT publish at QoS 0",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://docs.losant.com/mqtt/overview/",
+        "quote": "Clients may only subscribe to topics using QoS 0 . Clients may publish messages to the broker using QoS 0 or QoS 1 . Retained messages are not supported."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "MQTT publish at QoS 1 (PUBACK)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet identifier"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.losant.com/mqtt/overview/",
+        "quote": "Clients may only subscribe to topics using QoS 0 . Clients may publish messages to the broker using QoS 0 or QoS 1 . Retained messages are not supported."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "This contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The PUBACK Packet has no payload."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "This contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The PUBACK Packet has no payload."
+       }
+      ],
+      "note": "The current time that Losant records for a state report with no time field (statetime) is not returned in the acknowledgment."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "This contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The PUBACK Packet has no payload."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "This contains the Packet Identifier from the PUBLISH Packet that is being acknowledged."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html",
+        "quote": "The PUBACK Packet has no payload."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Huawei Cloud IoTDA",
+   "group": "C",
+   "kind": "IoT hub",
+   "version": "documentation as read on 2026-10-29 (API pages updated 2026-09-30)",
+   "version_evidence": [
+    {
+     "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_7009.html",
+     "quote": "Updated on 2026-09-30 GMT+08:00"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list phodal/awesome-iot",
+     "query": "as logged in search_log.json"
+    },
+    {
+     "route": "route 1",
+     "source": "Huawei Cloud product catalog",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "AMQP server-side subscription (push to an AMQP client)",
+     "Q0": {
+      "fields": [
+       "resource",
+       "event",
+       "event_time",
+       "event_time_ms (optional)",
+       "request_id (optional; a message ID set by the device or generated by the platform)",
+       "notify_data.header: app_id, device_id, node_id, product_id, gateway_id, tags (all optional)",
+       "notify_data.body: for a device message the topic, content and properties; for device properties a list of services with service_id, properties and event_time"
+      ],
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_01205.html",
+        "quote": "\"resource\" : \"device.message\", \"event\" : \"report\", \"event_time\" : \"20151212T121212Z\", \"event_time_ms\" : \"2015-12-12T12:12:12.000Z\", \"request_id\" : \"3fe58d5e-8697-4849-a165-7db128f7e776\", \"notify_data\" : { \"header\" : { \"device_id\""
+       },
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_01205.html",
+        "quote": "header Yes NotifyDataHeader object Parameter description : message header. body Yes DeviceMessageReport object Parameter description : message body."
+       },
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_01205.html",
+        "quote": "topic Yes String Parameter description : MQTT topic used for device reporting. content Yes Object Parameter description : message content. properties No MqttPropertiesDTO object"
+       },
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_01205.html",
+        "quote": "message ID, which is specified by the device or generated by the platform, and is used to trace the service process."
+       },
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_01202.html",
+        "quote": "UTC time when the device reports data. The time format depends on the property format reported by the device."
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_01205.html",
+        "quote": "event_time Yes String Parameter description : UTC time when the resource event was generated. The value is in the format of yyyyMMdd'T'HHmmss'Z', for example, 20151212T121212Z ."
+       },
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_01205.html",
+        "quote": "event_time_ms No String Parameter description : UTC time when a resource event was generated. The value in the format of yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+       },
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_01202.html",
+        "quote": "UTC time when the device reports data. The time format depends on the property format reported by the device."
+       }
+      ],
+      "field": "event_time",
+      "resolution": "s",
+      "note": "Judgment call. The top-level event_time is documented as the 'UTC time when the resource event was generated', separate from the device's own report time (the service-level event_time, 'UTC time when the device reports data'). The page does not say received or arrived, so it is read as the platform's time for the event; event_time_ms (optional) gives milliseconds."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_01205.html",
+        "quote": "event_time Yes String Parameter description : UTC time when the resource event was generated. The value is in the format of yyyyMMdd'T'HHmmss'Z', for example, 20151212T121212Z ."
+       },
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_01205.html",
+        "quote": "\"resource\" : \"device.message\", \"event\" : \"report\", \"event_time\" : \"20151212T121212Z\", \"event_time_ms\" : \"2015-12-12T12:12:12.000Z\", \"request_id\" : \"3fe58d5e-8697-4849-a165-7db128f7e776\", \"notify_data\" : { \"header\" : { \"device_id\""
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_01205.html",
+        "quote": "\"resource\" : \"device.message\", \"event\" : \"report\", \"event_time\" : \"20151212T121212Z\", \"event_time_ms\" : \"2015-12-12T12:12:12.000Z\", \"request_id\" : \"3fe58d5e-8697-4849-a165-7db128f7e776\", \"notify_data\" : { \"header\" : { \"device_id\""
+       },
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_01205.html",
+        "quote": "header Yes NotifyDataHeader object Parameter description : message header. body Yes DeviceMessageReport object Parameter description : message body."
+       },
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_01205.html",
+        "quote": "topic Yes String Parameter description : MQTT topic used for device reporting. content Yes Object Parameter description : message content. properties No MqttPropertiesDTO object"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_01205.html",
+        "quote": "\"resource\" : \"device.message\", \"event\" : \"report\", \"event_time\" : \"20151212T121212Z\", \"event_time_ms\" : \"2015-12-12T12:12:12.000Z\", \"request_id\" : \"3fe58d5e-8697-4849-a165-7db128f7e776\", \"notify_data\" : { \"header\" : { \"device_id\""
+       },
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_01205.html",
+        "quote": "header Yes NotifyDataHeader object Parameter description : message header. body Yes DeviceMessageReport object Parameter description : message body."
+       },
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_01205.html",
+        "quote": "topic Yes String Parameter description : MQTT topic used for device reporting. content Yes Object Parameter description : message content. properties No MqttPropertiesDTO object"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/en-us/devg-iothub/iot_01_0003.html",
+        "quote": "After a subscription is created, the platform pushes the corresponding change to the specified AMQP message queue based on the type of data subscribed."
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/en-us/devg-iothub/iot_01_0003.html",
+        "quote": "If the application does not pull data after the connection is established, data will be stacked on the server."
+       },
+       {
+        "url": "https://support.huaweicloud.com/en-us/devg-iothub/iot_01_0003.html",
+        "quote": "After a subscription is created, the platform pushes the corresponding change to the specified AMQP message queue based on the type of data subscribed."
+       }
+      ],
+      "changed_on_read_back": {
+       "from": "standing",
+       "why": "The page says the platform pushes into an AMQP message queue and that data is stacked on the server when the application does not pull, so the application controls receipt through its own receiver; the cited text shows no push that ignores the consumer."
+      }
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://support.huaweicloud.com/en-us/devg-iothub/iot_01_0003.html",
+       "read": "The platform pushes each change to an AMQP message queue, and the page states that if the application does not pull data after connecting, data is stacked on the server (kept up to one day), so the application decides when it receives and can keep a request or credit open.",
+       "agrees": true
+      },
+      {
+       "question": "Q1",
+       "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_01205.html",
+       "read": "event_time is a required field of the push notification, described as the UTC time the resource event was generated and kept apart from the device's own time (the services-level event_time, the time the device reports data), so it is a platform time stamp set on every notification, although the page does not say that it is the time the message was received.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "device HTTPS API, POST /v5/devices/{device_id}/sys/messages/up",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "HTTP status code 200"
+      ],
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_7009.html",
+        "quote": "Used by a device to report custom data to the platform, which then forwards reported messages to an application or other services for storage and processing."
+       },
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_7009.html",
+        "quote": "Example Response Status Code: 200 ok"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_7009.html",
+        "quote": "Example Response Status Code: 200 ok"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_7009.html",
+        "quote": "Example Response Status Code: 200 ok"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://support.huaweicloud.com/intl/en-us/api-iothub/iot_06_v5_7009.html",
+        "quote": "Example Response Status Code: 200 ok"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "flespi",
+   "group": "C",
+   "kind": "IoT hub",
+   "version": "documentation as read on 2026-10-29 (flespi MQTT broker page)",
+   "version_evidence": [
+    {
+     "url": "https://flespi.com/mqtt-broker",
+     "quote": "Fast, secure, and free public MQTT broker with MQTT 5.0 support, private namespace, WSS, ACLs, and rich API."
+    }
+   ],
+   "found_by": [
+    {
+     "route": "route 1",
+     "source": "GitHub awesome list awesome-mqtt/awesome-mqtt",
+     "query": "as logged in search_log.json"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "MQTT 5.0 subscription",
+     "Q0": {
+      "fields": [
+       "topic",
+       "payload",
+       "QoS (0 or 1)",
+       "retain flag",
+       "duplicate flag and packet identifier (QoS 1)",
+       "message expiry interval",
+       "response topic",
+       "topic alias",
+       "subscription identifier"
+      ],
+      "evidence": [
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "MQTT version 3.1, 3.1.1, 5.0 QoS supported QoS 0, QoS 1"
+       },
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "Message expiry interval Limiting the messages TTL (for both queued and retained) Response topic Subscriber response to received topic (executing commands and getting response) Receive maximum"
+       },
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "Topic alias Replacing a topic name with the 2-byte index (to save traffic) Will delay interval Delaying the generation of a will message Subscription identifier"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "Message expiry interval Limiting the messages TTL (for both queued and retained) Response topic Subscriber response to received topic (executing commands and getting response) Receive maximum"
+       },
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "Topic alias Replacing a topic name with the 2-byte index (to save traffic) Will delay interval Delaying the generation of a will message Subscription identifier"
+       }
+      ]
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "Message expiry interval Limiting the messages TTL (for both queued and retained) Response topic Subscriber response to received topic (executing commands and getting response) Receive maximum"
+       },
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "Topic alias Replacing a topic name with the 2-byte index (to save traffic) Will delay interval Delaying the generation of a will message Subscription identifier"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "Message expiry interval Limiting the messages TTL (for both queued and retained) Response topic Subscriber response to received topic (executing commands and getting response) Receive maximum"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html",
+        "quote": "The PUBLISH packet sent to a Client by the Server MUST contain a Message Expiry Interval set to the received value minus the time that the Application Message has been waiting in the Server"
+       }
+      ],
+      "note": "The checklist lists the message expiry interval ('Limiting the messages TTL (for both queued and retained)') but its status cell is not in the page text. If it is in force, the delivered interval is the original less the stay at the broker (MQTT 5.0 MUST, MQTT-3.3.2-6) and the answer would be derivable stay, to the second."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "MQTT version 3.1, 3.1.1, 5.0 QoS supported QoS 0, QoS 1"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "credit or several",
+      "evidence": [
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "Fast, secure, and free public MQTT broker with MQTT 5.0 support, private namespace, WSS, ACLs, and rich API."
+       },
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "its in-flight window stays full and nothing drains"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html",
+        "quote": "The Server MUST NOT send more than Receive Maximum QoS 1 and QoS 2 PUBLISH packets for which it has not received PUBACK, PUBCOMP, or PUBREC with a Reason Code of 128 or greater from the Client"
+       }
+      ],
+      "changed_on_read_back": {
+       "from": "standing",
+       "why": "The broker offers MQTT 5.0 and has an in-flight window for QoS 1, and in MQTT 5.0 the server must not exceed the Receive Maximum the client sets, so a v5 consumer sets its window; the page cited for standing shows the window but not its size."
+      }
+     },
+     "not_determined": [
+      "Q5",
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://flespi.com/mqtt-broker",
+       "read": "The page says the broker supports MQTT 5.0 and keeps an in-flight window that fills when a client stops acknowledging QoS 1 messages, and the standard requires the server not to send more than the client's Receive Maximum unacknowledged QoS 1 and 2 publishes, so the consumer's acknowledgments act as credit; the page does not name the window size.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "MQTT 3.1 and 3.1.1 subscription",
+     "Q0": {
+      "fields": [
+       "topic",
+       "payload",
+       "QoS (0 or 1)",
+       "retain flag",
+       "duplicate flag and packet identifier (QoS 1)"
+      ],
+      "evidence": [
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "MQTT version 3.1, 3.1.1, 5.0 QoS supported QoS 0, QoS 1"
+       },
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "Message expiry interval Limiting the messages TTL (for both queued and retained) Response topic Subscriber response to received topic (executing commands and getting response) Receive maximum"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "MQTT version 3.1, 3.1.1, 5.0 QoS supported QoS 0, QoS 1"
+       }
+      ]
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "MQTT version 3.1, 3.1.1, 5.0 QoS supported QoS 0, QoS 1"
+       }
+      ]
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "MQTT version 3.1, 3.1.1, 5.0 QoS supported QoS 0, QoS 1"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "MQTT version 3.1, 3.1.1, 5.0 QoS supported QoS 0, QoS 1"
+       }
+      ],
+      "note": "not searched"
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "The broker treats a session as frozen when its outgoing queue is non-empty but the client stops acknowledging delivered QoS 1 messages (PUBACK)"
+       },
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "Shared subscriptions Yes, implemented according to MQTT 5.0 specification . Allows load-balancing published messages between multiple subscribers in the same shared group with sticky distribution scheme on top of this"
+       }
+      ]
+     },
+     "not_determined": [
+      "Q6"
+     ],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://flespi.com/mqtt-broker",
+       "read": "MQTT 3.1 and 3.1.1 have no Receive Maximum, so the in-flight window that the page says fills when a client stops acknowledging QoS 1 messages is the broker's own and the consumer cannot set it.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "MQTT publish at QoS 0",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "MQTT version 3.1, 3.1.1, 5.0 QoS supported QoS 0, QoS 1"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "MQTT publish at QoS 1 (PUBACK)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "packet identifier",
+       "reason code (MQTT 5.0 only)",
+       "properties (MQTT 5.0 only)"
+      ],
+      "evidence": [
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "MQTT version 3.1, 3.1.1, 5.0 QoS supported QoS 0, QoS 1"
+       },
+       {
+        "url": "https://flespi.com/mqtt-broker",
+        "quote": "The broker treats a session as frozen when its outgoing queue is non-empty but the client stops acknowledging delivered QoS 1 messages (PUBACK)"
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html",
+        "quote": "The PUBACK packet has no Payload."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html",
+        "quote": "The PUBACK packet has no Payload."
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html",
+        "quote": "The PUBACK packet has no Payload."
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html",
+        "quote": "The Variable Header of the PUBACK Packet contains the following fields in the order: Packet Identifier from the PUBLISH packet that is being acknowledged, PUBACK Reason Code, Property Length, and the Properties."
+       },
+       {
+        "url": "https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html",
+        "quote": "The PUBACK packet has no Payload."
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  }
+ ]
+}

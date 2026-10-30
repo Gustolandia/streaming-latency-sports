@@ -1,0 +1,2768 @@
+{
+ "audited_utc": "2026-10-27",
+ "brokers": [
+  {
+   "broker": "Apache Iggy",
+   "group": "C",
+   "kind": "streaming platform",
+   "version": "server-0.9.0",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/server/Cargo.toml",
+     "quote": "name = \"server\" version = \"0.9.0\""
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "PollMessages (binary protocol over TCP, QUIC and WebSocket; the HTTP API's GET .../messages returns the same fields as JSON)",
+     "Q0": {
+      "fields": [
+       "batch header (one per stored batch, served as stored): partition_id, base_offset, base_timestamp, origin_timestamp, batch_length, batch_checksum, message_count, reserved",
+       "message frame: checksum, id, offset_delta, timestamp_delta, user_headers_length, payload_length, reserved, then payload and user_headers",
+       "each message as the SDK and the HTTP API's JSON give it: header {checksum, id, offset (base_offset + offset_delta), timestamp (the batch's base_timestamp), origin_timestamp (the batch's origin_timestamp + timestamp_delta), user_headers_length, payload_length, reserved}, payload, user_headers"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/binary_protocol/src/batch.rs",
+        "quote": "pub struct BatchHeader { pub partition_id: u64, pub base_offset: u64, pub base_timestamp: u64, pub origin_timestamp: u64,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/binary_protocol/src/batch.rs",
+        "quote": "pub batch_length: u64, pub batch_checksum: u64, pub message_count: u32,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy-website/7fcf320b4807cff977bc2b334bbb141bccec59b1/content/docs/binary-protocol/messages.mdx",
+        "quote": "| 52 | 204 | reserved | bytes | Must be zero; the server rejects a batch with nonzero reserved bytes. |"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/binary_protocol/src/batch.rs",
+        "quote": "pub struct BatchMessageHeader { /// `XxHash3_64` over `frame[8..48] || payload || user_headers`. pub checksum: u64, pub id: u128, pub offset_delta: u32,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/binary_protocol/src/batch.rs",
+        "quote": "pub timestamp_delta: u32, pub user_headers_length: u32, pub payload_length: u32,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy-website/7fcf320b4807cff977bc2b334bbb141bccec59b1/content/docs/binary-protocol/messages.mdx",
+        "quote": "| 40 | 8 | reserved | u64 | Must be zero. |"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy-website/7fcf320b4807cff977bc2b334bbb141bccec59b1/content/docs/binary-protocol/messages.mdx",
+        "quote": "After the 48 header bytes: `payload` (`payload_length` bytes), then `user_headers` (`user_headers_length` bytes). The payload comes **first**."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/server/src/responses.rs",
+        "quote": "/// Body layout: `[partition_id:4][current_offset:8][count:4][batch records...]`."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/server/src/responses.rs",
+        "quote": "/// Fragments carry the stored batch records (a 256-byte batch header plus /// `[48B header][payload][user_headers]` frames, deltas resolved against the /// stamped bases) and are served to the client as they are - the reply's"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/common/src/types/message/polled_messages.rs",
+        "quote": "timestamp: batch.base_timestamp, origin_timestamp: batch.origin_timestamp + u64::from(frame.timestamp_delta),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/server/src/http/handlers.rs",
+        "quote": "/// the SDK's own [`PolledMessages::from_bytes`] so the JSON is field-identical /// to a TCP poll."
+       }
+      ],
+      "note": "Per response, not per message: the 256-byte reply header (checksum, checksum_body, cluster, size, view, release, command, replica, request_checksum, context, client, op, commit, timestamp, request, operation, status), whose timestamp on a poll reply echoes the request's own timestamp, and the body head partition_id, current_offset and count. The HTTP API's JSON (PolledMessages) holds partition_id, current_offset, count and the messages."
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "batch base_timestamp (each polled message's timestamp)",
+      "resolution": "us",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy-website/7fcf320b4807cff977bc2b334bbb141bccec59b1/content/docs/binary-protocol/messages.mdx",
+        "quote": "| 16 | 8 | `base_timestamp` | u64 | Server-stamped at journal append (microseconds). Producers send zero. |"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/consensus/src/impls.rs",
+        "quote": "// Primary stamps the injected clock once at prepare-build (wall time // in production, virtual under the simulator); the value is // replicated to every backup so apply() reads the same timestamp"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/consensus/src/impls.rs",
+        "quote": "let timestamp = consensus.next_monotonic_timestamp();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/consensus/src/impls.rs",
+        "quote": "let now = self.clock.realtime().as_micros();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/partitions/src/iggy_partition.rs",
+        "quote": "let batch_timestamp = header.timestamp;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/partitions/src/iggy_partition.rs",
+        "quote": "stamp_prepare_for_persistence(message, dirty_offset, batch_timestamp)"
+       }
+      ],
+      "note": "One value per batch (one SendMessages request). The partition's primary takes it from its wall clock, in microseconds since the epoch, made strictly increasing, when it turns the producer's request into a replicated prepare, and writes it into the batch header as base_timestamp at the journal append; every replica keeps the same value. The producer's own time is the batch's origin_timestamp plus each frame's timestamp_delta."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/binary_protocol/src/responses/messages/poll_messages.rs",
+        "quote": "/// Broker append time: the flat batch `base_timestamp` (the per-message /// delta applies to `origin_timestamp` only)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/common/src/types/message/polled_messages.rs",
+        "quote": "timestamp: batch.base_timestamp, origin_timestamp: batch.origin_timestamp + u64::from(frame.timestamp_delta),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy-website/7fcf320b4807cff977bc2b334bbb141bccec59b1/content/docs/binary-protocol/messages.mdx",
+        "quote": "The server-stamped time is the flat batch `base_timestamp` (the delta does not apply to it); producer time resolves as `origin_timestamp + timestamp_delta`."
+       }
+      ],
+      "note": "Every message of a batch carries the batch's one stamp."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/binary_protocol/src/batch.rs",
+        "quote": "pub struct BatchHeader { pub partition_id: u64, pub base_offset: u64, pub base_timestamp: u64, pub origin_timestamp: u64,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/binary_protocol/src/batch.rs",
+        "quote": "pub timestamp_delta: u32, pub user_headers_length: u32, pub payload_length: u32,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/server/src/responses.rs",
+        "quote": "pub fn build_polled_messages_reply("
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/server/src/responses.rs",
+        "quote": "let header = reply_header(request_header, client_id, session, commit, size);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/server/src/responses.rs",
+        "quote": "op: session, commit, timestamp: request_header.timestamp,"
+       }
+      ],
+      "note": "No batch or frame field is a request-arrival or send time, and a poll reply's header timestamp is the request's own, echoed. A poll is answered at once (Q7), so there is no held request whose arrival the server keeps. The poll-diagnostics build feature (Q6) takes an Instant when a disk read's completion is queued, which is neither the request's arrival nor the send, and is not sent."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/binary_protocol/src/batch.rs",
+        "quote": "pub struct BatchHeader { pub partition_id: u64, pub base_offset: u64, pub base_timestamp: u64, pub origin_timestamp: u64,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/binary_protocol/src/batch.rs",
+        "quote": "pub batch_length: u64, pub batch_checksum: u64, pub message_count: u32,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/binary_protocol/src/batch.rs",
+        "quote": "pub timestamp_delta: u32, pub user_headers_length: u32, pub payload_length: u32,"
+       }
+      ],
+      "note": "timestamp_delta is the producer's own clock offset within the batch, not a time at the server; no delivered field is a duration the server measured."
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "Only in a server built with the Cargo feature poll-diagnostics, which is not among the default features: a DEBUG line (target iggy.shard.poll_diagnostics) as each poll is dispatched on the partition owner, timed by the log line, and, for a poll served from disk, a DEBUG line at its completion with queue_wait_us, the time the completion waited in the owner's inbox. The default build writes no per-request timing on the poll path.",
+      "resolution": "us (queue_wait_us); the log line's own time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/server/Cargo.toml",
+        "quote": "poll-diagnostics = [\"shard/poll-diagnostics\"] default = [\"mimalloc\", \"iggy-web\"]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/shard/src/poll.rs",
+        "quote": "target: \"iggy.shard.poll_diagnostics\", namespace_raw = namespace.inner(), phase = \"dispatch\", tier = \"resident\", \"partition poll dispatch\""
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/shard/src/poll.rs",
+        "quote": "queue_wait_us = u64::try_from(queued_at.elapsed().as_micros()).unwrap_or(u64::MAX),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/partitions/Cargo.toml",
+        "quote": "# API against the encoded bytes served, and the chunk reads it took. Off by # default, and the server forwards `shard/poll-diagnostics` to it, so the"
+       }
+      ],
+      "note": "Judgment: a build feature that is off by default is counted, because the lines are DEBUG lines written per request by the server's own released code."
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/binary_protocol/src/requests/messages/poll_messages.rs",
+        "quote": "/// [consumer][stream_id][topic_id][partition_flag:1][partition_id:4 LE] /// [strategy:9][count:4 LE][auto_commit:1]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/sdk/src/clients/consumer.rs",
+        "quote": "/// [`poll_interval()`] sets the smallest gap between two requests, measured from one send to the /// next. Without it the next request goes out as soon as the previous one is answered, which is /// the fastest option but keeps a busy loop running against an idle topic."
+       }
+      ],
+      "note": "A poll request carries no wait or timeout, and the server answers at once, with an empty batch list when nothing is there; the SDK's consumer polls again, at most once per poll_interval."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q6",
+       "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/shard/src/poll.rs",
+       "read": "The DEBUG lines with target iggy.shard.poll_diagnostics, one as each poll is dispatched and one with queue_wait_us when a disk read completes, are compiled only under the poll-diagnostics feature, which core/server/Cargo.toml leaves out of the default features; the shard router writes no per-poll line in the default build. The answer counts a non-default build, as its note says.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "SendMessages (binary protocol over TCP, QUIC and WebSocket)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "reply header (256 bytes): checksum, checksum_body, cluster, size, view, release, command, replica, reserved_frame, request_checksum, context, client, op, commit, timestamp, request, operation, operation_padding, status, reserved",
+       "body: confirmations_count, then for each partition stream_id, topic_id, partition_id, base_offset (empty for a request recognized as a duplicate)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/binary_protocol/src/consensus/header.rs",
+        "quote": "pub struct ReplyHeader { pub checksum: u128, pub checksum_body: u128, pub cluster: u128, pub size: u32, pub view: u32, pub release: u32, pub command: Command, pub replica: u8, pub reserved_frame: [u8; 66],"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/binary_protocol/src/consensus/header.rs",
+        "quote": "pub request_checksum: u128, pub context: u128, pub client: u128, pub op: u64, pub commit: u64, pub timestamp: u64, pub request: u64, pub operation: Operation, pub operation_padding: [u8; 7],"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy-website/7fcf320b4807cff977bc2b334bbb141bccec59b1/content/docs/binary-protocol/framing.mdx",
+        "quote": "| 216 | 4 | `status` | u32 | `0` = no header-level failure."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/binary_protocol/src/responses/messages/send_messages.rs",
+        "quote": "/// [confirmations_count:4][SendMessagesConfirmationResponse]*"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/binary_protocol/src/responses/messages/send_messages.rs",
+        "quote": "/// [stream_id:4][topic_id:4][partition_id:4][base_offset:8]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/partitions/src/iggy_partition.rs",
+        "quote": "send_messages_reply_body(prepare_header.group, batch_stats)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/partitions/src/iggy_partition.rs",
+        "quote": "let reply = build_reply_message(&prepare_header, &body);"
+       }
+      ],
+      "note": "The reply is sent after the batch is committed through the partition's consensus group."
+     },
+     "P1": {
+      "answer": "always",
+      "field": "reply header timestamp (the prepare timestamp, the same value as the batch's base_timestamp)",
+      "resolution": "us",
+      "which": "receive time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy-website/7fcf320b4807cff977bc2b334bbb141bccec59b1/content/docs/binary-protocol/framing.mdx",
+        "quote": "| 192 | 8 | `timestamp` | u64 | Server-assigned prepare timestamp on committed replies, or the request timestamp on direct replies. |"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/consensus/src/plane_helpers.rs",
+        "quote": "op: prepare_header.op, // Prepare's op (not commit_max): drives ClientTable eviction order; // must be deterministic across replicas. commit: prepare_header.op, timestamp: prepare_header.timestamp,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/consensus/src/impls.rs",
+        "quote": "let timestamp = consensus.next_monotonic_timestamp();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/consensus/src/impls.rs",
+        "quote": "let now = self.clock.realtime().as_micros();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/partitions/src/iggy_partition.rs",
+        "quote": "let batch_timestamp = header.timestamp;"
+       }
+      ],
+      "note": "A committed SendMessages reply is built from the prepare's header, so its timestamp is the time the partition's primary took from its wall clock (microseconds since the epoch, made strictly increasing) when it turned the request into a prepare, before the journal append and replication. Coded receive time for that reason; the documentation calls the same value, in the batch header, the journal-append stamp. A request the server recognizes as a duplicate is answered with an empty success built from the request, whose timestamp echoes the request's own."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/binary_protocol/src/consensus/header.rs",
+        "quote": "pub request_checksum: u128, pub context: u128, pub client: u128, pub op: u64, pub commit: u64, pub timestamp: u64, pub request: u64, pub operation: Operation, pub operation_padding: [u8; 7],"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/binary_protocol/src/responses/messages/send_messages.rs",
+        "quote": "/// [stream_id:4][topic_id:4][partition_id:4][base_offset:8]"
+       }
+      ],
+      "note": "No field is the time the reply was sent; the header's one time is the prepare's (P1)."
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/binary_protocol/src/consensus/header.rs",
+        "quote": "pub request_checksum: u128, pub context: u128, pub client: u128, pub op: u64, pub commit: u64, pub timestamp: u64, pub request: u64, pub operation: Operation, pub operation_padding: [u8; 7],"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/binary_protocol/src/responses/messages/send_messages.rs",
+        "quote": "/// [confirmations_count:4][SendMessagesConfirmationResponse]*"
+       }
+      ],
+      "note": "op and commit are log positions, not times; no duration is sent."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/consensus/src/plane_helpers.rs",
+       "read": "build_reply_message_with takes every header field of a committed reply from the prepare's header, the timestamp included. The primary stamps that timestamp once in project() with next_monotonic_timestamp(), its wall clock in microseconds kept strictly increasing, before the journal append, and the partition reuses it as the batch's base_timestamp.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "interface": "HTTP POST /streams/{stream_id}/topics/{topic_id}/messages",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "201 Created after the quorum commit, with a JSON body confirmations[]: stream_id, topic_id, partition_id, base_offset",
+       "with ?ack=none: 202 Accepted and the header Iggy-Durability: none, sent after dispatch, with no confirmation"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/server/src/http/handlers.rs",
+        "quote": "/// The default answers 201 with the completed message durability only /// after the quorum commit, with the commit's per-partition confirmations as /// the body; `?ack=none` answers 202 + `Iggy-Durability: none` immediately /// after dispatch and can carry no confirmation, having awaited none."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/common/src/http/messages/send_messages.rs",
+        "quote": "pub struct SendMessagesConfirmations { pub confirmations: Vec<SendMessagesConfirmation>, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/common/src/http/messages/send_messages.rs",
+        "quote": "pub struct SendMessagesConfirmation { pub stream_id: u32, pub topic_id: u32, pub partition_id: u32, pub base_offset: u64, }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/common/src/http/messages/send_messages.rs",
+        "quote": "pub struct SendMessagesConfirmation { pub stream_id: u32, pub topic_id: u32, pub partition_id: u32, pub base_offset: u64, }"
+       }
+      ],
+      "note": "The HTTP answer carries no reply header, so the prepare timestamp the binary reply holds (the other producer) does not reach an HTTP producer."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/common/src/http/messages/send_messages.rs",
+        "quote": "pub struct SendMessagesConfirmation { pub stream_id: u32, pub topic_id: u32, pub partition_id: u32, pub base_offset: u64, }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/iggy/server-0.9.0/core/common/src/http/messages/send_messages.rs",
+        "quote": "pub struct SendMessagesConfirmation { pub stream_id: u32, pub topic_id: u32, pub partition_id: u32, pub base_offset: u64, }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Fluvio",
+   "group": "C",
+   "kind": "streaming platform",
+   "version": "0.18.1",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/VERSION",
+     "quote": "0.18.1"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "StreamFetch (consumer stream; what the client library's consumers use)",
+     "Q0": {
+      "fields": [
+       "stream response: topic, stream_id, and one partition: partition_index, error_code, high_watermark, next_filter_offset, log_start_offset, aborted, records",
+       "batch: base_offset, batch_len, partition_leader_epoch, magic, crc, attributes, last_offset_delta, first_timestamp, max_time_stamp, producer_id, producer_epoch, first_sequence, schema_id (only when the attributes say one is present)",
+       "record: attributes, timestamp_delta, offset_delta, key, value, headers (an integer)",
+       "ConsumerRecord in the client: offset, partition, record, timestamp_base (the record's timestamp() is timestamp_base + timestamp_delta)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu-schema/src/server/stream_fetch.rs",
+        "quote": "pub struct StreamFetchResponse<R> { pub topic: String, pub stream_id: u32, pub partition: FetchablePartitionResponse<R>, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu-schema/src/fetch/response.rs",
+        "quote": "pub struct FetchablePartitionResponse<R> { /// The partition index. pub partition_index: PartitionId, /// The error code, or 0 if there was no fetch error pub error_code: ErrorCode, /// The current high water mark. pub high_watermark: i64,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu-schema/src/fetch/response.rs",
+        "quote": "pub next_filter_offset: i64, /// The current log start offset. pub log_start_offset: i64, /// The aborted transactions. pub aborted: Option<Vec<AbortedTransaction>>, /// The record data. pub records: R,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-protocol/src/record/batch.rs",
+        "quote": "self.base_offset.encode(dest, version)?; let batch_len: i32 = self.calc_batch_len(); batch_len.encode(dest, version)?;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-protocol/src/record/batch.rs",
+        "quote": "self.header.partition_leader_epoch.encode(dest, version)?; self.header.magic.encode(dest, version)?;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-protocol/src/record/batch.rs",
+        "quote": "self.header.attributes.encode(buf, version)?; self.header.last_offset_delta.encode(buf, version)?; self.header.first_timestamp.encode(buf, version)?; self.header.max_time_stamp.encode(buf, version)?;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-protocol/src/record/batch.rs",
+        "quote": "self.header.producer_id.encode(buf, version)?; self.header.producer_epoch.encode(buf, version)?; self.header.first_sequence.encode(buf, version)?; if self.header.has_schema() { self.schema_id.encode(buf, version)?; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-protocol/src/record/data.rs",
+        "quote": "pub struct RecordHeader { attributes: i8, #[varint] timestamp_delta: Timestamp, #[varint] offset_delta: Offset, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-protocol/src/record/data.rs",
+        "quote": "pub struct Record<B = RecordData> { pub preamble: RecordHeader, pub key: Option<B>, pub value: B, pub headers: i64, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-protocol/src/record/data.rs",
+        "quote": "pub offset: i64, /// The partition where this Record is stored pub partition: PartitionId, /// The Record contents pub record: Record<RecordData>, /// Timestamp base of batch in which the records is present pub(crate) timestamp_base: Timestamp,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/stream_fetch.rs",
+        "quote": "file_partition_response.records = file_slice.into();"
+       }
+      ],
+      "note": "The SPU reads the batches from its log and sends them as stored (without a SmartModule, the raw file slice). A SmartModule on the stream can rewrite the records; it runs in the SPU on the stored batches."
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio/src/producer/memory_batch.rs",
+        "quote": "let now = Utc::now().timestamp_millis();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio/src/producer/memory_batch.rs",
+        "quote": "let first_timestamp = p_batch.create_time;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio/src/producer/memory_batch.rs",
+        "quote": "header.set_first_timestamp(first_timestamp); header.set_max_time_stamp(max_time_stamp);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-protocol/src/record/batch.rs",
+        "quote": "/// used for modifying timestamp as producer"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/storage/mod.rs",
+        "quote": "let bytes_written = writer.write_recordset(records, hw_update).await?;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/stream_fetch.rs",
+        "quote": "file_partition_response.records = file_slice.into();"
+       }
+      ],
+      "note": "The batch's first_timestamp and max_time_stamp, and each record's timestamp_delta, are the producer client's own clock (ms). The SPU writes the producer's batch to its log and serves it as stored; no SPU or topic setting stamps a time of the SPU's own (the topic spec has no timestamp type, and the produce and storage write paths set none)."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu-schema/src/server/stream_fetch.rs",
+        "quote": "pub struct StreamFetchResponse<R> { pub topic: String, pub stream_id: u32, pub partition: FetchablePartitionResponse<R>, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu-schema/src/fetch/response.rs",
+        "quote": "pub next_filter_offset: i64, /// The current log start offset. pub log_start_offset: i64, /// The aborted transactions. pub aborted: Option<Vec<AbortedTransaction>>, /// The record data. pub records: R,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/stream_fetch.rs",
+        "quote": "let response = StreamFetchResponse { topic: self.replica.topic.clone(), stream_id: self.stream_id, partition: file_partition_response, };"
+       }
+      ],
+      "note": "No delivered field is a request-arrival or send time. The SPU takes a monotonic Instant at the start of each send step only to log the step's duration at DEBUG (Q6); it is not kept with the records or the stream."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu-schema/src/server/stream_fetch.rs",
+        "quote": "pub struct StreamFetchResponse<R> { pub topic: String, pub stream_id: u32, pub partition: FetchablePartitionResponse<R>, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-protocol/src/record/data.rs",
+        "quote": "pub struct RecordHeader { attributes: i8, #[varint] timestamp_delta: Timestamp, #[varint] offset_delta: Offset, }"
+       }
+      ],
+      "note": "timestamp_delta is the producer's offset from its own batch time, not a duration at the SPU."
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "DEBUG lines written for each response the stream sends: 'Starting send_back_records' with read_records_ms and 'finish sending back records' with read_time_ms, the time from the start of the read to the end of the send, each timed by the log line; the handlers are also instrumented as tracing spans.",
+      "resolution": "ms (the durations); the log line's own time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/stream_fetch.rs",
+        "quote": "read_records_ms = %now.elapsed().as_millis(), \"Starting send_back_records\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/stream_fetch.rs",
+        "quote": "debug!(read_time_ms = %now.elapsed().as_millis(),\"finish sending back records\");"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "one at a time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/stream_fetch.rs",
+        "quote": "// Received offset update from consumer, i.e. consumer acknowledged to this offset"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/stream_fetch.rs",
+        "quote": "if wait { last_known_consumer_offset = None;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/stream_fetch.rs",
+        "quote": "\"Finished handling partition_offset_update, waiting for consumer\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/stream_fetch.rs",
+        "quote": "// If we do not know the last offset the consumer has read to, // we don't know what to send them. In that case, just save // this new leader offset to our local variable."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/stream_fetch.rs",
+        "quote": "debug!(partition_offset_update, \"Leader offset update, but the consumer is already ahead\");"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio/src/consumer/mod.rs",
+        "quote": "debug!(last_offset, stream_id, \"received last offset from spu\");"
+       }
+      ],
+      "note": "Judgment on read-back: after each response that carries records, the SPU clears the consumer's known offset and only notes later leader offsets until the client's next offset update, which the client sends as it takes each response off the stream; an update past the records received makes the SPU skip records up to it, so it cannot be sent ahead. The consumer therefore holds one grant per stream, renewed only after each response, which is how a Kafka fetch waits: one at a time. Between a response and the next offset update, new records wait at the SPU.",
+      "changed_on_read_back": {
+       "from": "credit or several",
+       "why": "The SPU sends nothing after a response until the consumer's next offset update, and an update cannot run ahead of the records received, so the consumer has one grant per stream at a time, not credit or several requests."
+      }
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/stream_fetch.rs",
+       "read": "After each response that carries records, send_back_records returns wait = true and the loop clears last_known_consumer_offset; a leader offset update that comes while no consumer offset is known is only noted, so nothing more is sent until the client's next offset update, which it sends as it takes each response off the stream. Changed from credit or several to one at a time: one grant per stream, renewed only after each response, as a Kafka fetch is.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "Fetch (FileFetchRequest, one request, one response)",
+     "Q0": {
+      "fields": [
+       "fetch response: throttle_time_ms, error_code, session_id, topics: name, partitions: partition_index, error_code, high_watermark, next_filter_offset, log_start_offset, aborted, records",
+       "batch and record fields as in StreamFetch: base_offset, batch_len, partition_leader_epoch, magic, crc, attributes, last_offset_delta, first_timestamp, max_time_stamp, producer_id, producer_epoch, first_sequence, schema_id; record attributes, timestamp_delta, offset_delta, key, value, headers"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu-schema/src/fetch/response.rs",
+        "quote": "pub struct FetchResponse<R> { /// The duration in milliseconds for which the request was throttled due to a quota violation, /// or zero if the request did not violate any quota. pub throttle_time_ms: i32, pub error_code: ErrorCode, pub session_id: i32,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu-schema/src/fetch/response.rs",
+        "quote": "pub struct FetchablePartitionResponse<R> { /// The partition index. pub partition_index: PartitionId, /// The error code, or 0 if there was no fetch error pub error_code: ErrorCode, /// The current high water mark. pub high_watermark: i64,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu-schema/src/fetch/response.rs",
+        "quote": "pub next_filter_offset: i64, /// The current log start offset. pub log_start_offset: i64, /// The aborted transactions. pub aborted: Option<Vec<AbortedTransaction>>, /// The record data. pub records: R,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-protocol/src/record/data.rs",
+        "quote": "pub struct RecordHeader { attributes: i8, #[varint] timestamp_delta: Timestamp, #[varint] offset_delta: Offset, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/fetch_handler.rs",
+        "quote": "partition_response.records = file_slice.into();"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio/src/producer/memory_batch.rs",
+        "quote": "header.set_first_timestamp(first_timestamp); header.set_max_time_stamp(max_time_stamp);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/fetch_handler.rs",
+        "quote": "partition_response.records = file_slice.into();"
+       }
+      ],
+      "note": "As in StreamFetch: the batch times are the producer's."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu-schema/src/fetch/response.rs",
+        "quote": "pub struct FetchResponse<R> { /// The duration in milliseconds for which the request was throttled due to a quota violation, /// or zero if the request did not violate any quota. pub throttle_time_ms: i32, pub error_code: ErrorCode, pub session_id: i32,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/fetch_handler.rs",
+        "quote": "let response = RequestMessage::<FileFetchRequest>::response_with_header(&header, fetch_response);"
+       }
+      ],
+      "note": "The handler reads the records and answers; it takes no time stamp."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu-schema/src/fetch/response.rs",
+        "quote": "pub struct FetchResponse<R> { /// The duration in milliseconds for which the request was throttled due to a quota violation, /// or zero if the request did not violate any quota. pub throttle_time_ms: i32, pub error_code: ErrorCode, pub session_id: i32,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/fetch_handler.rs",
+        "quote": "let mut fetch_response = FileFetchResponse::default();"
+       }
+      ],
+      "note": "throttle_time_ms is a quota delay, left at its default by the handler; it is not the wait for a request."
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "TRACE lines written for each fetch: 'Handling FileFetchRequest', 'Sending FileFetchResponse' and 'Finished sending FileFetchResponse', each timed by the log line; the handler is instrumented as a tracing span.",
+      "resolution": "the log line's own time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/fetch_handler.rs",
+        "quote": "trace!(\"Handling FileFetchRequest: {:#?}\", fetch_request);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/fetch_handler.rs",
+        "quote": "trace!(\"Finished sending FileFetchResponse\");"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "none",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu-schema/src/fetch/request.rs",
+        "quote": "/// The maximum time in milliseconds to wait for the response. pub max_wait: i32,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/fetch_handler.rs",
+        "quote": "match leader_state .read_records( fetch_offset, fetch_request.max_bytes as u32, fetch_request.isolation_level, ) .await"
+       }
+      ],
+      "note": "The request has a max_wait field, but the handler never reads it: it reads what the log holds and answers at once."
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ],
+   "producers": [
+    {
+     "interface": "ProduceRequest",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "responses: for each topic, name and partitions: partition_index, error_code, base_offset, log_append_time_ms (version 2 and later), log_start_offset (version 5 and later)",
+       "throttle_time_ms (version 1 and later)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu-schema/src/produce/response.rs",
+        "quote": "pub struct ProduceResponse { /// Each produce response pub responses: Vec<TopicProduceResponse>,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu-schema/src/produce/response.rs",
+        "quote": "#[fluvio(min_version = 1, ignorable)] pub throttle_time_ms: i32,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu-schema/src/produce/response.rs",
+        "quote": "pub struct PartitionProduceResponse { /// The partition index. pub partition_index: PartitionId, /// The error code, or 0 if there was no error. pub error_code: ErrorCode, /// The base offset. pub base_offset: i64,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu-schema/src/produce/response.rs",
+        "quote": "#[fluvio(min_version = 2, ignorable)] pub log_append_time_ms: i64, /// The log start offset. #[fluvio(min_version = 5, ignorable)] pub log_start_offset: i64,"
+       }
+      ],
+      "note": "With isolation ReadCommitted the SPU answers once the high watermark covers the batch, or with RequestTimedOut after the request's timeout; with ReadUncommitted it answers after the leader's write."
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/produce_handler.rs",
+        "quote": "partition_index: write_result.replica_id.partition, error_code: write_result.error_code, base_offset: write_result.base_offset, ..Default::default()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/produce_handler.rs",
+        "quote": "ProduceResponse { responses, ..Default::default() }"
+       }
+      ],
+      "note": "The response keeps Kafka's log_append_time_ms field, but the SPU never fills it: each partition's answer sets only partition_index, error_code and base_offset, and the rest stay at their defaults."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/produce_handler.rs",
+        "quote": "partition_index: write_result.replica_id.partition, error_code: write_result.error_code, base_offset: write_result.base_offset, ..Default::default()"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu/src/services/public/produce_handler.rs",
+        "quote": "ProduceResponse { responses, ..Default::default() }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/infinyon/fluvio/v0.18.1/crates/fluvio-spu-schema/src/produce/response.rs",
+        "quote": "#[fluvio(min_version = 1, ignorable)] pub throttle_time_ms: i32,"
+       }
+      ],
+      "note": "throttle_time_ms is a quota delay and is left at its default."
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Liftbridge",
+   "group": "C",
+   "kind": "streaming platform",
+   "version": "v26.01.1 (API liftbridge-api v2.0.0)",
+   "version_evidence": [
+    {
+     "url": "https://github.com/liftbridge-io/liftbridge/releases/tag/v26.01.1",
+     "quote": "Liftbridge v26.01.1 Breaking Changes"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/go.mod",
+     "quote": "github.com/liftbridge-io/liftbridge-api/v2 v2.0.0"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "Subscribe (gRPC server stream)",
+     "Q0": {
+      "fields": [
+       "Message: offset, key, value, timestamp, stream, partition, subject, replySubject, headers, ackInbox, correlationId, ackPolicy",
+       "a subscription fills stream, partition, offset, key, value, timestamp, headers, subject and replySubject; the first Message sent is empty and signals that the subscription was created"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge-api/v2.0.0/api.proto",
+        "quote": "int64 offset = 1 [jstype=JS_STRING]; // Monotonic message offset in the stream bytes key = 2; // Message key bytes value = 3; // Message payload int64 timestamp = 4 [jstype=JS_STRING]; // When the message was received by the broker"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge-api/v2.0.0/api.proto",
+        "quote": "string stream = 5; // Stream name message was received on int32 partition = 6; // Stream partition message was assigned to string subject = 7; // NATS subject message was received on string replySubject = 8; // NATS reply subject"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge-api/v2.0.0/api.proto",
+        "quote": "map<string, bytes> headers = 9; // Message headers string ackInbox = 10; // NATS subject to publish acks to string correlationId = 11; // User-supplied value to correlate acks to publishes AckPolicy ackPolicy = 12; // Controls the behavior of acks"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/partition.go",
+        "quote": "msg = &client.Message{ Stream: p.Stream, Partition: p.Id, Offset: offset, Key: m.Key(), Value: msgValue, Timestamp: timestamp, Headers: headers, Subject: string(headers[\"subject\"]), ReplySubject: string(headers[\"reply\"]), }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/api.go",
+        "quote": "if err := out.Send(&client.Message{}); err != nil {"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "always",
+      "field": "Message.timestamp",
+      "resolution": "ns",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/partition.go",
+        "quote": "var timestamp = func() int64 { return time.Now().UnixNano() }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/partition.go",
+        "quote": "// natsToProtoMessage converts the given NATS message to a commit log Message."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/partition.go",
+        "quote": "Timestamp: timestamp(),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge-api/v2.0.0/api.proto",
+        "quote": "int64 timestamp = 4 [jstype=JS_STRING]; // When the message was received by the broker"
+       }
+      ],
+      "note": "The partition leader stamps each message from its wall clock, in Unix nanoseconds, as it takes the message from NATS and before it writes it to its log; the stamp is stored with the message and replicated."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/partition.go",
+        "quote": "m, offset, timestamp, _, err := reader.ReadMessage(ctx, headersBuf)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/partition.go",
+        "quote": "msg = &client.Message{ Stream: p.Stream, Partition: p.Id, Offset: offset, Key: m.Key(), Value: msgValue, Timestamp: timestamp, Headers: headers, Subject: string(headers[\"subject\"]), ReplySubject: string(headers[\"reply\"]), }"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/partition.go",
+        "quote": "msg = &client.Message{ Stream: p.Stream, Partition: p.Id, Offset: offset, Key: m.Key(), Value: msgValue, Timestamp: timestamp, Headers: headers, Subject: string(headers[\"subject\"]), ReplySubject: string(headers[\"reply\"]), }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/api.go",
+        "quote": "case m := <-msgC: if err := out.Send(m); err != nil { return err }"
+       }
+      ],
+      "note": "The subscription loop reads a message, builds it and sends it; it takes no time of its own, and the Subscribe request's arrival is kept only as a DEBUG log line (Q6)."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge-api/v2.0.0/api.proto",
+        "quote": "int64 offset = 1 [jstype=JS_STRING]; // Monotonic message offset in the stream bytes key = 2; // Message key bytes value = 3; // Message payload int64 timestamp = 4 [jstype=JS_STRING]; // When the message was received by the broker"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/partition.go",
+        "quote": "msg = &client.Message{ Stream: p.Stream, Partition: p.Id, Offset: offset, Key: m.Key(), Value: msgValue, Timestamp: timestamp, Headers: headers, Subject: string(headers[\"subject\"]), ReplySubject: string(headers[\"reply\"]), }"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "DEBUG lines for each Subscribe request ('api: Subscribe [...]') and each Publish request ('api: Publish [...]'), timed by the log line, which the server's logger formats to the second. Nothing is logged per message on the delivery path.",
+      "resolution": "s (log line time format)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/api.go",
+        "quote": "a.logger.Debugf(\"api: Subscribe \"+"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/api.go",
+        "quote": "a.logger.Debugf(\"api: Publish [stream=%s, partition=%d]\", req.Stream, req.Partition)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/logger/logger.go",
+        "quote": "TimestampFormat: \"2006-01-02 15:04:05\","
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/api.go",
+        "quote": "// Subscribe creates an ephemeral subscription for the given stream partition. // It begins to receive messages starting at the given offset and waits for new // messages when it reaches the end of the partition."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/api.go",
+        "quote": "case m := <-msgC: if err := out.Send(m); err != nil { return err }"
+       }
+      ],
+      "note": "A gRPC server stream: the server sends each message as the subscription reads it, with no credit beyond the transport's own flow control."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/api.go",
+       "read": "Subscribe opens an ephemeral subscription that waits for new messages at the end of the partition, and its loop sends each message from the subscription's channel to the gRPC stream as it comes, with no credit beyond the transport's.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "Publish and PublishAsync (gRPC), or an envelope published over NATS with an ack inbox; AckPolicy LEADER or ALL",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "PublishResponse: ack, asyncError, correlationId",
+       "Ack: stream, partitionSubject, msgSubject, offset, ackInbox, correlationId, ackPolicy, receptionTimestamp, commitTimestamp, ackError"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge-api/v2.0.0/api.proto",
+        "quote": "Ack ack = 1; // The ack for the published message if AckPolicy was not NONE PublishAsyncError asyncError = 2; // Set if publish failed (only set on PublishAsync) string correlationId = 3; // User-supplied value to correlate async responses to publishes"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge-api/v2.0.0/api.proto",
+        "quote": "string stream = 1; // Name of the stream string partitionSubject = 2; // NATS subject partition is attached to string msgSubject = 3; // NATS subject the message was received on int64 offset = 4 [jstype=JS_STRING]; // Stream offset the message was committed to"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge-api/v2.0.0/api.proto",
+        "quote": "string ackInbox = 5; // NATS subject to publish acks to string correlationId = 6; // User-supplied value from the message AckPolicy ackPolicy = 7; // The AckPolicy sent on the message"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge-api/v2.0.0/api.proto",
+        "quote": "int64 receptionTimestamp = 8 [jstype=JS_STRING]; // When the message was received by the server int64 commitTimestamp = 9 [jstype=JS_STRING]; // When the message was committed Error ackError = 10; // Error sent in case the partition refused to accept the published message"
+       }
+      ],
+      "note": "With LEADER the ack is sent once the leader has written the message to its log; with ALL, once the ISR has. A unary Publish waits for the ack only when the call has a deadline. The API server that takes a gRPC publish relays the message to the partition leader over NATS and relays the ack back."
+     },
+     "P1": {
+      "answer": "always",
+      "field": "Ack.receptionTimestamp",
+      "resolution": "ns",
+      "which": "receive time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge-api/v2.0.0/api.proto",
+        "quote": "int64 receptionTimestamp = 8 [jstype=JS_STRING]; // When the message was received by the server int64 commitTimestamp = 9 [jstype=JS_STRING]; // When the message was committed Error ackError = 10; // Error sent in case the partition refused to accept the published message"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/partition.go",
+        "quote": "ReceptionTimestamp: msg.Timestamp,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/partition.go",
+        "quote": "Timestamp: timestamp(),"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/partition.go",
+        "quote": "var timestamp = func() int64 { return time.Now().UnixNano() }"
+       }
+      ],
+      "note": "The message's own stamp (Q1): the leader's wall clock when it took the message from NATS."
+     },
+     "P2": {
+      "answer": "always",
+      "field": "Ack.commitTimestamp (set as the leader publishes the ack)",
+      "resolution": "ns",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/partition.go",
+        "quote": "ack.CommitTimestamp = timestamp() data, err := proto.MarshalAck(ack)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/partition.go",
+        "quote": "if err := p.srv.ncAcks.Publish(ack.AckInbox, data); err != nil {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/partition.go",
+        "quote": "// Send the ack now since AckPolicy_LEADER means we ack as soon as the // leader has written the message to its WAL. p.sendAck(ack)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/partition.go",
+        "quote": "// Only send an ack if the AckPolicy is ALL. if ack.AckPolicy == client.AckPolicy_ALL { p.sendAck(ack) }"
+       }
+      ],
+      "note": "Judgment: the API documents commitTimestamp as the time the message was committed, but the leader sets it inside sendAck, from the same clock as receptionTimestamp, immediately before it marshals the ack and publishes it to the ack inbox; it is coded as the ack's send time. The two stamps bracket the leader's hold; with a gRPC publish they do not include the API server's relay over NATS."
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge-api/v2.0.0/api.proto",
+        "quote": "int64 receptionTimestamp = 8 [jstype=JS_STRING]; // When the message was received by the server int64 commitTimestamp = 9 [jstype=JS_STRING]; // When the message was committed Error ackError = 10; // Error sent in case the partition refused to accept the published message"
+       }
+      ],
+      "note": "No duration field and no documented rule; the hold follows from the two stamps (P1, P2)."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/partition.go",
+       "read": "natsToProtoMessage stamps each message with timestamp(), time.Now().UnixNano() on the partition leader, when the leader's processing loop takes it from its receive channel, which the NATS subscription feeds, and before the batch is appended; the append leaves the stamp unchanged and every ack copies it as ReceptionTimestamp. Time a message spends queued in the leader's NATS subscription and receive channel comes before the stamp.",
+       "agrees": true
+      },
+      {
+       "question": "P2",
+       "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/partition.go",
+       "read": "sendAck, the one function that sends a success ack, for LEADER after the leader's write and for ALL from commitLoop once the ISR has the message, sets CommitTimestamp = timestamp() on the leader just before it marshals the ack and publishes it to the ack inbox, on the same clock as ReceptionTimestamp; api.go relays the ack unchanged to a gRPC publisher, synchronous or async. So the field is the ack's send time, and P1 and P2 bracket the leader's hold on one clock, in ns.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "interface": "Publish, PublishAsync or a NATS envelope with AckPolicy NONE (or a unary Publish without a deadline)",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge-api/v2.0.0/api.proto",
+        "quote": "NONE = 2; // No ack will be sent"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/api.go",
+        "quote": "// If AckPolicy is NONE or a timeout isn't specified, then we will fire and // forget."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/liftbridge-io/liftbridge/v26.01.1/server/api.go",
+        "quote": "// Asynchronously publish messages to a stream. This returns a stream which // will yield PublishResponses for messages whose AckPolicy is not NONE."
+       }
+      ],
+      "note": "No ack is sent. A unary gRPC Publish still returns a PublishResponse, with no ack, once the API server has handed the message to NATS; it does not say the broker has the message."
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "Gazette",
+   "group": "C",
+   "kind": "streaming platform",
+   "version": "v0.103.0",
+   "version_evidence": [
+    {
+     "url": "https://github.com/gazette/core/releases/tag/v0.103.0",
+     "quote": "Releases v0.103.0 v0.103.0 Latest"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "Read (gRPC server stream of journal content; block = true waits for new content)",
+     "Q0": {
+      "fields": [
+       "ReadResponse: status, header, offset, write_head, fragment, fragment_url, content (metadata responses carry offset, write_head and fragment; chunk responses carry content)",
+       "header: process_id, route, etcd (cluster_id, member_id, revision, raft_term)",
+       "fragment: journal, begin, end, sum, compression_codec, backing_store, mod_time, path_postfix",
+       "within content, the messages as the client's message library frames them; each carries a UUID (RFC 4122 v1) whose clock timestamp and sequence the publisher sets"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/protocol/protocol.proto",
+        "quote": "// Status of the Read RPC. Status status = 1; // Header of the response. Accompanies the first ReadResponse of the response // stream. Header header = 2; // The effective offset of the read. See ReadRequest offset. int64 offset = 3 [ (gogoproto.casttype) = \"Offset\" ];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/protocol/protocol.proto",
+        "quote": "int64 write_head = 4 [ (gogoproto.casttype) = \"Offset\" ];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/protocol/protocol.proto",
+        "quote": "Fragment fragment = 5; // If Fragment is remote, a URL from which it may be directly read. string fragment_url = 6; // Content chunks of the read. bytes content = 7;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/protocol/protocol.proto",
+        "quote": "ProcessSpec.ID process_id = 1 [ (gogoproto.nullable) = false ];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/protocol/protocol.proto",
+        "quote": "Route route = 2 [ (gogoproto.nullable) = false ];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/protocol/protocol.proto",
+        "quote": "// Journal of the Fragment. string journal = 1 [ (gogoproto.casttype) = \"Journal\" ];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/protocol/protocol.proto",
+        "quote": "SHA1Sum sum = 4 [ (gogoproto.nullable) = false ]; // Codec with which the Fragment's content is compressed. CompressionCodec compression_codec = 5;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/protocol/protocol.proto",
+        "quote": "// Modification timestamp of the Fragment within the backing store, // represented as seconds since the epoch. int64 mod_time = 7; // Path postfix under which the fragment is persisted to the store."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/message/uuid.go",
+        "quote": "// UUID is a RFC 4122 v1 variant Universally Unique Identifier which uniquely // identifies a message. As a v1 UUID, it incorporates a clock timestamp // and sequence, as well as a node identifier (which, within the context of // Gazette, is also known as a ProducerID)."
+       }
+      ],
+      "note": "Brokers keep and serve journals as bytes; messages are a framing of the client libraries over journal content, so the per-message fields are those of the framing (the UUID and the application's own message), and the broker adds none."
+     },
+     "Q1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/protocol/protocol.proto",
+        "quote": "// Modification timestamp of the Fragment within the backing store, // represented as seconds since the epoch. int64 mod_time = 7; // Path postfix under which the fragment is persisted to the store."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/message/uuid.go",
+        "quote": "// UUID is a RFC 4122 v1 variant Universally Unique Identifier which uniquely // identifies a message. As a v1 UUID, it incorporates a clock timestamp // and sequence, as well as a node identifier (which, within the context of // Gazette, is also known as a ProducerID)."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/message/publisher.go",
+        "quote": "// and optional *Clock. If *Clock is nil, then an internal Clock is allocated // and is updated with time.Now on each message published. If a non-nil *Clock"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/protocol/protocol.proto",
+        "quote": "Fragment fragment = 5; // If Fragment is remote, a URL from which it may be directly read. string fragment_url = 6; // Content chunks of the read. bytes content = 7;"
+       }
+      ],
+      "note": "Judgment: the broker keeps no time per message or per append. Its only times are per fragment, a span that can hold many appends: the time a fragment was written to its backing store (mod_time, in seconds, sent with persisted fragments' metadata) and the spool's first append time, which a journal's path_postfix_template may write into the persisted path. Neither is a message's arrival time, so Q1 is no. A message's time is the one in its UUID, set by the publisher's clock."
+     },
+     "Q2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/protocol/protocol.proto",
+        "quote": "// Status of the Read RPC. Status status = 1; // Header of the response. Accompanies the first ReadResponse of the response // stream. Header header = 2; // The effective offset of the read. See ReadRequest offset. int64 offset = 3 [ (gogoproto.casttype) = \"Offset\" ];"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/protocol/protocol.proto",
+        "quote": "Fragment fragment = 5; // If Fragment is remote, a URL from which it may be directly read. string fragment_url = 6; // Content chunks of the read. bytes content = 7;"
+       }
+      ],
+      "note": "No delivered field is a request-arrival or send time. The gRPC request trace (Q6) keeps each RPC's start for the /debug/requests page; for a standing read that is the stream's opening, not the request for any one message, so it is counted under Q6 only."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/protocol/protocol.proto",
+        "quote": "Fragment fragment = 5; // If Fragment is remote, a URL from which it may be directly read. string fragment_url = 6; // Content chunks of the read. bytes content = 7;"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "The broker turns on gRPC request tracing (golang.org/x/net/trace) at start: the /debug/requests page on its diagnostics port shows recent Read and Append RPCs with their start times and timed events, such as the journal's resolution to a broker. It also turns on Prometheus histograms of RPC handling time (aggregate). Logging defaults to warn.",
+      "resolution": "us (trace event times)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/mainboilerplate/diagnostics.go",
+        "quote": "grpc.EnableTracing = true"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/mainboilerplate/diagnostics.go",
+        "quote": "grpc_prometheus.EnableHandlingTimeHistogram()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/cmd/gazette/main.go",
+        "quote": "defer mbp.InitDiagnosticsAndRecover(Config.Diagnostics)()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/resolver.go",
+        "quote": "addTrace(ctx, \"resolve(%s) => %s, local: %t, header: %s\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/golang/net/v0.44.0/trace/trace.go",
+        "quote": "It exports HTTP interfaces on /debug/requests and /debug/events."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/golang/net/v0.44.0/trace/trace.go",
+        "quote": "return e.When.Format(\"2006/01/02 15:04:05.000000\")"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/go.mod",
+        "quote": "golang.org/x/net v0.44.0"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/protocol/protocol.proto",
+        "quote": "// Whether the operation should block until content becomes available. // OFFSET_NOT_YET_AVAILABLE is returned if a non-blocking read has no ready // content. bool block = 4;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/protocol/protocol.proto",
+        "quote": "// Fragment's content. Response streams may be very long lived, having many // metadata and accompanying chunk messages. The reader may also block for long // periods of time awaiting the next metadata message (eg, if the next offset // hasn't yet committed)."
+       }
+      ],
+      "note": "A blocking Read is a long-lived stream that receives each committed append as it commits; a non-blocking read returns OFFSET_NOT_YET_AVAILABLE when nothing is ready."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q1",
+       "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/fragment/spool.go",
+       "read": "The spool keeps one FirstAppendTime per fragment, set at the fragment's first commit, and a persisted fragment's mod_time is its backing-store time in seconds; neither is kept per append or per message, and a message's own time is in the UUID that the publisher's clock sets.",
+       "agrees": true
+      },
+      {
+       "question": "Q7",
+       "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/read_api.go",
+       "read": "serveRead loops without end, querying the fragment index for the next offset and streaming each fragment's content; with block set, the index query waits until an append commits new content, so a blocking Read is a standing stream with no credit.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "Append (gRPC client stream)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "AppendResponse: status, header (process_id, route, etcd), commit, registers, total_chunks, delayed_chunks, store_health_error",
+       "commit (a Fragment): journal, begin, end, sum, compression_codec, backing_store, mod_time, path_postfix; the broker fills journal, begin, end, compression_codec and sum"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/protocol/protocol.proto",
+        "quote": "// Status of the Append RPC. Status status = 1; // Header of the response. Header header = 2 [ (gogoproto.nullable) = false ]; // If status is OK, then |commit| is the Fragment which places the // committed Append content within the Journal. Fragment commit = 3;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/protocol/protocol.proto",
+        "quote": "// Current registers of the journal. LabelSet registers = 4; // Total number of RPC content chunks processed in this append. int64 total_chunks = 5; // Number of content chunks which were delayed by journal flow control. int64 delayed_chunks = 6;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/protocol/protocol.proto",
+        "quote": "string store_health_error = 7;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/append_api.go",
+        "quote": "return stream.SendAndClose(&pb.AppendResponse{ Status: pb.Status_OK, Header: fsm.resolved.Header, Commit: fsm.clientFragment, Registers: &fsm.registers, TotalChunks: fsm.clientTotalChunks, DelayedChunks: fsm.clientDelayedChunks, })"
+       }
+      ],
+      "note": "An append succeeds only after all replicas acknowledge it."
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/append_fsm.go",
+        "quote": "b.clientFragment = &pb.Fragment{ Journal: b.pln.spool.Journal, Begin: b.pln.spool.End, End: b.pln.spool.End, CompressionCodec: b.pln.spool.CompressionCodec, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/append_fsm.go",
+        "quote": "b.clientFragment.Sum = pb.SHA1SumFromDigest(b.clientSummer.Sum(nil))"
+       }
+      ],
+      "note": "The commit fragment places the appended bytes in the journal; its mod_time and backing_store stay empty, since the content is not yet persisted to a store."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/append_api.go",
+        "quote": "return stream.SendAndClose(&pb.AppendResponse{ Status: pb.Status_OK, Header: fsm.resolved.Header, Commit: fsm.clientFragment, Registers: &fsm.registers, TotalChunks: fsm.clientTotalChunks, DelayedChunks: fsm.clientDelayedChunks, })"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/gazette/core/v0.103.0/broker/protocol/protocol.proto",
+        "quote": "// Current registers of the journal. LabelSet registers = 4; // Total number of RPC content chunks processed in this append. int64 total_chunks = 5; // Number of content chunks which were delayed by journal flow control. int64 delayed_chunks = 6;"
+       }
+      ],
+      "note": "total_chunks and delayed_chunks are counts, not durations."
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "S2 (s2.dev)",
+   "group": "C",
+   "kind": "streaming platform",
+   "version": "API v1 (OpenAPI 1.0.0, s2-specs commit 60dfbe3); documentation as retrieved 2026-10-27; SDK s2-sdk 0.35.2",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/openapi.json",
+     "quote": "\"title\": \"S2, the durable streams API\","
+    },
+    {
+     "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/openapi.json",
+     "quote": "\"version\": \"1.0.0\""
+    },
+    {
+     "url": "https://raw.githubusercontent.com/s2-streamstore/s2/s2-sdk-v0.35.2/sdk/Cargo.toml",
+     "quote": "version = \"0.35.2\""
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "read session (S2S protocol session, or an SSE response)",
+     "Q0": {
+      "fields": [
+       "SequencedRecord: seq_num, timestamp, headers (name, value), body",
+       "ReadBatch: records, tail (seq_num, timestamp) when reading recent records; an empty batch is a heartbeat",
+       "SSE only: each event has event (batch, error or ping) and data; a batch event also has id; a ping's data holds timestamp (the time the ping was emitted, ms) and tail"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/s2.proto",
+        "quote": "message SequencedRecord { // Sequence number assigned to this record. uint64 seq_num = 1; // Timestamp for this record. uint64 timestamp = 2; // Series of name-value pairs for this record. repeated Header headers = 3; // Body of this record. bytes body = 4; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/s2.proto",
+        "quote": "repeated SequencedRecord records = 1; // Sequence number that will be assigned to the next record on the stream, and timestamp of the last record. // It will only be present when reading recent records. optional StreamPosition tail = 2;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/s2.proto",
+        "quote": "message Header { // Header name blob. // The name cannot be empty, with the exception of an S2 command record. bytes name = 1; // Header value blob. bytes value = 2; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/s2s.md",
+        "quote": "When waiting for new records, an empty batch is sent as a heartbeat at least every 15 seconds."
+       },
+       {
+        "url": "https://s2.dev/docs/api/records/read.md",
+        "quote": "data: {\"records\":[{\"seq_num\":4,\"timestamp\":1750101582144,\"body\":\"hello\"}],\"tail\":{\"seq_num\":5,\"timestamp\":1750101582144}}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/openapi.json",
+        "quote": "\"description\": \"Time the ping was emitted, as Unix epoch milliseconds.\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2/s2-sdk-v0.35.2/sdk/src/types.rs",
+        "quote": "pub struct SequencedRecord { /// Sequence number assigned to this record. pub seq_num: u64, /// Body of this record. pub body: Bytes, /// Headers for this record. pub headers: Vec<Header>, /// Timestamp for this record. pub timestamp: u64, }"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "SequencedRecord.timestamp (S2 arrival time when S2 assigns it)",
+      "resolution": "ms",
+      "setting": "stream config timestamping.mode = arrival; under the default mode client-prefer, any record the producer sends without a timestamp (the SDK leaves it unset unless the application sets one)",
+      "default_on": true,
+      "evidence": [
+       {
+        "url": "https://s2.dev/docs/concepts/records.md",
+        "quote": "Arrival timestamp in milliseconds, when assigned by S2 (default)."
+       },
+       {
+        "url": "https://s2.dev/docs/concepts/configs.md",
+        "quote": "* `client-prefer` (**default**): use the client timestamp when present, otherwise use S2 arrival time."
+       },
+       {
+        "url": "https://s2.dev/docs/concepts/configs.md",
+        "quote": "* `arrival`: always use S2 arrival time, in milliseconds since the Unix epoch."
+       },
+       {
+        "url": "https://s2.dev/docs/concepts/configs.md",
+        "quote": "S2 keeps timestamps monotonic within each stream. If a timestamp would move backwards, S2 adjusts it to the highest timestamp already seen on that stream. Adjacent records may share the same timestamp."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2/s2-sdk-v0.35.2/sdk/src/types.rs",
+        "quote": "let record = Self { body: body.into(), headers: Vec::default(), timestamp: None, };"
+       }
+      ],
+      "note": "With the defaults (mode client-prefer, and records sent without a timestamp) every record carries S2's arrival time, so default_on is true; a producer that sets its own timestamp replaces it (capped at the arrival time unless uncapped is set), and mode client-require always takes the producer's. An arrival stamp can be raised to the highest timestamp already on the stream, to keep the stream's timestamps monotonic."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/s2.proto",
+        "quote": "message SequencedRecord { // Sequence number assigned to this record. uint64 seq_num = 1; // Timestamp for this record. uint64 timestamp = 2; // Series of name-value pairs for this record. repeated Header headers = 3; // Body of this record. bytes body = 4; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/s2.proto",
+        "quote": "// Timestamp, which may be user-specified or assigned by the service. // If it is assigned by the service, it will represent milliseconds since Unix epoch."
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/s2.proto",
+        "quote": "message SequencedRecord { // Sequence number assigned to this record. uint64 seq_num = 1; // Timestamp for this record. uint64 timestamp = 2; // Series of name-value pairs for this record. repeated Header headers = 3; // Body of this record. bytes body = 4; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/s2.proto",
+        "quote": "repeated SequencedRecord records = 1; // Sequence number that will be assigned to the next record on the stream, and timestamp of the last record. // It will only be present when reading recent records. optional StreamPosition tail = 2;"
+       },
+       {
+        "url": "https://s2.dev/docs/api/records/read.md",
+        "quote": "event: ping data: {\"timestamp\":1750101582144}"
+       }
+      ],
+      "note": "No record or batch field is a request-arrival or send time. In an SSE response a ping event carries the time S2 emitted it (ms), but pings are sent only while no records arrive, never with records, and S2S sessions send an empty batch instead. The documentation names no per-delivery time that the service keeps."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/s2.proto",
+        "quote": "message SequencedRecord { // Sequence number assigned to this record. uint64 seq_num = 1; // Timestamp for this record. uint64 timestamp = 2; // Series of name-value pairs for this record. repeated Header headers = 3; // Body of this record. bytes body = 4; }"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "aggregate only",
+      "what": "The metrics API (account, basin and stream metric sets: scalars, accumulations over time buckets, gauges and labels), which also feeds the dashboard. No per-request or per-record timing is documented.",
+      "resolution": "time buckets of the requested interval",
+      "evidence": [
+       {
+        "url": "https://s2.dev/docs/concepts/metrics.md",
+        "quote": "S2 exposes metrics about account, basin, and stream resources."
+       },
+       {
+        "url": "https://s2.dev/docs/concepts/metrics.md",
+        "quote": "Timeseries where each `(epoch, value)` tuple represents an aggregation `value` for a bucket of time beginning at the `epoch`, lasting for the specified `bucket_length`."
+       }
+      ],
+      "note": "Searched: the concepts pages on records, reads, appends, configs and metrics, the read API reference, the protocol page and the OpenAPI file."
+     },
+     "Q7": {
+      "answer": "standing",
+      "evidence": [
+       {
+        "url": "https://s2.dev/docs/concepts/reads.md",
+        "quote": "* read sessions have no bounds, and follow indefinitely"
+       },
+       {
+        "url": "https://s2.dev/docs/api/records/read.md",
+        "quote": "| Session without `count`, `bytes`, or `until` | Infinite | Follow the stream indefinitely, waiting at the tail for new records. |"
+       }
+      ],
+      "note": "A session with no bound follows the stream: S2 sends each new record as it becomes durable, with no credit to run out."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q7",
+       "url": "https://s2.dev/docs/api/records/read.md",
+       "read": "A session without count, bytes or until has an infinite wait and follows the stream, waiting at the tail for new records; the reads concept page says read sessions have no bounds and follow indefinitely.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "single-batch read (unary GET, optionally long polling at the tail with wait)",
+     "Q0": {
+      "fields": [
+       "ReadBatch: records (SequencedRecord: seq_num, timestamp, headers (name, value), body), tail (seq_num, timestamp) when reading recent records"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/s2.proto",
+        "quote": "message SequencedRecord { // Sequence number assigned to this record. uint64 seq_num = 1; // Timestamp for this record. uint64 timestamp = 2; // Series of name-value pairs for this record. repeated Header headers = 3; // Body of this record. bytes body = 4; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/s2.proto",
+        "quote": "repeated SequencedRecord records = 1; // Sequence number that will be assigned to the next record on the stream, and timestamp of the last record. // It will only be present when reading recent records. optional StreamPosition tail = 2;"
+       }
+      ]
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "SequencedRecord.timestamp (S2 arrival time when S2 assigns it)",
+      "resolution": "ms",
+      "setting": "stream config timestamping.mode = arrival; under the default mode client-prefer, any record the producer sends without a timestamp",
+      "default_on": true,
+      "evidence": [
+       {
+        "url": "https://s2.dev/docs/concepts/records.md",
+        "quote": "Arrival timestamp in milliseconds, when assigned by S2 (default)."
+       },
+       {
+        "url": "https://s2.dev/docs/concepts/configs.md",
+        "quote": "* `client-prefer` (**default**): use the client timestamp when present, otherwise use S2 arrival time."
+       }
+      ],
+      "note": "As in read sessions."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/s2.proto",
+        "quote": "message SequencedRecord { // Sequence number assigned to this record. uint64 seq_num = 1; // Timestamp for this record. uint64 timestamp = 2; // Series of name-value pairs for this record. repeated Header headers = 3; // Body of this record. bytes body = 4; }"
+       }
+      ]
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/s2.proto",
+        "quote": "repeated SequencedRecord records = 1; // Sequence number that will be assigned to the next record on the stream, and timestamp of the last record. // It will only be present when reading recent records. optional StreamPosition tail = 2;"
+       },
+       {
+        "url": "https://s2.dev/docs/api/records/read.md",
+        "quote": "A single-batch read with `wait > 0` may long poll for up to 60 seconds. If the wait elapses before records arrive, the response is an empty batch."
+       }
+      ],
+      "note": "No delivered field is a request-arrival or send time. The documentation does not say from which moment the wait is counted, so no kept request-arrival time is coded."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/s2.proto",
+        "quote": "message SequencedRecord { // Sequence number assigned to this record. uint64 seq_num = 1; // Timestamp for this record. uint64 timestamp = 2; // Series of name-value pairs for this record. repeated Header headers = 3; // Body of this record. bytes body = 4; }"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "aggregate only",
+      "what": "The metrics API's account, basin and stream metric sets, aggregated over time buckets. No per-request timing is documented.",
+      "resolution": "time buckets of the requested interval",
+      "evidence": [
+       {
+        "url": "https://s2.dev/docs/concepts/metrics.md",
+        "quote": "Timeseries where each `(epoch, value)` tuple represents an aggregation `value` for a bucket of time beginning at the `epoch`, lasting for the specified `bucket_length`."
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "one at a time",
+      "evidence": [
+       {
+        "url": "https://s2.dev/docs/api/records/read.md",
+        "quote": "A single-batch read with `wait > 0` may long poll for up to 60 seconds. If the wait elapses before records arrive, the response is an empty batch."
+       },
+       {
+        "url": "https://s2.dev/docs/api/records/read.md",
+        "quote": "If a requested `seq_num` or `timestamp` is beyond the current tail, `clamp=true` moves the start to the current tail. This is most useful with `wait > 0`, where the read can then wait for future records. Without `clamp`, starts beyond the tail return `416 Range Not Satisfiable`."
+       }
+      ],
+      "note": "A long poll waits at the tail, but a read cannot start beyond the tail: concurrent long polls all start at the tail and would take the same next record, so only one waiting read can take a given new record."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://s2.dev/docs/api/records/read.md",
+       "read": "No record or batch field is a request-arrival or send time. The page does say when the wait starts, after all immediately available records have been returned, up to 60 s for a single-batch read, so the note's statement that it names no moment is not accurate; but that is the request's own long-poll timeout, which the audit does not count as a recorded request arrival (Redis's blocking pops are coded the same way), so the answer stands.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "append (unary POST, or an append session over S2S)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "AppendAck: start (seq_num, timestamp of the first record appended), end (seq_num of the last record + 1, timestamp of the last record appended), tail (next seq_num, timestamp of the last record on the stream)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/s2.proto",
+        "quote": "message AppendAck { // Sequence number and timestamp of the first record that was appended. StreamPosition start = 1;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/s2.proto",
+        "quote": "StreamPosition end = 2; // Sequence number that will be assigned to the next record on the stream, and timestamp of the last record on the stream. // This can be greater than the `end` position in case of concurrent appends. StreamPosition tail = 3; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/s2.proto",
+        "quote": "message StreamPosition { // Sequence number assigned by the service. uint64 seq_num = 1;"
+       },
+       {
+        "url": "https://s2.dev/docs/concepts/appends.md",
+        "quote": "When you append records, S2 responds with an acknowledgement only once your data is fully durable with the range of sequence numbers assigned, the timestamps of the first and last record, and the current tail."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "by configuration",
+      "field": "AppendAck start.timestamp and end.timestamp (S2 arrival time when S2 assigns the records' timestamps)",
+      "resolution": "ms",
+      "which": "receive time",
+      "setting": "stream config timestamping.mode = arrival; under the default mode client-prefer, records the producer sends without a timestamp (the SDK leaves it unset unless the application sets one)",
+      "default_on": true,
+      "evidence": [
+       {
+        "url": "https://s2.dev/docs/concepts/appends.md",
+        "quote": "When you append records, S2 responds with an acknowledgement only once your data is fully durable with the range of sequence numbers assigned, the timestamps of the first and last record, and the current tail."
+       },
+       {
+        "url": "https://s2.dev/docs/concepts/configs.md",
+        "quote": "* `client-prefer` (**default**): use the client timestamp when present, otherwise use S2 arrival time."
+       },
+       {
+        "url": "https://s2.dev/docs/concepts/configs.md",
+        "quote": "* `arrival`: always use S2 arrival time, in milliseconds since the Unix epoch."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2/s2-sdk-v0.35.2/sdk/src/types.rs",
+        "quote": "let record = Self { body: body.into(), headers: Vec::default(), timestamp: None, };"
+       }
+      ],
+      "note": "The acknowledgment returns the appended records' own timestamps, which with the defaults are S2's arrival time (possibly raised to keep the stream monotonic). When the producer sets timestamps under client-prefer or client-require, the acknowledgment echoes those instead. tail.timestamp is the last record's timestamp on the stream at the time of the acknowledgment, which can be a later append's."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2-specs/60dfbe312609572710a5c539a02a393e7ee37a2e/s2/v1/s2.proto",
+        "quote": "StreamPosition end = 2; // Sequence number that will be assigned to the next record on the stream, and timestamp of the last record on the stream. // This can be greater than the `end` position in case of concurrent appends. StreamPosition tail = 3; }"
+       }
+      ],
+      "note": "No field is the time the acknowledgment was sent."
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/s2-streamstore/s2/s2-sdk-v0.35.2/sdk/src/types.rs",
+        "quote": "pub struct AppendAck { /// Sequence number and timestamp of the first record that was appended. pub start: StreamPosition,"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://s2.dev/docs/concepts/configs.md",
+       "read": "Under the default timestamping mode client-prefer, S2 uses the client's timestamp when present and otherwise its arrival time in ms, kept monotonic per stream; the SDK leaves a record's timestamp unset unless the application sets one, and the append acknowledgment returns the first and last appended records' timestamps.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "WarpStream",
+   "group": "C",
+   "kind": "streaming platform",
+   "version": "release v852 (21 October 2026); documentation as retrieved 2026-10-27",
+   "version_evidence": [
+    {
+     "url": "https://docs.warpstream.com/warpstream/overview/change-log.md",
+     "quote": "#### Release v852 October 21, 2026"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "Kafka protocol fetch (consumer groups)",
+     "Q0": {
+      "fields": [
+       "batch: BaseOffset, Length, PartitionLeaderEpoch, Magic, CRC, Attributes (incl. the timestamp type bit), LastOffsetDelta, BaseTimestamp, MaxTimestamp, ProducerId, ProducerEpoch, BaseSequence, RecordsCount, Records",
+       "record: Length, Attributes, TimestampDelta, OffsetDelta, Key, Value, Headers (key, value)",
+       "consumer view (ConsumerRecord): topic, partition, offset, timestamp, timestampType, serializedKeySize, serializedValueSize, headers, key, value, leaderEpoch"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecordBatch.java",
+        "quote": "*  BaseOffset => Int64 *  Length => Int32 *  PartitionLeaderEpoch => Int32 *  Magic => Int8 *  CRC => Uint32 *  Attributes => Int16"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecordBatch.java",
+        "quote": "*  LastOffsetDelta => Int32 // also serves as LastSequenceDelta *  BaseTimestamp => Int64 *  MaxTimestamp => Int64 *  ProducerId => Int64 *  ProducerEpoch => Int16 *  BaseSequence => Int32 *  RecordsCount => Int32 *  Records => [Record]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecord.java",
+        "quote": "* Record => *   Length => Varint *   Attributes => Int8 *   TimestampDelta => Varlong *   OffsetDelta => Varint *   KeyLength => Varint *   Key => Bytes *   ValueLength => Varint *   Value => Bytes *   HeadersCount => Varint *   Headers => [HeaderKey HeaderValue]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/clients/consumer/ConsumerRecord.java",
+        "quote": "private final String topic; private final int partition; private final long offset; private final long timestamp; private final TimestampType timestampType; private final int serializedKeySize; private final int serializedValueSize; private final Headers headers;"
+       },
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support.md",
+        "quote": "The current implementation of the Apache Kafka protocol in WarpStream supports the basic ability to create topics, delete topics, produce data, consume data, and use consumer groups to load balance consumers and track offsets."
+       },
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support.md",
+        "quote": "The current implementation any of the \\_\\_tagged\\_\\_ fields in the protocol and ignores them entirely."
+       }
+      ],
+      "note": "WarpStream implements Kafka's protocol, so the record format is Kafka's; its documentation names no field of its own in a fetch response, and it ignores the protocol's tagged fields."
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "batch MaxTimestamp, timestamp type LogAppendTime",
+      "resolution": "ms",
+      "setting": "topic config message.timestamp.type=LogAppendTime; the default is CreateTime (the producer's time). Records produced through the HTTP produce API without a timestamp also get the broker's current time",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/topic-configuration-reference.md",
+        "quote": "Define whether the timestamp in the message is message create time or log append time. The value should be either *CreateTime* or *LogAppendTime*"
+       },
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/topic-configuration-reference.md",
+        "quote": "| Default:      | CreateTime                   |"
+       },
+       {
+        "url": "https://docs.warpstream.com/warpstream/agent-setup/monitor-the-warpstream-agents/monitoring-consumer-groups.md",
+        "quote": "If your application doesn't specifically override this value, then it will automatically be set to the current time by the producer client when the record was produced, or to the current time of the broker when the record was written to disk."
+       },
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support.md",
+        "quote": "However, WarpStream differs in this aspect. In Warpstream, retention is based solely on the real-time when the record was created."
+       },
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/http-endpoints.md",
+        "quote": "Record timestamp in milliseconds since the Unix epoch. If `0` or omitted, the Agent assigns the current time."
+       }
+      ],
+      "note": "With LogAppendTime, the documentation says the timestamp is the broker's time when the record was written to disk, which in WarpStream is the write of the batch to object storage, not the receipt of the produce request. Kept but not sent under CreateTime: WarpStream keeps each record's real creation time, which its retention uses instead of the record's timestamp."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecordBatch.java",
+        "quote": "For LOG_APPEND_TIME, on the other hand, the MaxTimestamp field reflects the timestamp set * by the broker"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecordBatch.java",
+        "quote": "return (attributes() & TIMESTAMP_TYPE_MASK) == 0 ? TimestampType.CREATE_TIME : TimestampType.LOG_APPEND_TIME;"
+       },
+       {
+        "url": "https://docs.warpstream.com/warpstream/agent-setup/monitor-the-warpstream-agents/monitoring-consumer-groups.md",
+        "quote": "If your application doesn't specifically override this value, then it will automatically be set to the current time by the producer client when the record was produced, or to the current time of the broker when the record was written to disk."
+       }
+      ],
+      "note": "Delivered as the record timestamp, with the batch's timestamp type, when the topic uses LogAppendTime."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecordBatch.java",
+        "quote": "*  LastOffsetDelta => Int32 // also serves as LastSequenceDelta *  BaseTimestamp => Int64 *  MaxTimestamp => Int64 *  ProducerId => Int64 *  ProducerEpoch => Int16 *  BaseSequence => Int32 *  RecordsCount => Int32 *  Records => [Record]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecord.java",
+        "quote": "* Record => *   Length => Varint *   Attributes => Int8 *   TimestampDelta => Varlong *   OffsetDelta => Varint *   KeyLength => Varint *   Key => Bytes *   ValueLength => Varint *   Value => Bytes *   HeadersCount => Varint *   Headers => [HeaderKey HeaderValue]"
+       },
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/configure-kafka-client/tuning-for-performance.md",
+        "quote": "in WarpStream, it only controls how long the server will retry when there is no data available at all. If any data is available, WarpStream returns it immediately"
+       }
+      ],
+      "note": "No record, batch or fetch-response field is a request-arrival or send time. The broker retries an empty fetch for up to fetch.max.wait.ms, but the documentation does not say from which moment that time counts, so no kept request-arrival time is coded."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/FetchResponse.json",
+        "quote": "\"about\": \"The duration in milliseconds for which the request was throttled due to a quota violation, or zero if the request did not violate any quota.\" },"
+       },
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support.md",
+        "quote": "The current implementation does not enforce throttling and ignores all throttling-related fields/settings."
+       }
+      ],
+      "note": "The only duration in a fetch response is throttle_time_ms, which WarpStream does not use."
+     },
+     "Q6": {
+      "answer": "aggregate only",
+      "what": "WarpStream's broker processes emit warpstream_agent_kafka_request_latency, a histogram of the latency of processing each Kafka protocol request, grouped by request type, and other aggregate metrics. Request logs are documented only for the schema registry, off by default.",
+      "resolution": "histogram, in seconds",
+      "evidence": [
+       {
+        "url": "https://docs.warpstream.com/warpstream/agent-setup/monitor-the-warpstream-agents/important-metrics-and-logs.md",
+        "quote": "* metric: `warpstream_agent_kafka_request_latency` * group\\_by: `kafka_key` * type: histogram * unit: seconds * description: latency for processing each Kafka protocol request."
+       },
+       {
+        "url": "https://docs.warpstream.com/warpstream/agent-setup/monitor-the-warpstream-agents/important-metrics-and-logs.md",
+        "quote": "Logging schema registry requests is **disabled by default**."
+       }
+      ],
+      "note": "Searched: the Important Metrics and Logs, Monitoring Consumer Groups and protocol pages."
+     },
+     "Q7": {
+      "answer": "one at a time",
+      "evidence": [
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/configure-kafka-client/tuning-for-performance.md",
+        "quote": "in WarpStream, it only controls how long the server will retry when there is no data available at all. If any data is available, WarpStream returns it immediately"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/FetchRequest.json",
+        "quote": "{ \"name\": \"MaxWaitMs\", \"type\": \"int32\", \"versions\": \"0+\", \"about\": \"The maximum time in milliseconds to wait for the response.\" },"
+       }
+      ],
+      "note": "An empty fetch waits at the broker for up to fetch.max.wait.ms (fetch.min.bytes is not supported). A Kafka consumer keeps one fetch in flight per connection, and a fetch cannot be served past the end of the log, so requests wait one at a time."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://docs.warpstream.com/warpstream/kafka/configure-kafka-client/tuning-for-performance.md",
+       "read": "The page says fetch.max.wait.ms only controls how long the server retries when no data is available, and that available data is returned at once; it names no moment the wait counts from and no time kept per fetch, and the record format carries no request or send time.",
+       "agrees": true
+      }
+     ]
+    },
+    {
+     "mode": "HTTP fetch API (GET or POST /v1/kafka/fetch, optionally long_poll)",
+     "Q0": {
+      "fields": [
+       "JSON response: throttle_time_ms, topics: topic, partitions: partition, error_code, high_watermark, last_stable_offset, log_start_offset, records",
+       "record: offset, timestamp, key, value, headers (key, value)"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/http-endpoints.md",
+        "quote": "Full-featured fetch endpoint that mirrors the Kafka Fetch protocol. Supports fetching from multiple topics and partitions in a single request."
+       },
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/http-endpoints.md",
+        "quote": "\"partition\": 0, \"error_code\": \"NONE\", \"high_watermark\": 150, \"last_stable_offset\": 150, \"log_start_offset\": 0, \"records\": ["
+       },
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/http-endpoints.md",
+        "quote": "\"offset\": 0, \"timestamp\": 1707744000000, \"key\": \"dGVzdC1rZXk=\", \"value\": \"dGVzdC12YWx1ZQ==\", \"headers\": [ { \"key\": \"header-name\", \"value\": \"aGVhZGVyLXZhbHVl\" } ]"
+       }
+      ],
+      "note": "The JSON record carries the record's timestamp but not its timestamp type. The single-record endpoints return one record at a given offset."
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "record timestamp (LogAppendTime)",
+      "resolution": "ms",
+      "setting": "topic config message.timestamp.type=LogAppendTime; the default is CreateTime (the producer's time). Records produced through the HTTP produce API without a timestamp also get the broker's current time",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/topic-configuration-reference.md",
+        "quote": "Define whether the timestamp in the message is message create time or log append time. The value should be either *CreateTime* or *LogAppendTime*"
+       },
+       {
+        "url": "https://docs.warpstream.com/warpstream/agent-setup/monitor-the-warpstream-agents/monitoring-consumer-groups.md",
+        "quote": "If your application doesn't specifically override this value, then it will automatically be set to the current time by the producer client when the record was produced, or to the current time of the broker when the record was written to disk."
+       }
+      ],
+      "note": "As in the Kafka protocol fetch."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/http-endpoints.md",
+        "quote": "\"offset\": 0, \"timestamp\": 1707744000000, \"key\": \"dGVzdC1rZXk=\", \"value\": \"dGVzdC12YWx1ZQ==\", \"headers\": [ { \"key\": \"header-name\", \"value\": \"aGVhZGVyLXZhbHVl\" } ]"
+       }
+      ],
+      "note": "Delivered as the record's timestamp; the JSON does not say whether it is the log append time."
+     },
+     "Q3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/http-endpoints.md",
+        "quote": "\"partition\": 0, \"error_code\": \"NONE\", \"high_watermark\": 150, \"last_stable_offset\": 150, \"log_start_offset\": 0, \"records\": ["
+       }
+      ],
+      "note": "No field of the response is a request-arrival or send time, and no time kept per request is documented."
+     },
+     "Q4": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/http-endpoints.md",
+        "quote": "\"offset\": 0, \"timestamp\": 1707744000000, \"key\": \"dGVzdC1rZXk=\", \"value\": \"dGVzdC12YWx1ZQ==\", \"headers\": [ { \"key\": \"header-name\", \"value\": \"aGVhZGVyLXZhbHVl\" } ]"
+       }
+      ],
+      "note": "throttle_time_ms is the response's only duration; WarpStream does not enforce throttling."
+     },
+     "Q6": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/http-endpoints.md",
+        "quote": "| `kafka-client-id` | Identifies the client for logging and diagnostics | `http-fetch-client` / `http-fetch-single-record-client` |"
+       },
+       {
+        "url": "https://docs.warpstream.com/warpstream/agent-setup/monitor-the-warpstream-agents/important-metrics-and-logs.md",
+        "quote": "* metric: `warpstream_agent_kafka_request_latency` * group\\_by: `kafka_key` * type: histogram * unit: seconds * description: latency for processing each Kafka protocol request."
+       }
+      ],
+      "note": "Searched: the HTTP Endpoints and Important Metrics and Logs pages. The HTTP fetch names a client id used for logging and diagnostics, but no metric or log of HTTP requests, or their timing, is documented."
+     },
+     "Q7": {
+      "answer": "one at a time",
+      "evidence": [
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/http-endpoints.md",
+        "quote": "If `true`, the agent waits up to 30s for new data instead of returning immediately. Default: `false`"
+       }
+      ],
+      "note": "With long_poll the request waits up to 30 s; a fetch starts from a given offset, so several waiting requests would take the same next record, and they count as one at a time."
+     },
+     "not_determined": [
+      "Q6: whether the broker logs or measures HTTP fetch requests one by one. Searched: the HTTP Endpoints page, the Important Metrics and Logs page and the Monitoring Consumer Groups page."
+     ],
+     "read_back": []
+    }
+   ],
+   "producers": [
+    {
+     "interface": "Kafka produce request",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "Responses: Name (or TopicId), PartitionResponses: Index, ErrorCode, BaseOffset, LogAppendTimeMs, LogStartOffset, RecordErrors, ErrorMessage; ThrottleTimeMs (Kafka's ProduceResponse; the tagged fields CurrentLeader and NodeEndpoints are ignored by WarpStream)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"BaseOffset\", \"type\": \"int64\", \"versions\": \"0+\", \"about\": \"The base offset.\" }, { \"name\": \"LogAppendTimeMs\", \"type\": \"int64\", \"versions\": \"2+\", \"default\": \"-1\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"LogStartOffset\", \"type\": \"int64\", \"versions\": \"5+\", \"default\": \"-1\", \"ignorable\": true, \"about\": \"The log start offset.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"ThrottleTimeMs\", \"type\": \"int32\", \"versions\": \"1+\", \"ignorable\": true, \"default\": \"0\","
+       },
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support.md",
+        "quote": "The current implementation any of the \\_\\_tagged\\_\\_ fields in the protocol and ignores them entirely."
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "\"about\": \"The timestamp returned by broker after appending the messages. If CreateTime is used for the topic, the timestamp will be -1. If LogAppendTime is used for the topic, the timestamp will be the broker local time when the messages are appended.\" },"
+       },
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/topic-configuration-reference.md",
+        "quote": "Define whether the timestamp in the message is message create time or log append time. The value should be either *CreateTime* or *LogAppendTime*"
+       }
+      ],
+      "note": "WarpStream supports LogAppendTime topics, but its documentation does not say whether the produce response's LogAppendTimeMs then carries the broker's time or stays -1."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"BaseOffset\", \"type\": \"int64\", \"versions\": \"0+\", \"about\": \"The base offset.\" }, { \"name\": \"LogAppendTimeMs\", \"type\": \"int64\", \"versions\": \"2+\", \"default\": \"-1\", \"ignorable\": true,"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support.md",
+        "quote": "The current implementation does not enforce throttling and ignores all throttling-related fields/settings."
+       }
+      ],
+      "note": "ThrottleTimeMs, the response's only duration, is not used."
+     },
+     "not_determined": [
+      "P1: whether LogAppendTimeMs carries the broker's time for a LogAppendTime topic. Searched: the Protocol and Feature Support, Topic Configuration Reference, HTTP Endpoints, Monitoring Consumer Groups and Tuning for Performance pages."
+     ],
+     "read_back": []
+    },
+    {
+     "interface": "HTTP produce, WarpStream-native (POST /v1/kafka/produce)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "JSON response: throttle_time_ms, topics: topic, partitions: partition, error_code, base_offset, log_append_time"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/http-endpoints.md",
+        "quote": "The response mirrors the Kafka Produce response. Per-partition failures are reported in the body with a `200` status, so check each partition's `error_code`:"
+       },
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/http-endpoints.md",
+        "quote": "\"partition\": 0, \"error_code\": \"NONE\", \"base_offset\": 42, \"log_append_time\": -1"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "not determined",
+      "evidence": [
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/http-endpoints.md",
+        "quote": "\"partition\": 0, \"error_code\": \"NONE\", \"base_offset\": 42, \"log_append_time\": -1"
+       }
+      ],
+      "note": "The documented example, for a topic with the default CreateTime, shows -1; what log_append_time holds for a LogAppendTime topic is not documented."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/http-endpoints.md",
+        "quote": "\"partition\": 0, \"error_code\": \"NONE\", \"base_offset\": 42, \"log_append_time\": -1"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/http-endpoints.md",
+        "quote": "The response mirrors the Kafka Produce response. Per-partition failures are reported in the body with a `200` status, so check each partition's `error_code`:"
+       }
+      ]
+     },
+     "not_determined": [
+      "P1: what log_append_time holds for a LogAppendTime topic. Searched: the HTTP Endpoints, Topic Configuration Reference and Protocol and Feature Support pages."
+     ],
+     "read_back": []
+    },
+    {
+     "interface": "HTTP produce, Confluent REST Proxy v2-compatible (POST /topics/{topic} and /topics/{topic}/partitions/{partition})",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "JSON response: offsets (one per record: partition, offset, error_code, error), key_schema_id, value_schema_id"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/http-endpoints.md",
+        "quote": "`offsets` contains one entry per record, in the same order as the request:"
+       },
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/http-endpoints.md",
+        "quote": "\"offsets\": [ { \"partition\": 0, \"offset\": 42, \"error_code\": null, \"error\": null } ], \"key_schema_id\": null, \"value_schema_id\": null"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/http-endpoints.md",
+        "quote": "\"offsets\": [ { \"partition\": 0, \"offset\": 42, \"error_code\": null, \"error\": null } ], \"key_schema_id\": null, \"value_schema_id\": null"
+       }
+      ]
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/http-endpoints.md",
+        "quote": "\"offsets\": [ { \"partition\": 0, \"offset\": 42, \"error_code\": null, \"error\": null } ], \"key_schema_id\": null, \"value_schema_id\": null"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://docs.warpstream.com/warpstream/kafka/reference/protocol-and-feature-support/http-endpoints.md",
+        "quote": "\"offsets\": [ { \"partition\": 0, \"offset\": 42, \"error_code\": null, \"error\": null } ], \"key_schema_id\": null, \"value_schema_id\": null"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  },
+  {
+   "broker": "AutoMQ",
+   "group": "C",
+   "kind": "streaming platform",
+   "version": "1.7.4 (built on Apache Kafka 3.9.1)",
+   "version_evidence": [
+    {
+     "url": "https://github.com/AutoMQ/automq/releases/tag/1.7.4",
+     "quote": "Releases 1.7.4 1.7.4 Compare"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/gradle.properties",
+     "quote": "version=3.9.1"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "consumer groups (Kafka fetch)",
+     "Q0": {
+      "fields": [
+       "batch: baseOffset, length, partitionLeaderEpoch, magic (2), crc, attributes (compression, timestampType, isTransactional, isControlBatch, hasDeleteHorizonMs), lastOffsetDelta, baseTimestamp, maxTimestamp, producerId, producerEpoch, baseSequence, records",
+       "record: length, attributes, timestampDelta, offsetDelta, key, value, headers (key, value)",
+       "ConsumerRecord: topic, partition, offset, timestamp, timestampType, serializedKeySize, serializedValueSize, headers, key, value, leaderEpoch"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/java/org/apache/kafka/common/record/DefaultRecordBatch.java",
+        "quote": "* RecordBatch => * BaseOffset => Int64 * Length => Int32 * PartitionLeaderEpoch => Int32 * Magic => Int8 * CRC => Uint32 * Attributes => Int16"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/java/org/apache/kafka/common/record/DefaultRecordBatch.java",
+        "quote": "* LastOffsetDelta => Int32 // also serves as LastSequenceDelta * BaseTimestamp => Int64 * MaxTimestamp => Int64 * ProducerId => Int64 * ProducerEpoch => Int16 * BaseSequence => Int32 * Records => [Record]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/java/org/apache/kafka/common/record/DefaultRecord.java",
+        "quote": "* Record => * Length => Varint * Attributes => Int8 * TimestampDelta => Varlong * OffsetDelta => Varint * Key => Bytes * Value => Bytes * Headers => [HeaderKey HeaderValue] * HeaderKey => String * HeaderValue => Bytes"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/java/org/apache/kafka/clients/consumer/ConsumerRecord.java",
+        "quote": "private final String topic; private final int partition; private final long offset; private final long timestamp; private final TimestampType timestampType; private final int serializedKeySize; private final int serializedValueSize; private final Headers headers;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/java/org/apache/kafka/clients/consumer/ConsumerRecord.java",
+        "quote": "private final K key; private final V value; private final Optional<Integer> leaderEpoch;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/resources/common/message/FetchResponse.json",
+        "quote": "{ \"name\": \"Records\", \"type\": \"records\", \"versions\": \"0+\", \"nullableVersions\": \"0+\", \"about\": \"The record data.\"}"
+       }
+      ],
+      "note": "AutoMQ keeps Apache Kafka 3.9.1's protocol schemas (Fetch versions 0 to 17, Produce 0 to 11) and record format, and adds no field to them. Per partition, not per message, the fetch response also carries the high watermark, last stable offset, log start offset, aborted transactions, preferred read replica, diverging epoch, current leader and snapshot id; per response throttle_time_ms, error_code, session_id and node endpoints."
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "batch.maxTimestamp, timestampType = LogAppendTime",
+      "resolution": "ms",
+      "setting": "topic config message.timestamp.type=LogAppendTime, or the broker default log.message.timestamp.type=LogAppendTime; the default is CreateTime (the producer's time)",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/server-common/src/main/java/org/apache/kafka/server/config/ServerLogConfigs.java",
+        "quote": "public static final String LOG_MESSAGE_TIMESTAMP_TYPE_DEFAULT = \"CreateTime\";"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/storage/src/main/java/org/apache/kafka/storage/internals/log/LogValidator.java",
+        "quote": "long now = time.milliseconds();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/storage/src/main/java/org/apache/kafka/storage/internals/log/LogValidator.java",
+        "quote": "batch.setMaxTimestamp(TimestampType.LOG_APPEND_TIME, now);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/core/src/main/scala/kafka/log/streamaspect/ElasticUnifiedLog.scala",
+        "quote": "val rst = super.appendAsLeader(records, leaderEpoch, origin, interBrokerProtocolVersion, requestLocal, verificationGuard)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/core/src/main/scala/kafka/log/UnifiedLog.scala",
+        "quote": "appendInfo.setLogAppendTime(validateAndOffsetAssignResult.logAppendTimeMs)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/java/org/apache/kafka/common/utils/SystemTime.java",
+        "quote": "return System.currentTimeMillis();"
+       }
+      ],
+      "note": "AutoMQ's log (ElasticUnifiedLog) appends through Kafka's own UnifiedLog and LogValidator, so the leader sets the batch's maxTimestamp from its wall clock, once per append, when the topic uses LogAppendTime. Under the default CreateTime the timestamp is the producer's."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/java/org/apache/kafka/common/record/DefaultRecordBatch.java",
+        "quote": "this.logAppendTime = timestampType() == TimestampType.LOG_APPEND_TIME ? maxTimestamp() : null;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/java/org/apache/kafka/common/record/DefaultRecord.java",
+        "quote": "timestamp = logAppendTime;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/java/org/apache/kafka/common/record/DefaultRecordBatch.java",
+        "quote": "* is CREATE_TIME. For LOG_APPEND_TIME, on the other hand, the MaxTimestamp field reflects the timestamp set * by the broker and is preserved after compaction."
+       }
+      ],
+      "note": "The client gives every record of a LogAppendTime batch the batch's maxTimestamp, with timestampType LOG_APPEND_TIME."
+     },
+     "Q3": {
+      "answer": "request arrival",
+      "field": "Request.startTimeNanos (kept while the fetch waits in the delayed-fetch purgatory)",
+      "resolution": "ns (System.nanoTime)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/core/src/main/scala/kafka/network/SocketServer.scala",
+        "quote": "val nowNanos = time.nanoseconds()"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/core/src/main/scala/kafka/network/SocketServer.scala",
+        "quote": "val req = new RequestChannel.Request(processor = id, context = context, startTimeNanos = nowNanos, memoryPool, receive.payload, requestChannel.metrics, None)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/core/src/main/scala/kafka/network/RequestChannel.scala",
+        "quote": "class Request(val processor: Int, val context: RequestContext, val startTimeNanos: Long,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/java/org/apache/kafka/common/utils/SystemTime.java",
+        "quote": "return System.nanoTime();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/core/src/main/scala/kafka/server/streamaspect/ElasticReplicaManager.scala",
+        "quote": "delayedFetchPurgatory.tryCompleteElseWatch(delayedFetch, delayedFetchKeys)"
+       }
+      ],
+      "note": "As in Kafka: taken when the network thread has read the request, monotonic, and kept in the Request until the response is sent, including any wait of the fetch in the delayed-fetch purgatory, which AutoMQ's ElasticReplicaManager keeps. It feeds the request metrics and the request log (Q6); it is not sent."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/java/org/apache/kafka/common/record/DefaultRecordBatch.java",
+        "quote": "* LastOffsetDelta => Int32 // also serves as LastSequenceDelta * BaseTimestamp => Int64 * MaxTimestamp => Int64 * ProducerId => Int64 * ProducerEpoch => Int16 * BaseSequence => Int32 * Records => [Record]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/java/org/apache/kafka/common/record/DefaultRecord.java",
+        "quote": "* Record => * Length => Varint * Attributes => Int8 * TimestampDelta => Varlong * OffsetDelta => Varint * Key => Bytes * Value => Bytes * Headers => [HeaderKey HeaderValue] * HeaderKey => String * HeaderValue => Bytes"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/resources/common/message/FetchResponse.json",
+        "quote": "{ \"name\": \"Records\", \"type\": \"records\", \"versions\": \"0+\", \"nullableVersions\": \"0+\", \"about\": \"The record data.\"}"
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/java/org/apache/kafka/common/record/DefaultRecordBatch.java",
+        "quote": "* LastOffsetDelta => Int32 // also serves as LastSequenceDelta * BaseTimestamp => Int64 * MaxTimestamp => Int64 * ProducerId => Int64 * ProducerEpoch => Int16 * BaseSequence => Int32 * Records => [Record]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/resources/common/message/FetchResponse.json",
+        "quote": "{ \"name\": \"ThrottleTimeMs\", \"type\": \"int32\", \"versions\": \"1+\", \"ignorable\": true,"
+       }
+      ],
+      "note": "ThrottleTimeMs, per response, is the delay added for a quota violation, not the wait for a request."
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "The request logger (kafka.request.logger) at DEBUG writes one 'Completed request' line per request with totalTimeMs, requestQueueTimeMs, apiLocalTimeMs, apiRemoteTimeMs (for a fetch, its wait in the purgatory), apiThrottleTimeMs, responseQueueTimeMs and responseSendTimeMs. The shipped log4j.properties sets it to WARN, so it is off by default. Request metrics hold the same times as histograms.",
+      "resolution": "ms",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/core/src/main/scala/kafka/network/RequestChannel.scala",
+        "quote": "totalTimeMs, requestQueueTimeMs, apiLocalTimeMs, apiRemoteTimeMs, apiThrottleTimeMs, responseQueueTimeMs, responseSendTimeMs, temporaryMemoryBytes,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/core/src/main/scala/kafka/network/RequestChannel.scala",
+        "quote": "val logPrefix = \"Completed request:{}\""
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/core/src/main/scala/kafka/network/RequestChannel.scala",
+        "quote": "requestLogger.debug(logPrefix, desc)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/config/log4j.properties",
+        "quote": "log4j.logger.kafka.request.logger=WARN, requestAppender"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "one at a time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/resources/common/message/FetchRequest.json",
+        "quote": "{ \"name\": \"MaxWaitMs\", \"type\": \"int32\", \"versions\": \"0+\", \"about\": \"The maximum time in milliseconds to wait for the response.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/core/src/main/scala/kafka/server/streamaspect/ElasticReplicaManager.scala",
+        "quote": "// If there is not enough data to respond and there is no remote data, we will let the fetch request // wait for new data."
+       }
+      ],
+      "note": "A fetch waits up to MaxWaitMs for MinBytes, as in Kafka, but a consumer keeps one fetch in flight per broker connection and a fetch cannot be served past the end of the log, so requests wait one at a time. AutoMQ also answers a catch-up read (one that reached the end of a segment) at once."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/core/src/main/scala/kafka/network/SocketServer.scala",
+       "read": "processCompletedReceives takes time.nanoseconds() as each request is read and builds the RequestChannel.Request with it as startTimeNanos; ElasticReplicaManager puts a fetch that lacks data in the delayed-fetch purgatory with its response callback, so the Request and its start time are kept until the fetch is answered. The time feeds the request metrics and the request log only.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/resources/common/message/FetchResponse.json",
+       "read": "The fetch response schema and the record batch format, which AutoMQ keeps from Kafka, have no field for a request's arrival; startTimeNanos is a monotonic reading never written to the response.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "Kafka produce request",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "Responses: Name, PartitionResponses: Index, ErrorCode, BaseOffset, LogAppendTimeMs (version 2 and later), LogStartOffset, RecordErrors (BatchIndex, BatchIndexErrorMessage), ErrorMessage, CurrentLeader (LeaderId, LeaderEpoch)",
+       "ThrottleTimeMs; NodeEndpoints (NodeId, Host, Port, Rack)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"Index\", \"type\": \"int32\", \"versions\": \"0+\", \"about\": \"The partition index.\" }, { \"name\": \"ErrorCode\", \"type\": \"int16\", \"versions\": \"0+\", \"about\": \"The error code, or 0 if there was no error.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"BaseOffset\", \"type\": \"int64\", \"versions\": \"0+\", \"about\": \"The base offset.\" }, { \"name\": \"LogAppendTimeMs\", \"type\": \"int64\", \"versions\": \"2+\", \"default\": \"-1\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"LogStartOffset\", \"type\": \"int64\", \"versions\": \"5+\", \"default\": \"-1\", \"ignorable\": true, \"about\": \"The log start offset.\" }, { \"name\": \"RecordErrors\", \"type\": \"[]BatchIndexAndErrorMessage\", \"versions\": \"8+\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"CurrentLeader\", \"type\": \"LeaderIdAndEpoch\", \"versions\": \"10+\", \"taggedVersions\": \"10+\", \"tag\": 0, \"fields\": ["
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"NodeEndpoints\", \"type\": \"[]NodeEndpoint\", \"versions\": \"10+\", \"taggedVersions\": \"10+\", \"tag\": 0,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/core/src/main/scala/kafka/server/streamaspect/ElasticKafkaApis.scala",
+        "quote": "requestChannel.sendResponse(request, new ProduceResponse(mergedResponseStatus.asJava, maxThrottleTimeMs, nodeEndpoints.values.toList.asJava), None)"
+       }
+      ],
+      "note": "With acks=0 the broker sends no response."
+     },
+     "P1": {
+      "answer": "by configuration",
+      "field": "LogAppendTimeMs",
+      "resolution": "ms",
+      "which": "store time",
+      "setting": "topic config message.timestamp.type=LogAppendTime (or the broker default log.message.timestamp.type); the default is CreateTime, for which the field is -1",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "\"about\": \"The timestamp returned by broker after appending the messages. If CreateTime is used for the topic, the timestamp will be -1. If LogAppendTime is used for the topic, the timestamp will be the broker local time when the messages are appended.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/core/src/main/scala/kafka/server/ReplicaManager.scala",
+        "quote": "result.info.logAppendTime,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/java/org/apache/kafka/common/requests/ProduceResponse.java",
+        "quote": ".setLogAppendTimeMs(response.logAppendTime)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/core/src/main/scala/kafka/log/UnifiedLog.scala",
+        "quote": "appendInfo.setLogAppendTime(validateAndOffsetAssignResult.logAppendTimeMs)"
+       }
+      ],
+      "note": "The same stamp as Q1: the leader's wall clock as it validates and appends the batch."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"BaseOffset\", \"type\": \"int64\", \"versions\": \"0+\", \"about\": \"The base offset.\" }, { \"name\": \"LogAppendTimeMs\", \"type\": \"int64\", \"versions\": \"2+\", \"default\": \"-1\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"ThrottleTimeMs\", \"type\": \"int32\", \"versions\": \"1+\", \"ignorable\": true, \"default\": \"0\","
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "\"about\": \"The duration in milliseconds for which the request was throttled due to a quota violation, or zero if the request did not violate any quota.\" },"
+       }
+      ],
+      "note": "ThrottleTimeMs is a quota delay, not the broker's hold of the request."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/AutoMQ/automq/1.7.4/core/src/main/scala/kafka/log/UnifiedLog.scala",
+       "read": "ElasticUnifiedLog.appendAsLeader calls UnifiedLog's append, which sets the append info's logAppendTime from the validator only for a LogAppendTime topic; ReplicaManager puts it in each partition's response, and ProduceResponse.json says it is -1 under CreateTime.",
+       "agrees": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "broker": "Tansu (Nisshi)",
+   "group": "C",
+   "kind": "streaming platform",
+   "version": "v0.8.0 (released as Nisshi 0.8.0)",
+   "version_evidence": [
+    {
+     "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/Cargo.toml",
+     "quote": "[workspace.package] edition = \"2024\" version = \"0.8.0\""
+    },
+    {
+     "url": "https://github.com/tansu-io/tansu/releases/tag/v0.8.0",
+     "quote": "Nisshi 0.8.0 brings retention, message-size, ListOffsets and consumer-group behaviour closer to Apache Kafka"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/README.md",
+     "quote": "is an Apache Kafka®-compatible broker"
+    }
+   ],
+   "found_by": [
+    {
+     "route": "seed",
+     "source": "AMENDMENT_01.md",
+     "query": "seed list"
+    }
+   ],
+   "modes": [
+    {
+     "mode": "consumer groups (Kafka fetch)",
+     "Q0": {
+      "fields": [
+       "batch: base_offset, batch_length, partition_leader_epoch, magic, crc, attributes, last_offset_delta, base_timestamp, max_timestamp, producer_id, producer_epoch, base_sequence, record_count, records",
+       "record: length, attributes, timestamp_delta, offset_delta, key, value, headers (key, value)",
+       "ConsumerRecord (a standard Kafka client): topic, partition, offset, timestamp, timestampType, serializedKeySize, serializedValueSize, headers, key, value, leaderEpoch, deliveryCount"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-sans-io/src/record/deflated.rs",
+        "quote": "pub struct Batch { pub base_offset: i64, pub batch_length: i32, pub partition_leader_epoch: i32, pub magic: i8, pub crc: u32, pub attributes: i16, pub last_offset_delta: i32, pub base_timestamp: i64, pub max_timestamp: i64,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-sans-io/src/record/deflated.rs",
+        "quote": "pub producer_id: i64, pub producer_epoch: i16, pub base_sequence: i32, pub record_count: u32, pub record_data: Bytes, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-sans-io/src/record.rs",
+        "quote": "pub length: i32, pub attributes: u8, #[serde(serialize_with = \"LongVarInt::serialize\")] #[serde(deserialize_with = \"LongVarInt::deserialize\")] pub timestamp_delta: i64,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-sans-io/src/record.rs",
+        "quote": "pub offset_delta: i32, #[serde(serialize_with = \"Octets::serialize\")] #[serde(deserialize_with = \"Octets::deserialize\")] pub key: Option<Bytes>,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-sans-io/src/record.rs",
+        "quote": "pub value: Option<Bytes>, #[serde(serialize_with = \"VarIntSequence::<Header>::serialize\")] #[serde(deserialize_with = \"VarIntSequence::<Header>::deserialize\")] pub headers: Vec<Header>, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-sans-io/message/FetchResponse.json",
+        "quote": "{ \"name\": \"Records\", \"type\": \"records\", \"versions\": \"0+\", \"nullableVersions\": \"0+\", \"about\": \"The record data.\"}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/clients/consumer/ConsumerRecord.java",
+        "quote": "private final String topic; private final int partition; private final long offset; private final long timestamp; private final TimestampType timestampType; private final int serializedKeySize; private final int serializedValueSize; private final Headers headers;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/clients/consumer/ConsumerRecord.java",
+        "quote": "private final K key; private final V value; private final Optional<Integer> leaderEpoch; private final Optional<Short> deliveryCount;"
+       }
+      ],
+      "note": "Kafka's record batch format and Fetch schema (versions 0 to 17), served to standard Kafka clients; no field is added. Per partition the fetch response also carries the high watermark, last stable offset, log start offset and the other partition fields of Kafka's FetchResponse; per response throttle_time_ms, error_code and session_id. The PostgreSQL and SQLite engines store each record as a row and rebuild batches from the rows on a fetch; the object-store engines keep batches. A consumer is a standard Kafka client; its ConsumerRecord's deliveryCount is filled only for share groups, which the broker does not serve."
+     },
+     "Q1": {
+      "answer": "by configuration",
+      "field": "batch base_timestamp and max_timestamp, set to the broker's time for a batch that carries the LogAppendTime bit",
+      "resolution": "ms",
+      "setting": "the producer's batch attribute timestamp type = LogAppendTime, a choice the producer makes (Kafka's own producers send CreateTime); the topic's message.timestamp.type is not read; off by default",
+      "default_on": false,
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-storage/src/service/produce.rs",
+        "quote": "let now = SystemTime::now() .duration_since(UNIX_EPOCH) .map(|duration| duration.as_millis() as i64) .unwrap_or_default();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-storage/src/service/produce.rs",
+        "quote": "// The batch's own timestamp-type bit selects `LogAppendTime` // here. Kafka takes the type from the topic's // `message.timestamp.type` instead: on a `CreateTime` topic it // validates such a batch like any `CreateTime` batch and // clears the bit."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-storage/src/service/produce.rs",
+        "quote": "match batch.set_timestamps(now, now) {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-sans-io/src/record/deflated.rs",
+        "quote": "self.base_timestamp = base_timestamp; self.max_timestamp = max_timestamp; self.crc = self.computed_crc();"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-storage-sql/src/ddl/040-record.sql",
+        "quote": "last_updated datetime default current_timestamp not null, created_at datetime default current_timestamp not null,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/CHANGELOG.md",
+        "quote": "Retention deletes a record only once both its timestamp and the time it was appended are older than `retention.ms`."
+       }
+      ],
+      "note": "Judgment: the only stamp that reaches a consumer is the LogAppendTime stamp, and the broker sets it only when the producer's batch already has the LogAppendTime bit; a CreateTime batch keeps the producer's times (checked against a window around the broker's clock). Kept but not sent: the PostgreSQL and SQLite engines store each record's insert time (created_at, from the database's own clock), which retention reads."
+     },
+     "Q2": {
+      "answer": "yes",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-storage/src/service/produce.rs",
+        "quote": "match self.storage.produce(transaction_id, &tp, batch).await {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-storage-sql/src/pg.rs",
+        "quote": ".try_get::<_, Option<i16>>(1) .map(|attributes| attributes.unwrap_or(0))"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/java/org/apache/kafka/common/record/internal/DefaultRecordBatch.java",
+        "quote": "this.logAppendTime = timestampType() == TimestampType.LOG_APPEND_TIME ? maxTimestamp() : null;"
+       }
+      ],
+      "note": "The stamped batch is what the engine stores, and a fetch returns it (the SQL engines rebuild the batch from the stored record timestamps and attributes); a Kafka client then gives each record the batch's maxTimestamp with timestampType LOG_APPEND_TIME."
+     },
+     "Q3": {
+      "answer": "request arrival",
+      "field": "fetch started_at, kept with the fetch's deadlines (started_at + max_wait)",
+      "resolution": "ns (monotonic Instant)",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-storage/src/service/fetch.rs",
+        "quote": "// Instant rather than SystemTime: the deadlines below must not // move with the wall clock let started_at = Instant::now(); let deadlines = Deadlines::new(started_at, max_wait);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-storage/src/service/fetch.rs",
+        "quote": "fn new(started_at: Instant, max_wait: Duration) -> Self { Self { max_wait, client: started_at + max_wait, read: started_at + max_wait + READ_DEADLINE_OVERHEAD, } }"
+       }
+      ],
+      "note": "Taken when the broker starts to serve the fetch and kept, with the deadline it gives, until the fetch is answered; it is monotonic and is not sent."
+     },
+     "Q4": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-sans-io/src/record/deflated.rs",
+        "quote": "pub struct Batch { pub base_offset: i64, pub batch_length: i32, pub partition_leader_epoch: i32, pub magic: i8, pub crc: u32, pub attributes: i16, pub last_offset_delta: i32, pub base_timestamp: i64, pub max_timestamp: i64,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-sans-io/message/FetchResponse.json",
+        "quote": "{ \"name\": \"Records\", \"type\": \"records\", \"versions\": \"0+\", \"nullableVersions\": \"0+\", \"about\": \"The record data.\"}"
+       }
+      ]
+     },
+     "Q5": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-sans-io/src/record/deflated.rs",
+        "quote": "pub producer_id: i64, pub producer_epoch: i16, pub base_sequence: i32, pub record_count: u32, pub record_data: Bytes, }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-sans-io/message/FetchResponse.json",
+        "quote": "{ \"name\": \"ThrottleTimeMs\", \"type\": \"int32\", \"versions\": \"1+\", \"ignorable\": true,"
+       }
+      ]
+     },
+     "Q6": {
+      "answer": "per request",
+      "what": "With RUST_LOG at debug (the default is warn), DEBUG lines for each round of a fetch's wait (iteration, max_wait, the time remaining, bytes, min_bytes), each timed by the log line; the fetch handler is a tracing span, and the text log format writes span events (FmtSpan::FULL), whose close reports the span's busy and idle time. Storage latency is also exported as metrics.",
+      "resolution": "the log line's own time; Durations in the lines",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-storage/src/service/fetch.rs",
+        "quote": "debug!(?iteration, ?max_wait, ?remaining, ?bytes, ?min_bytes);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-storage/src/service/fetch.rs",
+        "quote": "#[instrument(skip(self, isolation, topics))]"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-broker/src/otel/tracing.rs",
+        "quote": ".with_span_events(FmtSpan::FULL)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/CHANGELOG.md",
+        "quote": "With `RUST_LOG` unset or empty, the broker and every `nisshi` subcommand log at `warn` instead of `error`"
+       }
+      ]
+     },
+     "Q7": {
+      "answer": "one at a time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-storage/src/service/fetch.rs",
+        "quote": "while !max_wait.saturating_sub(started_at.elapsed()).is_zero() && bytes <= min_bytes {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-storage/src/service/fetch.rs",
+        "quote": "sleep(remaining / 2).await;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-sans-io/message/FetchRequest.json",
+        "quote": "{ \"name\": \"MaxWaitMs\", \"type\": \"int32\", \"versions\": \"0+\", \"about\": \"The maximum time in milliseconds to wait for the response.\" },"
+       }
+      ],
+      "note": "A fetch waits up to max_wait for min_bytes by reading storage again after half the time left, not by being woken when a record arrives. A Kafka consumer keeps one fetch in flight per broker connection, and a fetch cannot be served past the end of the log, so requests wait one at a time."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "Q1",
+       "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-storage/src/service/produce.rs",
+       "read": "The produce handler reads SystemTime::now() in ms and calls set_timestamps(now, now) only when the batch's own timestamp-type bit is LogAppendTime, its comment noting that Kafka would take the type from the topic instead; other batches keep the producer's times after a window check. The SQL engines' created_at column is the database's insert time, kept and not sent.",
+       "agrees": true
+      },
+      {
+       "question": "Q3",
+       "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-storage/src/service/fetch.rs",
+       "read": "fetch() takes started_at = Instant::now() when it starts to serve a fetch, derives the client and read deadlines from it, and reads storage in rounds until max_wait from started_at runs out or min_bytes is met; the Instant is monotonic and stays with the call until the answer.",
+       "agrees": true
+      },
+      {
+       "question": "Q4",
+       "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-sans-io/message/FetchResponse.json",
+       "read": "The fetch response is Kafka's schema and the batches carry only Kafka's batch fields; started_at is a local Instant that no response field carries.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "Kafka produce request",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "Responses: Name, PartitionResponses: Index, ErrorCode, BaseOffset, LogAppendTimeMs, LogStartOffset, RecordErrors, ErrorMessage, CurrentLeader; ThrottleTimeMs; NodeEndpoints (Kafka's ProduceResponse schema, versions 0 to 11; the broker advertises Produce 3 to 11)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-sans-io/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"LogAppendTimeMs\", \"type\": \"int64\", \"versions\": \"2+\", \"default\": \"-1\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-storage/src/service/produce.rs",
+        "quote": "Ok(base_offset) => PartitionProduceResponse::default() .index(partition.index) .error_code(ErrorCode::None.into()) .base_offset(base_offset) .log_append_time_ms(Some(-1)) .log_start_offset(Some(0)) .record_errors(Some([].into())) .error_message(None) .current_leader(None),"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-storage/src/service/produce.rs",
+        "quote": "Ok(base_offset) => PartitionProduceResponse::default() .index(partition.index) .error_code(ErrorCode::None.into()) .base_offset(base_offset) .log_append_time_ms(Some(-1)) .log_start_offset(Some(0)) .record_errors(Some([].into())) .error_message(None) .current_leader(None),"
+       }
+      ],
+      "note": "The broker always answers log_append_time_ms -1, even for a batch it stamped with LogAppendTime (Q1)."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-storage/src/service/produce.rs",
+        "quote": "Ok(base_offset) => PartitionProduceResponse::default() .index(partition.index) .error_code(ErrorCode::None.into()) .base_offset(base_offset) .log_append_time_ms(Some(-1)) .log_start_offset(Some(0)) .record_errors(Some([].into())) .error_message(None) .current_leader(None),"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/tansu-io/tansu/v0.8.0/nisshi-sans-io/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"ThrottleTimeMs\", \"type\": \"int32\", \"versions\": \"1+\", \"ignorable\": true, \"default\": \"0\","
+       }
+      ],
+      "note": "ThrottleTimeMs is a quota delay; no duration of the broker's hold is sent."
+     },
+     "not_determined": [],
+     "read_back": []
+    }
+   ]
+  }
+ ]
+}

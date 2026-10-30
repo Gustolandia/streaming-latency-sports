@@ -703,6 +703,68 @@
       }
      ]
     }
+   ],
+   "producers": [
+    {
+     "interface": "Publish (gRPC and REST)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "PublishResponse: message_ids[] (server-assigned, in the order of the request's messages)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "rpc Publish(PublishRequest) returns (PublishResponse) {"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "message PublishResponse { // Optional. The server-assigned ID of each published message, in the same // order as the messages in the request. IDs are guaranteed to be unique // within the topic. repeated string message_ids = 1 [(google.api.field_behavior) = OPTIONAL]; }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "message PublishResponse { // Optional. The server-assigned ID of each published message, in the same // order as the messages in the request. IDs are guaranteed to be unique // within the topic. repeated string message_ids = 1 [(google.api.field_behavior) = OPTIONAL]; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "// The time at which the message was published, populated by the server when // it receives the `Publish` call. It must not be populated by the // publisher in a `Publish` call. google.protobuf.Timestamp publish_time = 4;"
+       }
+      ],
+      "note": "The service sets publish_time when it receives the Publish call and delivers it to subscribers; the response returns only the message IDs. The HTTP response's Date header is not part of the API's documented response and is not counted, as on the consumer side, where only a Date header the API itself defines (Azure Queue Storage) was read as the service's time."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "message PublishResponse { // Optional. The server-assigned ID of each published message, in the same // order as the messages in the request. IDs are guaranteed to be unique // within the topic. repeated string message_ids = 1 [(google.api.field_behavior) = OPTIONAL]; }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+        "quote": "message PublishResponse { // Optional. The server-assigned ID of each published message, in the same // order as the messages in the request. IDs are guaranteed to be unique // within the topic. repeated string message_ids = 1 [(google.api.field_behavior) = OPTIONAL]; }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/pubsub/v1/pubsub.proto",
+       "read": "PublishResponse holds only message_ids; publish_time, which the server sets when it receives the Publish call, is not returned. The HTTP Date header of the REST form is not a broker time under reading 1, so the answer stands on the response's own fields.",
+       "agrees": true
+      }
+     ]
+    }
    ]
   },
   {
@@ -953,6 +1015,102 @@
       }
      ]
     }
+   ],
+   "producers": [
+    {
+     "interface": "Publish (streaming: PublishRequest, answered by PublishResponse)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "PublishResponse: initial_response (InitialPublishResponse, no fields) or message_response",
+       "MessagePublishResponse: start_cursor (Cursor: offset), cursor_ranges[] (CursorRange: start_cursor, start_index, end_index)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/publisher.proto",
+        "quote": "message PublishResponse { // The type of response this is. oneof response_type { // Initial response on the stream. InitialPublishResponse initial_response = 1; // Response to publishing messages. MessagePublishResponse message_response = 2; } }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/publisher.proto",
+        "quote": "message InitialPublishResponse {}"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/publisher.proto",
+        "quote": "// The cursor of the first published message in the batch. The cursors for any // remaining messages in the batch are guaranteed to be sequential. Cursor start_cursor = 1;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/publisher.proto",
+        "quote": "repeated CursorRange cursor_ranges = 2; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/publisher.proto",
+        "quote": "// Index of the message in the published batch that corresponds to the // start cursor. Inclusive. int32 start_index = 2; // Index of the last message in this range. Exclusive. int32 end_index = 3; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "message Cursor { // The offset of a message within a topic partition. Must be greater than or // equal 0. int64 offset = 1; }"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/publisher.proto",
+        "quote": "message PublishResponse { // The type of response this is. oneof response_type { // Initial response on the stream. InitialPublishResponse initial_response = 1; // Response to publishing messages. MessagePublishResponse message_response = 2; } }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/publisher.proto",
+        "quote": "// The cursor of the first published message in the batch. The cursors for any // remaining messages in the batch are guaranteed to be sequential. Cursor start_cursor = 1;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "message Cursor { // The offset of a message within a topic partition. Must be greater than or // equal 0. int64 offset = 1; }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "// The time when the message was received by the server when it was first // published. google.protobuf.Timestamp publish_time = 2;"
+       }
+      ],
+      "note": "The service keeps the time it received each message (SequencedMessage.publish_time, delivered to subscribers); the publish response carries only offsets."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/publisher.proto",
+        "quote": "message PublishResponse { // The type of response this is. oneof response_type { // Initial response on the stream. InitialPublishResponse initial_response = 1; // Response to publishing messages. MessagePublishResponse message_response = 2; } }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/publisher.proto",
+        "quote": "// The cursor of the first published message in the batch. The cursors for any // remaining messages in the batch are guaranteed to be sequential. Cursor start_cursor = 1;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "message Cursor { // The offset of a message within a topic partition. Must be greater than or // equal 0. int64 offset = 1; }"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/publisher.proto",
+        "quote": "message PublishResponse { // The type of response this is. oneof response_type { // Initial response on the stream. InitialPublishResponse initial_response = 1; // Response to publishing messages. MessagePublishResponse message_response = 2; } }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/publisher.proto",
+        "quote": "// The cursor of the first published message in the batch. The cursors for any // remaining messages in the batch are guaranteed to be sequential. Cursor start_cursor = 1;"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/googleapis/googleapis/933dd1be8180a22bca2dc473b53d4f4297ee3b0c/google/cloud/pubsublite/v1/common.proto",
+        "quote": "message Cursor { // The offset of a message within a topic partition. Must be greater than or // equal 0. int64 offset = 1; }"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    }
    ]
   },
   {
@@ -1183,6 +1341,113 @@
        "question": "Q7",
        "url": "(the Q7 evidence of this mode)",
        "read": "The cited API text says what the answer says: requests that wait and may be several at once, a stream or subscription the service pushes into, or credit the receiver grants.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "SendMessage and SendMessageBatch",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "SendMessageResult: MD5OfMessageBody, MD5OfMessageAttributes, MD5OfMessageSystemAttributes, MessageId, SequenceNumber (FIFO queues)",
+       "SendMessageBatchResult: Successful[] (Id, MessageId, MD5OfMessageBody, MD5OfMessageAttributes, MD5OfMessageSystemAttributes, SequenceNumber), Failed[] (Id, SenderFault, Code, Message)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"SendMessageResult\":{ \"type\":\"structure\", \"members\":{ \"MD5OfMessageBody\":{ \"shape\":\"String\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"MD5OfMessageSystemAttributes\":{ \"shape\":\"String\", \"documentation\":\" An MD5 digest of the non-URL-encoded message system attribute string."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"MessageId\":{ \"shape\":\"String\", \"documentation\":\" An attribute containing the MessageId of the message sent to the queue."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"SequenceNumber\":{ \"shape\":\"String\", \"documentation\":\" This parameter applies only to FIFO (first-in-first-out) queues. The large, non-consecutive number that Amazon SQS assigns to each message."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"SendMessageBatchResult\":{ \"type\":\"structure\", \"required\":[ \"Successful\", \"Failed\" ],"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"SendMessageBatchResultEntry\":{ \"type\":\"structure\", \"required\":[ \"Id\", \"MessageId\", \"MD5OfMessageBody\" ],"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"BatchResultErrorEntry\":{ \"type\":\"structure\", \"required\":[ \"Id\", \"SenderFault\", \"Code\" ],"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"SendMessageResult\":{ \"type\":\"structure\", \"members\":{ \"MD5OfMessageBody\":{ \"shape\":\"String\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"MessageId\":{ \"shape\":\"String\", \"documentation\":\" An attribute containing the MessageId of the message sent to the queue."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"SequenceNumber\":{ \"shape\":\"String\", \"documentation\":\" This parameter applies only to FIFO (first-in-first-out) queues. The large, non-consecutive number that Amazon SQS assigns to each message."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"SendMessageBatchResultEntry\":{ \"type\":\"structure\", \"required\":[ \"Id\", \"MessageId\", \"MD5OfMessageBody\" ],"
+       }
+      ],
+      "note": "SQS records SentTimestamp when it receives a message and delivers it to consumers that ask; the send result does not carry it. SequenceNumber (FIFO) is an increasing number, not a time. The HTTP response's Date header is not part of the API's documented response and is not counted, as on the consumer side, where only a Date header the API itself defines (Azure Queue Storage) was read as the service's time."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"SendMessageResult\":{ \"type\":\"structure\", \"members\":{ \"MD5OfMessageBody\":{ \"shape\":\"String\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"MessageId\":{ \"shape\":\"String\", \"documentation\":\" An attribute containing the MessageId of the message sent to the queue."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"SendMessageBatchResultEntry\":{ \"type\":\"structure\", \"required\":[ \"Id\", \"MessageId\", \"MD5OfMessageBody\" ],"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"SendMessageResult\":{ \"type\":\"structure\", \"members\":{ \"MD5OfMessageBody\":{ \"shape\":\"String\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"MessageId\":{ \"shape\":\"String\", \"documentation\":\" An attribute containing the MessageId of the message sent to the queue."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+        "quote": "\"SendMessageBatchResultEntry\":{ \"type\":\"structure\", \"required\":[ \"Id\", \"MessageId\", \"MD5OfMessageBody\" ],"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/sqs/2012-11-05/service-2.json",
+       "read": "SendMessageResult holds three MD5 digests, MessageId and, for FIFO queues, SequenceNumber, described as a large non-consecutive number; no time. The HTTP Date header is not a broker time under reading 1, so the answer stands.",
        "agrees": true
       }
      ]
@@ -1713,6 +1978,151 @@
       }
      ]
     }
+   ],
+   "producers": [
+    {
+     "interface": "send over AMQP 1.0, unsettled transfer (disposition)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "disposition: role, first, last, settled, state, batchable",
+       "state: accepted, or rejected with error information; in a transaction, transactional-state (txn-id, outcome)"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "role=receiver, first={delivery ID}, last={delivery ID}, settled=**true**, state=**accepted** ) | #### Send (error)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "role=receiver, first={delivery ID}, last={delivery ID}, settled=**true**, state=**rejected**( error={error info} ) )"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "disposition( first=1, last=1, state=**TransactionalState( txn-id=0, outcome=Accepted()**)) |"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<type name=\"disposition\" class=\"composite\" source=\"list\" provides=\"frame\"> <descriptor name=\"amqp:disposition:list\" code=\"0x00000000:0x00000015\"/> <field name=\"role\" type=\"role\" mandatory=\"true\"/> <field name=\"first\" type=\"delivery-number\" mandatory=\"true\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<field name=\"last\" type=\"delivery-number\"/> <field name=\"settled\" type=\"boolean\" default=\"false\"/> <field name=\"state\" type=\"*\" requires=\"delivery-state\"/> <field name=\"batchable\" type=\"boolean\" default=\"false\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<type name=\"accepted\" class=\"composite\" source=\"list\" provides=\"delivery-state, outcome\"> <descriptor name=\"amqp:accepted:list\" code=\"0x00000000:0x00000024\"/> </type>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<descriptor name=\"amqp:rejected:list\" code=\"0x00000000:0x00000025\"/> <field name=\"error\" type=\"error\"/> </type>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "As such, Service Bus and Event Hubs support \"at least once\" transfer where the sender can be assured for the message having been stored and accepted"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.ServiceBus_7.21.0/sdk/servicebus/Azure.Messaging.ServiceBus/src/Amqp/AmqpSender.cs",
+        "quote": "if (outcome.DescriptorCode != Accepted.Code)"
+       }
+      ],
+      "note": "The service settles each send with accepted once the message is stored; the SDK's send completes with no value."
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "role=receiver, first={delivery ID}, last={delivery ID}, settled=**true**, state=**accepted** ) | #### Send (error)"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "As such, Service Bus and Event Hubs support \"at least once\" transfer where the sender can be assured for the message having been stored and accepted"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<type name=\"accepted\" class=\"composite\" source=\"list\" provides=\"delivery-state, outcome\"> <descriptor name=\"amqp:accepted:list\" code=\"0x00000000:0x00000024\"/> </type>"
+       }
+      ],
+      "note": "The service sets the message's enqueued time as it accepts and stores the message (delivered to receivers as x-opt-enqueued-time); the disposition carries only the outcome."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "role=receiver, first={delivery ID}, last={delivery ID}, settled=**true**, state=**accepted** ) | #### Send (error)"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<type name=\"disposition\" class=\"composite\" source=\"list\" provides=\"frame\"> <descriptor name=\"amqp:disposition:list\" code=\"0x00000000:0x00000015\"/> <field name=\"role\" type=\"role\" mandatory=\"true\"/> <field name=\"first\" type=\"delivery-number\" mandatory=\"true\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<field name=\"last\" type=\"delivery-number\"/> <field name=\"settled\" type=\"boolean\" default=\"false\"/> <field name=\"state\" type=\"*\" requires=\"delivery-state\"/> <field name=\"batchable\" type=\"boolean\" default=\"false\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<type name=\"accepted\" class=\"composite\" source=\"list\" provides=\"delivery-state, outcome\"> <descriptor name=\"amqp:accepted:list\" code=\"0x00000000:0x00000024\"/> </type>"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "role=receiver, first={delivery ID}, last={delivery ID}, settled=**true**, state=**accepted** ) | #### Send (error)"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<type name=\"disposition\" class=\"composite\" source=\"list\" provides=\"frame\"> <descriptor name=\"amqp:disposition:list\" code=\"0x00000000:0x00000015\"/> <field name=\"role\" type=\"role\" mandatory=\"true\"/> <field name=\"first\" type=\"delivery-number\" mandatory=\"true\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<field name=\"last\" type=\"delivery-number\"/> <field name=\"settled\" type=\"boolean\" default=\"false\"/> <field name=\"state\" type=\"*\" requires=\"delivery-state\"/> <field name=\"batchable\" type=\"boolean\" default=\"false\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<type name=\"accepted\" class=\"composite\" source=\"list\" provides=\"delivery-state, outcome\"> <descriptor name=\"amqp:accepted:list\" code=\"0x00000000:0x00000024\"/> </type>"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "send over AMQP 1.0, pre-settled transfer",
+     "P0": {
+      "acknowledgment": false,
+      "fields": [],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "In the simplest case, the sender can choose to send messages \"pre-settled,\" meaning that the client isn’t interested in the outcome and the receiver doesn't provide any feedback about the outcome of the operation."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "This mode is supported by Service Bus at the AMQP protocol level, but not exposed in any of the client APIs."
+       }
+      ],
+      "note": "Supported at the protocol level only; no client API exposes it."
+     },
+     "P1": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P2": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "P3": {
+      "answer": "not applicable",
+      "evidence": []
+     },
+     "not_determined": [],
+     "read_back": []
+    }
    ]
   },
   {
@@ -2086,6 +2496,93 @@
        "question": "Q7",
        "url": "(the Q7 evidence of this mode)",
        "read": "The cited API text says what the answer says: requests that wait and may be several at once, a stream or subscription the service pushes into, or credit the receiver grants.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "PutRecord and PutRecords",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "PutRecordOutput: ShardId, SequenceNumber, EncryptionType",
+       "PutRecordsOutput: FailedRecordCount, Records[] (SequenceNumber, ShardId, ErrorCode, ErrorMessage), EncryptionType"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"PutRecordOutput\":{ \"type\":\"structure\", \"required\":[ \"ShardId\", \"SequenceNumber\" ], \"members\":{ \"ShardId\":{ \"shape\":\"ShardId\", \"documentation\":\" The shard ID of the shard where the data record was placed. \" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"SequenceNumber\":{ \"shape\":\"SequenceNumber\", \"documentation\":\" The sequence number identifier that was assigned to the put data record."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"EncryptionType\":{ \"shape\":\"EncryptionType\", \"documentation\":\" The encryption type to use on the record."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"PutRecordsOutput\":{ \"type\":\"structure\", \"required\":[\"Records\"], \"members\":{ \"FailedRecordCount\":{ \"shape\":\"PositiveIntegerObject\", \"documentation\":\" The number of unsuccessfully processed records in a PutRecords request. \" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"PutRecordsResultEntry\":{ \"type\":\"structure\", \"members\":{ \"SequenceNumber\":{ \"shape\":\"SequenceNumber\", \"documentation\":\" The sequence number for an individual record result. \" }, \"ShardId\":{ \"shape\":\"ShardId\", \"documentation\":\" The shard ID for an individual record result. \" },"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"PutRecordOutput\":{ \"type\":\"structure\", \"required\":[ \"ShardId\", \"SequenceNumber\" ], \"members\":{ \"ShardId\":{ \"shape\":\"ShardId\", \"documentation\":\" The shard ID of the shard where the data record was placed. \" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"SequenceNumber\":{ \"shape\":\"SequenceNumber\", \"documentation\":\" The sequence number identifier that was assigned to the put data record."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"PutRecordsResultEntry\":{ \"type\":\"structure\", \"members\":{ \"SequenceNumber\":{ \"shape\":\"SequenceNumber\", \"documentation\":\" The sequence number for an individual record result. \" }, \"ShardId\":{ \"shape\":\"ShardId\", \"documentation\":\" The shard ID for an individual record result. \" },"
+       }
+      ],
+      "note": "The service stamps ApproximateArrivalTimestamp when it receives a record and delivers it to consumers; the put result carries only the shard and sequence number. The HTTP response's Date header is not part of the API's documented response and is not counted, as on the consumer side, where only a Date header the API itself defines (Azure Queue Storage) was read as the service's time."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"PutRecordOutput\":{ \"type\":\"structure\", \"required\":[ \"ShardId\", \"SequenceNumber\" ], \"members\":{ \"ShardId\":{ \"shape\":\"ShardId\", \"documentation\":\" The shard ID of the shard where the data record was placed. \" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"PutRecordsResultEntry\":{ \"type\":\"structure\", \"members\":{ \"SequenceNumber\":{ \"shape\":\"SequenceNumber\", \"documentation\":\" The sequence number for an individual record result. \" }, \"ShardId\":{ \"shape\":\"ShardId\", \"documentation\":\" The shard ID for an individual record result. \" },"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"PutRecordOutput\":{ \"type\":\"structure\", \"required\":[ \"ShardId\", \"SequenceNumber\" ], \"members\":{ \"ShardId\":{ \"shape\":\"ShardId\", \"documentation\":\" The shard ID of the shard where the data record was placed. \" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+        "quote": "\"PutRecordsResultEntry\":{ \"type\":\"structure\", \"members\":{ \"SequenceNumber\":{ \"shape\":\"SequenceNumber\", \"documentation\":\" The sequence number for an individual record result. \" }, \"ShardId\":{ \"shape\":\"ShardId\", \"documentation\":\" The shard ID for an individual record result. \" },"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/boto/botocore/1.43.119/botocore/data/kinesis/2013-12-02/service-2.json",
+       "read": "PutRecordOutput holds ShardId, SequenceNumber and EncryptionType, and each PutRecords entry a sequence number, a shard id or an error; the sequence number is documented as an identifier, with no time to be read from it. The HTTP Date header is not a broker time under reading 1, so the answer stands.",
        "agrees": true
       }
      ]
@@ -2578,6 +3075,200 @@
      ],
      "read_back": []
     }
+   ],
+   "producers": [
+    {
+     "interface": "AMQP send (disposition)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "disposition: role, first, last, settled, state, batchable",
+       "state: accepted, or rejected with error information"
+      ],
+      "evidence": [
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<type name=\"disposition\" class=\"composite\" source=\"list\" provides=\"frame\"> <descriptor name=\"amqp:disposition:list\" code=\"0x00000000:0x00000015\"/> <field name=\"role\" type=\"role\" mandatory=\"true\"/> <field name=\"first\" type=\"delivery-number\" mandatory=\"true\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<field name=\"last\" type=\"delivery-number\"/> <field name=\"settled\" type=\"boolean\" default=\"false\"/> <field name=\"state\" type=\"*\" requires=\"delivery-state\"/> <field name=\"batchable\" type=\"boolean\" default=\"false\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<type name=\"accepted\" class=\"composite\" source=\"list\" provides=\"delivery-state, outcome\"> <descriptor name=\"amqp:accepted:list\" code=\"0x00000000:0x00000024\"/> </type>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<descriptor name=\"amqp:rejected:list\" code=\"0x00000000:0x00000025\"/> <field name=\"error\" type=\"error\"/> </type>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "As such, Service Bus and Event Hubs support \"at least once\" transfer where the sender can be assured for the message having been stored and accepted"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProducer.cs",
+        "quote": "var outcome = await link.SendMessageAsync(batchMessage, deliveryTag, AmqpConstants.NullBinary, cancellationToken).ConfigureAwait(false);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProducer.cs",
+        "quote": "if (outcome.DescriptorCode != Accepted.Code)"
+       }
+      ],
+      "note": "The SDK's send completes with no value once the service accepts the batch."
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProducer.cs",
+        "quote": "var outcome = await link.SendMessageAsync(batchMessage, deliveryTag, AmqpConstants.NullBinary, cancellationToken).ConfigureAwait(false);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProducer.cs",
+        "quote": "if (outcome.DescriptorCode != Accepted.Code)"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html",
+        "quote": "<type name=\"accepted\" class=\"composite\" source=\"list\" provides=\"delivery-state, outcome\"> <descriptor name=\"amqp:accepted:list\" code=\"0x00000000:0x00000024\"/> </type>"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/service-bus-messaging/service-bus-amqp-protocol-guide.md",
+        "quote": "As such, Service Bus and Event Hubs support \"at least once\" transfer where the sender can be assured for the message having been stored and accepted"
+       }
+      ],
+      "note": "The service sets each event's enqueued time (delivered to consumers as x-opt-enqueued-time); the disposition carries only the outcome."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProducer.cs",
+        "quote": "var outcome = await link.SendMessageAsync(batchMessage, deliveryTag, AmqpConstants.NullBinary, cancellationToken).ConfigureAwait(false);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProducer.cs",
+        "quote": "if (outcome.DescriptorCode != Accepted.Code)"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<type name=\"disposition\" class=\"composite\" source=\"list\" provides=\"frame\"> <descriptor name=\"amqp:disposition:list\" code=\"0x00000000:0x00000015\"/> <field name=\"role\" type=\"role\" mandatory=\"true\"/> <field name=\"first\" type=\"delivery-number\" mandatory=\"true\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<field name=\"last\" type=\"delivery-number\"/> <field name=\"settled\" type=\"boolean\" default=\"false\"/> <field name=\"state\" type=\"*\" requires=\"delivery-state\"/> <field name=\"batchable\" type=\"boolean\" default=\"false\"/>"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProducer.cs",
+        "quote": "var outcome = await link.SendMessageAsync(batchMessage, deliveryTag, AmqpConstants.NullBinary, cancellationToken).ConfigureAwait(false);"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-sdk-for-net/Azure.Messaging.EventHubs_5.12.2/sdk/eventhub/Azure.Messaging.EventHubs/src/Amqp/AmqpProducer.cs",
+        "quote": "if (outcome.DescriptorCode != Accepted.Code)"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<type name=\"disposition\" class=\"composite\" source=\"list\" provides=\"frame\"> <descriptor name=\"amqp:disposition:list\" code=\"0x00000000:0x00000015\"/> <field name=\"role\" type=\"role\" mandatory=\"true\"/> <field name=\"first\" type=\"delivery-number\" mandatory=\"true\"/>"
+       },
+       {
+        "url": "https://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-transport-v1.0-os.html",
+        "quote": "<field name=\"last\" type=\"delivery-number\"/> <field name=\"settled\" type=\"boolean\" default=\"false\"/> <field name=\"state\" type=\"*\" requires=\"delivery-state\"/> <field name=\"batchable\" type=\"boolean\" default=\"false\"/>"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": []
+    },
+    {
+     "interface": "Kafka endpoint: produce request, acks=1 or all",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "the Kafka produce response as the Kafka protocol defines it: response header CorrelationId; Responses[] per topic; per partition Index, ErrorCode, BaseOffset, LogAppendTimeMs, LogStartOffset, RecordErrors, ErrorMessage; ThrottleTimeMs"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ResponseHeader.json",
+        "quote": "{ \"name\": \"CorrelationId\", \"type\": \"int32\", \"versions\": \"0+\", \"about\": \"The correlation ID of this response.\" }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"Index\", \"type\": \"int32\", \"versions\": \"0+\", \"about\": \"The partition index.\" }, { \"name\": \"ErrorCode\", \"type\": \"int16\", \"versions\": \"0+\", \"about\": \"The error code, or 0 if there was no error.\" }, { \"name\": \"BaseOffset\", \"type\": \"int64\", \"versions\": \"0+\", \"about\": \"The base offset.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"LogAppendTimeMs\", \"type\": \"int64\", \"versions\": \"2+\", \"default\": \"-1\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"ThrottleTimeMs\", \"type\": \"int32\", \"versions\": \"1+\", \"ignorable\": true, \"default\": \"0\", \"about\": \"The duration in milliseconds for which the request was throttled due to a quota violation, or zero if the request did not violate any quota.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/apache-kafka-configurations.md",
+        "quote": "| `acks` | all | Use `1` for higher throughput with slightly less durability |"
+       }
+      ],
+      "note": "Event Hubs documents acks all (default) and 1; it does not document acks=0, for which the Kafka protocol sends no response. Which produce versions the endpoint answers is not documented."
+     },
+     "P1": {
+      "answer": "not determined",
+      "field": "LogAppendTimeMs",
+      "resolution": "ms",
+      "which": "store time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"LogAppendTimeMs\", \"type\": \"int64\", \"versions\": \"2+\", \"default\": \"-1\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "\"about\": \"The timestamp returned by broker after appending the messages. If CreateTime is used for the topic, the timestamp will be -1. If LogAppendTime is used for the topic, the timestamp will be the broker local time when the messages are appended.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-hubs/apache-kafka-streams.md",
+        "quote": "| `messageTimestampType` | set to `AppendTime` | should be set to `CreateTime` | Kafka Streams relies on creation timestamp rather than append timestamp |"
+       }
+      ],
+      "note": "The Kafka protocol defines LogAppendTimeMs as the broker's local time at the append when the topic uses LogAppendTime, and Event Hubs documents AppendTime as its topics' timestamp type (Q1 of the Kafka endpoint mode). No Event Hubs source says whether its produce response fills the field or returns -1. Searched: the Event Hubs articles on the Kafka endpoint (overview, configurations, Kafka Streams, troubleshooting) at the pinned commit."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"Index\", \"type\": \"int32\", \"versions\": \"0+\", \"about\": \"The partition index.\" }, { \"name\": \"ErrorCode\", \"type\": \"int16\", \"versions\": \"0+\", \"about\": \"The error code, or 0 if there was no error.\" }, { \"name\": \"BaseOffset\", \"type\": \"int64\", \"versions\": \"0+\", \"about\": \"The base offset.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"LogAppendTimeMs\", \"type\": \"int64\", \"versions\": \"2+\", \"default\": \"-1\", \"ignorable\": true,"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"ThrottleTimeMs\", \"type\": \"int32\", \"versions\": \"1+\", \"ignorable\": true, \"default\": \"0\", \"about\": \"The duration in milliseconds for which the request was throttled due to a quota violation, or zero if the request did not violate any quota.\" },"
+       }
+      ],
+      "note": "The Kafka produce response has no field for the time the response was sent, in any version."
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/apache/kafka/4.4.0/clients/src/main/resources/common/message/ProduceResponse.json",
+        "quote": "{ \"name\": \"ThrottleTimeMs\", \"type\": \"int32\", \"versions\": \"1+\", \"ignorable\": true, \"default\": \"0\", \"about\": \"The duration in milliseconds for which the request was throttled due to a quota violation, or zero if the request did not violate any quota.\" },"
+       }
+      ],
+      "note": "ThrottleTimeMs is a quota throttle in the Kafka protocol, not a measurement of the request's hold."
+     },
+     "not_determined": [
+      "P1"
+     ],
+     "read_back": []
+    }
    ]
   },
   {
@@ -2785,6 +3476,142 @@
       }
      ]
     }
+   ],
+   "producers": [
+    {
+     "interface": "Put Message (Messages_Enqueue)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "response headers: x-ms-request-id, x-ms-version, Date (set by the service)",
+       "QueueMessagesList[] (QueueMessage): MessageId, InsertionTime, ExpirationTime, PopReceipt, TimeNextVisible"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"operationId\": \"Messages_Enqueue\", \"description\": \"The Enqueue operation adds a new message to the back of the message queue."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"x-ms-request-id\": { \"x-ms-client-name\": \"RequestId\", \"type\": \"string\", \"description\": \"This header uniquely identifies the request that was made and can be used for troubleshooting the request.\" }, \"x-ms-version\":"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"Date\": { \"type\": \"string\", \"format\": \"date-time-rfc1123\", \"description\": \"UTC date/time value generated by the service that indicates the time at which the response was initiated\" } }, \"schema\": { \"$ref\": \"#/definitions/EnqueuedMessageList\" }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"EnqueuedMessageList\": { \"description\": \"The object returned when calling Put Message on a Queue\", \"type\": \"array\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"EnqueuedMessage\": { \"description\": \"The object returned in the QueueMessageList array when calling Put Message on a Queue\", \"type\": \"object\", \"required\": [ \"MessageId\", \"InsertionTime\", \"ExpirationTime\", \"PopReceipt\", \"TimeNextVisible\" ],"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"InsertionTime\": { \"type\": \"string\", \"format\": \"date-time-rfc1123\", \"description\": \"The time the Message was inserted into the Queue.\" },"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "always",
+      "field": "InsertionTime",
+      "resolution": "s (RFC 1123 date-time)",
+      "which": "store time",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"EnqueuedMessage\": { \"description\": \"The object returned in the QueueMessageList array when calling Put Message on a Queue\", \"type\": \"object\", \"required\": [ \"MessageId\", \"InsertionTime\", \"ExpirationTime\", \"PopReceipt\", \"TimeNextVisible\" ],"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"InsertionTime\": { \"type\": \"string\", \"format\": \"date-time-rfc1123\", \"description\": \"The time the Message was inserted into the Queue.\" },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"description\": \"A Message object which can be stored in a Queue\", \"type\": \"object\", \"required\": [ \"MessageText\" ],"
+       }
+      ],
+      "note": "Set by the service as the time the message was inserted into the queue: the request carries only MessageText (with the visibility timeout and time-to-live as parameters). It is the same stamp consumers receive."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"operationId\": \"Messages_Enqueue\", \"description\": \"The Enqueue operation adds a new message to the back of the message queue."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"201\": { \"description\": \"Created\", \"headers\": { \"x-ms-request-id\": { \"x-ms-client-name\": \"RequestId\", \"type\": \"string\", \"description\": \"This header uniquely identifies the request that was made and can be used for troubleshooting the request.\" }, \"x-ms-version\":"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"Date\": { \"type\": \"string\", \"format\": \"date-time-rfc1123\", \"description\": \"UTC date/time value generated by the service that indicates the time at which the response was initiated\" } }, \"schema\": { \"$ref\": \"#/definitions/EnqueuedMessageList\" }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"EnqueuedMessage\": { \"description\": \"The object returned in the QueueMessageList array when calling Put Message on a Queue\", \"type\": \"object\", \"required\": [ \"MessageId\", \"InsertionTime\", \"ExpirationTime\", \"PopReceipt\", \"TimeNextVisible\" ],"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"ExpirationTime\": { \"type\": \"string\", \"format\": \"date-time-rfc1123\", \"description\": \"The time that the Message will expire and be automatically deleted.\" }, \"PopReceipt\":"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"TimeNextVisible\": { \"type\": \"string\", \"format\": \"date-time-rfc1123\", \"description\": \"The time that the message will again become visible in the Queue.\" }"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "If not specified, the default value is 0. Specifies the new visibility timeout value, in seconds, relative to server time."
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "Optional. Specifies the time-to-live interval for the message, in seconds."
+       }
+      ],
+      "note": "Reading 1: the HTTP Date header is not a broker time. Every HTTP response carries it, to the second, and the Queue service's specification gives it the same definition in the response of every operation. The response's own fields hold no send time: ExpirationTime and TimeNextVisible are when the message will expire and become visible, set by the request's messagettl (default 7 days) and visibilitytimeout (default 0, relative to server time), and the specification does not tie either to the moment the response is sent. If the Date header counted, P2 would be always (Date, s, the time the response was initiated), and with P1 the producer's verdict would be a hold in the acknowledgment, to the second.",
+      "changed_on_read_back": {
+       "from": "always",
+       "why": "The answer rested only on the HTTP Date header, which reading 1 does not count as a broker time, and no field of the service's own response carries a send time."
+      }
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"EnqueuedMessage\": { \"description\": \"The object returned in the QueueMessageList array when calling Put Message on a Queue\", \"type\": \"object\", \"required\": [ \"MessageId\", \"InsertionTime\", \"ExpirationTime\", \"PopReceipt\", \"TimeNextVisible\" ],"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+        "quote": "\"Date\": { \"type\": \"string\", \"format\": \"date-time-rfc1123\", \"description\": \"UTC date/time value generated by the service that indicates the time at which the response was initiated\" } }, \"schema\": { \"$ref\": \"#/definitions/EnqueuedMessageList\" }"
+       }
+      ],
+      "note": "No duration is carried. Under the reading applied to every record, the HTTP Date header is not a broker time, so Date less InsertionTime states no hold; were the Date header counted, it would be the part of the hold after the insertion, to the second."
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+       "read": "Put Message's 201 response returns EnqueuedMessage objects whose required InsertionTime is the time the message was inserted into the queue, in RFC 1123 form (seconds); the request carries only MessageText, so the service sets it.",
+       "agrees": true
+      },
+      {
+       "question": "P2",
+       "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+       "read": "The Date header is the HTTP header, which the specification defines in the same words for every operation's response as the time the response was initiated; under reading 1 it is not a broker time, and ExpirationTime and TimeNextVisible count from the request's messagettl and visibilitytimeout, not from the response's sending. Changed from always to no.",
+       "agrees": true
+      },
+      {
+       "question": "P3",
+       "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/storage/data-plane/QueueStorage/stable/2026-04-06/queue.json",
+       "read": "No field of the response is a duration. The Date less InsertionTime that the note names uses the HTTP Date header, not a broker time under reading 1, so it gives no hold the broker states; the answer stands. The note now says so.",
+       "agrees": true
+      }
+     ]
+    }
    ]
   },
   {
@@ -2957,6 +3784,85 @@
        "question": "Q3",
        "url": "https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/a33853236d24ee8adc979dc3924c7d4c4f79c43f/articles/event-grid/subscriber-operations.md",
        "read": "The lock is counted from the time the event was first received, so the receive time is kept as the lock; the receive returns only the lock token and delivery count besides the event.",
+       "agrees": true
+      }
+     ]
+    }
+   ],
+   "producers": [
+    {
+     "interface": "namespace topic publish (PublishCloudEvent, PublishCloudEvents)",
+     "P0": {
+      "acknowledgment": true,
+      "fields": [
+       "200: PublishResult, a JSON object with no properties",
+       "error: an ErrorResponse body and the x-ms-error-code header"
+      ],
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"operationId\": \"PublishCloudEvent\", \"description\": \"Publish a single Cloud Event to a namespace topic.\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"operationId\": \"PublishCloudEvents\", \"description\": \"Publish a batch of Cloud Events to a namespace topic.\","
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"200\": { \"description\": \"The request has succeeded.\", \"schema\": { \"$ref\": \"#/definitions/PublishResult\" } },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"PublishResult\": { \"type\": \"object\", \"description\": \"The result of the Publish operation.\" },"
+       }
+      ]
+     },
+     "P1": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"200\": { \"description\": \"The request has succeeded.\", \"schema\": { \"$ref\": \"#/definitions/PublishResult\" } },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"PublishResult\": { \"type\": \"object\", \"description\": \"The result of the Publish operation.\" },"
+       }
+      ],
+      "note": "The service keeps each event's publish time as its time-to-live deadline (Q1 of the consumer mode); the publish result is empty. The HTTP response's Date header is not part of the API's documented response and is not counted, as on the consumer side, where only a Date header the API itself defines (Azure Queue Storage) was read as the service's time."
+     },
+     "P2": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"200\": { \"description\": \"The request has succeeded.\", \"schema\": { \"$ref\": \"#/definitions/PublishResult\" } },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"PublishResult\": { \"type\": \"object\", \"description\": \"The result of the Publish operation.\" },"
+       }
+      ]
+     },
+     "P3": {
+      "answer": "no",
+      "evidence": [
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"200\": { \"description\": \"The request has succeeded.\", \"schema\": { \"$ref\": \"#/definitions/PublishResult\" } },"
+       },
+       {
+        "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+        "quote": "\"PublishResult\": { \"type\": \"object\", \"description\": \"The result of the Publish operation.\" },"
+       }
+      ]
+     },
+     "not_determined": [],
+     "read_back": [
+      {
+       "question": "P1",
+       "url": "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/a5c6e0414447f55c46e7d6cce07811fbad0cd8db/specification/eventgrid/data-plane/EventGridNamespace/stable/2024-06-01/EventGrid.json",
+       "read": "A successful publish returns PublishResult, an object with no properties; the publish time the service keeps as the event's time-to-live deadline is not returned. The HTTP Date header is not a broker time under reading 1, so the answer stands.",
        "agrees": true
       }
      ]

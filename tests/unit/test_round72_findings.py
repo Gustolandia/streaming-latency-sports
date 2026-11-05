@@ -204,14 +204,20 @@ class TestR2TheSliceIsMeasuredAgainstTheDelivery:
         ends = [k for k in (flat.find(chr(92) + "subsection{", start),
                             flat.find(chr(92) + "section{", start)) if k > 0]
         sub = flat[start:min(ends)]
-        i = sub.index("holds where it can be tested")
-        assert chr(92) + "spreadIncommensurateTrueMs" in sub[i:i + 420], (
+        assert "holds where it can be tested" in sub
+        # 3 Nov 2026: the law's test moved to Supplement S4.2, word for word, by the author's
+        # decision, so that the paper fits the journal's 12 free pages; the paper keeps that the
+        # law holds where it can be tested and points there. The quantitative claim is read in
+        # the moved paragraph.
+        journal = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").split())
+        i = journal.index("Equation~" + chr(92) + "ref{P-eq:retention} holds where it can be tested")
+        assert chr(92) + "spreadIncommensurateTrueMs" in journal[i:i + 900], (
             "the claim is quantitative now: retention names the fraction, where the old "
             "wording left 'most of them' resting on a range that was the wrong span")
         # 6 Oct 2026: the sentence was split, the prediction from the count it tests and the
         # count from what it gives, so the delivery is "That puts T_true at".
         assert "That puts $T_{" + chr(92) + "mathrm{true}}$ at $" + chr(92) \
-            + "spreadIncommensurateTrueMs$" in sub[i:i + 420]
+            + "spreadIncommensurateTrueMs$" in journal[i:i + 900]
         assert "our own transport measures" not in paper
         for m in re.finditer(r"\b(?:half|most|nearly all)\b", sub, re.I):
             sentence = sub[sub.rfind(". ", 0, m.start()) + 2:sub.find(". ", m.start())]
@@ -276,9 +282,23 @@ class TestRecommendedItems:
         # 6 Oct 2026: the intervals beside the two placement factors resample whole runs, the
         # unit the clustering calls for, so the brackets name a bootstrap and its own macros.
         flat = " ".join(paper.split())
-        for stem, ci in (("GeomOrig", "placeKafkaOrigCI"), ("GeomRepl", "placeKafkaReplCI")):
-            assert ("$" + chr(92) + stem + "Factor$-fold [bootstrap over runs, $95" + chr(92)
-                    + "%$: $" + chr(92) + ci + "$]") in flat, stem
+        # 3 Nov 2026: words in brackets went (the author's Simple English rule). The two factors
+        # are given in one sentence, the first and then the replication's, and the next sentence
+        # names the interval, a 95% bootstrap over runs, and gives the two in the same order,
+        # which the bracket-label gate reads (test_bracket_labels). The claim kept: each
+        # placement factor is printed with its run-level interval.
+        bs = chr(92)
+        # 3 Nov 2026: the intervals moved to Supplement S3.2 by the author's decision, so that
+        # the paper fits the journal's 12 free pages (P9: A Section 8.2, B-S8, recorded as moved).
+        # The paper prints the two factors and points to S3.2 in the sentence before them; the
+        # factors with their run-level intervals are printed in full there.
+        assert ("$" + bs + "GeomOrigFactor$-fold, and $" + bs + "GeomReplFactor$-fold in a full "
+                "replication.") in flat
+        assert "gave different shares (Supplement~S3.2)" in flat
+        journal = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").split())
+        placement = journal[journal.index("label{s:geometry}"):journal.index("label{s:payload}")]
+        for macro in ("placeKafkaOrigCI", "placeKafkaReplCI", "GeomOrigFactor", "GeomReplFactor"):
+            assert bs + macro in placement, "S3.2 must print %s" % macro
         for stem in ("rtLow", "rtHigh"):
             assert not re.search(re.escape(chr(92) + stem) + r"Factor(?![A-Za-z])", flat), (
                 "%s's factor is back in the paper; its bracket is S3.1's" % stem)
@@ -431,8 +451,15 @@ class TestTheMutationCheckGuardsWhatItSaysItGuards:
         script rather than here; a stale anchor guards nothing, so this fails until each is
         re-anchored to the sentence that carries its claim now, or retired with a reason."""
         import mutation_check
-        src = (REPO / "paper.tex").read_text(encoding="utf-8")
-        stale = [name for name, old, _ in mutation_check.MUTATIONS if old not in src]
+        # 3 Nov 2026: an entry may name the document beside the paper that it edits (the traced
+        # ratios went to Supplement S3.5 with the paper's detail); each anchor is looked for in
+        # its own document.
+        stale = []
+        for mutation in mutation_check.MUTATIONS:
+            name, old = mutation[:2]
+            doc = mutation[3] if len(mutation) > 3 else "paper.tex"
+            if old not in (REPO / doc).read_text(encoding="utf-8"):
+                stale.append(name)
         assert not stale, (
             "these mutations guard nothing: %s. Nine of ten were in this state when round 72 "
             "looked, and one of the nine was written against the exact defect that round's "
@@ -451,7 +478,8 @@ class TestTheMutationCheckGuardsWhatItSaysItGuards:
     def test_no_anchor_is_a_rendered_number(self):
         """Anchoring on a digit in a manuscript that emits every digit is a dead anchor."""
         import mutation_check
-        for name, old, _ in mutation_check.MUTATIONS:
+        for mutation in mutation_check.MUTATIONS:
+            name, old = mutation[:2]
             digits = re.findall(r"\$-?\d[\d,.{}]*\$", old)
             assert not digits, (
                 "%s anchors on %s, which the ledger can move without anyone editing the "
@@ -505,10 +533,12 @@ class TestEveryTypedNumeralInTheMainTextIsADecision:
     NUMERAL = re.compile(r"(?<![A-Za-z0-9.,{}\\])(\d[\d,.{}]*)")
 
     #: value -> why it is a literal rather than a macro.
+    #: 3 Nov 2026: "0.75" (the kernel's slice constant before its 2025 change), "25" (the runs a
+    #: configuration was designed with), "95" (the confidence level of the placement brackets)
+    #: and "10" (the exposure curve's 10 ms point, and Quiver's 10^19 ms) left the main text,
+    #: moved to Supplement S3.7, S3, S3.2, S2.1 and S5 by the author's decision, so that the
+    #: paper fits the journal's 12 free pages; their entries left this inventory with them.
     ALLOWED = {
-        # quoted from somebody else's paper or standard
-        "0.75": "the kernel's published per-core slice constant, quoted from the commit that "
-                "set it; the product beside it is emitted",
         "1.5": "the law campaign's registered bound on Python's rate over Java's "
                "(prediction P8), a threshold fixed in the plan before its runs and quoted "
                "from it; what the runs measured, 3.25 and 4.25, is the supplement's S6.2",
@@ -517,17 +547,12 @@ class TestEveryTypedNumeralInTheMainTextIsADecision:
         "90": "the registered share prediction A9-1 asked of readings below zero mostly spent "
               "waiting, fixed in the plan before its runs; what the runs gave is emitted",
         "0": "the subscript of s_0, the name of the kernel's per-CPU slice constant",
-        "25": "the runs each manipulation configuration was designed with, a setting of the "
-              "campaigns rather than a result",
         # settings this campaign chose
         "32": "a payload size the sweep set, naming the configuration whose registered pin "
               "failed in Section VIII",
-        # statistical conventions, not measurements
-        "95": "the confidence level of the brackets, which is a convention and not a result",
         # evaluation points and the form of a law, not measurements
         "1": "an evaluation point on the exposure curve, and the numerator of the 1/D by "
              "which the publish latency's relative error falls",
-        "10": "an evaluation point on the exposure curve",
         # 6 Oct 2026, with the deletion figure back in the main text
         "0.35": "the one latency panel (a) of the deletion figure draws at four phases, a "
                 "constant of make_paper_figures.plot_phases chosen so that three phases are "
@@ -631,6 +656,9 @@ class TestEveryWordSpelledQuantityIsADecisionToo:
         # 15 Oct 2026, the v9 response
         "fifty": "the publish rate freezes 39 to 41 set for the blocks that tested the fix "
                  "and the order of arrivals, a design setting rather than a measurement",
+        # 3 Nov 2026: "seven", the bits of each byte of a variable-length integer, left the
+        # paper for Supplement S7.1 with the one- and two-byte limits, by the author's decision,
+        # so that the paper fits the journal's 12 free pages; its entry left with it.
     }
 
     def _word_macros(self):
@@ -743,14 +771,19 @@ class TestEveryWordSpelledQuantityIsADecisionToo:
         mutation must fire the gate.
         """
         import re as _re
+        # 3 Nov 2026: both sentences of Section V-C that this mutated, the above-grid settings'
+        # and the test of Eq. 5, moved to Supplement S4.3 and S4.2 by the author's decision, so
+        # that the paper fits the journal's 12 free pages. The mutation types the count back into
+        # two counts the paper still gives in words of the ledger, both in Section V-A: the tools
+        # read at source and the ways they cut a value. The gate must fire on each.
+        emitted = {name: value for value, names in self._word_macros().items()
+                   for name in names}
         for pattern, word in (
-                (r"(the\s+)" + RE_BS + r"ombAboveGridPartialWord\{\}(\s+settings\s+kept only)",
-                 "two"),
-                # 6 Oct 2026: "The seven such configurations all keep", the test of Eq. 5,
-                # split from the prediction it tests to keep the sentences short.
-                (r"(The\s+)" + RE_BS + r"spreadIncommensurateWord\{\}(\s+such configurations)",
-                 "seven")):
+                (r"(We read\s+)" + RE_BS + r"harnessAuditedWord\{\}(\s+measurement tools at "
+                 r"source)", emitted["harnessAuditedWord"]),
+                (r"(report, in\s+)" + RE_BS + r"harnessDisposalClassesWord\{\}(\s+ways: a filter "
+                 r"drops it)", emitted["harnessDisposalClassesWord"])):
             bad = _re.sub(pattern, r"\g<1>" + word + r"\g<2>", paper)
-            assert bad != paper, "Section V-C has been reworded; retarget this mutation"
+            assert bad != paper, "Section V-A has been reworded; retarget this mutation"
             with pytest.raises(AssertionError):
                 self.test_no_sentence_types_a_word_the_ledger_emits_for_that_quantity(bad)

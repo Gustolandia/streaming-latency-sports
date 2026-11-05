@@ -283,9 +283,13 @@ class TestW2NeitherDocumentImpliesTheRejectedNeverRecoverExactly:
         quartile.
 
         15 Oct 2026: the paragraph quotes the recovery by broker, and its last number is
-        Redis's upper quartile, after which the clause is put back."""
+        Redis's upper quartile, after which the clause is put back.
+
+        3 Nov 2026: the upper quartiles moved to Supplement S2.1 by the author's decision, so
+        that the paper fits the journal's 12 free pages; the paragraph's last number is Redis's
+        median error, after which the clause is put back."""
         bad, n = re.subn(
-            re.escape(BS) + r"recoveryErrRedisHi(?![A-Za-z])(?:" + re.escape(BS) + r"%)?\$?",
+            re.escape(BS) + r"recoveryErrRedis(?![A-Za-z])(?:" + re.escape(BS) + r"%)?\$?",
             lambda m: m.group(0) + ", and $" + BS + "recoveryPassExact" + BS + "%$ of the "
             "passing conditions recover the delivery exactly", paper)
         assert n == 1, "Section VI-B has been reworded; retarget this mutation"
@@ -387,7 +391,12 @@ class TestW3AndW4TheTwoLiteratureItems:
         # (Nature) for the void result, both checked against Crossref. 37 from the rebuild of
         # 5 Oct, which kept Nosek et al. and cut the void result with Leek and Peng. 45 from
         # 6 Oct, with the eight above.
-        assert n == 45, "the article's reference count moved from 45 to %d" % n
+        # 42 from 3 Nov 2026: RabbitMQ PerfTest's citation moved to Supplement S5 with the
+        # note on its counting, Zhou et al.'s change to the slice constant to Supplement S3.7
+        # with its sentence, and Zijlstra's custom slices to Supplement S3.1 with Section
+        # VI-B's paragraph on giving the threads a core, by the author's decision, so that the
+        # paper fits the journal's 12 free pages; 45 is the cap, not a target.
+        assert n == 42, "the article's reference count moved from 42 to %d" % n
 
 
 class TestW5TheFigureLetsTheReaderCheckItsCaption:

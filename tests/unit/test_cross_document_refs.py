@@ -12,8 +12,10 @@ substitution and left two sentences reading
 
 which compiled without a warning, rendered without an overfull box, and passed 2,473 tests.
 It was found by eye, three rounds later. A third pointer still cited "the main text's
-Section~6.2" -- arabic, where the paper numbers in Roman, and pointing at a section number
-the paper has not used since the TC restructure.
+Section~6.2" -- arabic, where the paper then numbered in Roman, and pointing at a section
+number the paper had not used since the TC restructure. (4 Nov 2026: the paper has printed
+Arabic numbers since 16 Oct, in the Computer Society layout. The companions reach its
+sections by `\\ref` or the postmortem's macro block, so neither form is typed.)
 
 These are all one defect class: a cross-document pointer that no longer denotes anything.
 The checks below read `paper.aux`, which holds the real numbers LaTeX assigned, and hold
@@ -130,13 +132,38 @@ class TestTheCompanionsNameSectionsRatherThanNumberingThem:
     journal supplement, written after xr was in place, through `\\ref{P-sec:...}` directly.
     """
 
+    #: 4 Nov 2026: eleven pointers of the journal supplement gave the paper's sections in Roman
+    #: numerals, which the paper has not printed since 16 Oct, and slipped past the pattern
+    #: below: a heading's and a caption's "Sections III and VI", and nine cells of the table
+    #: of which runs each number rests on, such as "& IV-B; S3". The supplement's printed
+    #: body is therefore also held to these two forms. Its comments are left out: they are
+    #: records, and an older one names a section as the paper numbered it on its date.
+    SUPPLEMENT_FORMS = (r"Sections?[ ~]+[IVX]+(?:-[A-D])?(?![a-zA-Z])",
+                        r"&\s*[IVX]+(?:-[A-D])?\s*[,;]")
+
     @pytest.mark.parametrize("name", COMPANIONS)
     def test_no_section_number_is_written_inline(self, name, docs):
         body = docs[name].split(r"\begin{document}")[-1]
         bad = re.findall(r"Section~[IVX]+(?:-[A-D])?(?![a-zA-Z])", body)
+        if name == "supplement":
+            printed = re.sub(r"(?m)(?<!\\)%.*$", "", body)
+            for form in self.SUPPLEMENT_FORMS:
+                bad += re.findall(form, printed)
         assert not bad, (
             "these point at the main text by number; use \\ref{P-sec:...} or the macro block "
             "so a renumbering is no edit at all: %s" % sorted(set(bad)))
+
+    def test_the_supplement_forms_catch_what_slipped_past(self):
+        """4 Nov 2026: the two forms catch the pointers that slipped past, and not the
+        references that replaced them."""
+        old = ("the paper's Sections III and VI}", "E-A10 & IV-B; S3",
+               "the two x86 pairs & IV-A, VI, VIII; S3.9")
+        new = ("the paper's Sections~\\texorpdfstring{\\ref{P-sec:finding}}{3}",
+               "E-A10 & \\ref{P-sec:twostate}; S3")
+        for text in old:
+            assert any(re.search(f, text) for f in self.SUPPLEMENT_FORMS), text
+        for text in new:
+            assert not any(re.search(f, text) for f in self.SUPPLEMENT_FORMS), text
 
     def test_the_supplement_reaches_the_papers_sections_by_reference(self, supp):
         body = supp.split(r"\begin{document}")[-1]
@@ -240,11 +267,16 @@ class TestCompanionsPointAtRealSections:
 
     @pytest.mark.parametrize("name", COMPANIONS)
     def test_pointers_use_roman_numerals(self, name, docs):
-        """The paper numbers sections in Roman. An arabic pointer is a stale one.
+        """No pointer types a section number in Arabic.
 
-        "the main text's Section~6.2" survived the round-5 sweep because the sweep looked for
-        descriptive names, and this one was already a number -- just a number from a
-        structure two restructures old.
+        Until 16 Oct 2026 the paper numbered its sections in Roman, so an arabic pointer was
+        a stale one. "the main text's Section~6.2" survived the round-5 sweep because the
+        sweep looked for descriptive names, and this one was already a number -- just a
+        number from a structure two restructures old. 4 Nov 2026: the paper has printed
+        Arabic numbers since 16 Oct, in the Computer Society layout, so a typed
+        "Section~6.2" could now be right. It is still typed, and a typed number goes stale,
+        so the rule stands: the companions reach the paper's sections through `\\ref` or the
+        postmortem's macro block.
         """
         text = docs[name]
         arabic = []

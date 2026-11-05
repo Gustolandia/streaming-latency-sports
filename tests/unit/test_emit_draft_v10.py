@@ -233,12 +233,12 @@ class TestTheColocatedControl:
 class TestRedisFloorByLoad:
 
     def test_the_committed_pairs(self):
+        # 4 Nov 2026: the twins in percent (1.9, 12, 2.3 and 17) left the ledger with the one
+        # sentence that printed them, a copy of Supplement S3.1's own sentence.
         assert dict(epn.redis_floor_macros()) == {
             "rtRedisFloorLightLoad": "0.0191", "rtRedisNormalLightLoad": "0.1229",
-            "rtRedisFloorLightLoadPct": "1.9", "rtRedisNormalLightLoadPct": "12",
             "rtRedisLightLoadLo": "60", "rtRedisLightLoadHi": "75",
             "rtRedisFloorHeavyLoad": "0.0226", "rtRedisNormalHeavyLoad": "0.1676",
-            "rtRedisFloorHeavyLoadPct": "2.3", "rtRedisNormalHeavyLoadPct": "17",
             "rtRedisHeavyLoadLo": "88", "rtRedisHeavyLoadHi": "95"}
 
     def test_a_missing_file_emits_nothing(self, tmp_path):
@@ -259,8 +259,8 @@ class TestRedisFloorByLoad:
                                                                               "0.5000")
         assert (got["rtRedisLightLoadLo"], got["rtRedisLightLoadHi"]) == ("60", "75")
         assert (got["rtRedisHeavyLoadLo"], got["rtRedisHeavyLoadHi"]) == ("88", "88")
-        assert (got["rtRedisFloorLightLoadPct"], got["rtRedisNormalLightLoadPct"]) == ("2.0", "15")
-        assert (got["rtRedisFloorHeavyLoadPct"], got["rtRedisNormalHeavyLoadPct"]) == ("4.0", "50")
+        # 4 Nov 2026: no twin in percent is written for these rates any longer.
+        assert not [k for k in got if k.endswith("Pct")], sorted(got)
 
 
 # --- the real-time rates in percent ---------------------------------------------------------------
@@ -282,11 +282,18 @@ class TestRatesInPercent:
         assert epn.rate_pct(0.0) == "0" and epn.rate_pct(-0.01) == "0"
 
     def test_the_paper_prints_the_twins_and_no_fraction(self):
+        # 3 Nov 2026: the shares at real-time priority moved to Supplement S3.1, with Section
+        # VI-B's paragraph and with Section VIII's sizes, by the author's decision, so that the
+        # paper fits the journal's 12 free pages. Each twin is printed where it went, and the
+        # paper prints no fraction.
+        # 4 Nov 2026: Redis's floor by load is printed once, in S3.1's own sentence, as
+        # fractions beside their load ranges; its twins left the ledger, and its four names left
+        # this list.
         paper = (REPO / "paper.tex").read_text(encoding="utf-8")
-        for name in ("rtResidualMin", "rtResidualMax", "rtRedisResidualMin", "rtRedisResidualMax",
-                     "rtRedisFloorLightLoad", "rtRedisFloorHeavyLoad", "rtRedisNormalLightLoad",
-                     "rtRedisNormalHeavyLoad"):
-            assert "\\%sPct$" % name in paper or "\\%sPct\\%%$" % name in paper, name
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        for name in ("rtResidualMin", "rtResidualMax", "rtRedisResidualMin", "rtRedisResidualMax"):
+            assert any("\\%sPct$" % name in doc or "\\%sPct\\%%$" % name in doc
+                       for doc in (paper, journal)), name
             assert "\\%s$" % name not in paper, name
 
 
@@ -302,7 +309,9 @@ class TestTheLedger:
     def test_the_draft_reads_every_name(self):
         names = [n for n, _ in epn.draft_v10_macros()]
         # 16 Oct 2026: 36, with the four percent twins of Redis's floor by load.
-        assert len(names) == len(set(names)) == 36
+        # 4 Nov 2026: 32. The four twins left the ledger with the one sentence that printed
+        # them, a copy of Supplement S3.1's own sentence.
+        assert len(names) == len(set(names)) == 32
 
 
 # --- items 10 and 11: Table I narrow, Table II's placement row in words ---------------------------
@@ -443,8 +452,10 @@ class TestTheRegistryNamesMaintainers:
         body = epn.render_registry_table()
         assert body == _generated("registry_table.tex")
         header = [line for line in body.splitlines() if line.startswith("Tool & ")]
-        assert header == ["Tool & Language, maintainer & Span measured & Clock & What happens to "
-                          "the value & Counts \\\\"]
+        # 3 Nov 2026: the third column says "Difference measured" ("span" retired by the
+        # author's rule against invented terms); the claim kept: the column says maintainer.
+        assert header == ["Tool & Language, maintainer & Difference measured & Clock & What "
+                          "happens to the value & Counts \\\\"]
 
 
 # --- freeze 41, read through its own judges --------------------------------------------------------
@@ -497,8 +508,14 @@ class TestTheGroupsAgainstTheCurve:
         assert m["exposureKafkaAbove"] == m["exposureKafkaGroups"], "'all its groups' is false"
         assert 0 < int(m["exposureRedisAbove"]) < int(m["exposureRedisGroups"]), \
             "'straddle it' is false"
-        paper = (REPO / "paper.tex").read_text(encoding="utf-8")
-        assert "so all its groups lie above that\ncurve, while \\redis{}'s straddle it" in paper
+        # 3 Nov 2026: Redis's half of the sentence moved to Supplement S2.1 by the author's
+        # decision, so that the paper fits the journal's 12 free pages. The paper says that
+        # Kafka's groups lie above the curve; S2.1's figure says both, as the counts bear out.
+        paper = " ".join((REPO / "paper.tex").read_text(encoding="utf-8").split())
+        assert "so its groups lie above that curve (Supplement~S2.1)" in paper
+        journal = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").split())
+        assert "\\kafka{}'s crosses all sit above it" in journal
+        assert "and \\redis{}'s straddle it" in journal
 
     def test_a_group_lies_above_when_its_error_exceeds_the_median_publish_latency(self, tmp_path):
         path = _csv(tmp_path / "span_symmetry.csv",

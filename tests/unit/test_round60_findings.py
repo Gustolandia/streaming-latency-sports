@@ -42,11 +42,17 @@ class TestR1TheSectionOpensOnItsEvidence:
         5 Oct 2026: the rebuilt paper's Section V, "An Industry-Wide Audit", opens on the four
         studies, the tools read at source first, and its subsection V-A, "Tools read at
         source", opens "We read ten measurement tools at source". Both openings are held: no
-        fork count, and the tool audit stated with its macro."""
+        fork count, and the tool audit stated with its macro.
+
+        3 Nov 2026: Table III moved to Supplement S5 by the author's decision, so that the
+        paper fits the journal's 12 free pages, and its stand-in, two sentences on how S5
+        sorts the tools, precedes the audit's clause; Section V's opening is read as its lead
+        paragraph, to the first subsection."""
         section = paper.split(r"\section{An Industry-Wide Audit}", 1)[1]
         section = section.split(r"\section{", 1)[0]
         body = section.split(r"\subsection{Tools read at source}", 1)[1]
-        for name, opening in (("Section V", section[:400]), ("Section V-A", body[:400])):
+        lead = section.split(r"\subsection{", 1)[0]
+        for name, opening in (("Section V", lead), ("Section V-A", body[:400])):
             assert "forks" not in opening, (
                 "%s opens on the fork count again. A fork is a copy: the number bounds how few "
                 "have diverged, not how many adopted, and it is the weakest evidence in the "
@@ -92,15 +98,35 @@ class TestR2AMedianTravelsWithItsSpread:
         # The floats are stripped across lines: without re.S a float spanning lines stayed in
         # "running text", and Table IV's cell, which the docstring exempts, was held to it.
         prose = re.sub(r"\\begin\{(figure|table)\*?\}.*?\\end\{\1\*?\}", " ", paper, flags=re.S)
+        # 3 Nov 2026: each broker's group count and interquartile range moved to Supplement
+        # S2.1 by the author's decision, so that the paper fits the journal's 12 free pages.
+        # A quote in the paper's running text names its denominator in words, a broker's
+        # groups, and points to S2.1; S2.1's running text carries the count and the
+        # interquartile range in the sentence of each factor, as the paper's did.
+        journal = re.sub(r"(?m)(?<!\\)%.*$", " ", (REPO / "supplement.tex")
+                         .read_text(encoding="utf-8"))
+        journal = " ".join(re.sub(r"\\begin\{(figure|table)\*?\}.*?\\end\{\1\*?\}", " ",
+                                  journal, flags=re.S).split())
         found = 0
         for broker in ("Kafka", "Redis"):
-            hits = [m.start() for m in re.finditer(r"\\understate%sFactor(?![A-Za-z])"
-                                                   % broker, prose)]
+            pattern = r"\\understate%sFactor(?![A-Za-z])" % broker
+            hits = [m.start() for m in re.finditer(pattern, prose)]
             found += len(hits)
             for i in hits:
                 start = prose.rfind(". ", 0, i) + 2
                 end = prose.find(". ", i)
                 sentence = prose[start:end if end > 0 else len(prose)]
+                for words in ("over a broker's groups", "(Supplement~S2.1)"):
+                    assert words in sentence, (
+                        "the understatement is quoted without %r. The second author's "
+                        "annotation #42 requires experiment, denominator and uncertainty: %r"
+                        % (words, sentence[:200]))
+            hits = [m.start() for m in re.finditer(pattern, journal)]
+            assert hits, "S2.1 no longer gives the factor in its running text"
+            for i in hits:
+                start = journal.rfind(". ", 0, i) + 2
+                end = journal.find(". ", i)
+                sentence = journal[start:end if end > 0 else len(journal)]
                 for macro, why in ((r"\exposure%sGroups" % broker, "the denominator"),
                                    (r"\understate%sIQRLo" % broker,
                                     "the lower interquartile bound"),
@@ -183,8 +209,15 @@ class TestW2NumbersComeFromTheLedgerAndCarryTheirUnits:
             "the replicate spread is a range in percentage points and no longer says so"
         assert re.search(r"\\flipPinThirtyTwo\\%", window), \
             "the pin is a retention level in percent and no longer says so"
+        # 3 Nov 2026: Section VIII gives the pin in words, by the author's decision, so that the
+        # paper fits the journal's 12 free pages: "just above the predicted two-thirds". The pin
+        # in percent is S4.3's, held above, and the words must stay true of it.
+        assert "pinned at a share kept just above the predicted two-thirds" in paper, \
+            "the paper no longer states the failed detail of the flip"
+        gen = (REPO / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8")
+        pin = float(re.search(r"\\newcommand\{\\flipPinThirtyTwo\}\{([0-9.]+)\}", gen).group(1))
+        assert 200.0 / 3 < pin < 200.0 / 3 + 5, ("no longer just above two-thirds", pin)
         pins = [m.end() for m in re.finditer(r"\\flipPinThirtyTwo(?![A-Za-z])", paper)]
-        assert pins, "the paper no longer states the failed detail of the flip"
         for j in pins:
             assert paper[j:j + 2] == "\\%", \
                 "the paper prints the pin without saying it is a retention level in percent"
@@ -239,10 +272,25 @@ class TestW3APercentageStatesWhatItIsOver:
     """Section IV-F promises 'a count over a stated denominator'. Table I did not state it."""
 
     def test_the_per_broker_percentages_carry_their_denominators(self, paper):
-        i = paper.find(r"\spanKafkaNegAckPct")
-        assert i > 0, "Table I no longer quotes the per-broker rate"
-        window = paper[i:i + 300]
+        """3 Nov 2026: Table I and Section III's per-broker rates moved to the journal
+        supplement's table of values below zero (S1.3) by the author's decision, so that the
+        paper fits the journal's 12 free pages. That table prints each broker's messages
+        above its share, so the pin reads it there; should the paper quote a broker's rate
+        again, the rate must carry its denominator as before."""
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        j = journal.index("label{stab:spans}")
+        assert "docs/generated/spans_table" in journal[j:journal.index("end{table", j)], \
+            "the supplement's table of values below zero no longer prints the generated rows"
+        table = (REPO / "docs" / "generated" / "spans_table.tex").read_text(encoding="utf-8")
+        assert r"\spanKafkaNegAckPct" in table, "Table I no longer quotes the per-broker rate"
         for macro in (r"\spanKafkaEvents", r"\spanRedisEvents"):
-            assert macro in window, (
-                "Table I's caption quotes a percentage whose denominator is not stated, "
+            assert macro in table, (
+                "Table I quotes a percentage whose denominator is not stated, "
                 "against Section IV-F's own rule. %s already exists." % macro)
+        i = paper.find(r"\spanKafkaNegAckPct")
+        if i >= 0:
+            window = paper[i:i + 300]
+            for macro in (r"\spanKafkaEvents", r"\spanRedisEvents"):
+                assert macro in window, (
+                    "the paper quotes a percentage whose denominator is not stated, "
+                    "against Section IV-F's own rule. %s already exists." % macro)

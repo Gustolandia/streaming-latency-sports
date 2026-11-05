@@ -200,14 +200,22 @@ ALLOWED = {
     # for the tracer's wait threshold.
     # 15 Oct 2026: S3.5 rewritten for the referees of version 9 (A M6(a), B S5) names the same
     # threshold twice, as the trace's pooled comparison and as Kafka's own.
+    # 3 Nov 2026: S3.5 names the share of S below zero in full ("rate" names the publish rate),
+    # so the fragment follows the new words; the coincidence and its reason are unchanged.
     ("supplement.tex", "kOneEarlyIdleLo",
-     r"its share of waits longer than 0.5~ms against the rate of the same runs"):
+     r"its share of waits longer than 0.5~ms against the share of $S$"):
         "the wait for a core whose probability the tracer reads (S3.5), 0.5 ms, Kafka's margin "
         "rounded and fixed on 25 July 2026, equal to the lowest share of K1's idle runs in which "
         "a message was readable before Kafka's tool had its acknowledgment, in percent; a wait "
         "and a share sharing two digits",
     ("supplement.tex", "kOneEarlyIdleLo", r"the ratios are \tracedRatios{} at 0.5~ms"):
         "the same threshold, where S3.5 gives Kafka's own ratios at it",
+    # 3 Nov 2026: the general method's numbers came into the ledger with S8.1.
+    ("supplement.tex", "gmKCaTcRatioHi", r"24.3 to 35.8\% were still waiting at 3~ms"):
+        "the largest share of L9's acknowledgments, among those whose thread waited more than "
+        "1 ms, still waiting at 3 ms (S6.3), equal to plan 47's largest rise of an in-poll Kafka "
+        "client's time to ask again, rounded outward (KC-a, S8.1); a share and a ratio sharing "
+        "three digits",
     ("supplement.tex", "spanRedisCondRateLoPct",
      r"Gray points: \kafka{}'s 1.5~ms slice on the Arm pair"):
         "L4's shortest slice in milliseconds, set by hand, equal to the lower quartile of Redis's "
@@ -253,6 +261,18 @@ ALLOWED = {
         "Henning et al.'s coefficient of variation, another paper's measurement, equal to the most "
         "the Yahoo Streaming Benchmark's write gap grew per millisecond of delay added (S25.3); a "
         "percentage and a slope sharing two digits",
+    # 3 Nov 2026: two passages of the paper moved into the supplement by the author's decision,
+    # so that the paper fits the journal's 12 free pages, and brought their macros with them:
+    # Redis's least share at real-time priority (S3.1) and the tools' least slope (S5). Each
+    # pair below is a coincidence of digits, recorded where it stands.
+    ("supplement.tex", "rtRedisResidualMinPct", r"about $1.8\times10^{19}$~ms"):
+        "the mantissa of Quiver's wrapped value, 2 to the 64th less a small difference, in "
+        "milliseconds (S5), equal to Redis's least share of S below zero at real-time priority, "
+        "in percent; a constant of unsigned arithmetic and a share sharing two digits",
+    ("supplement.tex", "toolsSlopeLo", r"at $0.055$ and $0.56$ from the payload sweep's"):
+        "the registered prediction's place for the 64 KB configuration on its lattice, a "
+        "fraction of a lattice step (S4.3), equal to the least slope of a tool's latency per "
+        "millisecond of delay added (S5); a fraction and a slope sharing two digits",
 }
 
 

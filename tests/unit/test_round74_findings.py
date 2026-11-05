@@ -63,11 +63,19 @@ class TestR1SpelledQuantitiesUseTheirMacro:
         ones at one payload that kept only part of their samples, and counts them with
         `ombAboveGridPartialWord`: "the two settings kept only ...". The pin follows the
         sentence: the count of settings comes from the ledger and is not typed, and the
-        postmortem's sentence keeps `ombEscapeCellsWord`."""
-        m = re.search(r"the\s+" + RE_BS + r"ombAboveGridPartialWord\{\}\s+settings\s+kept\s+only",
-                      paper)
+        postmortem's sentence keeps `ombEscapeCellsWord`.
+
+        3 Nov 2026: the sentence moved to Supplement S4.3 by the author's decision, so that the
+        paper fits the journal's 12 free pages, where it names the settings by their rate as
+        well ("the two settings at a rate on the clock's step kept only ..."). The pin follows
+        it there, and holds the paper to the same rule should the count come back."""
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        m = re.search(r"the\s+" + RE_BS + r"ombAboveGridPartialWord\{\}\s+settings\s+at\s+a\s+rate"
+                      r"\s+on\s+the\s+clock's\s+step\s+kept\s+only", journal)
         assert m, "Section V-C's above-grid sentence has been reworded; retarget this pin"
-        passage = " ".join(paper[max(0, m.start() - 120):m.start() + 200].split())
+        assert not re.search(r"\b(?:the|The) (?:two|four) settings", " ".join(paper.split())), \
+            "the count is typed again"
+        passage = " ".join(journal[max(0, m.start() - 120):m.start() + 200].split())
         assert chr(92) + "ombAboveGridPartialKB" in passage, "the settings are named by payload"
         assert not re.search(r"\b(?:the|The) (?:two|four) settings", passage), \
             "the count is typed again"
@@ -240,11 +248,18 @@ class TestTheRenderedPageCarriesIt:
         """v5 (28 Sep): the class count prints in the sentence that lists the classes, and the
         superlative follows it (see `test_the_disposal_classes_come_from_the_ledger`).
 
-        5 Oct 2026: the rebuilt sentences, with the counts read from the ledger."""
+        5 Oct 2026: the rebuilt sentences, with the counts read from the ledger.
+
+        3 Nov 2026: the above-grid sentence moved to Supplement S4.3 by the author's decision, so
+        that the paper fits the journal's 12 free pages, and is read on the supplement's pages.
+        A page of the paper now breaks inside the classes' sentence, so the running head is
+        taken out before matching."""
         gen = (REPO / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8")
         vals = dict(re.findall(RE_BS + r"newcommand\{" + RE_BS + r"(\w+)\}\{([^}]*)\}", gen))
-        flat = "".join(_rendered("paper").split())
-        assert "the%ssettingskeptonly" % vals["ombAboveGridPartialWord"] in flat
+        flat = re.sub(r"IEEETRANSACTIONSONCOMPUTERS\d+", "", "".join(_rendered("paper").split()))
+        journal = "".join(_rendered("supplement").split())
+        assert re.search(r"the%ssettingsatarateontheclock.sstepkeptonly"
+                         % vals["ombAboveGridPartialWord"], journal)
         assert "in%sways:afilterdropsit" % vals["harnessDisposalClassesWord"] in flat
         # 16 Oct 2026: the count of what is cut stands between the classes and the superlative.
         assert "replacesit.AllbutSBKcountnoneofwhattheycut.Replacementhidesbest" in flat

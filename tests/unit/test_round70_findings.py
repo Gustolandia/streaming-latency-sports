@@ -43,12 +43,19 @@ def journal():
 
 
 def _spans_caption(doc):
-    """6 Oct 2026: the table is the paper's Table I again, label tab:spans."""
-    m = re.search(r"Values\s+below\s+zero\s+by\s+span\s+and\s+broker", doc)
+    """6 Oct 2026: the table is the paper's Table I again, label tab:spans.
+
+    3 Nov 2026: the caption says "by difference and broker"; the paper no longer calls a
+    difference of two timestamps a span (the author's rule against invented terms). The claim
+    the pin keeps: the caption counts the values below zero of every difference, by broker.
+
+    3 Nov 2026: moved to Supplement S1.3 by the author's decision, so that the paper fits the
+    journal's 12 free pages; the table is stab:spans, whole, and callers pass the supplement."""
+    m = re.search(r"Values\s+below\s+zero\s+by\s+difference\s+and\s+broker", doc)
     assert m, "Table I's caption has been reworded; retarget this pin"
     j = m.start()
     return " ".join(doc[doc.rindex(chr(92) + "caption{", 0, j):
-                        doc.index("label{tab:spans}", j)].split())
+                        doc.index("label{stab:spans}", j)].split())
 
 
 def _rendered(name):
@@ -96,10 +103,12 @@ class TestR1TheAcknowledgmentLagIsCounted:
         assert m["spanKafkaNegAckLag"] == "0" and m["spanRedisNegAckLag"] == "0"
         assert int(m["spanAckLagFloorUs"]) > 0
 
-    def test_table_one_carries_the_fourth_chain(self, paper):
-        """6 Oct 2026: Table I is the paper's again (tab:spans)."""
-        i = paper.index("label{tab:spans}")
-        table = paper[i:paper.index("end{table}", i)]
+    def test_table_one_carries_the_fourth_chain(self, journal):
+        """6 Oct 2026: Table I is the paper's again (tab:spans).
+        3 Nov 2026: moved to Supplement S1.3 by the author's decision, so that the paper fits the
+        journal's 12 free pages; it is stab:spans, whole, and is read there."""
+        i = journal.index("label{stab:spans}")
+        table = journal[i:journal.index("end{table}", i)]
         # 15 Oct 2026: Table I is generated whole and input, and referee A (m26) asked that its
         # origin column name the timestamp, $t_{\mathrm{pub}}$, rather than "publish (chain)".
         assert "\\input{docs/generated/spans_table}" in table
@@ -109,12 +118,13 @@ class TestR1TheAcknowledgmentLagIsCounted:
             "three spans now take the publish timestamp as their origin, and all three are rows")
         assert "---" not in table, "round 68's measured zeros stay measured zeros"
 
-    def test_the_caption_gives_the_margin_rather_than_only_the_zero(self, paper):
+    def test_the_caption_gives_the_margin_rather_than_only_the_zero(self, journal):
         """5 Oct 2026: the caption reads "Values below zero by span and broker" and gives "the
         smallest run minimum of the publish latency A ... clear of zero"."""
         # 15 Oct 2026, referee B (Table I, t3): every span's smallest value is a column of the
         # table, A's included, and the caption says so; A's floor is printed in its row.
-        caption = _spans_caption(paper)
+        # 3 Nov 2026: the table is the supplement's S1.3 (see _spans_caption).
+        caption = _spans_caption(journal)
         assert "its smallest value" in caption
         body = (REPO / "docs" / "generated" / "spans_table.tex").read_text(encoding="utf-8")
         assert "\\spanAckLagFloorUs" in body
@@ -171,18 +181,26 @@ class TestR1TheAcknowledgmentLagIsCounted:
         flat = " ".join(paper.split())
         assert "neither $D$ nor $A$ falls below zero once" in flat
         prose = " ".join(journal.split())
-        i = prose.index(r"Table~\ref{P-tab:spans} counts the values below zero in each span")
+        # 3 Nov 2026: "span" became "difference" in S1.3 as in the paper; the inventory's claim,
+        # that only S of all the differences ever falls below zero, is unchanged.
+        # 3 Nov 2026: the table moved to S1.3 itself (stab:spans), so the pointer is internal;
+        # the paper states the table's point, "Only $S$ falls below zero".
+        i = prose.index(r"Table~\ref{stab:spans} counts the values below zero in each difference")
         passage = prose[i:i + 500]
-        assert ("Only $S$, the one span whose two timestamps have no causal order" in passage
+        assert ("Only $S$, the one difference whose two timestamps have no causal order" in passage
                 and "ever does" in passage), "the chain inventory no longer says it is complete"
-        caption = _spans_caption(paper)
+        caption = _spans_caption(journal)
         assert caption.startswith(chr(92) + "caption{" + chr(92) + "textbf{Only $S$ falls below "
                                   "zero"), "the table's claim is no longer that only S inverts"
+        assert "Only $S$ falls below zero, and it does on both brokers" in flat, \
+            "the paper must state the table's point where the table was"
 
     def test_the_rendered_table_shows_four_clean_chains(self):
         """6 Oct 2026: on the paper's pages, where Table I is again. 16 Oct 2026: its rows are
-        the spans' symbols, each with its origin timestamp and then its smallest value."""
-        flat = " ".join(_rendered("paper").split())
+        the spans' symbols, each with its origin timestamp and then its smallest value.
+        3 Nov 2026: on the supplement's pages, S1.3, where the table moved by the author's
+        decision, so that the paper fits the journal's 12 free pages."""
+        flat = " ".join(_rendered("supplement").split())
         assert len(re.findall(r"t ?pub 0 0 0 \d", flat)) == 3
         assert re.search(r"t ?sched 0 0 0 \d", flat)
 
@@ -216,11 +234,21 @@ class TestR2TheFloorIsAScaleNotALimit:
         # 17 Oct 2026, the author's rule (say what holds): both brokers' ranges and their
         # consequence, "so the sign check stays", without "not at zero"; test_paper_consistency
         # holds the ranges above zero in the ledger.
+        # 3 Nov 2026, the author's rule against invented terms: "the share settles at ...", the
+        # share of S below zero, "so the check stays", the check for values below zero. The
+        # claim kept: where the real-time share settles, as both brokers' measured ranges.
+        # 3 Nov 2026: Section VI-B's paragraph moved to Supplement S3.1, word for word, by the
+        # author's decision, so that the paper fits the journal's 12 free pages. The paper keeps
+        # the claim in words, "some values of S below zero remain ... so the check stays"; the
+        # ranges are read where the paragraph went, with its pointer made S3.1's own table.
+        assert re.search(r"some values of \$S\$ below zero remain \(Supplement~S3\.1\), so the "
+                         r"check stays", flat), "the main text no longer says the share stays above zero"
+        journal = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").split())
         m = re.search(r"settles at \$" + RE_BS + r"rtResidualMinPct\$--\$" + RE_BS
-                      + r"rtResidualMaxPct" + RE_BS + r"%\$ on .{0,120}?\(Supplement~S3\.1\), "
-                      r"so the sign check stays", flat)
-        assert m, "the main text no longer says where the real-time rate settles"
-        clause = flat[max(0, m.start() - 200):m.end() + 120]
+                      + r"rtResidualMaxPct" + RE_BS + r"%\$ on .{0,120}?\(Table~" + RE_BS
+                      + r"ref\{stab:priority\}\), so the check stays", journal)
+        assert m, "the supplement no longer says where the real-time rate settles"
+        clause = journal[max(0, m.start() - 200):m.end() + 120]
         assert not re.search(r"\b(?:floor|bound|bounded|reaches but)\b", clause), clause
         assert "is a scale and" in supplement
 
@@ -336,9 +364,13 @@ class TestRecommendedItems:
         below zero"; the rebuilt Limitations say "We classified the ten tools by reading
         them".
 
-        6 Oct 2026: Table I is the paper's again, in Section III, caption unchanged."""
+        6 Oct 2026: Table I is the paper's again, in Section III, caption unchanged.
+
+        3 Nov 2026: moved to Supplement S1.3 by the author's decision, so that the paper fits the
+        journal's 12 free pages, caption unchanged; the paper states its point in words."""
         flat = " ".join(paper.split())
-        assert "Only $S$ falls below zero" in _spans_caption(paper), \
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        assert "Only $S$ falls below zero" in _spans_caption(journal), \
             "the span inventory no longer says it is complete"
         assert re.search(r"classified the " + RE_BS + r"harnessAuditedWord\{\} tools by reading "
                          r"them", flat), "the source-reading concession has gone"

@@ -102,11 +102,18 @@ class TestTheModeCountIsCheckedAgainstItsBinning:
         if re.search(r"power[- ]law", section, re.I):
             assert "monoton" in section, \
                 "the power-law refutation rests on monotonicity, which no rebinning rescues"
-        assert re.search(r"local\s+maxima,\s+which\s+survive\s+a\s+\$\\stallCoarsenFactor\\times"
-                         r"\$\s+widening\s+of\s+the\s+buckets", section), (
+        # 3 Nov 2026: the count of maxima and the widening's factor moved to Supplement S3.7 by
+        # the author's decision, so that the paper fits the journal's 12 free pages; Section
+        # IV-C says in words that the maxima survive wider buckets, and S3.7 gives the factor.
+        assert re.search(r"local\s+maxima,\s+which\s+survive\s+wider\s+buckets", section), (
             "Section IV-C does not say that the mode count was checked against the binning. "
             "This paper argues that instruments impose structure that gets reported as a "
             "property of the system; the count is of local maxima of a bucketed histogram.")
+        journal = JOURNAL.read_text(encoding="utf-8")
+        s37 = journal[journal.index(r"\label{s:timescale}"):]
+        s37 = s37[:s37.index(r"\subsection{")]
+        assert re.search(r"at\s+\$\\stallCoarsenFactor\$\s+times\s+the\s+width", s37), \
+            "S3.7 no longer gives the factor the maxima survive"
 
     def test_the_paper_says_the_per_event_data_was_not_retained(self, paper, supp):
         both = paper + supp
@@ -178,8 +185,15 @@ class TestTheStallCaptionSaysEachThingOnce:
             "masses belong there; saying the denominator three times does not.")
 
     def test_the_body_still_states_the_denominator_once(self, paper):
-        assert "of all wakeups" in paper, \
-            "the share needs its denominator somewhere; the body carries it"
+        # 3 Nov 2026: the paper's share of wakeups in the slice's bucket moved to Supplement S3.7
+        # by the author's decision, so that the paper fits the journal's 12 free pages. The
+        # denominator is stated where the shares are, in S3.7's figure, and the paper must state
+        # it again should it quote a share.
+        journal = " ".join(JOURNAL.read_text(encoding="utf-8").split())
+        assert "of all wakeups" in journal, "the share needs its denominator somewhere"
+        if "tracedModeShare" in paper:
+            assert "of all wakeups" in paper, \
+                "the share needs its denominator somewhere; the body carries it"
 
     def test_the_rejected_general_rule_would_have_fired_on_good_prose(self, paper):
         """Kept as evidence, so nobody rebuilds the rule without meeting the counter-example.

@@ -3088,6 +3088,10 @@ class TestTheToolsBlock:
         PerfKit, with none, adds nothing to them. The Pub/Sub load test, whose two runs the rule
         left undecided, is counted apart too, and with no slope adds nothing to them either."""
         got = dict(epn.tools_block_macros(*self._tables(tmp_path)))
+        # 3 Nov 2026: the tools run and not read, which the compact Table III counts (the author's
+        # page decision of that day);
+        # every tool of this fixture was read, so the count is zero here and seven in the record.
+        assert got.pop("toolsRunNotReadWord") == "zero"
         assert got == {"toolsRunWord": "17", "toolsRoundsWord": "two",
                        "toolsSlopeLo": "0.98", "toolsSlopeHi": "1.14",
                        "toolsOneClockWord": "six", "toolsOneProcessWord": "six",
@@ -3872,8 +3876,11 @@ class TestTheFullFixIsEmitted:
         m = dict(epn.full_fix_macros())
         assert (m["fullFixRuns"], m["fullFixMessages"], m["fullFixLoadPct"]) == (
             "48", "239{,}424", "88")
-        assert (m["fullFixMedianMovePct"], m["fullFixMedianMoveUs"], m["fullFixCardMoveUs"]) == (
-            "7.9", "50", "30")
+        # 4 Nov 2026: the largest move in microseconds (50) and the part of it before the card
+        # (30) left Supplement S3.9 under the author's rule for the supplement, and the ledger
+        # no longer writes them; docs/results/full_fix/README.md keeps both.
+        assert m["fullFixMedianMovePct"] == "7.9"
+        assert "fullFixMedianMoveUs" not in m and "fullFixCardMoveUs" not in m
         assert m["fullFixTailMovePct"] == "7.2"
         assert (m["fullFixTailRatioKafka"], m["fullFixTailRatioRedis"]) == ("4.6", "4.3")
         assert (m["fullFixTailRatioLo"], m["fullFixTailRatioHi"]) == ("4.3", "4.6")

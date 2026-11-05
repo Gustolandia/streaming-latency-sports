@@ -177,16 +177,28 @@ class TestEveryClaimAboutAnEquationMatchesTheEquation:
         # the delta names the margin.
         related = flat[flat.index(r"\section{Related Work}"):]
         related = related[:related.index(r"\section{", 10)]
+        # 3 Nov 2026, the author's rule against invented terms: "its share below zero is set
+        # by $p$, the probability that the thread is waiting for a core, and by the margin", in
+        # the words of p's definition. The claim kept: the share's dependence on p and on the
+        # margin, on the slice's timescale.
         assert re.search(r"consequence for a difference read by two processes", related) and \
-            re.search(r"at a rate set by the waiting probability and the margin",
-                      related), (
+            re.search(r"its share below zero is set by \$p\$, the probability that the "
+                      r"thread is waiting for a core, and by the margin", related), (
             "Related Work no longer claims the rate's dependence on the delivery; if that is "
             "deliberate, say what replaced the delta over Villain et al.")
         mechanism = flat[flat.index(r"\label{sec:mechanism}"):flat.index(r"\label{sec:external}")]
         # 15 Oct 2026: freeze 41 adds the kernel's timestamps to the manipulations, "We show,
         # by the kernel's timestamps and by \emph{manipulation}, ...".
-        assert re.search(r"We show, by the kernel's timestamps and by \\emph\{manipulation\}",
-                         mechanism), (
+        # 3 Nov 2026: the field's words, "controlled experiments" (the corpus uses
+        # "manipulation" for an experiment in no paper). The claim kept: the delta is the
+        # dependence and the experiments that move one variable.
+        # 3 Nov 2026, later: the Simple English form puts the subject first, "The kernel's
+        # timestamps and \emph{controlled experiments} show when ..."; both
+        # forms carry the same two sources of evidence.
+        assert re.search(r"We show, by the kernel's timestamps and by "
+                         r"\\emph\{controlled\s+experiments\}", mechanism) or \
+            re.search(r"The kernel's timestamps and \\emph\{controlled\s+experiments\}\s+show",
+                      mechanism), (
             "the delta over Villain et al. is the dependence *and* the manipulations; the "
             "dependence alone is what they already had")
 
@@ -243,7 +255,9 @@ class TestTheModelDoesNotAssertWhatTheTableRefutes:
         # 6 Oct 2026: read with the source's line breaks flattened; the sentence now wraps
         # between "the" and "rate", and a guard that holds only on one line is a guard the next
         # rewrap disables.
-        assert re.search(r"refutes any account in which utilization alone\s+sets\s+the\s+rate",
+        # 3 Nov 2026: "the share" of S below zero, the paper's word since "rate" names the
+        # publish rate (register A14's wording otherwise kept).
+        assert re.search(r"refutes any account in which utilization alone\s+sets\s+the\s+share",
                          paper), (
             "Section V-C no longer refutes utilization-only accounts; re-examine whether "
             "Equation 6 may carry p(rho) again")

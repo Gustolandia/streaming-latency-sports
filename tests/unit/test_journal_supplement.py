@@ -31,6 +31,10 @@ BS = chr(92)
 
 #: The sections in order, and their labels. Six since 5 Oct 2026: S7 (s:brokers), S8
 #: (s:withdrawn) and S9 (s:related) were cut, and the postmortem holds their material whole.
+#: 3 Nov 2026: the four-part rewrite adds S8, the general method's evidence (s:general), which
+#: the paper's Sections II and IV-D point to; S7, the broker audit (s:brokeraudit), comes in
+#: before it with the paper's Section V-D, the same day. Each new section keeps the
+#: floor of one pointer.
 OUTLINE = (
     ("S1", "s:setup"),
     ("S2", "s:signcheck"),
@@ -38,6 +42,8 @@ OUTLINE = (
     ("S4", "s:failure2"),
     ("S5", "s:tools"),
     ("S6", "s:law"),
+    ("S7", "s:brokeraudit"),
+    ("S8", "s:general"),
 )
 #: The editor's budget for pointers from the paper into this document (review, section 9) was
 #: fifteen. The author lifted it on 5 Oct 2026 when the paper was rebuilt: "No limits on
@@ -197,16 +203,21 @@ def test_the_postmortem_is_named_where_a_reader_starts(supp):
 
 
 def test_the_built_supplement_is_within_budget():
-    """The editor's ceiling, 25-30 pages with a little room, still holds. The floor only
+    """The editor's ceiling was 25-30 pages with a little room, held at 34. The floor only
     catches a build that lost its content: it was 20 against 30 pages, and the cut of 5 Oct
-    2026 left 16, so it is 12 now."""
+    2026 left 16, so it is 12 now.
+
+    4 Nov 2026, the author's decision: the ceiling is 36 pages. The supplement keeps everything
+    the paper points to, needs for its checks, or a referee asked for there, and the journal
+    sets no page limit on supplementary files."""
     import paper_build
     from pypdf import PdfReader
     pdf = paper_build.need("supplement.pdf")
     pages = len(PdfReader(str(pdf)).pages)
-    assert 12 <= pages <= 34, (
-        "%d pages; the budget is at most 30, with a little room, and under 12 the build lost "
-        "content" % pages)
+    assert 12 <= pages <= 36, (
+        "%d pages; the budget is at most 36, the author's ceiling for a supplement that keeps "
+        "everything the paper points to, needs for its checks, or a referee asked for there, "
+        "and under 12 the build lost content" % pages)
 
 
 def test_the_postmortem_says_what_it_is():

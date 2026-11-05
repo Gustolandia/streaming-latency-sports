@@ -137,9 +137,18 @@ class TestAMedianTravelsWithItsSpread:
         in full". The worst-case half of the pin follows it there, and it may not come back to
         the paper without saying which thing reaches it."""
         # 15 Oct 2026, referee B (S2) of version 9: the denominator is each broker's groups.
-        i = paper.find(r"\exposureKafkaGroups")
+        # 3 Nov 2026: each broker's group count and interquartile range moved to Supplement S2.1
+        # by the author's decision, so that the paper fits the journal's 12 free pages. The paper
+        # names the denominator in words, a broker's groups; the window is read where the
+        # counts went, and in the paper too should a count come back.
+        assert "over a broker's groups" in paper, "the denominator has gone"
+        journal = _flat("supplement.tex")
+        i = journal.find(r"\exposureKafkaGroups")
         assert i > 0, "the denominator has gone"
-        window = paper[i:i + 320]
+        window = journal[i:i + 320]
+        k = paper.find(r"\exposureKafkaGroups")
+        if k >= 0:
+            window += " " + paper[k:k + 320]
         assert "conditions whose interquartile" not in window, (
             "the interquartile range is hung off 'conditions' again; the range belongs to "
             "the understatement, and the worst case belongs to a condition")

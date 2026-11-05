@@ -755,8 +755,8 @@ def plot_kernel_fix(ax):
     ax.text(2.66, y_key, "a thread's delay", fontsize=8, color=FAILURE_RED, ha="left",
             va="center")
 
-    # The kernel-timed order, from the acknowledgment's arrival to the record's: no thread's
-    # wait is in it, and S = S_k + delta_recv - delta_ack. 0.11 under the broker's lane, not
+    # The order of the kernel's timestamps, from the acknowledgment's arrival to the
+    # record's: no thread's wait is in it, and S = S_k + delta_recv - delta_ack. 0.11 under the broker's lane, not
     # 0.09, for the label's MATH_PT box (15 Oct 2026).
     y_s = y_brk - 0.11
     for x, y0 in ((x_rxack, y_io - 0.07), (x_rx, y_con + 0.07)):
@@ -782,7 +782,7 @@ def plot_kernel_fix(ax):
             color=END_TO_END, ha="center", va="bottom")
     for x0, x1, label, colour, size in (
             (x_pub, x_tx, r"$H_{\mathrm{out}}$", GREY, MATH_PT),
-            (x_tx, x_rx, r"$W$: kernel-timed latency", KERNEL, 8),
+            (x_tx, x_rx, r"$W$: kernel to kernel", KERNEL, 8),
             (x_rx, x_recv, r"$H_{\mathrm{in}}$", GREY, MATH_PT)):
         ax.annotate("", xy=(x1, y_h), xytext=(x0, y_h),
                     arrowprops=dict(arrowstyle="<->", color=colour, linewidth=1.1, shrinkA=0,

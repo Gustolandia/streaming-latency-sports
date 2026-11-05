@@ -186,9 +186,10 @@ def main():
         "spanDeepestInversionMs", "spanSendFloorUs", "spanSendFloorOtherUs",
         "spanOffsetMargin", "rtResidualMin", "rtResidualMax", "invCeiling",
         # 16 Oct 2026: the real-time rates in percent, extremes and medians over the pairs.
+        # 4 Nov 2026: Redis's floor by load is written as fractions only, so its four twins in
+        # percent left the ledger and this list.
         "rtResidualMinPct", "rtResidualMaxPct", "rtRedisResidualMinPct",
-        "rtRedisResidualMaxPct", "rtRedisFloorLightLoadPct", "rtRedisNormalLightLoadPct",
-        "rtRedisFloorHeavyLoadPct", "rtRedisNormalHeavyLoadPct",
+        "rtRedisResidualMaxPct",
         "ombKeptLo", "ombKeptHi", "ombRetentionFold",
         "ombMedianCells", "gridFlatRates",
     }

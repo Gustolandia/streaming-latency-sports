@@ -854,3 +854,73 @@
   annote  = {A survey of researchers on failed replications. Verified against Crossref
              2026-10-17.}
 }
+
+% ---------------------------------------------------------------------------
+% 3 Nov 2026: the sources of Supplement S7.1, what a broker could report. Each was read at its
+% source on that day: the RFC Editor's record of each RFC, which its DOI resolves to; the OASIS
+% standard's own page; and the two pages of Kafka's documentation for version 4.1.
+% ---------------------------------------------------------------------------
+
+@techreport{rfc5905,
+  author      = {Mills, D. and Martin, Ed., J. and Burbank, J. and Kasch, W.},
+  title       = {Network Time Protocol Version 4: Protocol and Algorithms Specification},
+  institution = {Internet Engineering Task Force},
+  type        = {RFC},
+  number      = {5905},
+  month       = jun,
+  year        = {2010},
+  doi         = {10.17487/RFC5905},
+  annote      = {Section 7.3: the Receive Timestamp is the time at the server when the request
+                 arrived from the client, the Transmit Timestamp the time at the server when the
+                 response left; Section 8 takes the server's time between them out of the
+                 round-trip delay, (T4 - T1) - (T3 - T2). Quoted in
+                 data/broker_audit/precedents.json and fetched back on Oct. 30, 2026.}
+}
+
+@techreport{rfc9000,
+  author      = {Iyengar, Ed., J. and Thomson, Ed., M.},
+  title       = {{QUIC}: A {UDP}-Based Multiplexed and Secure Transport},
+  institution = {Internet Engineering Task Force},
+  type        = {RFC},
+  number      = {9000},
+  month       = may,
+  year        = {2021},
+  doi         = {10.17487/RFC9000},
+  annote      = {Section 19.3: ACK Delay is a variable-length integer encoding the acknowledgment
+                 delay in microseconds, decoded by multiplying it by 2 to the power of the
+                 ack_delay_exponent transport parameter, 3 when absent (Section 18.2). Section
+                 13.2.5: an endpoint must not include delays it does not control. Quoted in
+                 data/broker_audit/precedents.json and fetched back on Oct. 30, 2026.}
+}
+
+@misc{mqtt5,
+  author       = {Banks, Andrew and Briggs, Ed and Borgendale, Ken and Gupta, Rahul},
+  title        = {{MQTT} Version 5.0, {OASIS} Standard},
+  howpublished = {\url{https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html}},
+  month        = mar,
+  year         = {2019},
+  note         = {Accessed: Nov. 3, 2026},
+  annote       = {Editors of the standard of 7 March 2019. Section 2.2.2.2: a Control Packet that
+                  contains an Identifier which is not valid for its packet type is a Malformed
+                  Packet. Accessed: Nov. 3, 2026}
+}
+
+@misc{kafka41format,
+  author       = {{Apache Software Foundation}},
+  title        = {{Apache Kafka} 4.1 Documentation: Message Format},
+  howpublished = {\url{https://kafka.apache.org/41/implementation/message-format/}},
+  year         = {2026},
+  note         = {Accessed: Nov. 3, 2026},
+  annote       = {"The CRC covers the data from the attributes to the end of the batch (i.e. all
+                  the bytes that follow the CRC)." Accessed: Nov. 3, 2026}
+}
+
+@misc{kafka41design,
+  author       = {{Apache Software Foundation}},
+  title        = {{Apache Kafka} 4.1 Documentation: Design},
+  howpublished = {\url{https://kafka.apache.org/41/design/design/}},
+  year         = {2026},
+  note         = {Accessed: Nov. 3, 2026},
+  annote       = {Efficiency: "Using sendfile, this re-copying is avoided by allowing the OS to send
+                  the data from pagecache to the network directly." Accessed: Nov. 3, 2026}
+}

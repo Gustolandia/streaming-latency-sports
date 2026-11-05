@@ -241,8 +241,13 @@ class TestEveryResultSectionBelongsToAContribution:
             "the tool audit has left the section the contribution claims"
         # 11 Oct 2026: the contribution names the message tools it read, which is the count it
         # leads with since the curiosities that time no message left it.
+        # 3 Nov 2026: the Simple English form says it in its own sentence, "We read
+        # \harnessMessageWord{} message tools at source ..."; the claim kept: the contribution
+        # names the message tools it read, with their count.
         assert any(re.search(r"\\harness(Audited|Message)Word\{\} (message )?tools we read at "
                              r"source", i)
+                   or re.search(r"We read\s+\\harness(?:Audited|Message)Word\{\}\s+(?:message\s+)?"
+                                r"tools\s+at\s+source", i)
                    for i in items), "the claiming contribution no longer names the tools it read"
 
 

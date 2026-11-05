@@ -2,7 +2,7 @@
 
 The audit registered in `freezes/29-published-results-audit/` (committed 3b82667b, before any
 report was read) asked whether published OMB end-to-end results sit in the deletion regime of
-the paper's Section IV. It ran on 28 September 2026 under that registration, unchanged.
+the paper's Section 5.3. It ran on 28 September 2026 under that registration, unchanged.
 
 | File | What it is |
 |---|---|
@@ -20,3 +20,12 @@ holds the rule on a hand-counted coding.
 responses, saved so that every quote could be checked mechanically. They are other people's
 pages and are not ours to republish; the authors keep them, and `build.py` re-verifies the
 coding against them on request. Every row of the coding carries its source URL.
+
+## Corrections to this README
+
+A pointer in this README that does not match the paper is corrected here, in the open, with
+its date, the old and the new text, and the reason.
+- **3 November 2026. "the paper's Section IV" becomes "the paper's Section 5.3".** Since the
+  rebuild, the deletion regime is in Section 5.3, "A filter on a millisecond clock", and the
+  public reports are audited there.
+

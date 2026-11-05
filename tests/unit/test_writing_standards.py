@@ -397,7 +397,13 @@ class TestSymbolsAreDefinedBeforeUse:
         # met the word twice before anything told them it was p. On 5 Oct 2026 the word
         # became the field's, "waiting probability"; the label kept its name, and the pattern
         # follows the word (the old one had come to match only the label itself).
-        "occupancy": r"\b[Ww]aiting probabilit(?:y|ies)\b",
+        # 3 Nov 2026, the author's rule against invented terms: the paper says "the
+        # probability that the thread is waiting", in the words of its definition, and the
+        # pattern follows them. It passed only because Related Work still said "waiting
+        # probability" after Section IV-B; now the first use is the definition itself.
+        # 3 Nov 2026, later: the symbol itself too, "$p$", so that an early use of the symbol
+        # fails as an early use of its words does; the first "$p$" is "Write $p$", the definition.
+        "occupancy": r"\$p\$|\b[Pp]robability that the thread is waiting\b",
     }
 
     @pytest.mark.parametrize("name", sorted(SYMBOLS))
@@ -421,7 +427,14 @@ class TestAcronymsAreExpandedOnFirstUse:
              "E-A", "E-B", "E-C", "FIFO", "USA",
              # 2 Oct 2026: the NATS messaging system's name, used as a name. Its project gives
              # no expansion, so there is none to write on first use.
-             "NATS"}
+             "NATS",
+             # 3 Nov 2026, Section V-D's broker audit: MQTT is the OASIS standard's own name,
+             # which the standard does not expand, and OPC is the OPC Foundation's own name; UA
+             # is expanded where it first appears, "OPC Unified Architecture (OPC~UA)". Both are
+             # names, as NATS is.
+             "MQTT", "OPC",
+             # 3 Nov 2026, Section VI-C: RFC 9000, Section 1.2, "QUIC is a name, not an acronym."
+             "QUIC"}
 
     def test_every_acronym_is_expanded_once(self, prose):
         seen = {}
@@ -504,17 +517,30 @@ class TestEachNameIsBuiltWhereAReaderFirstMeetsIt:
 
     #: 5 Oct 2026: origin, transport proxy, publish delay, processing-time latency, consumer
     #: pattern and tick left the paper with the passages that used them, and so left this list.
+    #: 3 Nov 2026, the author's rule against invented terms: "one-way latency" became RFC 7679's
+    #: "one-way delay"; the positivity filter and the negative-span rate are said in plain words
+    #: ("a filter that keeps only latencies above zero", "the share of S below zero"), which need
+    #: no definition, so they left the list. The claim kept: every name is defined, in italics,
+    #: where a reader first meets it.
+    #: 3 Nov 2026: "manipulation" became the field's "controlled experiments" (Section IV's
+    #: lead defines it); the corpus uses "manipulation" for an experiment in no paper.
+    #: 3 Nov 2026, the same rule: "retention" is said in plain words, the share of samples kept,
+    #: and left the list. Section V-D's broker audit brings two of the field's terms, each defined
+    #: where a reader first meets it: "credit" (AMQP's link credit, a prefetch count) and the
+    #: "residence time", the message's whole time at the broker.
     DEFINED = ("scheduling delay", "end-to-end latency", "publish latency", "real-time priority",
-               "normal priority", "one-way latency", "positivity filter", "manipulation",
-               "retention", "event-time latency", "background load", "negative-span rate",
+               "normal priority", "one-way delay", "controlled experiments",
+               "event-time latency", "background load", "credit", "residence time",
                # 4 Oct 2026, the author: "yes gloss those four too, cut elsewhere to fit." The
                # knee, used once, is said in plain words instead; stolen time is Linux's steal time.
                "busy-polling", "steal time",
                # 4 Oct 2026: the introduction opens on the stakes, and its first paragraph
                # defines the two programs a broker joins.
                "producer", "consumer",
-               # 13 Oct 2026: Section VI names the fix freeze 39 tested where it first gives it.
-               "kernel-timed latency",
+               # 13 Oct 2026: Section VI named the fix freeze 39 tested where it first gave it,
+               # the "kernel-timed latency". 3 Nov 2026, the author's rule against invented
+               # terms: W is said in words, the latency between the kernel's timestamps, which
+               # needs no definition beyond W's own (Section IV-D), so the name left the list.
                # 15 Oct 2026: Section VI says how any tool reads those timestamps, and names the
                # setting and the queue it returns them on. The "device queue" left the same day:
                # referee A (m12) asked for the kernel documentation's name, the timestamp taken
@@ -552,7 +578,11 @@ class TestEachNameIsBuiltWhereAReaderFirstMeetsIt:
         first = self._first("publish call", text)
         assert first, "the paper no longer says 'publish call'"
         after = text[first.end():first.end() + 60]
-        assert re.match(r"\}?, the moment the producer hands the message over", after), after
+        # 3 Nov 2026: the definition is its own sentence now ("The \emph{publish call} is the
+        # moment ..."), the Simple English form; the claim kept: the publish call is said where
+        # it first appears.
+        assert re.match(r"\}?(?:,| is) the moment the producer hands the message over", after), \
+            after
 
     def test_published_means_the_producers_act_only(self, paper):
         """A10 freed "publish" for the producer's act; until 4 Oct the paper still said
@@ -560,8 +590,10 @@ class TestEachNameIsBuiltWhereAReaderFirstMeetsIt:
         text = " ".join(_prose(_body(paper)).split())
         uses = [text[max(0, m.start() - 50):m.end() + 10]
                 for m in re.finditer(r"(?i)\bpublished\b", text)]
-        made_public = [u for u in uses if not re.search(r"before (?:they were|being) published"
-                                                        r"|due to be published", u)]
+        # 3 Nov 2026: the abstract the author's chain asked for says that "no message arrives
+        # before it is published", the producer's act, as the two forms above are.
+        made_public = [u for u in uses if not re.search(r"before (?:they were|being|it is) "
+                                                        r"published|due to be published", u)]
         assert not made_public, made_public
 
 
@@ -670,20 +702,69 @@ class TestHeadlineNumbersAppearInResultsFirst:
     #: row with what it buys, and its paragraphs report those measurements in full, as VI-B
     #: did. The table is the span held; every number it prints must be reported in the paper's
     #: text before Related Work.
-    CHECKS = re.compile(r"\\begin\{table\*?\}(?:(?!\\end\{table).)*?\\label\{tab:checks\}"
+    #: 3 Nov 2026: the table moved to Supplement S2 by the author's decision, so that the paper
+    #: fits the journal's 12 free pages. Every number the table prints is reported as a result
+    #: in running text, in the paper before Related Work or in the supplement outside the table;
+    #: a number the paper no longer reports is reported in a subsection that its row points to.
+    #: 4 Nov 2026: every macro of the ledger that the table reads is held to the rule. The
+    #: pattern of number-like name endings that stood here could not see \rtKafkaLowerBound,
+    #: \rtRedisLowerBound, \ombGridMedianCells, \ombMedianCells or \auditPctCloud, and a gate
+    #: that cannot see a name is no gate. A name is matched whole, so \recoveryErrKafka is not
+    #: found inside \recoveryErrKafkaHi.
+    CHECKS = re.compile(r"\\begin\{table\*?\}(?:(?!\\end\{table).)*?\\label\{stab:checks\}"
                         r".*?\\end\{table\*?\}", re.S)
 
+    @staticmethod
+    def _subsection(tex, label):
+        start = tex.index("\\label{%s}" % label)
+        head = tex.rfind("\\subsection{", 0, start)
+        ends = [e for e in (tex.find("\\subsection{", start), tex.find("\\section{", start))
+                if e != -1]
+        return tex[head:min(ends) if ends else len(tex)]
+
+    @staticmethod
+    def _ledger_names():
+        gen = REPO / "docs" / "generated" / "paper_numbers.tex"
+        if not gen.exists():                            # pragma: no cover - built by CI
+            pytest.skip("docs/generated/paper_numbers.tex absent; run emit_paper_numbers.py")
+        return set(re.findall(r"\\newcommand\{\\(\w+)\}", gen.read_text(encoding="utf-8")))
+
+    @staticmethod
+    def _reads(text, name):
+        return re.search(r"\\%s(?![A-Za-z])" % name, text) is not None
+
     def test_discussion_numbers_are_results_numbers(self, paper):
+        self._hold_the_checks_table(paper, (REPO / "supplement.tex").read_text(encoding="utf-8"))
+
+    def _hold_the_checks_table(self, paper, supplement):
         body = re.sub(r"(?m)^%.*$", "", _body(paper))
-        table = self.CHECKS.search(body)
-        assert table, "the table of checks (tab:checks) is gone; re-read B8 before moving this"
+        journal = re.sub(r"(?m)^%.*$", "", _body(supplement))
+        table = self.CHECKS.search(journal)
+        assert table, "the table of checks (stab:checks) is gone; re-read B8 before moving this"
+        assert "label{tab:checks}" not in body, "the paper prints a table of checks again"
         discussion = table.group(0)
-        results = body[:table.start()] + body[table.end():body.index(r"\section{Related Work}")]
-        macros = set(re.findall(r"\\([a-zA-Z]+(?:Lo|Hi|Pct|Factor|Fraction|Paired|Median|Err\w*|Crossover\w*|Gap\w*))\b",
-                                discussion))
+        in_paper = body[:body.index(r"\section{Related Work}")]
+        results = in_paper + journal[:table.start()] + journal[table.end():]
+        macros = set(re.findall(r"\\([a-zA-Z]+)", discussion)) & self._ledger_names()
         assert macros, "the table of checks quotes no measured number; the rule has gone vacuous"
-        missing = sorted(m for m in macros if ("\\" + m) not in results)
+        missing = sorted(m for m in macros if not self._reads(results, m))
         assert not missing, "first revealed in Discussion: %s" % missing
+        rows = discussion.split("\\\\")
+        for m in sorted(x for x in macros if not self._reads(in_paper, x)):
+            row = next(r for r in rows if self._reads(r, m))
+            refs = re.findall(r"\\ref\{(s:[^}]+)\}", row)
+            assert any(self._reads(self._subsection(journal, ref), m) for ref in refs), (
+                "%s is reported only in the supplement, and its row does not point to the "
+                "subsection that reports it: %s" % (m, refs))
+
+    def test_a_bound_left_unreported_is_caught(self, paper):
+        """Mutation, not inspection: the paper's at-least factor on Kafka, typed in place of its
+        macro, leaves the table's \\rtKafkaLowerBound reported only in S3.1, which its row does
+        not point to; the gate must fail. The pattern it replaced passed this mutant."""
+        bad = paper.replace("\\rtKafkaLowerBound", "4.4")
+        assert bad != paper, "the paper no longer prints the at-least factor; retarget this"
+        with pytest.raises(AssertionError):
+            self._hold_the_checks_table(bad, (REPO / "supplement.tex").read_text(encoding="utf-8"))
 
 
 # ---------------------------------------------------------------- C. register

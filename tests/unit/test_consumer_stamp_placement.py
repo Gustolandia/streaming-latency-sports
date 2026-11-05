@@ -102,7 +102,9 @@ class TestTheAsymmetryIsDisclosedWhereItIsDescribed:
         end = supp.find(r"\section{", i)
         section = " ".join(supp[i:end if end != -1 else len(supp)].split())
         # 6 Oct 2026: the comparison is the paper's Table I again, read through its prefix.
-        assert r"\ref{P-tab:spans}" in section, \
+        # 3 Nov 2026: Table I moved into this subsection by the author's decision, so that the
+        # paper fits the journal's 12 free pages; the comparison is the table set here.
+        assert r"\ref{stab:spans}" in section and r"\label{stab:spans}" in section, \
             "the per-broker comparison must sit in the subsection that bounds the asymmetry"
         assert r"\spanHandlingSharePct" in section, \
             "the asymmetry must be bounded where the comparison it could move is made"

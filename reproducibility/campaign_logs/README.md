@@ -1,7 +1,7 @@
 # Campaign logs
 
-The stdout of every chain run on the cloud driver, pulled off the VM before it is released.
-101 KB for the lot.
+The stdout of every chain run on the cloud driver, pulled off the VM before it is released: the
+25 logs in the table below, 56 KB, and 13 earlier ones in early_adhoc/.
 
 These are not results. They are the record of *what ran, in what order, and what happened while it
 ran* — which is the thing that becomes unrecoverable the moment the machine goes away, and the
@@ -15,23 +15,29 @@ it was started, what it was waiting for, and whether the step before it failed.
 | `ea5_chain.log`, `post_ea5.log` | E-A5 stamping priority and its follow-ups |
 | `ea7_chain.log` | E-A7, the measured-occupancy campaign |
 | `ea8_chain.log` | E-A8 co-location — the campaign whose result is withheld |
-| `ea9b.log`, `ea9c.log` | the traced run-queue tail, including the two aborted attempts |
+| `ea9b.log`, `ea9c.log` | the traced run-queue tail; its two aborted attempts are in round5.log |
 | `knee_chain.log` | E-A4, extending the ladder past ρ=0.90 |
 | `h3.log` | H3, the stamping-asymmetry test |
-| `omb_chain.log`, `omb_chain2.log`, `omb4.log` | the OpenMessaging Benchmark attempts |
+| `omb_chain.log`, `omb_chain2.log`, `omb4.log`, `omb_chain9.log` | the OpenMessaging Benchmark attempts; `omb_chain9.log` holds the distributed attempts of 27 July |
 | `transport_rt.log`, `window.log`, `window_redis.log` | the powered transport and window sweeps |
 | `referee_chain.log`, `followup.log`, `rerun.log`, `resume.log`, `run_all.log`, `round3.log` | orchestration, reruns, and the resume after the 2026-07-23 wedge |
 
 ## Why the failures are kept
 
-`ea9b.log` records the campaign aborting on `$!: unbound variable` — a guard that failed closed
-before a single cell ran. `omb4.log` is empty because that attempt died before writing anything.
-`resume.log` exists because the depth suite wedged and had to be restarted.
+`round5.log` records the traced campaign aborting on `$!: unbound variable` at both of its load
+levels — a guard that failed closed before a single cell ran. `omb4.log` is empty because that
+attempt died before writing anything. `resume.log` exists because the depth suite wedged and
+had to be restarted.
 
-Those are in the paper. Section 7.3 reports the traced tail resting on a campaign that took three
-attempts; Section 6.7 reports five distinct faults in OMB's worker protocol. A reader who wants to
-check that those attempts happened, and failed the way we say they failed, can read the logs
-rather than take the count on trust.
+The record reports the OpenMessaging Benchmark's failures. The postmortem's S22.1 reports that
+the benchmark's distributed mode never completed a run in eleven attempts. Each failed inside
+the benchmark's own coordinator-to-worker protocol. S24.1 gives the diagnostics, and the
+supplement's S4.5 points there. The traced run-queue campaign, E-A9, is in the supplement's
+S3.5 and the postmortem's S9 and S26.1. Both report its first attempt, whose probe failed to
+attach and which became the untraced twin. Neither reports the two attempts that aborted before
+a cell ran, which only these logs record. A reader who wants to check that those attempts
+happened, and failed the way we say they failed, can read the logs rather than take the count
+on trust.
 
 ## `early_adhoc/` — the scripts referee issue M5 was about
 
@@ -55,11 +61,32 @@ d50  runs/concurrency_n5_20260721_205758_redis_feed5_rep3
 ```
 
 That association exists in no CSV and in no directory name. Without it the delay levels reported
-in the paper cannot be traced back to individual runs at all.
+in the postmortem (S13.2 and S26.2) cannot be traced back to individual runs at all.
 
 **`e1.sh`** is the E1 campaign as actually invoked — `1×8, 9×3, 10×3, 12×3` at a speed-up of
-`0.008333`, which is the true-real-time figure the paper says E1's replay rate could not be
-recovered from the artefacts. It was in a shell script on a VM.
+`0.008333`, which is the true-real-time figure the postmortem says (S4) E1's replay rate could
+not be recovered from the artefacts. It was in a shell script on a VM.
 
 These are kept as found. They are not maintained, they hard-code addresses that no longer exist,
 and they are superseded by `cloud/campaigns/`. They are here as evidence of what was run.
+
+## Corrections to this README
+
+A number or a pointer in this README that does not match the paper, the supplement, the
+postmortem or a record is corrected here, in the open. Each correction gives the date, the old and
+the new text, and the reason. The records themselves are unchanged.
+- **4 November 2026. "Those are in the paper" was no longer true.** The paper of July had a
+  Section 7.3 on the traced tail and a Section 6.7 on the benchmark's distributed mode, and the
+  rebuilt paper has neither. The paragraph now names where the record holds them: the
+  postmortem's S22.1, S24.1, S9 and S26.1, and the supplement's S3.5 and S4.5. "Five
+  distinct faults" becomes the eleven attempts that S22.1 reports. The delay levels and E1's
+  replay rate are likewise in the postmortem now, at S13.2, S26.2 and S4.
+- **4 November 2026. "101 KB for the lot" becomes "the 25 logs in the table below, 56 KB, and
+  13 earlier ones in early_adhoc/".** The 24 logs of the table held 50,035 bytes when this page
+  was committed on 26 July 2026, and `omb_chain9.log`, committed the next day, brings the 25 to
+  56,030. The OMB row now names it. The 13 logs in `early_adhoc/` hold 41,585 bytes.
+- **4 November 2026. The traced campaign's two aborted attempts are in round5.log, not in
+  ea9b.log.** round5.log records the abort on `$!: unbound variable` at both load levels of
+  E-A9b (its l.7 and l.12, at 22:58:56 on 25 July 2026). ea9b.log holds the rerun with a
+  working probe. The table's row and "Why the failures are kept" now say so.
+

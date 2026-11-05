@@ -247,7 +247,8 @@ def plot_deletion(ax, pts, quantum_ms=AT_GRID_MAX_MS, marked=()):
     # "log" in the labels, and the ticks written out: as 10^n their exponents printed at 5.75 pt
     # (15 Oct 2026, an internal review of the printed figures).
     ax.set_xlabel("median latency the benchmark printed (ms, log)", fontsize=8)
-    ax.set_ylabel("samples retained (%, log)", fontsize=8)
+    # 3 Nov 2026: the paper's words for retention, the share of samples kept.
+    ax.set_ylabel("share of samples kept (%, log)", fontsize=8)
     ax.tick_params(labelsize=8)
     ax.yaxis.set_major_formatter(FuncFormatter(figure_style.plain_log_label))
     ax.grid(alpha=0.25, lw=0.5)
@@ -687,7 +688,8 @@ def plot_priority_forest(axes, rows):
                            fontsize=8)
         # "log" in the label and the factors written out, "1k" for 10^3: as 10^n the exponents
         # printed at 5.8 pt (15 Oct 2026, an internal review of the printed figures).
-        ax.set_xlabel("normal-priority rate over real-time rate (log)", fontsize=8)
+        # 3 Nov 2026: "share" of S below zero, the paper's word; "rate" is the publish rate's.
+        ax.set_xlabel("normal-priority share over real-time share (log)", fontsize=8)
         ax.xaxis.set_major_formatter(FuncFormatter(figure_style.plain_log_label))
         ax.set_title(name, fontsize=8, loc="left")
         ax.tick_params(labelsize=8)
@@ -712,11 +714,11 @@ FIX_SETUPS = (("idle", 0, False), ("load", 88, False), ("load,\nreal-time", 88, 
 #: What each latency is in the fix's figure: timed by the clients' threads, as benchmarks time
 #: it, or between the kernel's timestamps read on the clients' own sockets (freeze 40).
 FIX_SERIES = (("D_p99", "end-to-end latency $D$", DELETED),
-              ("Wso_p99", "kernel-timed latency $W$", KEPT))
+              ("Wso_p99", "kernel to kernel $W$", KEPT))
 
 
 def fix_benefit_rows(path=SO_FIX_RUNS):
-    """{broker: [(setup label, D's 99th percentile, the kernel-timed latency's), ...]} in
+    """{broker: [(setup label, D's 99th percentile, W's), ...]} in
     milliseconds, one entry per FIX_SETUPS, each a setup's median over its runs of each run's
     99th percentile, as Supplement S3.10's table gives them (scripts/full_fix.setup_value)."""
     import csv
@@ -768,7 +770,7 @@ FIX_BENEFIT_IN = (figure_legibility.COLUMN_WIDTH_IN, 1.9)
 
 
 def build_fix_benefit(out_dir):
-    """Section VI's figure of what the kernel-timed fix buys, drawn at the column width the paper
+    """Section VI's figure of what the fix buys, drawn at the column width the paper
     prints it at, from freeze 40's committed run table."""
     figure_style.apply()   # in force when the artists are made, not merely at import
     width = figure_legibility.print_widths().get("fix_benefit", FIX_BENEFIT_IN[0])
@@ -1482,7 +1484,8 @@ def plot_payload_grid(ax, arms, q=PAYLOAD_Q):
     # the axes stop at 100 and the top frame runs through the capitals of "q/q". Retention
     # cannot exceed 100, so the space is empty by construction.
     ax.set_ylim(25, 108)
-    ax.set_ylabel("retention (%)", fontsize=8)
+    # 3 Nov 2026: the paper's words for retention, the share of samples kept.
+    ax.set_ylabel("share of samples kept (%)", fontsize=8)
     # "lattice", the supplement's word for the retentions 0, 1/q, ..., 1 a configuration can
     # reach, as its caption says; it keeps "grid" for the instants a timestamp changes value.
     ax.set_title("(a) Replicates against the $q=%d$ lattice" % q, fontsize=8)

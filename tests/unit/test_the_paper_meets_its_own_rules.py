@@ -249,9 +249,17 @@ class TestThePapersOwnPercentilesCarryTheirDenominators:
     def test_the_recovery_quartiles_name_their_populations(self, paper):
         # 15 Oct 2026, both referees of version 9 (M4, S4): the quartiles are by broker, so the
         # denominators are each broker's groups; the verdicts' counts stay in the postmortem.
-        for name in ("recoveryKafkaN", "recoveryRedisN"):
-            assert ("\\" + name) in paper, \
-                "%s is not printed, so a quartile is quoted with no denominator" % name
+        # 3 Nov 2026: the quartiles and the counts moved to Supplement S2.1 by the author's
+        # decision, so that the paper fits the journal's 12 free pages; the rule holds in each
+        # document that prints a quartile.
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        assert "\\recoveryErrKafkaHi" in journal, "the quartiles are printed nowhere"
+        for where, doc in (("the paper", paper), ("the supplement", journal)):
+            if "\\recoveryErrKafkaHi" in doc or "\\recoveryErrRedisHi" in doc:
+                for name in ("recoveryKafkaN", "recoveryRedisN"):
+                    assert ("\\" + name) in doc, \
+                        "%s: %s is not printed, so a quartile is quoted with no denominator" % (
+                            where, name)
 
     def test_the_exposure_curve_is_quoted_with_its_spread(self, paper):
         """Section VII-B tells the reader to know "how wide it is"; round 51 found the paper
@@ -260,11 +268,25 @@ class TestThePapersOwnPercentilesCarryTheirDenominators:
 
         The 5 Oct 2026 rebuild cut Section VII-B, and with it the rule in the paper's own
         words, but not the curve: Section VI still quotes the error at 10 ms at the median
-        publish latency, and rule A1e of the writing standards still asks for its spread."""
-        assert "\\exposureErrTenHi" in paper, \
+        publish latency, and rule A1e of the writing standards still asks for its spread.
+
+        3 Nov 2026: the error at 10 ms with its band, and the crossover at the ninetieth
+        percentile of A, moved to Supplement S2.1 by the author's decision, so that the paper
+        fits the journal's 12 free pages (register D17, recorded as moved). They are held there.
+        The paper quotes the crossover at the median publish latency, with S2.1 named in its
+        paragraph, and should it quote the error at 10 ms again it must give its width."""
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        assert "\\exposureErrTenHi" in journal, \
             "the exposure error is quoted without the upper quartile that gives its width"
-        assert "\\exposureCrossoverHi" in paper or "\\exposureLagHi" in paper, \
+        assert "\\exposureCrossoverHi" in journal or "\\exposureLagHi" in journal, \
             "the crossover is quoted without the spread that moves it"
+        if "\\exposureErrTen" in paper:
+            assert "\\exposureErrTenHi" in paper, \
+                "the exposure error is quoted without the upper quartile that gives its width"
+        i = paper.find("\\exposureCrossover$")
+        if i >= 0:
+            assert "(Supplement~S2.1)" in " ".join(paper[i:i + 400].split()), \
+                "the paper quotes the crossover without pointing to its spread"
 
 
 # --- Rule: a printed number keeps the significant figure it has -----------------------------

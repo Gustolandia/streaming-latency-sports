@@ -92,7 +92,10 @@ NOT_TOLD_APART = r"cannot\s+(?:be\s+told|tell)\s+apart"
 #: nothing about them, sameness included; its last number is where a claim would be added.
 #: 15 Oct 2026: the paragraph quotes the recovery by broker, and its last number is Redis's
 #: upper quartile, taken with or without the per cent sign and the closing dollar.
-RECOVERY_END = (re.escape(BS) + r"recoveryErrRedisHi(?![A-Za-z])(?:" + re.escape(BS)
+#: 3 Nov 2026: the upper quartiles moved to Supplement S2.1 by the author's decision, so that
+#: the paper fits the journal's 12 free pages; the last number is Redis's median error now,
+#: taken the same way.
+RECOVERY_END = (re.escape(BS) + r"recoveryErrRedis(?![A-Za-z])(?:" + re.escape(BS)
                 + r"%)?\$?")
 
 

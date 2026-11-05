@@ -111,10 +111,25 @@ def _s169(supplement):
     return " ".join(supplement[i:supplement.index("S17. The 1970 counter note")].split())
 
 
-def _checks_row(paper, words):
-    """The row of Table IV (the checks that cost nothing) whose text contains `words`."""
-    i = paper.index(BS + "label{tab:checks}")
-    table = paper[i:paper.index(BS + "end{tabular}", i)]
+def _recovery_in_full():
+    """The recovery paragraph of the journal supplement's S2.1, flattened.
+
+    3 Nov 2026: the paper's paragraph keeps each broker's median error; the group counts and
+    the upper quartiles moved to S2.1 by the author's decision, so that the paper fits the
+    journal's 12 free pages. S2.1 prints them with the worst errors, so the pins read it."""
+    journal = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").split())
+    i = journal.index("The recovery's median error is")
+    return journal[i:journal.index("(postmortem, S16.9)", i)]
+
+
+def _checks_row(words):
+    """The row of Table IV (the checks that cost nothing) whose text contains `words`.
+
+    3 Nov 2026: the table moved to Supplement S2 by the author's decision, so that the paper
+    fits the journal's 12 free pages; the row is read there."""
+    journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+    i = journal.index(BS + "label{stab:checks}")
+    table = journal[i:journal.index(BS + "end{tabular}", i)]
     rows = [" ".join(r.split()) for r in table.split(BS + BS) if words in " ".join(r.split())]
     assert len(rows) == 1, "Table IV has been reworded; retarget this pin"
     return rows[0]
@@ -232,7 +247,10 @@ class TestR1TheIndexTermsNameTheirOwnSubject:
 #: 15 Oct 2026: the paragraph quotes the errors by broker, and its last number is Redis's upper
 #: quartile; the anchor takes it with or without the per cent sign and the closing dollar, so
 #: that it follows the number rather than one way of setting it.
-RECOVERY_END = (re.escape(BS) + r"recoveryErrRedisHi(?![A-Za-z])(?:" + re.escape(BS)
+#: 3 Nov 2026: the upper quartiles moved to Supplement S2.1 by the author's decision, so that
+#: the paper fits the journal's 12 free pages; the paragraph's last number is Redis's median
+#: error, taken the same way (and never as the start of its upper quartile's name).
+RECOVERY_END = (re.escape(BS) + r"recoveryErrRedis(?![A-Za-z])(?:" + re.escape(BS)
                 + r"%)?\$?")
 
 
@@ -350,14 +368,24 @@ class TestR2TheRecoveryPopulationsDoNotSeparate:
         rejects only read inside each broker. So the paragraph is held to each broker's median
         error and upper quartile instead of each verdict's (the pooled figures stay in S16.9's
         table), and wherever it sets the groups the check passes beside those it rejects, it
-        must say the comparison is made within a broker."""
+        must say the comparison is made within a broker.
+
+        3 Nov 2026: the upper quartiles moved to Supplement S2.1 by the author's decision, so
+        that the paper fits the journal's 12 free pages, and the table of checks moved to
+        Supplement S2. The paper's paragraph is held to each broker's median error, S2.1's to
+        all four numbers, both to the same refusals, and the table's add-back row to numbers
+        the paper's paragraph prints."""
         vd = _recovery(paper)
+        full = _recovery_in_full()
+        for macro in ("recoveryErrKafka", "recoveryErrRedis"):
+            assert re.search(re.escape(BS + macro) + r"(?![A-Za-z])", vd), macro
         for macro in ("recoveryErrKafka", "recoveryErrRedis", "recoveryErrKafkaHi",
                       "recoveryErrRedisHi"):
-            assert re.search(re.escape(BS + macro) + r"(?![A-Za-z])", vd), macro
+            assert re.search(re.escape(BS + macro) + r"(?![A-Za-z])", full), macro
         for claim in ("separate", "do not differ", "indistinguishable", "no shift remains",
                       "the populations do not"):
             assert claim not in vd, claim
+            assert claim not in full, claim
         if re.search(r"\b(?:passes|accepts|rejects)\b", vd):
             # Case-blind: the sentence may open on it, "On each broker, ...".
             assert re.search(r"\b(?:within|inside|on) (?:each|either) broker\b", vd, re.I), (
@@ -382,7 +410,7 @@ class TestR2TheRecoveryPopulationsDoNotSeparate:
         assert BS + "recoveryKafkaShift$" in s169 and BS + "recoveryRedisShift$" in s169
         assert "within either broker, no shift can be detected" in s169
         assert "the recovery holds where the check rejects as well as where it passes" in s169
-        row = _checks_row(paper, "add it back")
+        row = _checks_row("add it back")
         quoted = set(re.findall(re.escape(BS) + r"(recovery\w+)", row))
         assert quoted, "the add-back row no longer says what the recovery buys"
         assert quoted <= set(re.findall(re.escape(BS) + r"(recovery\w+)", vd)), (
@@ -428,6 +456,7 @@ class TestR2TheRecoveryPopulationsDoNotSeparate:
         # the separation claim is put in its place.
         # 5 Oct 2026: that sentence was cut; the claim is put back after the last of the
         # rebuilt paragraph's numbers (`RECOVERY_END`), and both gates must fire on it.
+        # 3 Nov 2026: that last number is Redis's median error now (see `RECOVERY_END`).
         bad, n = re.subn(RECOVERY_END,
                          lambda m: m.group(0) + ", so they separate\nat the median, not in the "
                          "upper tail", paper)

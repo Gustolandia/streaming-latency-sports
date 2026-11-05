@@ -54,7 +54,7 @@ analysis command for each.
 | script | arm | notes |
 |---|---|---|
 | `omb_discard_count.sh` | E-X | runs the OpenMessaging Benchmark and counts what it silently discards |
-| `omb_distributed.sh` | E-X2 | the distributed variant. Five attempts, five distinct faults; not reported |
+| `omb_distributed.sh` | E-X2 | the distributed variant. It never completed a run in eleven attempts (postmortem S22.1 and S24.1); not reported |
 
 ### Orchestration and one-offs
 
@@ -96,3 +96,14 @@ The Azure testbed that replaces them is described in [`../azure/README.md`](../a
 It runs these campaigns unchanged: `../azure/replicate_oracle.sh` runs the load-geometry, payload
 and go-first campaigns there. The trial runners' `SBL_CONSUMER_WRAP` hook, empty by default,
 serves its receiver-only delay.
+
+## Corrections to this README
+
+A number or a pointer in this README that does not match the paper, the supplement, the
+postmortem or a record is corrected here, in the open. Each correction gives the date, the old and
+the new text, and the reason. The records themselves are unchanged.
+- **4 November 2026. The distributed variant: "Five attempts, five distinct faults" becomes
+  eleven attempts, none of which completed a run.** The row was written after the first five.
+  The postmortem's S22.1 reports all eleven, failing inside the benchmark's own
+  coordinator-to-worker protocol, and S24.1 gives the diagnostics.
+

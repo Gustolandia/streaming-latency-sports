@@ -266,7 +266,8 @@ def render_spans_table():
              "\\setlength{\\tabcolsep}{4pt}",
              "\\begin{tabular}{@{}llrrrr@{}}",
              "\\toprule",
-             "Span & From & \\kafka{} & \\redis{} & All & Least, $\\mu$s \\\\",
+             # 3 Nov 2026: the paper says "difference", not "span" (no invented terms).
+             "Difference & From & \\kafka{} & \\redis{} & All & Least, $\\mu$s \\\\",
              "\\midrule"]
     for i, (span, origin, count, floor) in enumerate(rows):
         pct = "\\%" if count.endswith("Pct") else ""
@@ -1065,7 +1066,10 @@ def render_registry_table():
         "\\toprule",
         # "maintainer" since 15 Oct 2026, the referees' M5: the paper counts the tools'
         # maintainers, organizations and people alike, and "vendor" named only the first.
-        "Tool & Language, maintainer & Span measured & Clock & What happens to the value & Counts \\\\",
+        # 3 Nov 2026: "Difference measured", the paper's word for a difference of two timestamps
+        # (the author's rule against invented terms retired "span").
+        "Tool & Language, maintainer & Difference measured & Clock & What happens to the value & "
+        "Counts \\\\",
         "\\midrule",
     ]
     source_keys = []
@@ -2689,7 +2693,9 @@ def render_mechanism_table(path=MECH_INTERVALS_CSV):
     level = TABLE_II_PLACEMENT_LEVEL
     lines = ["\\begin{tabular}{@{}p{0.43\\columnwidth}ll@{}}",
              "\\toprule",
-             "Manipulation, and the ratio & \\kafka{} & \\redis{} \\\\",
+             # 3 Nov 2026: "Experiment", the paper's word for a controlled experiment, since
+             # the corpus uses "manipulation" for an experiment in no paper.
+             "Experiment, and the ratio & \\kafka{} & \\redis{} \\\\",
              "\\midrule",
              "Real-time priority, \\rtPairsWord{} pairs & %s & %s \\\\"
              % (prio("kafka"), prio("redis")),
@@ -2719,7 +2725,8 @@ GROUPS_CSV = os.path.join("docs", "results", "span_symmetry.csv")
 
 
 def _group_label(condition):
-    """kafka_n12_feed1#pass -> "K 12 1 p": broker, senders, feeds, the sign check's verdict."""
+    """kafka_n12_feed1#pass -> "K 12 1 p": broker, producers running at once on each broker, the
+    producer (which of them, its feed), the sign check's verdict."""
     m = re.match(r"(\w+?)_n(\d+)_feed(\d+)(?:#(pass|fail))?$", condition)
     if not m:
         return condition.replace("_", "\\_")
@@ -4347,6 +4354,10 @@ def tools_block_macros(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
                          "version 34's answer from the offset alone was two; the tables disagree")
     return [
         ("toolsRunWord", _spell(len({r["tool"] for r in t1}))),
+        # 3 Nov 2026: the tools the block ran that the reading at source did not cover, which the
+        # paper's compact Table III counts in its caption (the author, 3 Nov 2026).
+        ("toolsRunNotReadWord", _spell(len({r["tool"] for r in t1} & {
+            t for t, where in TOOL_REGISTRY_PATHS.items() if where is None}))),
         ("toolsRoundsWord", _spell(len(rounds))),
         ("toolsSlopeLo", "%.2f" % min(per_crossing)),
         ("toolsSlopeHi", "%.2f" % max(per_crossing)),
@@ -5425,21 +5436,6 @@ def _moves(pairs):
     return [(abs(other - base) / base, abs(other - base)) for base, other in pairs]
 
 
-def _card_move_at_largest(rows):
-    """The move of the wire time measured to the card's own stamp, in the comparison where the
-    kernel-timed wire time's median moved most: how much of that move lay before the card."""
-    import full_fix
-    moves = []
-    for b in full_fix.BACKENDS:
-        pairs = [((b, full_fix.IDLE, p), (b, full_fix.BUSY, p)) for p in (False, True)]
-        pairs += [((b, load, False), (b, load, True)) for load in (full_fix.IDLE, full_fix.BUSY)]
-        for one, other in pairs:
-            w = [full_fix.setup_value(rows, *s, field="W_median") for s in (one, other)]
-            card = [full_fix.setup_value(rows, *s, field="Wcard_median") for s in (one, other)]
-            moves.append((abs(w[1] - w[0]) / w[0], abs(card[1] - card[0])))
-    return max(moves)[1]
-
-
 def full_fix_macros(root=FULL_FIX_DIR):
     """F1, a full fix tested (freeze 39): the paragraph of Section VI that names it, and
     Supplement S3.9. Read through scripts/full_fix.py's own judge of the committed run table, so
@@ -5463,9 +5459,11 @@ def full_fix_macros(root=FULL_FIX_DIR):
         ("fullFixRuns", str(len(rows))),
         ("fullFixMessages", latex_thousands(sum(int(r["messages"]) for r in rows))),
         ("fullFixLoadPct", str(full_fix.BUSY)),
+        # 4 Nov 2026: the largest move in microseconds, and how much of it lay before the card,
+        # left Supplement S3.9 under the author's rule for the supplement (nothing in the paper
+        # needs them); docs/results/full_fix/README.md keeps both, so the ledger no longer
+        # writes them.
         ("fullFixMedianMovePct", "%.1f" % (100 * max(median)[0])),
-        ("fullFixMedianMoveUs", "%.0f" % max(median)[1]),
-        ("fullFixCardMoveUs", "%.0f" % _card_move_at_largest(rows)),
         ("fullFixMedianMarginPct", "%.0f" % (100 * full_fix.MEDIAN_SHARE)),
         ("fullFixTailMovePct", "%.1f" % (100 * max(tail)[0])),
         ("fullFixTailMarginPct", "%.0f" % (100 * full_fix.TAIL_SHARE)),
@@ -6201,7 +6199,11 @@ def redis_floor_macros(path=MECH_INTERVALS_CSV):
     """Redis's real-time and normal-priority rates, the median over the pairs at the lower loads
     and over those at the higher, with each group's load range (referee A, M1.4: "whatever the
     block finds"). From the run-level intervals file's pooled rates, four decimals, each with a
-    twin in percent, the form the paper prints (16 Oct 2026)."""
+    twin in percent, the form the paper prints (16 Oct 2026).
+
+    4 Nov 2026: the twins in percent went with the one sentence that printed them, a copy of
+    Supplement S3.1's own sentence; S3.1 prints these rates once, as fractions beside their
+    load ranges, so the ledger writes the fractions and the ranges only."""
     import statistics as _st
     try:
         rows = [r for r in _mech_rows(path)
@@ -6219,8 +6221,6 @@ def redis_floor_macros(path=MECH_INTERVALS_CSV):
         normal = _st.median(float(r["top_rate"]) for r in group)
         out += [("rtRedisFloor%sLoad" % name, "%.4f" % floor),
                 ("rtRedisNormal%sLoad" % name, "%.4f" % normal),
-                ("rtRedisFloor%sLoadPct" % name, rate_pct(floor)),
-                ("rtRedisNormal%sLoadPct" % name, rate_pct(normal)),
                 ("rtRedis%sLoadLo" % name, str(min(loads))),
                 ("rtRedis%sLoadHi" % name, str(max(loads)))]
     return out
@@ -6500,6 +6500,41 @@ def order_scope_macros(root=None):
     return order_scope_numbers.order_scope_macros(root or order_scope_numbers.ROOT)
 
 
+def general_method_macros(root="."):
+    """The general method's macros (3 Nov 2026), read from the committed verdicts of plan
+    versions 47 and 49 by scripts/general_method_numbers.py: the paper's Section IV-D and
+    Supplement S8 quote them. Like the other readers here, it gives nothing when the folder is
+    absent (a test that runs the emitter elsewhere), and the build then fails on the undefined
+    macro instead of printing a stale number."""
+    import general_method_numbers
+    if not os.path.isdir(os.path.join(root, general_method_numbers.DIR)):
+        return []
+    return general_method_numbers.macros(root)
+
+
+DEFAULT_GENERAL_METHOD_TABLE = os.path.join("docs", "generated", "general_method_table.tex")
+
+
+def render_general_method_table(root="."):
+    """Supplement S8.2's table of every prediction of plan versions 47 and 49 and its verdict (3
+    Nov 2026), read through scripts/general_method_numbers.py; "" where the record is absent."""
+    import general_method_numbers
+    if not os.path.isdir(os.path.join(root, general_method_numbers.DIR)):
+        return ""
+    return general_method_numbers.render_table(root)
+
+
+def broker_audit_macros(root="."):
+    """The broker audit's macros (3 Nov 2026), counted from its committed records by
+    scripts/broker_audit_numbers.py with scripts/broker_audit.py's registered verdict rules: the
+    paper's Section V-D, its broker table (tab:brokers), Section VI-C and Supplement S7 quote them.
+    Like the reader above, it gives nothing when the record is absent."""
+    import broker_audit_numbers
+    if not os.path.isdir(os.path.join(root, broker_audit_numbers.DIR)):
+        return []
+    return broker_audit_numbers.macros(root)
+
+
 def render_order_scope_table(root=None):
     """Supplement S3.11's table of freeze 41's verdicts; "" until every block is committed."""
     import order_scope_numbers
@@ -6538,7 +6573,10 @@ def _all_pairs(m):
             + trace_threshold_macros() + run_rate_macros() + run_level_macros()
             # 15 Oct 2026: the macros the revised draft reads that nothing emitted yet, and
             # freeze 41's, read through its own judges.
-            + draft_v10_macros() + order_scope_macros())
+            + draft_v10_macros() + order_scope_macros()
+            # 3 Nov 2026: the general method's, read from plans 47 and 49's verdicts, and the
+            # broker audit's, read from its committed records.
+            + general_method_macros() + broker_audit_macros())
 
 
 def render(m):
@@ -6574,6 +6612,7 @@ def main(argv=None):
     ap.add_argument("--spans-table", default=DEFAULT_SPANS_TABLE)
     ap.add_argument("--audit-sensitivity-table", default=DEFAULT_AUDIT_SENSITIVITY_TABLE)
     ap.add_argument("--order-scope-table", default=DEFAULT_ORDER_SCOPE_TABLE)
+    ap.add_argument("--general-method-table", default=DEFAULT_GENERAL_METHOD_TABLE)
     ap.add_argument("--check", action="store_true",
                     help="fail if the committed file disagrees with the ledger; write nothing")
     args = ap.parse_args(argv)
@@ -6659,6 +6698,10 @@ def main(argv=None):
     scope = render_order_scope_table()
     if scope:
         targets.append((args.order_scope_table, scope))
+    # 3 Nov 2026: Supplement S8.2's verdicts of plan versions 47 and 49.
+    verdicts = render_general_method_table()
+    if verdicts:
+        targets.append((args.general_method_table, verdicts))
 
     if args.check:
         stale = False

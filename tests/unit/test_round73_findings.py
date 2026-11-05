@@ -157,15 +157,22 @@ class TestR1ARateIsQuotedWithTheLoadItWasMeasuredAt:
         5 Oct 2026: the rebuilt paper has no Table II. The per-load rates are the journal
         supplement's priority table (S3.1), generated from the campaign files with each load
         in the row with its rates and achieved utilizations; the rows the two macros name are
-        held there, read from the generated file the table inputs."""
-        i = paper.index("label{tab:checks}")
-        # 15 Oct 2026: Table IV spans both columns, a table* float.
-        table = paper[i:paper.index("end{table", i)]
-        assert "Sign-check every run under the load it is quoted at" in " ".join(table.split())
+        held there, read from the generated file the table inputs.
+
+        3 Nov 2026: the table of checks moved to Supplement S2 by the author's decision, so
+        that the paper fits the journal's 12 free pages; the pin follows it there."""
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        i = journal.index("label{stab:checks}")
+        # 15 Oct 2026: Table IV spans both columns, a table* float. 3 Nov 2026: in the
+        # supplement it is a one-column float; "end{table" closes either.
+        table = journal[i:journal.index("end{table", i)]
+        # 3 Nov 2026, the author's rule against invented terms: the check for values below
+        # zero; the rule still names the load it is quoted at, and the table no rate.
+        assert "Check every run for values below zero under the load it is quoted at" in \
+            " ".join(table.split())
         for macro in ("diseaseOverWhole", "diseaseOverHalf", "spanNegAckPct",
                       "rtHighBasePct", "rtLowBasePct", "rtHighBase", "rtLowBase"):
             assert chr(92) + macro not in table, macro
-        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
         j = journal.index("label{stab:priority}")
         assert "docs/generated/priority_table" in journal[j:journal.index("end{table}", j)], \
             "the supplement's priority table no longer prints the generated rows"
@@ -431,12 +438,12 @@ class TestRecommendedItems:
         # 5 Oct 2026: the rebuilt paper still types two of the nine that were hiding, 95 and
         # 0.75, and each is accounted for; the other seven left with their sentences and are
         # pinned absent the same way, so none can come back without an entry.
+        # 3 Nov 2026: the last two left the main text as well, the 95 of the intervals with
+        # the mechanism table and the placement intervals (Supplement S3 and S3.2) and the
+        # 0.75 of the kernel's slice constant (Supplement S3.7), by the author's decision, so
+        # that the paper fits the journal's 12 free pages; all nine are pinned absent now.
         hiding = ("95", "88", "75", "1000", "0.001", "0.75", "6", "20", "50")
-        for v in hiding:
-            if v in typed:
-                assert v in allowed, "%s was hiding behind a control word and is unaccounted" % v
-        assert {"95", "0.75"} <= set(typed), "the two that are still typed have gone"
-        for gone in ("6.9", "2") + tuple(v for v in hiding if v not in ("95", "0.75")):
+        for gone in ("6.9", "2") + hiding:
             assert gone not in typed and gone not in allowed, gone
 
     @staticmethod

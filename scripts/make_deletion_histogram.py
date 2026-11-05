@@ -441,7 +441,9 @@ def plot_rate_by_load(axes, runs):
         ax.set_xlabel("client utilization (%)", fontsize=8)
         ax.tick_params(labelsize=8)
         ax.grid(alpha=0.25, lw=0.5)
-    axes[0].set_ylabel("per-run rate of\n$S$ below zero", fontsize=8)
+    # 3 Nov 2026: "share", the paper's word for the proportion of S below zero; "rate" is
+    # the publish rate's word.
+    axes[0].set_ylabel("per-run share of\n$S$ below zero", fontsize=8)
     axes[1].tick_params(labelleft=False)
     handles = [plt.Line2D([], [], marker=m, linestyle="none", color=c, markersize=4)
                for _p, _l, c, m in PRIORITIES]

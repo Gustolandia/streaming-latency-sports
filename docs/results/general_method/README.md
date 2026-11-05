@@ -271,9 +271,9 @@ C) and 8 on the Arm pair (block A). They were judged by `scripts/general_method.
 | Prediction | Verdict | What decided it |
 |---|---|---|
 | M1-a | not confirmed | `Q`'s 99th percentile was at most 99 µs in every x86 run, within 150 µs. But in 9 of the 16 x86 setups, at least one run had a packet the kernel timed before the card stamped it (`Q` down to -62 µs), below the clause's -1.5 µs. The Arm pair has no card, so its cells are out of reach. |
-| M1-b | confirmed | In all 76 runs, the broker's ids paired every message the payload's ids paired, and none differently. On RabbitMQ, the confirm order and the delivery order agreed. |
+| M1-b | confirmed | In all 72 judged runs, the broker's ids paired every message the payload's ids paired, and none differently. On RabbitMQ, the confirm order and the delivery order agreed. |
 | M1-c | not confirmed | With one reply per read at depth 256, the sockets' 99th percentile of `W` sat 2.6 to 2.7 ms above the capture's on Redis and NATS. The clause asks for within 10 µs. With the library's own reads it sat 2.0 ms above, as that clause asks. |
-| M2-a | confirmed | In all 76 runs, the certain reading called no message unwaited that the broker shows waiting. |
+| M2-a | confirmed | In all 72 judged runs, the certain reading called no message unwaited that the broker shows waiting. |
 | M2-b | confirmed | Where the estimate has a value, its share of messages that found none was within 3.1 points of the broker's in every run (the bar is 6). It is out of reach where every request waited. |
 | M2-c | confirmed | For Redis at depth 256 (both kinds of read), NATS at depth 256 and nats.go, the broker shows a request waiting for every message, and the clients' own timestamps certify one for every message, with the checks of `B` holding in every run. For RabbitMQ at 1,000, the broker shows a credit waiting for every message, but the checks of `B` failed in all four runs, on silences of 13 to 20 ms, so its cell is out of reach. |
 | M3-a | not confirmed | Where requests waited, `W`'s tail held still in all four judged cells (ratios 0.98 to 1.03, equivalence p at most 0.003). But `D`'s on/off ratio was 1.14 to 1.47, short of 1.5. RabbitMQ at 1,000 is not judged, since its M2-c cell is out of reach. |
@@ -394,7 +394,7 @@ runs). The runs were judged by `scripts/general_method49.py judge`
 | G-a | confirmed | At a prefetch of 1,000, every message found credit waiting, and was certified at 50 ms in the five runs whose checks held. The client captures' longest silences were 17.5 to 20.8 ms. |
 | G-b | confirmed | `W`'s tail held still (0.96, p = 0.0012), while `D`'s own tail grew 17.8 times. |
 | Q-a | confirmed | At normal priority, the client's part's own tail rose from 54 µs to 3.13 ms (ratio 59.6). |
-| Q-b | confirmed | With only the broker thread at real-time priority, it rose by 10.2 µs: 0.33% of the rise at normal priority (95% interval 0.03% to 0.52%), and below 50 µs. |
+| Q-b | confirmed | With only the broker thread at real-time priority, it rose by 10.1 µs: 0.33% of the rise at normal priority (95% interval 0.03% to 0.52%), and below 50 µs. |
 | Q-c | confirmed | With the broker thread raised, 61% of the messages in the on-blocks and 82% in the off-blocks found no fetch waiting. The gap at the broker was 730 µs, 27 µs of it the client's turnaround. |
 | Z-a | confirmed | On the Arm pair, the client's part's own tail rose from 23 µs to 2.20 ms (ratio 99). |
 | Z-b | confirmed | With the broker thread raised, it rose by 1.5 µs: 0.07% of the rise at normal priority (−0.27% to +0.12%). |
@@ -418,3 +418,14 @@ runs). The runs were judged by `scripts/general_method49.py judge`
   off-blocks than in the on-blocks (2.31 ms against 2.09 ms on x86). On the Arm pair at normal
   priority, the off-blocks held broker stalls: `W`'s off-block tail was 118 ms. The client's part,
   which Q-b and Z-b judge, carries neither.
+
+## Corrections to this README
+
+A number in this README that does not match its record is corrected here, in the open. Each
+correction gives the date, the old and the new value, and the reason. The records themselves are
+unchanged.
+- **3 November 2026. M1-b and M2-a: "In all 76 runs" becomes "In all 72 judged runs".** Both
+  predictions were judged on 18 setups of 4 runs, 72 runs in all (`g_verdicts.json`). The other 4
+  of the 76 runs in `g_runs.csv` are block S's, which the design describes and does not judge.
+- **3 November 2026. Q-b: "rose by 10.2 µs" becomes "rose by 10.1 µs".** The rise in
+  `g49_verdicts.json` is 10.145 µs, which is 10.1 µs at one decimal.

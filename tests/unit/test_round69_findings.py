@@ -69,10 +69,15 @@ class TestR1TheDitherRuleDoesNotClaimTheWhy:
         and claims "these checks" beside them; Section V-C claims the deletion, which the
         counter does not perform. One pin for each, as before."""
         flat = " ".join(paper.split())
-        i = flat.index(chr(92) + "label{tab:checks}")
+        # 3 Nov 2026: moved to Supplement S2 by the author's decision, so that the paper fits the
+        # journal's 12 free pages: the table of checks is S2's (stab:checks), read there.
+        journal = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").split())
+        i = journal.index(chr(92) + "label{stab:checks}")
         # 15 Oct 2026: Table IV spans both columns, a table* float.
-        table = flat[i:flat.index(chr(92) + "end{table", i)]
-        assert "Randomize the publish instants (Poisson sampling)" in table, \
+        table = journal[i:journal.index(chr(92) + "end{table", i)]
+        # 3 Nov 2026, the author's Simple English rule (no words in brackets): the row reads
+        # "Draw the publish instants at random, as a Poisson process does"; the check stays.
+        assert "Draw the publish instants at random, as a Poisson process does" in table, \
             "the randomization check has left the table of checks"
         paras = [" ".join(p.split()) for p in re.split(r"\n[ \t]*\n", paper)
                  if "IP measurement advises randomizing probe" in " ".join(p.split())]
@@ -102,8 +107,10 @@ class TestR1TheDitherRuleDoesNotClaimTheWhy:
         note", and Related Work gives the note the cure too; both concede what v5 did."""
         flat = " ".join(paper.split())
         assert "The arithmetic is in Hewlett-Packard's 1970 counter note" in flat
-        assert "The retention arithmetic and its cure, phase jitter, are in a 1970 counter note" \
-            in flat
+        # 3 Nov 2026, the author's rule against invented terms: the share kept, not
+        # "retention"; the note still has the arithmetic and the cure.
+        assert ("The arithmetic of the share kept and its cure, phase jitter, are in a 1970 "
+                "counter note") in flat
 
     def test_the_supplement_carries_the_patent_beside_the_note(self, supplement):
         i = supplement.index("S17. The 1970 counter note")
@@ -218,7 +225,10 @@ class TestR2TheTwoThresholdsAreDifferentThings:
         passage = " ".join(paper[i:paper.index(chr(92) + "subsection{", i)].split())
         # 4 Oct 2026: the table the audit fills moved to the supplement's tool registry, when
         # the paper's system and remedies figures needed its room; the passage points to it.
-        assert "the supplement's tool registry" in passage, \
+        # 3 Nov 2026: the sentence's detail moved by the author's decision, so that the paper
+        # fits the journal's 12 free pages; it keeps that each verdict has its source line, and
+        # points to the registry's section, S5 (v8, Section 8: every verdict traceable).
+        assert "each verdict with its source line (Supplement~S5)" in passage, \
             "the class is shown in the table the audit fills"
         # 5 Oct 2026: the rebuilt Section V-A names the classes by what each does to the
         # value, a filter drops it, the library refuses it, another value replaces it, and
@@ -237,7 +247,11 @@ class TestR2TheTwoThresholdsAreDifferentThings:
         threshold does, and that the zeros the benchmark deletes pile up visibly at zero
         under Pulsar's; it is held there."""
         journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
-        i = journal.index("Apache Pulsar's performance client")
+        # 3 Nov 2026, the author's page decision: S5 now opens on the paper's per-tool table, whose
+        # first row names Pulsar's client too, so the contrast is found after the table, where S5
+        # reads the tools at source. The claim kept: S5 states the contrast beside Pulsar's name.
+        i = journal.index("Apache Pulsar's performance client",
+                          journal.index("\\textbf{Tools read at source.}"))
         passage = " ".join(journal[max(0, i - 400):i + 300].split())
         assert "pile up visibly at zero" in passage, (
             "a visible pile-up is what IV-D predicts when only the inversions are dropped")

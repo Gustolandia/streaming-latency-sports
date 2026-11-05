@@ -185,7 +185,10 @@ class TestR1NoShiftRemains:
             self.test_the_main_text_states_the_shift_not_a_crossing(paper, bad)
         # 5 Oct 2026: Section III-D's kept sentence was cut; the crossing is added after the
         # last number of the rebuilt recovery paragraph (Section VI-B) instead.
-        bad, n = re.subn(re.escape(BS) + r"recoveryErrRedisHi(?![A-Za-z])(?:" + re.escape(BS)
+        # 3 Nov 2026: the upper quartiles moved to Supplement S2.1 by the author's decision, so
+        # that the paper fits the journal's 12 free pages; the last number is Redis's median
+        # error now.
+        bad, n = re.subn(re.escape(BS) + r"recoveryErrRedis(?![A-Za-z])(?:" + re.escape(BS)
                          + r"%)?\$?",
                          lambda m: m.group(0) + ", and setting the exact recoveries aside "
                          "crosses it", paper)

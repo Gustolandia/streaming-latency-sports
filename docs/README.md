@@ -30,7 +30,6 @@ Change one and a test changes with it. They are not history.
 |---|---|
 | [`paper_revisions.md`](paper_revisions.md) | holds the five-tier stratification policy (`test_paper_consistency.py`) and the mapping from writing rules to sections (`test_writing_standards.py`) |
 | [`campaign_ledger_schema.md`](campaign_ledger_schema.md) | the schema of `results/external_campaigns_index.csv` |
-| [`laws.md`](laws.md), [`measurement_model.md`](measurement_model.md), [`tc_plan.md`](tc_plan.md) | cited by `paper.tex` itself |
 
 ## Research material
 
@@ -56,6 +55,7 @@ evidence, or see what a reviewer actually asked for.
 | [`releases.md`](releases.md) | what each deposited version contained, one section per Zenodo deposit |
 | [`paper_revisions.md`](paper_revisions.md) | the plans and drafts behind the paper's present shape |
 | [`earlier_models.md`](earlier_models.md) | two models tried before the campaigns settled the mechanism, partly replaced by `laws.md` |
+| [`laws.md`](laws.md), [`measurement_model.md`](measurement_model.md), [`tc_plan.md`](tc_plan.md) | the laws, the failure model and the plan for the TC paper; `scripts/measurement_model.py`, `scripts/analyze_depth.py` and `scripts/util_sampler.py` cite the model, the top README cites the laws and the model, and the tests' docstrings cite the plan |
 
 ## Not in the repository
 
@@ -69,3 +69,13 @@ from a clone is not mistaken for a missing file.
 after merging them; git had nothing to restore. What they were is recorded at the top of
 [`paper_revisions.md`](paper_revisions.md). Anything in this list is one careless command from
 the same fate.
+
+## Corrections to this README
+
+A row in this README that does not match the files it describes is corrected here, in the
+open. Each correction gives the date, the old and the new text, and the reason.
+- **4 November 2026. `laws.md`, `measurement_model.md` and `tc_plan.md` moved from "The tests
+  read from these" to "Provenance".** The row said "cited by `paper.tex` itself", and the
+  rebuilt paper cites none of them, nor does any test read them. The row now says who cites
+  each.
+

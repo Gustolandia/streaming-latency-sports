@@ -63,9 +63,11 @@ MUTATIONS = [
     # The two placement factors are the same shape and one clause apart, which is exactly the
     # swap a hurried edit makes and exactly the swap a reader cannot see.
     # 6 Oct 2026: the interval beside the first factor resamples whole runs now, not Katz's.
+    # 3 Nov 2026: the two factors share one sentence and their intervals follow in the next
+    # (no words in brackets); the anchor is the pair of factors, and the swap is the same.
     ("swap the two placement factors",
-     r"$\GeomOrigFactor$-fold [bootstrap",
-     r"$\GeomReplFactor$-fold [bootstrap"),
+     r"$\GeomOrigFactor$-fold, and $\GeomReplFactor$-fold",
+     r"$\GeomReplFactor$-fold, and $\GeomOrigFactor$-fold"),
     # 15 Oct 2026: the range is Section IV-B's now, where the Computer Society layout breaks the
     # line between its two ends; the mutation prints the low end twice.
     ("understate the priority range",
@@ -74,8 +76,10 @@ MUTATIONS = [
     # 15 Oct 2026: the caveat reads "settles ... on \redis{}, not at zero" in Section VI.
     # 17 Oct 2026: it reads "... on \redis{} (Supplement~S3.1), so the sign check stays", the
     # ranges themselves the caveat; the mutation sends the rate to zero and drops the check.
+    # 3 Nov 2026, the author's rule against invented terms: it reads "... (Supplement~S3.1), so
+    # the check stays", the check for values below zero; the swap is the same.
     ("drop the caveat that the rate stays above zero",
-     r"(Supplement~S3.1), so the sign", r"(Supplement~S3.1), and at zero, so no sign"),
+     r"(Supplement~S3.1), so the check", r"(Supplement~S3.1), and at zero, so no check"),
     ("break a cross-reference",
      r"(Fig.~\ref{fig:twoways})", r"(Fig.~\ref{fig:nosuch})"),
     # The tracer's ratios bracket the observed rate rather than under-predicting it, which is
@@ -84,9 +88,14 @@ MUTATIONS = [
     # anchor follows it.
     # 15 Oct 2026, referees A (M6(a)) and B (S5) of version 9: the main text quotes the trace's
     # agreement at every threshold, through the threshold table's macros.
+    # 3 Nov 2026: moved to Supplement S3.5 by the author's decision, so that the paper fits the
+    # journal's 12 free pages. The paper says in words that the trace agreed at every threshold;
+    # S3.5 quotes the ratios through the threshold table's macros, and the anchor follows them
+    # there. The fourth field names the document the mutation edits, beside the paper.
     ("type the traced ratios instead of emitting them",
-     r"$\tracedThresholdRatioLo$--$\tracedThresholdRatioHi$ times the pooled",
-     "$0.63$--$1.61$ times the pooled"),
+     r"$\tracedThresholdRatioLo$--$\tracedThresholdRatioHi$ (Table~\ref{stab:tracethreshold})",
+     r"$0.63$--$1.61$ (Table~\ref{stab:tracethreshold})",
+     "supplement.tex"),
 ]
 
 
@@ -103,29 +112,52 @@ DEFAULT_TESTS = (
 )
 
 
+def _target(paper, mutation):
+    """The file a mutation edits: the paper, or the document beside it that the entry names.
+
+    3 Nov 2026: a claim whose sentence moved to the supplement takes its anchor with it, so an
+    entry may carry a fourth field, the document's name beside the paper."""
+    if len(mutation) > 3:
+        return os.path.join(os.path.dirname(paper), mutation[3])
+    return paper
+
+
 def run(paper, tests):
-    backup = paper + ".mutbak"
-    shutil.copy(paper, backup)
-    src = open(paper, encoding="utf-8").read()
+    targets = []
+    for mutation in MUTATIONS:
+        target = _target(paper, mutation)
+        if target not in targets and os.path.exists(target):
+            targets.append(target)
+    sources = {}
+    for target in targets:
+        shutil.copy(target, target + ".mutbak")
+        sources[target] = open(target, encoding="utf-8").read()
     undetected, skipped = [], []
     try:
-        for name, old, new in MUTATIONS:
+        for mutation in MUTATIONS:
+            name, old, new = mutation[:3]
+            target = _target(paper, mutation)
+            src = sources.get(target, "")
             if old not in src:
                 skipped.append(name)
                 print(f"  SKIP    {name} (anchor absent -- the claim may have been reworded)")
                 continue
-            open(paper, "w", encoding="utf-8", newline="").write(src.replace(old, new, 1))
+            open(target, "w", encoding="utf-8", newline="").write(src.replace(old, new, 1))
             r = subprocess.run([sys.executable, "-m", "pytest", *tests,
                                 "-q", "--no-header", "-x"],
                                capture_output=True, text=True)
+            # Each mutation starts from every document as it was: put this one back before the
+            # next mutation edits another.
+            open(target, "w", encoding="utf-8", newline="").write(src)
             if r.returncode != 0:
                 print(f"  CAUGHT  {name}")
             else:
                 print(f"  MISSED  {name}")
                 undetected.append(name)
     finally:
-        shutil.copy(backup, paper)
-        os.remove(backup)
+        for target in targets:
+            shutil.copy(target + ".mutbak", target)
+            os.remove(target + ".mutbak")
     return undetected, skipped
 
 

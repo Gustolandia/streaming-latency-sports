@@ -25,11 +25,13 @@ table to check that every passage once moved out of the paper is still reachable
 | Supp. section | Title | Draws on (postmortem sections) |
 |---|---|---|
 | S1 | The setup in full | S9, S16.1, S16.2, S16.8, S18, S19, S20, S21, S24.3, S34 |
-| S2 | The sign check, and the runs it covers | S18, S18.1, S19, S26.2 |
+| S2 | The check for values below zero, and the runs it covers | S18, S18.1, S19, S26.2 |
 | S3 | The mechanism and its laws in full | S7, S8, S9, S12, S15, S16.3, S16.4, S16.6, S16.8, S16.9, S19, S26.1 |
-| S4 | The positivity filter and the retention law in full | S10, S11, S14, S16.7, S17, S22, S22.1, S24.1, S25 |
+| S4 | The filter that keeps only values above zero, and the law of the share kept, in full | S10, S11, S14, S16.7, S17, S22, S22.1, S24.1, S25 |
 | S5 | Tools read at source, tools run, and public reports | S25, S25.1, S25.2, S25.3, S30 |
 | S6 | The registered law campaign | S16.10, S16.11, S34, S35, S36, S37 |
+| S7 | The broker audit (added 3 Nov 2026) | none: `data/broker_audit/README.md` (protocol `01fca148`, amendment `ac338d58`, scope rule `48b1ee88`, coded `f0f550ee`) |
+| S8 | The general method, tested (added 3 Nov 2026) | none: `docs/results/general_method/README.md` (plans 47 and 49) |
 
 The paper's pointers were remapped with it: 21 into the old numbering became 15 into the new,
 and every journal-supplement section is pointed at (`tests/unit/test_journal_supplement.py`).
@@ -81,6 +83,51 @@ rule in one paragraph, the results the paper cites, the stories of six tools (Pr
 perf client, the Pub/Sub load test, Quiver, the Yahoo Streaming Benchmark, RocketMQ), and the
 T3, K1, S1 and public-report passages, shortened. It printed in 9.8 pages before the cut and in
 about 6.6 after; the postmortem's Part III summary names the two new subsections.
+
+**The paper's tables and three passages moved in, 2026-11-03.** The author decided that the paper
+fits the journal's 12 free pages, with tables and small details moved here and pointers left in
+the paper. The five tables moved whole, each with a sentence in the paper that states its point:
+
+| Paper's table | Now | Section and label |
+|---|---|---|
+| Table 1, values below zero by difference and broker | Table S4 | S1.3, `stab:spans` |
+| Table 5, the checks for a benchmark's author and reader | Table S6 | S2, `stab:checks` |
+| Table 2, the controlled experiments | Table S9 | S3, `stab:mechanism` |
+| Table 3, the groups of message tools | Table S23 | S5, `stab:toolgroups` |
+| Table 4, what brokers tell a consumer and a producer | Table S32 | S7, `stab:brokers` |
+
+Three passages moved word for word, with only their pointers made this document's own:
+- 5.2's account of the tools run, as "The four tests in brief." in S5;
+- 6.2's "Give the threads that read the clock a core.", at S3.1's end;
+- 5.3's test of Equation 5, at S4.2's end.
+
+The details moved beside the passages they belong to. No section moved or was renumbered. The
+tables after each one moved in were renumbered, and the paper cites none of them by number.
+(4 Nov 2026: the paper's numbers in this entry are Arabic, as the paper has printed them since
+16 Oct; they were first written in Roman.)
+
+**Cut to what the paper needs, 2026-11-04.** The author's rule is that the supplement keeps
+everything the paper points to, needs for its checks, or a referee asked for there. Eight items
+failed all three, and each was already held elsewhere, so each was cut:
+- S3.4's exploratory test of the tails: the postmortem's S8 and S9 hold it.
+- S3.6's rival "the second thread": the postmortem's S16.3 holds it.
+- S3.8's second citation of the study of a host's network stack: S3.6 keeps the first.
+- S3.9's account of where the largest move of W's median lay: `docs/results/full_fix/README.md`
+  holds it, and the ledger no longer writes its two numbers.
+- S4.5's diagnostics of the eleven failed attempts: the postmortem's S22.1 and S24.1 hold them,
+  and S4.5 points there.
+- The first sentence of S5's "Tools run.": the moved 5.2 paragraph says the same.
+- Two sentences and a clause of Table S24's caption: Table S23's caption says the same.
+- The sentence on Redis's floor by load in percent: it repeated S3.1's own sentence. Its four
+  twins in percent left the ledger.
+
+No section, table or figure was renumbered. The supplement's page budget became 36, by the
+author's decision of the same day.
+
+**Two sentences of the paper's 5.4 moved in, 2026-11-05.** The paper's sentence on the
+residence times finer than a millisecond (PGMQ, OPC UA, Zenoh) moved word for word to S7's
+"What a consumer learns."; Section 5.4's sentence on the audit's method left the paper, which
+keeps its scope in Section 8 ("ran no broker"), and S7's "What was registered." holds it.
 
 ## The postmortem (the supplement until 2026-09-29)
 

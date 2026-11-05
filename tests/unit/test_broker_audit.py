@@ -584,9 +584,13 @@ def test_the_counts_the_brief_gives_beside_the_verdicts():
         said[b["broker"]].add(base(ba.verdict(m)))
     assert sum(1 for v in said.values() if "stay in the message" in v) == 53
     assert sum(1 for v in said.values() if v == {"nothing"}) == 86
+    # 3 Nov 2026: a duration coded as a stay counts as well as a derivable one, so gmqtt's two
+    # MQTT 5.0 interfaces (Q5 "stay", in whole seconds) are in: 36 became 38, as the README's
+    # corrections record. The claim kept: the count of stays known only in whole seconds.
     assert sum(1 for _, m in modes if base(ba.verdict(m)) == "stay in the message"
                and not (m["Q3"]["answer"] == "send time" and m["Q4"]["answer"] == "yes")
-               and m["Q5"]["answer"] == "derivable stay" and m["Q5"].get("resolution") == "s") == 36
+               and m["Q5"]["answer"] in ("derivable stay", "stay")
+               and m["Q5"].get("resolution") == "s") == 38
     sent = [b["broker"] for b, m in modes
             if m["Q3"]["answer"] == "send time" and m["Q4"]["answer"] == "no"]
     assert (len(sent), len(set(sent))) == (61, 47)

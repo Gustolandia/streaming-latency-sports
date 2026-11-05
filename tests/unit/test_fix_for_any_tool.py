@@ -51,6 +51,29 @@ def steps(paper):
     return [flat(item) for item in body.split("\\item")[1:]]
 
 
+def journal():
+    return (REPO / "supplement.tex").read_text(encoding="utf-8")
+
+
+def journal_subsection(label):
+    """The journal supplement's subsection holding `label`, flattened, to the next heading.
+
+    3 Nov 2026: the remedies, the module's settings and Section VIII's sizes moved to the
+    supplement by the author's decision, so that the paper fits the journal's 12 free pages;
+    the pins on them read the subsection each one moved to."""
+    text = journal()
+    start = text.index("\\label{%s}" % label)
+    head = text.rfind("\\subsection{", 0, start)
+    ends = [e for e in (text.find("\\subsection{", start), text.find("\\section{", start))
+            if e != -1]
+    return flat(text[head:min(ends) if ends else len(text)])
+
+
+def ledger():
+    gen = (REPO / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8")
+    return dict(re.findall(r"\\newcommand\{\\(\w+)\}\{([^}]*)\}", gen))
+
+
 class TestSectionSixOpensWithTheFix:
 
     def test_the_first_rule_is_the_fix(self, paper):
@@ -62,7 +85,9 @@ class TestSectionSixOpensWithTheFix:
     def test_the_lead_paragraph_says_the_fix_comes_first_and_why(self, paper):
         text = section(paper, "sec:practice")
         # 15 Oct 2026: Table IV spans both columns now, a table* float.
-        lead = flat(text[text.index("\\label{sec:checks}"):text.index("\\begin{table")])
+        # 3 Nov 2026: the table moved to Supplement S2 by the author's decision, so that the
+        # paper fits the journal's 12 free pages; the lead runs to the figure that follows it.
+        lead = flat(text[text.index("\\label{sec:checks}"):text.index("\\begin{figure")])
         # 15 Oct 2026, both referees of version 9 (A M2, B M3): the fix is scoped to a Linux
         # tool that can read its sockets' timestamps; the other steps find or shrink the wait.
         assert ("One fix ends the late reading in a Linux tool that can read its sockets' "
@@ -71,9 +96,12 @@ class TestSectionSixOpensWithTheFix:
             in lead
         assert "The other steps find or shrink it" in lead
 
-    def test_the_checks_table_leads_with_the_fix(self, paper):
-        i = paper.index("\\label{tab:checks}")
-        body = paper[paper.index("\\midrule", i):paper.index("\\bottomrule", i)]
+    def test_the_checks_table_leads_with_the_fix(self):
+        # 3 Nov 2026: the table moved to Supplement S2 by the author's decision, so that the
+        # paper fits the journal's 12 free pages; its first row is read there.
+        text = journal()
+        i = text.index("\\label{stab:checks}")
+        body = text[text.index("\\midrule", i):text.index("\\bottomrule", i)]
         first = flat(body[len("\\midrule"):].split("\\\\")[0])
         # 15 Oct 2026: the row goes on, after a semicolon, to the clocks of two machines.
         assert first.startswith("Time each message between the kernel's timestamps as it leaves "
@@ -82,13 +110,19 @@ class TestSectionSixOpensWithTheFix:
         assert "\\soFixMedianMovePct" in first and "\\soFixTailRatioLo" in first, first
         # 17 Oct 2026: the row also points at Fig. 6, which draws the same socket runs, so the
         # pointer reads "(Fig. 6; Supplement S3.10)".
-        assert "Supplement~S3.10)" in first and "\\fullFix" not in first, first
+        # 3 Nov 2026: in the supplement it names the figure through the paper's label and
+        # S3.10 through the supplement's own.
+        assert "(Fig.~\\ref{P-fig:fixbenefit}; \\ref{s:sofix})" in first, first
+        assert "\\fullFix" not in first, first
 
     def test_the_fix_says_where_the_waits_go(self, paper):
         """The waits are not dropped from the report, they are moved beside the latency: D is the
         sum of the three parts for every message, so a tool loses nothing by reporting W."""
         text = flat(paragraph(paper, "Let the kernel timestamp each message."))
-        assert "\\emph{kernel-timed latency} $W$" in text
+        # 3 Nov 2026, the author's rule against invented terms: W is said in words where the fix
+        # gives it, the latency from a message's transmit timestamp to its receive timestamp.
+        assert "The latency $W$, from a message's transmit timestamp to its receive timestamp" \
+            in text
         # The two timestamps carry the names the steps use, where W is defined.
         assert "the transmit and receive timestamps" in text
         assert "from a message's transmit timestamp to its receive timestamp" in text
@@ -114,7 +148,10 @@ class TestTheStepsAreTheModulesSteps:
     def test_step_one_asks_for_what_the_module_asks_for(self, paper):
         first = steps(paper)[0]
         assert "software timestamps for transmit and receive" in first
-        assert "an identifier for each write" in first
+        # 3 Nov 2026: the identifier for each write moved to Supplement S3.10's paragraph for a
+        # tool's author by the author's decision, so that the paper fits the journal's 12 free
+        # pages; it is held there, with the flag's name.
+        assert "an identifier for each write (\\texttt{OPT\\_ID})" in journal_subsection("s:sofix")
         # The identifier counts bytes from the moment the option is on, so it must be on first.
         assert "before its first write" in first
         assert "so that byte offsets count from the first byte sent" in flat(so.__doc__)
@@ -127,7 +164,9 @@ class TestTheStepsAreTheModulesSteps:
     def test_step_two_keys_each_write_as_the_module_does(self, paper):
         second = steps(paper)[1]
         assert "\\emph{error queue}" in second
-        assert "the byte offset of the write's last byte" in second
+        # 3 Nov 2026: the byte offset that keys each write moved to Supplement S3.10 by the
+        # author's decision, so that the paper fits the journal's 12 free pages; held there.
+        assert "with the byte offset of the write's last byte" in journal_subsection("s:sofix")
         assert "with the byte offset of the call's last byte (OPT_ID)" in flat(so.__doc__)
 
     def test_step_two_says_why_the_queue_is_drained_at_every_write_and_read(self, paper):
@@ -164,17 +203,30 @@ class TestWhatAToolMustHandle:
         # wait, the kernel thread's wait and the card's clock, the timestamp taken before the
         # packet scheduler (A m12: the kernel documentation's name for it), two machines' clocks,
         # Java and kernel bypass.
+        # 3 Nov 2026: the remedies moved to the supplement by the author's decision, so that the
+        # paper fits the journal's 12 free pages; each case and what it does to the timing stay
+        # here. The card's own timestamp, taken before the kernel's thread runs and put on the
+        # system's clock, is S3.9's; the kernel documentation's name for the timestamp taken
+        # before the packet scheduler (A m12) is S3.10's.
         for phrase in ("times the earlier ones late",
                        "which is the consumer's wait",
                        "A pull consumer",
-                       "taken before the packet scheduler (\\texttt{TX\\_SCHED})",
-                       "a card's hardware timestamp",
-                       "on a clock of its own that the tool must tie to the system's",
+                       "the receive timestamp waits for a core too (Supplement~S3.9)",
+                       "taken before the packet scheduler, so any queueing there falls inside $W$",
                        "on two machines, $W$ spans two clocks",
                        "so a Java tool needs a native call",
                        "A kernel-bypass stack has no kernel timestamps at all",
-                       "A tool that cannot yet take them needs what follows"):
+                       # 3 Nov 2026: the closing sentence is back (the author's rule of that day:
+                       # only details leave the paper, never words). Section VI's restructure put
+                       # the general method's other points after it, so it names the checks it
+                       # hands over to, where "what follows" no longer pointed to them.
+                       "A tool that cannot yet take them needs the checks of"):
             assert phrase in text, phrase
+        fullfix = journal_subsection("s:fullfix")
+        assert "The card's own receive timestamp is taken before any such thread runs" in fullfix
+        assert "put on the system's clock by sampling the card's clock" in fullfix
+        assert ("\\texttt{SOF\\_TIMESTAMPING\\_TX\\_SCHED}, taken before the "
+                "\\emph{packet scheduler}") in journal_subsection("s:sofix")
 
     def test_the_figures_it_quotes_are_the_ledgers(self, paper):
         text = flat(paragraph(paper, "What a tool must handle."))
@@ -184,15 +236,26 @@ class TestWhatAToolMustHandle:
         # flagged share at the top rate is stated with the fix's limits in Section VIII, and the
         # TX_SCHED timestamp's lead on the capture in Supplement S3.10.
         assert "Supplement~S3.11 counts them at each rate" in text
-        supplement = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        supplement = journal()
         limits = flat(section(paper, "sec:threats"))
+        # 3 Nov 2026: Section VIII gives its sizes in words, by the author's decision, so that
+        # the paper fits the journal's 12 free pages: the flagged share at the top rate is
+        # "nearly every message", S3.11 prints it, and the words must stay true of it. The
+        # card's lead on the kernel moved to S3.9 the same way; the socket paragraph says what
+        # it bounds and points there.
+        assert "with nearly every message flagged" in limits
+        orderscope = journal_subsection("s:orderscope")
         for macro in ("\\osPullTopLoPct", "\\osPullTopHiPct"):
-            assert macro in limits, macro
+            assert macro in orderscope, macro
+        assert float(ledger()["osPullTopLoPct"]) >= 95, "no longer nearly every message"
         for macro in ("\\soFixQueueLeadLoUs", "\\soFixQueueLeadHiUs"):
             assert macro in supplement, macro
         sockets = flat(paragraph(paper, "Read those timestamps on the tool's own sockets."))
+        assert ("The network card's own timestamps bound how far the kernel's timestamps lie "
+                "from the wire (Supplement~S3.9)") in sockets
+        fullfix = journal_subsection("s:fullfix")
         for macro in ("\\fullFixKernelDelayLoUs", "\\fullFixKernelDelayHiUs"):
-            assert macro in sockets, macro
+            assert macro in fullfix, macro
         assert "\\soFixSameReceivePct" in supplement
 
 
@@ -242,7 +305,11 @@ class TestTheSupplementGivesTheModulesChoices:
 
 class TestTheOtherMentionsAgree:
 
-    def test_the_abstract_says_any_tool_can_read_them(self, paper):
+    def test_the_abstract_claims_no_more_than_was_tested(self, paper):
+        """The abstract claims no more than was tested: the solution's tools' part, the fall at
+        real-time priority, and nothing "even under load". Until 3 Nov 2026 it said that any
+        tool can read the kernel's timestamps on its own Linux sockets, at a scoped rate; that
+        detail is in the body now, under the conclusion's pin below and Section VIII's."""
         abstract = flat(paper[paper.index("\\begin{abstract}"):paper.index("\\end{abstract}")])
         # 15 Oct 2026, both referees of version 9 (A M2, B M3): the abstract names Linux and
         # the tool's own sockets, and no longer says "even under load" (block L, L-b).
@@ -250,8 +317,12 @@ class TestTheOtherMentionsAgree:
         # wait enters W (referee A, M2 fix 2: "any scope condition").
         # 17 Oct 2026: the abstract names the clock-reading threads where their priority is
         # raised, so this sentence says "those threads".
-        assert ("Kernel timestamps, read on a tool's own Linux sockets, exclude those threads' "
-                "wait at modest rates.") in abstract
+        # 3 Nov 2026, the author's decision of that day: the abstract says that a general
+        # solution exists and which part was tested; its details (Linux, the tool's own sockets,
+        # the rate it held at) stay in the body, where the conclusion's pin below holds them. The
+        # claim kept: the abstract claims no more than was tested.
+        assert ("We give a general solution for tools and brokers, and test the tools' "
+                "part.") in abstract
         assert "falls when clock-reading threads get real-time priority" in abstract
         assert "even under load" not in abstract
 
@@ -261,10 +332,12 @@ class TestTheOtherMentionsAgree:
         # 16 Oct 2026: what to report comes first and the scope after it, so the clause no longer
         # splits "report that latency" from "beside the end-to-end latency"; the scope names the
         # kernel-timed latency, since an "it" after "the end-to-end latency" read as that one.
+        # 3 Nov 2026, the author's rule against invented terms: the scope names that latency in
+        # words, the latency between the kernel's timestamps; the claim and its scope stay.
         assert ("On Linux a tool can time each message between the kernel's timestamps, read on "
                 "its own sockets, and report that latency beside the end-to-end latency. At fifty "
-                "messages a second the kernel-timed latency held no client thread's wait.") \
-            in conclusion
+                "messages a second, the latency between the kernel's timestamps held no client "
+                "thread's wait.") in conclusion
 
     def test_the_limits_stay_in_section_viii(self, paper):
         """The author's rule (B26): each limit of the study is stated, whole, in Section VIII. The
@@ -280,7 +353,15 @@ class TestTheOtherMentionsAgree:
         assert "judged at fifty messages a second only" in limits
         assert "we did not measure what taking the timestamps costs a tool" not in limits
         sockets = flat(paragraph(paper, "Read those timestamps on the tool's own sockets."))
-        assert "\\moduleCostKafkaLo" in sockets and "\\moduleTailHi" in sockets
+        # 3 Nov 2026: the module's cost is given in words, by the author's decision, so that the
+        # paper fits the journal's 12 free pages; S3.10 prints each move, and the words must
+        # stay true of every one of them.
+        assert "by less than a fifth of a millisecond either way" in sockets
+        sofix = journal_subsection("s:sofix")
+        assert "\\moduleCostKafkaLo" in sofix and "\\moduleTailHi" in sofix
+        moves = [float(v) for k, v in ledger().items()
+                 if k.startswith("moduleCost") or k.startswith("moduleTail")]
+        assert len(moves) == 6 and max(abs(m) for m in moves) < 200, moves
         assert "the clients used neither encryption nor compression" in limits
         assert "though we did not test it" not in flat(paragraph(paper, "What a tool must handle.")), \
             "a limit of the study belongs in Section VIII, not with the requirements"

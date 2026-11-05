@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Target: TC](https://img.shields.io/badge/Target-IEEE%20Transactions%20on%20Computers-orange.svg)]()
-[![Tests](https://img.shields.io/badge/tests-8422_passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-11505_passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/branch_coverage-100%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
 [![DOI (code)](https://img.shields.io/badge/DOI_code-10.5281%2Fzenodo.21650031-blue.svg)](https://doi.org/10.5281/zenodo.21650031)
@@ -44,33 +44,54 @@
 > targeting **IEEE Transactions on Computers**, with its supplementary material in
 > [`supplement.tex`](supplement.tex) and the complete record of how the results were obtained in
 > [`postmortem.tex`](postmortem.tex), which is archived with the data and not submitted. Since
-> 5 October 2026 it is built around four bottom lines:
+> 3 November 2026 it is built as one chain of four parts: what we found, why it happens, what the
+> industry's tools and brokers do with it, and how to fix it. Every number below is the paper's
+> own, from `docs/generated/paper_numbers.tex`:
 >
-> 1. **The distribution.** After a broker writes a message it acknowledges it to the producer
->    and delivers it to the consumer; on one machine and one clock the two readings should
->    coincide. Their difference *S* = *t*_recv − *t*_ack spreads over milliseconds and falls
->    below zero for 62,264 of 738,730 messages (8.43%), while no latency timed from the publish
->    call ever does.
-> 2. **The mechanism and its laws.** A thread waits for a core before it reads the clock, its
->    scheduling delay. *S* < 0 exactly when the publish latency exceeds the end-to-end latency;
->    to leading order the rate is the timestamping thread's waiting probability times the chance
->    that its residual wait outlasts the end-to-end latency; and the scheduler's base slice, 3 ms
->    on our eight-CPU hosts, sets the timescale. Real-time priority cut the rate 7–80× at
->    unchanged utilization, two placements of one load at the same utilization differ 2.07×, a
->    longer path lowers the rate 4.1×, and a kernel trace predicts the rate with nothing fitted.
-> 3. **The industry-wide audit.** Seventeen tools read at source and sixteen run: of the 14
->    message tools read, twelve cut a latency at or below zero out of a figure they report without
->    counting it, Kafka's own end-to-end tool never measures one, since it polls only after each
->    acknowledgment, and PerfKit Benchmarker's keeps it, floored to whole milliseconds. Twelve of the sixteen run take both timestamps in one process, so they
->    cannot measure a one-way latency, and on a machine 88% busy every tool's 99th percentile
->    rose by 1.4–5.0 ms while its median barely moved. A positivity filter on
->    a millisecond clock printed a median of exactly 1.0 or 2.0 ms in 71 of 75 settings, computed
->    from as little as 0.36% of the samples. None of 43 public reports states how many samples it
->    kept.
-> 4. **What to do.** Time from the publish call or add the publish latency back, sign-check
->    every run, give the threads that read the clock a core, print the retention and the
->    discards by sign, and randomize the publish instants. A better-synchronized clock fixes
->    neither problem.
+> 1. **The distribution.** A broker writes each message to its log. Then it acknowledges the
+>    message to the producer and delivers it to the consumer. We read both on one machine's
+>    clock. Their difference *S* = *t*_recv − *t*_ack spreads over milliseconds, and it falls
+>    below zero for 62,264 of 708,505 messages (8.79%). No message arrives before it is
+>    published, and no latency timed from the publish call falls below zero.
+> 2. **The mechanism and its laws.** A thread must wait for a core before it can read the
+>    clock. *S* falls below zero exactly when the publish latency *A* exceeds the end-to-end
+>    latency *D*. On Kafka the acknowledgment arrives first, and the thread that reads it can
+>    wait for a core until the consumer has read the message. Redis often delivers first, so
+>    most of its values below zero need no wait. The share of *S* below zero rises with
+>    processor load. Real-time priority for the threads that read the clock cut it 7–80× on
+>    Kafka and 6.0–7.8× on Redis, and at least 4.4× and 4.2× in each of eight matched pairs, at
+>    unchanged utilization. Two placements of one load at the same utilization differ 2.07× on
+>    Kafka (2.02× in a replication). Padding the payload raised Kafka's median *S* 74× and cut
+>    the share 3.8×. With nothing fitted, the share of acknowledgments whose own wait outlasted
+>    the margin predicted the share at 1.11–1.30 times its measured value, at the median, and
+>    the registered prediction held on four of the six pair and broker combinations. The
+>    scheduler's base slice, 2.8 ms on our eight-CPU hosts, sets the timescale. The same wait
+>    can also delay a consumer's next request, so a message can wait at the broker for it.
+> 3. **The industry-wide audit.** We read 27 tools at source. Of the 24 that time messages or
+>    requests, 19 cut a latency at or below zero out of a figure they report, and all but one,
+>    SBK, count none of what they cut. Kafka's own end-to-end tool hides a value below zero
+>    without computing one, since it polls only after each acknowledgment. Of the 32 tools we
+>    ran, 19 take both timestamps in one process, and of those eight time a round trip and four
+>    only the acknowledgment. A filter that keeps only latencies above zero, on a millisecond
+>    clock, also deletes the fastest messages: in the OpenMessaging Benchmark, 71 of 75
+>    settings printed a median of exactly 1.0 or 2.0 ms, computed from as little as 0.36% of
+>    the samples. None of 43 public reports states how many samples it kept. Of 222 brokers,
+>    only two consumer interfaces report how long a message waited for its request, and neither
+>    is a production broker as it ships: Zenoh's storage queries, through a feature its code
+>    marks unstable, and Azurite, an emulator, to the second. 79 interfaces in 53 brokers report
+>    the message's whole time at the broker.
+> 4. **What to do.** On the tools' side, time each message between the kernel's timestamps,
+>    read on the tool's own sockets in four steps, and report that latency, *W*, beside the
+>    end-to-end latency *D*. Read on the sockets over 48 runs, *W*'s median moved at most
+>    7.8% across load and priority, while load at normal priority raised *D*'s 99th
+>    percentile 4.2–4.7×. The same timestamps show whether a request or credit was waiting at
+>    the broker for each message. Where the protocol allows, keep one waiting; plan version 49
+>    tested this, and all 13 of its predictions held. Until a tool does this, check every run
+>    for values below zero, time from the publish call or add the publish latency back, and
+>    give the threads that read the clock a core. On the brokers' side, report with each
+>    delivered message how long it waited for its request, in a few bytes and when a consumer
+>    asks, and put the broker's receive and acknowledgment times in each acknowledgment. A
+>    better-synchronized clock fixes neither problem.
 >
 > **The original question** was: *compare end-to-end lag between Redis Streams and Apache Kafka
 > for real-time sports data feeds, under varying concurrency, using the StatsBomb open dataset
@@ -78,7 +99,8 @@
 > paper became about the measurement. The paper and supplement as they stood before the rebuild,
 > with the withdrawn results and the broker comparison, are kept in
 > [`docs/archive/2026-10-05-before-cleanup/`](docs/archive/2026-10-05-before-cleanup/README.md),
-> and what is known in the literature about each bottom line is in
+> and what was known in the literature on 5 October about each of that version's four bottom
+> lines is in
 > [`docs/literature_review_2026-10-05.md`](docs/literature_review_2026-10-05.md).
 
 > **This README is the single source of truth for the project.** It consolidates what
@@ -107,12 +129,13 @@
 15. [License](#15-license)
 16. [Changelog](#16-changelog)
 17. [Appendix: Acronyms & File Types](#17-appendix-acronyms--file-types)
+18. [Corrections to this README](#18-corrections-to-this-readme)
 
 ---
 
 ## 1. Current State & Objectives
 
-**Last updated:** October 1, 2026 · **Branch:** `main` · **Target:** *IEEE Transactions on Computers* (systems venue; the JSA, TOMPECS and TPDS framings were retired — see the header)
+**Last updated:** November 4, 2026 · **Branch:** `main` · **Target:** *IEEE Transactions on Computers* (systems venue; the JSA, TOMPECS and TPDS framings were retired — see the header)
 
 ### 1.1 Where things stand
 
@@ -121,7 +144,7 @@
 > The transport proxy *S* is computed as *consumer receipt − acknowledgment*, two timestamps
 > written by two threads in two processes that read one clock. A negative value is not noise:
 > it shows that the acknowledgment cannot serve as the origin of that message's latency (paper
-> Section IV-A). We applied the sign check to **every** run rather than only to the ones whose
+> Section 4.1). We applied the sign check to **every** run rather than only to the ones whose
 > results looked wrong, and the result reshaped the paper:
 >
 > | Corpus | Runs | Rejected | Conditions | Usable |
@@ -133,7 +156,7 @@
 > The rule is in [`scripts/clock_integrity.py`](scripts/clock_integrity.py): a run is rejected
 > if more than 1% of its events carry a negative value in any latency component, or if the
 > median of any component is negative, and a condition is usable only if all of its runs
-> survive (paper Section II-C). It exits non-zero so campaigns can gate on it.
+> survive (paper Section 6.2; Supplement S2). It exits non-zero so campaigns can gate on it.
 >
 > **What this cost us.** Our headline result had been *"Redis transport rises 34% with
 > concurrency (p=9.0×10⁻¹¹, complete rank separation) while Kafka stays flat"*, measured on the
@@ -179,7 +202,7 @@ margin**; yet the shift's 90% interval lies far from zero at every N, Kafka slow
 shift is flat across concurrency, so they are **not a statistical tie**. On the end-to-end
 latency *E*, which is a causal chain, they are equivalent against a 40 ms margin (one broadcast
 frame, fixed three days before the campaign): Hodges–Lehmann shifts of 0.682–0.859 ms, Kafka
-slower, with no 90% upper bound above 0.906 ms (supplement S7).
+slower, with no 90% upper bound above 0.906 ms (postmortem S13.1).
 
 A second powered campaign, run about ten hours later with the same protocol and eight
 replicates per level, reproduces the shift (0.381, 0.414 and 0.416 ms over the runs the check
@@ -215,7 +238,7 @@ and sharpens the reversal of the withdrawn accelerated result, which had had Red
 > | 180 s | 148 | 1.61 ms | 103.5 ms | **4** | **1** |
 > | 600 s | 507 | 1.58 ms | 103.5 ms | **4** | **1** |
 >
-> These are the Kafka rows of the window-sweep table in supplement S8.2 (counts are medians over
+> These are the Kafka rows of the window-sweep table in postmortem S3 (counts are medians over
 > three replicates from the per-event trace; the publish-delay percentiles come from the per-run
 > summary). Redis, run in the same sweep with the same loop trace, has no event more than 50 ms
 > late and no blocking send at any window. Events grow **8.9×**; the count does not move. The
@@ -235,10 +258,10 @@ and sharpens the reversal of the withdrawn accelerated result, which had had Red
 > about 103 ms late and then send in tens of microseconds; from event 5 it is steady state at
 > about 1 ms. A Kafka producer fetches metadata before its first send to a topic it has not yet
 > cached, and the shape matches, but we did not isolate the call: the sweep fixes the cost's
-> shape, not its origin (supplement S8.2, postmortem S3). That the burst is five is the data,
+> shape, not its origin (postmortem S3). That the burst is five is the data,
 > not the harness. Every one of the eleven replayed plans opens with at least five events at
 > `t_sim=0`, all at second zero: two lineup records, two half-start markers and the kick-off
-> pass (supplement S1.2 and S8.2). A football feed delivers its densest burst precisely when the
+> pass (postmortem S3 and S20). A football feed delivers its densest burst precisely when the
 > producer is coldest. Redis's `XADD` creates the stream in the same round trip and shows no
 > prologue.
 >
@@ -259,10 +282,10 @@ postmortem (S18):
 
 | | Rule | Result |
 |---|---|---|
-| **H1** | negative spans fall as the measured delivery grows | ❌ **Withdrawn as evidence.** The injected-delay sweep behind the ρ = −0.80 we reported failed its manipulation check: the delay is common-mode and cancels in the transport proxy *S* (re-run at one feed, the end-to-end latency tracked it, 3.72 to 23.61 ms over 0–20 ms, while *S* stayed flat), so the sweep is a negative result only (supplement S8, postmortem S3.1). The direction is shown instead by the payload sweep, which lengthened transport 77× and lowered the rate 4.1× (paper Section III-B) |
-| **H2** | negative spans follow M/G/1 waiting in utilisation | ❌ **refuted.** The early ladder stopped at ρ=0.878 and could not separate the forms. Extending it to ρ=0.990, where they diverge, M/G/1 fits *worse than the mean* (R² −0.05 vs a fitted exponential's 0.93), and the bracket we registered before that sweep also missed (2.45–3.07× growth predicted, 1.44× measured; supplement S8) |
-| **H4** | negative spans rise with concurrent process count | ✅ ρ = **+0.80** (E-A2, 15 runs per level); claimed only in the postmortem, not in the paper or the journal supplement |
-| **H3** | asymmetric stamping biases the comparison | ✅ **replicated in direction** (E-C3, then E-C4). Gap **+0.286 → +0.215 ms** (−25%), moving entirely on the asymmetric side: Kafka 0.392 → 0.322, Redis holds ≈0.106. The shrinkage is 0.071 ms [95% bootstrap 0.039–0.113] in E-C3 and 0.039 ms [0.008–0.059] in the 30-runs-per-cell replication E-C4, leaving a broker difference of 0.34–0.37 ms (supplement S7) |
+| **H1** | negative spans fall as the measured delivery grows | ❌ **Withdrawn as evidence.** The injected-delay sweep behind the ρ = −0.80 we reported failed its manipulation check: the delay is common-mode and cancels in the transport proxy *S* (re-run at one feed, the end-to-end latency tracked it, 3.72 to 23.61 ms over 0–20 ms, while *S* stayed flat), so the sweep is a negative result only (postmortem S3.1). The direction is shown instead by the payload sweep, which lengthened transport 74× and lowered the rate 3.8× (paper Section 4.2; Supplement S3.3) |
+| **H2** | negative spans follow M/G/1 waiting in utilisation | ❌ **refuted.** The early ladder stopped at ρ=0.878 and could not separate the forms. Extending it to ρ=0.990, where they diverge, M/G/1 fits *worse than the mean* (R² −0.05 vs a fitted exponential's 0.93), and the bracket we registered before that sweep also missed (2.45–3.07× growth predicted, 1.44× measured; postmortem S1.5 and S5.1) |
+| **H4** | negative spans rise with concurrent process count | ✅ in direction: ρ = **+0.80** over four levels (E-A2, 15 runs per level; inversion rate 0.029, 0.082, 0.105 and 0.103 at N = 1, 3, 6 and 12, rising to N = 6 and then level), a one-sided p of 1/6. Postmortem S18 lists the campaign; the paper and the journal supplement do not claim it |
+| **H3** | asymmetric stamping biases the comparison | ✅ **replicated in direction** (E-C3, then E-C4). Gap **+0.286 → +0.215 ms** (−25%), moving entirely on the asymmetric side: Kafka 0.392 → 0.322, Redis holds ≈0.106. The shrinkage is 0.071 ms [95% bootstrap 0.039–0.113] in E-C3 and 0.039 ms [0.008–0.059] in the 30-runs-per-cell replication E-C4, leaving a broker difference of 0.34–0.37 ms (postmortem S26.2) |
 
 The *monotone* dependence on utilisation is measured and survives the refutation above — it is
 only the M/G/1 functional form that fails. The rate is flat (0.007–0.022) to ρ=0.5, then climbs
@@ -278,7 +301,7 @@ input. See [`docs/laws.md`](docs/laws.md).
 **Claim 4 — A network hop reverses the ordering.** Injecting one-way delay identically at both
 brokers (`tc netem`), N=5. The Redis arm passes the sign check 15/15 at every non-zero delay,
 precisely because the effect dwarfs the instrument's floor. The zero-delay row is rejected
-under both brokers, so there is no usable baseline (supplement S7).
+under both brokers, so there is no usable baseline (postmortem S13.2 and S26.2).
 
 | Injected delay | Kafka *E* | Kafka *S* | Redis *E* | Redis *S* | Runs passing (K / R) |
 |---:|---:|---:|---:|---:|:--|
@@ -298,17 +321,18 @@ realistic load and unexplained at 5× that load.**
 |---|---:|---:|:--|
 | N=1, real-time, 20 ms delay | 4,138 ms | **103 ms** | **40.2×** |
 | N=5, 10×, 20 ms delay | 68,960 ms | 73,598 ms | none (0.94×) |
-| N=5, 10×, 50 ms delay | 87,624 ms | 92,386 ms | none (0.95×) |
+| N=5, 10×, 20 ms delay, run again | 87,624 ms | 92,386 ms | none (0.95×) |
 
 At N=1 read-loop instrumentation shows the mechanism directly, and corrects it: each
-`XREADGROUP` returns every waiting entry (a median of 106 messages) in ~32 ms, so the consumer
+`XREADGROUP` returns every waiting entry (a median of 106.5 messages) in ~32 ms, so the consumer
 is **not** read-bound. The ceiling is entirely in the ack path — 200 × 20 ms = 4 s per batch,
-during which it issues no reads at all (13 reads per run, 4 non-empty; batched: 37 reads, 25
-non-empty).
+during which it issues no reads at all (13 to 16 reads per run, 4 non-empty; batched: 37 to 40
+reads, 25 non-empty).
 
 > **⚠️ Open question we do not resolve.** The N=5 null is *not* explained by a gate failure — an
 > earlier version of this README said it was, and that was wrong. The Redis arm passes 15/15; the
-> manipulation check passed (the campaign script aborts otherwise); Kafka in the same runs sits at
+> manipulation check passed on the same driver sixteen minutes before (in p4.sh, which aborts
+> otherwise; p4b.sh, which ran these arms, has no check of its own); Kafka in the same runs sits at
 > 78 ms. We claim the mechanism **at realistic football load**, where we have both the
 > intervention and the read-loop evidence, and state plainly that its behaviour at 5× that load is
 > unexplained.
@@ -336,7 +360,7 @@ that differ by two orders of magnitude in deployment.
 | Durability H31/H32 quantification | ⚠️ Direction only; magnitudes were Testbed A |
 | Injected-delay sweep (H1) | ❌ Withdrawn: the delay cancels in the transport proxy, so it is a negative result only (Claim 3) |
 | E1 concurrency (real-time, gated) | ⚠️ **Historical.** Its concurrency result stands (neither broker degrades with N); its end-to-end and send-lag columns are withdrawn (Claim 2), and its transport medians rest on seven events per run |
-| Powered transport campaign and its replication | ✅ **Reported** (Claim 1; supplement S7) |
+| Powered transport campaign and its replication | ✅ **Reported** (Claim 1; postmortem S2 and S13.1) |
 | Network delay arm (Redis 15/15) | ✅ **Reported** |
 | E5 ack batching at N=1 (4 replications) | ✅ **Reported** |
 | Workload characterisation (3,315 matches) | ✅ **Reported** (derived from event data, not from our instrument) |
@@ -358,12 +382,11 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 
 ### 1.5 Primary objective
 
-> **The current objective, in the paper's own terms:** show two ways a message-broker benchmark
-> misreports on sub-millisecond paths, where the time being measured is shorter than the
-> clock's resolution and than a busy thread's wait for a processor (Failure 1, late timestamps
-> invert the acknowledgment-timed span; Failure 2, a millisecond clock and a positivity
-> filter delete samples without counting them), establish each by manipulation, test how widely
-> published results reach the second, and give benchmark authors checks that cost nothing.
+> **The current objective, in the paper's own terms:** show that a broker latency below a
+> millisecond describes both the broker and how it was timed, and give the means to time the
+> broker alone. The paper does it in four parts: the distribution of *S* on one clock, the
+> mechanism and its laws, an audit of the industry's tools and brokers, and what to do, on the
+> tools' side and on the brokers' (the summary at the top of this README).
 >
 > **The original question**, kept as the setting that produced the finding: benchmark Redis
 > Streams against Apache Kafka for real-time football feeds on open StatsBomb data, at
@@ -390,26 +413,28 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 
 > **Title:** *Super-Precise Latency: How CPU Threading Distorts Benchmarks, an Industry-Wide Audit, and How to Fix It*
 > **Target:** IEEE Transactions on Computers (`IEEEtran`, journal, `paper.tex`)
-> **Keywords:** Apache Kafka; benchmark auditing; CPU scheduling; latency benchmarking; message brokers; multithreading; Redis Streams; timestamp resolution.
+> **Keywords:** Apache Kafka; benchmark auditing; kernel timestamping; latency benchmarking; message brokers; Redis Streams; thread scheduling; timestamp resolution.
 
 The paper's abstract, which by the authors' rule carries no numbers and names no tool:
 
-> Engineers choose message brokers, which carry data between programs, partly by latency
-> benchmarks that now report latencies below a millisecond. At that scale, when a program reads the
-> clock matters. After a broker writes a message, it acknowledges it to the producer and delivers it
-> to the consumer. On one machine and one clock, the two readings should coincide. Measured, their
-> difference spreads over milliseconds, and part of it falls below zero. The cause is scheduling. A
-> thread must wait for a processor core before it can read the clock, and the thread that reads the
-> acknowledgment can wait longer than the message takes to reach the consumer. How often this
-> happens obeys laws we derive and test by manipulation. It rises with load and with how the load
-> is placed, and falls when the clock-reading threads run at real-time priority and as the timed
-> path outgrows the scheduler's slice, which the processor count sets. An industry-wide audit finds
-> such values discarded uncounted or never measured, and a filter on millisecond clocks that
-> deletes the fastest messages too. We give checks, and measure what each buys.
+> Engineers choose message brokers partly by benchmarks that report latencies below a
+> millisecond. A broker acknowledges each message to the producer and delivers it to the
+> consumer. We timed both on one machine's clock. Their difference spreads over milliseconds.
+> Part of it falls below zero, yet no message arrives before it is published. On one broker the
+> acknowledgment arrives first, and there the cause is scheduling. The thread that reads the
+> acknowledgment can wait for a processor core until the consumer has read the message. The
+> other broker often delivers first. We derive laws for the share below zero and test them by
+> controlled experiments. The share rises with processor load and falls when clock-reading
+> threads get real-time priority. A wait for a core can also delay the consumer's next request,
+> so a message can wait at the broker. An industry-wide audit finds that most tools discard
+> such values uncounted or never measure them. Such a filter on a millisecond clock also
+> deletes the fastest messages. Of the audited brokers, only an emulator and one feature marked
+> unstable report that wait at the broker. We give a general solution for tools and brokers,
+> and test the tools' part.
 
 The numbers behind it are in the summary at the top of this README and in the paper's
-introduction, one contribution per bottom line; the evidence in full is in the supplement, S1 to
-S6.
+introduction, one contribution per part; the evidence in full is in the supplement, S1 to
+S8.
 
 ---
 
@@ -531,7 +556,7 @@ streams) — the intended comparison.
 ### 6.1 Primary metric — event-time latency E (TTI in the harness)
 
 ```
-E = t_out − t_sched = (t_pub − t_sched) + A + S + (t_out − t_recv)     (paper, Equation 2)
+E = t_out − t_sched = (t_pub − t_sched) + A + S + (t_out − t_recv)     (paper, Section 2)
 ```
 
 In the harness's own columns:
@@ -551,18 +576,18 @@ producer and consumer processes on one host, so a difference of a producer times
 consumer timestamp is a valid span (the Java client of the law campaign reads the same clock
 through `Instant.now()`, `harness/java/src/LawClock.java`). A process-relative clock (`perf_counter_ns`, whose origin
 is per process) carried each run's consumer start-up offset into every measurement; replacing
-it was one of the early corrections (supplement S8.1).
+it was one of the early corrections (postmortem S1.14).
 
 ### 6.2 Metric definitions
 
 | Metric | Formula (harness columns) | Meaning |
 |--------|---------|---------|
-| Event-time latency *E* (TTI in the harness) | `t_output_ns − t_prod_sched_ns` | *t*_out − *t*_sched: from the event falling due to the consumer having handled it; a causal chain (paper Equation 2) |
-| Transport proxy *S* ("transport" in the harness) | `t_cons_recv_ns − t_broker_ack_ns` | *t*_recv − *t*_ack = *D* − *A*: a message timed from the acknowledgment. Not a causal chain, and the only span that turns negative (paper Section II-A and Table I). `compute_tti.py` falls back to `t_prod_send_ns` for a run with no acknowledgment timestamp |
+| Event-time latency *E* (TTI in the harness) | `t_output_ns − t_prod_sched_ns` | *t*_out − *t*_sched: from the event falling due to the consumer having handled it; a causal chain (paper Section 2) |
+| Transport proxy *S* ("transport" in the harness) | `t_cons_recv_ns − t_broker_ack_ns` | *t*_recv − *t*_ack = *D* − *A*: a message timed from the acknowledgment. Not a causal chain, and the only span that turns negative (paper Section 3, and the table of values below zero in Supplement S1.3). `compute_tti.py` falls back to `t_prod_send_ns` for a run with no acknowledgment timestamp |
 | Publish latency *A* | `t_broker_ack_ns − t_prod_send_ns` | *t*_ack − *t*_pub: from the publish call to the producer observing the broker's acknowledgment (`acklag` in `recount_spans.py`) |
 | End-to-end latency *D* | `t_cons_recv_ns − t_prod_send_ns` | *t*_recv − *t*_pub: from the publish call to the consumer holding the record; a causal chain |
 | Publish delay ("producer scheduling lag" in the harness) | `t_prod_send_ns − t_prod_sched_ns` | *t*_pub − *t*_sched: how late the publish call ran after the event was due |
-| Processing-time latency | `t_output_ns − t_cons_recv_ns` | *t*_out − *t*_recv: the consumer's own work on the record. Added round 43, and the reason it is listed here is that the two clients do not take these two stamps in the same place: Kafka's parses the payload inside `poll()`, before `t_cons_recv_ns`; Redis's parses it between the two stamps. Median 281 ns and 19,480 ns respectively, so every span referenced to `t_cons_recv_ns` carries one client's parse and not the other's, while *E*, which runs to `t_output_ns`, contains both. Disclosed and bounded in supplement S1.5; pinned by `tests/unit/test_consumer_stamp_placement.py` |
+| Processing-time latency | `t_output_ns − t_cons_recv_ns` | *t*_out − *t*_recv: the consumer's own work on the record. Added round 43, and the reason it is listed here is that the two clients do not take these two stamps in the same place: Kafka's parses the payload inside `poll()`, before `t_cons_recv_ns`; Redis's parses it between the two stamps. Median 290 ns and 20,772 ns respectively, so every span referenced to `t_cons_recv_ns` carries one client's parse and not the other's, while *E*, which runs to `t_output_ns`, contains both. Disclosed and bounded in supplement S1.3; pinned by `tests/unit/test_consumer_stamp_placement.py` |
 | E (TTI) p50 / p95 / p99 | percentiles of E | Median, 95th, 99th |
 | Missed-window rate | `count(TTI > W) / count(TTI)` | Fraction exceeding window *W* |
 | **S3** Correction propagation | `t_correction_consume − t_base_consume` | Time for a correction to land |
@@ -936,7 +961,7 @@ supplement and the complete record in the postmortem, both compiled from the sam
 | Asset | Purpose |
 |-------|---------|
 | `paper.tex` | The paper (`IEEEtran`, journal; Introduction, How a Message Is Timed, The Distribution of S, The Mechanism and Its Laws, An Industry-Wide Audit, What to Do, Related Work, Limitations, Conclusion) |
-| `supplement.tex` | The supplementary material, S1–S6 in the paper's order, under the paper's byline (`docs/supplement_index.md` maps each section to the postmortem sections it draws on) |
+| `supplement.tex` | The supplementary material, S1–S8 in the paper's order, under the paper's byline (`docs/supplement_index.md` maps each section to the postmortem sections it draws on) |
 | `postmortem.tex` | The complete record, a single-author postmortem in five parts, S1–S37: the chronology, every withdrawn result and the law campaign run by run. Archived with the data; not part of the submission. Written against the paper as it stood before 5 Oct 2026, whose labels it reads from `docs/archive/2026-10-05-before-cleanup/paper.aux` |
 | `manuscript_references.bib` | Bibliography |
 | `IEEEtran.cls` | IEEE article class (from TeX Live/MiKTeX) |
@@ -980,11 +1005,12 @@ reports no error, the source still looks plausible, and the defect appears only 
 That failure reached the manuscript three times here, twice past a full source-level check, which
 is why the check now runs on the artefact a reader actually receives.
 
-**Status (the PDFs built on 5 Oct 2026):** compiles clean, with 0 errors and 0 undefined
-references or citations. The paper is 8 pages, its text ending on page 7 and the last page
-holding five references and the two biographies, with 37 references, three figures, one table
-and five numbered equations. The journal supplement, S1–S6 under the paper's byline, is 16
-pages; the postmortem, the complete single-author record that is not submitted, is 76 pages.
+**Status (the paper and the supplement built on 4 Nov 2026, the postmortem on 17 Oct):**
+compiles clean, with 0 errors and 0 undefined references or citations. The paper is 12 pages,
+with 42 references, six figures, no table and five numbered equations; its tables are in the
+supplement. The journal supplement, S1–S8 under the paper's byline, is 36 pages with 45
+references; the postmortem, the complete single-author record that is not submitted, is 82
+pages.
 Formatted with `IEEEtran` (journal, 10pt) for IEEE Transactions on Computers.
 
 Sentence length is gated too, since round 43. A co-author reported that average sentence
@@ -1636,4 +1662,62 @@ storage · `.py` scripts · `.ps1` PowerShell runners · `.sh` bash scripts · `
 
 ---
 
-*Single-source README · last updated October 1, 2026 · target: IEEE Transactions on Computers.*
+## 18. Corrections to this README
+
+A number or a pointer in this README that does not match the paper, the supplement or a record
+is corrected here, in the open. Each correction gives the date, the old and the new text, and the
+reason. The records themselves are unchanged.
+
+- **4 November 2026. The summary at the top follows the paper as rewritten on 3 November.** It
+  was written on 5 October around four bottom lines. It now gives the paper's four parts and
+  takes every number from the generated ledger. "62,264 of 738,730 messages (8.43%)" becomes
+  "62,264 of 708,505 (8.79%)": the 30,225 late messages left the corpus on 7 October, and none
+  of them was below zero. The audit's counts become the paper's: 27 tools read, 24 message tools,
+  19 that cut and 32 run. The slice is 2.8 ms, not 3 ms. The broker audit and the general method
+  are added. The literature-review sentence now says that it covers the 5 October version's
+  bottom lines. Three claims of the old summary are no longer made: that a kernel trace
+  predicts the rate with nothing fitted (the paper now calls the trace consistent with the
+  mechanism), that every tool's 99th percentile rose by 1.4–5.0 ms, and that PerfKit
+  Benchmarker's tool keeps such a value, floored to whole milliseconds.
+- **4 November 2026. The payload sweep: "77×" and "4.1×" become "74×" and "3.8×"** (§1.2,
+  Claim 3, the H1 row). These are the paper's numbers since the late messages left the corpus.
+- **4 November 2026. The consumer's parse: "281 ns and 19,480 ns" become "290 ns and 20,772 ns"**
+  (§6.2), the medians of run medians in Supplement S1.3, which discloses the parse. They moved
+  when the late messages left the corpus on 7 October. The pointer said S1.5.
+- **4 November 2026. Pointers.** On 5 October the journal supplement was cut to S1–S6, and the
+  broker comparison, the withdrawn results and the related work went to the postmortem. Its S7
+  and S8 are now the broker audit and the general method. Every pointer outside the changelog
+  and the round narratives of §12 now names the section that holds its material. Claim 1's
+  comparison is in postmortem S2 and S13.1; the window sweep is in S3, and the opening burst in
+  S3 and S20; H1's delay sweep is in S3.1, H2's refutation in S1.5 and S5.1, and H3's table in
+  S26.2; the network-delay arm is in S13.2 and S26.2; the process-relative clock is in S1.14.
+  The paper numbers its sections 1 to 9 and its subsections 4.1 and so on, so "Section IV-A"
+  becomes "Section 4.1". *E* is now defined in words in the paper's Section 2, which replaces
+  "Equation 2".
+- **4 November 2026. §1.5's objective and §2's abstract, keywords and pointer follow the paper.**
+  §12's status gives the PDFs as built on 4 November, and the supplement's sections are S1–S8.
+- **4 November 2026. The changelog (§16) and the round narratives of §12 stay as written.** They
+  name sections, tables and figures as these were numbered on each entry's date. The supplement
+  of those rounds is now the postmortem, renumbered.
+- **4 November 2026. Claim 5's second N=5 row said "50 ms delay"; its runs had 20 ms.** In them
+  Kafka's median end-to-end latency is 78.4 and 78.8 ms, the 20 ms level of Claim 4's table
+  (77.8 ms; 336.6 ms at 50 ms), and their log, early_adhoc/p4c.log, is that of p4b.sh, which
+  sets 20 ms. The row repeats the one above it.
+- **4 November 2026. Claim 5's box: the manipulation check.** It said the check passed because
+  "the campaign script aborts otherwise". Both N=5 rows ran under p4b.sh, which has no check.
+  The check ran in p4.sh on the same driver, just before p4.sh's first run at 22:02:00
+  (early_adhoc/p4.log), sixteen minutes before p4b.sh's first arm at 22:18:04 (p4b.log).
+- **4 November 2026. Claim 5's read loop, run by run.** "a median of 106 messages" becomes
+  106.5, and "13 reads per run ... batched: 37 reads" becomes "13 to 16 ... 37 to 40", as
+  docs/results/e5/e5_ack_batching.csv gives them for its eight runs.
+- **4 November 2026. H4's ρ = +0.80 now says what it is.** It is a Spearman ρ over four
+  levels, from inversion rates of 0.029, 0.082, 0.105 and 0.103 at N = 1, 3, 6 and 12
+  (`cloud_archive/extracted/docs/results/depth/model/ea2_process_count.csv`, which git
+  ignores), and its exact one-sided p is 4/24 = 1/6. The row said "claimed only in the
+  postmortem", but postmortem S18 only lists the campaign.
+- **4 November 2026. "Last updated: October 1, 2026"**, at the head of §1 and in the last
+  line, becomes November 4, 2026, the date of this pass.
+
+---
+
+*Single-source README · last updated November 4, 2026 · target: IEEE Transactions on Computers.*

@@ -4,7 +4,7 @@ This directory pins the frozen artefact for the manuscript so its results can be
 the exact code, environment, datasets and per-run provenance.
 
 **Paper:** [`paper.tex`](../paper.tex) — *Super-Precise Latency: How CPU Threading
-Affects High-Precision Latency, and an Industry-Wide Audit* (IEEE `IEEEtran`, targeting
+Distorts Benchmarks, an Industry-Wide Audit, and How to Fix It* (IEEE `IEEEtran`, targeting
 **IEEE Transactions on Computers**). This is a **systems / measurement-methodology paper**; the football workload is
 the setting that produced the finding, not the contribution. The earlier Journal of Sports
 Analytics framing (decision-staleness, Age-of-Information, win-probability) has been **retired**
@@ -19,6 +19,13 @@ Analytics framing (decision-staleness, Age-of-Information, win-probability) has 
   with `python scripts/verify_reproducibility.py --pattern '<prefix>*' --verbose`.
 
 ## What the paper claims, and what the artefact must show
+
+> **4 November 2026.** This part describes the paper of July and August 2026. The paper was
+> rebuilt on 5 October and again on 3 November, and what it claims now is in the summary at the
+> top of [`../README.md`](../README.md). The results below are now in the postmortem: the
+> check's sensitivity in S18, the two withdrawals in S1.11 and S3, what survived in S2 and S13,
+> and the rate-provenance disclosure in S1.8 and S4. The commands below still regenerate the
+> artefacts they name.
 
 The study set out to compare Apache Kafka and Redis Streams for a real-time football feed under
 varying concurrency. The first campaign returned a clean, significant, theory-confirming result
@@ -50,7 +57,7 @@ The threshold is a real decision (the inversion-rate distribution is **not** bim
 of 1,382 Testbed A runs are completely clean), so the paper reports its sensitivity rather than
 asserting robustness: rejection ranges from **92.5 %** at zero tolerance to **19.2 %** at a
 permissive 20 %, and no threshold in that range changes which conditions are usable
-(§6.3, `clock_integrity_by_run.csv`).
+(postmortem S18, `clock_integrity_by_run.csv`).
 
 ### Two withdrawals
 
@@ -138,7 +145,7 @@ median transport reads **−6.4 ms**); and the three-node cluster arm (0/15 runs
   passes the audit 15/15 on the Redis side at every injected delay, precisely because its effect
   is tens of seconds — far above the instrument's floor.)
 
-### Rate-provenance disclosure (paper §6.5)
+### Rate-provenance disclosure (postmortem S1.8 and S4)
 
 Replay plans built by [`scripts/make_replay_plan.py`](../scripts/make_replay_plan.py) carry a
 **baked-in 120× time compression**: `t_emit_offset_s = t_sim_seconds / 120`. So `--speedup 1`
@@ -201,7 +208,7 @@ done
 
 The repo ships eleven `match_<id>/replay_plan.csv` plans under
 `data/processed/replay_plans/$SHA/`; `--speed-factor 120` reproduces the committed plans
-byte-for-byte (this is the baked-in compression disclosed in §6.5). Each feed in the concurrency
+byte-for-byte (this is the baked-in compression disclosed in postmortem S4). Each feed in the concurrency
 experiment carries a **distinct** real match — an earlier design merged matches into one feed,
 which turned the concurrency axis covertly into a throughput axis and is not used.
 
@@ -330,8 +337,8 @@ rests on it, and a reproduction attempt that finds ~0.004 there has not contradi
 `runs/` held 8.4 GB of per-event CSVs on the Testbed A host and 676 MB more on the Testbed B
 driver, and **not one file of it was tracked**. The aggregated CSVs named 1,546 run ids between
 them across 57 files; 1,445 local runs appeared in none of them. So the honest answer to "which
-runs produced this paper" was a directory on a machine — the same provenance gap Section 7.4 of
-the paper reports having found in its own history, reproduced at the level of the repository.
+runs produced this paper" was a directory on a machine — the same provenance gap the postmortem's
+S4 reports having found in its own history, reproduced at the level of the repository.
 
 Four tracked files close it, two per testbed, all built by
 [`../scripts/build_runs_index.py`](../scripts/build_runs_index.py):
@@ -411,7 +418,7 @@ verified by SHA-256 against the source:
 |---|---|---|
 | `cloud_archive/sbl_runs.tgz` | all 5,998 run directories | 95.7 MB (676 MB raw) |
 | `cloud_archive/sbl_docs_results.tgz` | the driver's `docs/results`, incl. every depth condition | 15.2 MB (83 MB raw) |
-| `cloud_archive/sbl_logs.tgz` | the 24 chain logs | 101 KB |
+| `cloud_archive/sbl_logs.tgz` | the 24 chain logs | 12 KB (50 KB raw) |
 | `cloud_archive/omb_stdout.log.gz` | the 28 MB OMB run log | 0.4 MB |
 
 `cloud_archive/` is gitignored — it is ~800 MB of raw evidence, and the tracked summary of it is
@@ -420,10 +427,12 @@ directories out, 5,998 rows in the index.
 
 Three things from it *are* tracked, because they are small and because nothing else records them:
 
-- [`campaign_logs/`](campaign_logs/) — the 24 chain logs, 101 KB, including the ones recording
+- [`campaign_logs/`](campaign_logs/) — the 25 chain logs, 56 KB, and 13 earlier ones in
+  early_adhoc/, including the ones recording
   campaigns that aborted
 - [`../external/omb/`](../external/omb/) — the OpenMessaging Benchmark patch, its output, and the
-  configs. The source modification behind Section 6.7 existed only in a working tree on the VM
+  configs. The source modification behind the OMB result (postmortem S22) existed only in a
+  working tree on the VM
 - `runs_index_cloud.csv`, `run_metadata_cloud.jsonl.gz` — described above
 
 ### Which runs anything actually depends on
@@ -499,3 +508,20 @@ python scripts/zenodo_deposit.py --ref vX.Y.Z
 
 Then add the new version's DOI to the top-level `README.md` (badge), `CITATION.cff`, and the
 manuscript's Artefact Availability statement.
+
+## Corrections to this README
+
+A number or a pointer in this README that does not match the paper, the supplement, the
+postmortem or a record is corrected here, in the open. Each correction gives the date, the old and
+the new text, and the reason. The records themselves are unchanged.
+- **4 November 2026. The paper's title and sections.** The title is the paper's own since
+  17 October. This page's pointers named the sections of the paper of July: §6.3, §6.5, 6.7 and
+  7.4. The rebuilt paper has none of them, and each pointer now names the postmortem section
+  that holds its material (S18, S1.8 and S4, S22, S4). A note under "What the paper claims"
+  says which paper that part describes.
+- **4 November 2026. "the 24 chain logs, 101 KB" becomes "the 25 chain logs, 56 KB, and 13
+  earlier ones in early_adhoc/"**, as `campaign_logs/README.md` now says: the 25 logs hold
+  56,030 bytes, and early_adhoc/'s 13 hold 41,585.
+- **4 November 2026. The chain logs' archive: "101 KB" becomes "12 KB (50 KB raw)".**
+  `cloud_archive/sbl_logs.tgz` is 12,318 bytes, and its 24 logs hold 50,035.
+

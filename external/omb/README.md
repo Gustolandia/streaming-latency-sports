@@ -2,10 +2,11 @@
 
 > **Superseded, 2026-07-26.** This directory holds the *original* single run, in which an
 > instrumented OpenMessaging Benchmark discarded 6,000 end-to-end samples — about 6.7% of three
-> minutes at 500 msg/s under 88% load. Section 6.7 read those 6,000 as the same causality
-> violation the paper reports. **That reading is withdrawn.** A sign-separated sweep across 15
-> cells found **zero negative samples in roughly 420,000 discards**, with a discard share that
-> falls as load rises. Every discard was a millisecond-tick collision, not a causality violation.
+> minutes at 500 msg/s under 88% load. Section 6.7 of the paper of July 2026 read those 6,000 as
+> the same causality violation that paper reported. **That reading is withdrawn.** A
+> sign-separated sweep across 15 cells found **zero negative samples in roughly 420,000
+> discards**, with a discard share that falls as load rises. Every discard was a
+> millisecond-tick collision, not a causality violation.
 >
 > The files here are kept unchanged, and `omb_discard_evidence.txt` deliberately so: every one of
 > its eleven counter lines reads `sample_micros=0`, and the Pub-rate lines beside them show a
@@ -64,9 +65,11 @@ tell.
 
 `*_dist.yaml` and the worker logs are from five attempts to run OMB in distributed mode, each of
 which failed for a different reason in the benchmark's own worker protocol. None produced a
-usable run and none is reported as a result. They are kept because the paper states that the
-cross-host clock channel was left untested and bounds it independently at ~0.067 ms, and a reader
-is entitled to see that the attempts happened rather than take the sentence on trust.
+usable run and none is reported as a result. The postmortem's S22.1 counts eleven attempts in
+all, none of which completed a run, and S24.1 gives their diagnostics. They are kept because the
+supplement's S4.5 says that on the cloud testbed the benchmark's distributed mode could not be
+measured, so its exposure to the deletion there rests on reading its source. A reader is
+entitled to see that the attempts happened rather than take that sentence on trust.
 
 ## Provenance
 
@@ -81,3 +84,20 @@ workspace `WorkerStats.java` was identical to `.orig` — the patch had not been
 workspace; the actual instrumentation patch is tracked here as `workerstats_discard_counter.patch`
 (1,629 bytes), and the empty file stays tracked rather than deleted, because a capture that
 failed is part of the record.
+
+## Corrections to this README
+
+A number or a pointer in this README that does not match the paper, the supplement, the
+postmortem or a record is corrected here, in the open. Each correction gives the date, the old and
+the new text, and the reason. The records themselves are unchanged.
+- **4 November 2026. Section 6.7 is the paper's of July 2026.** The rebuilt paper has no such
+  section; the postmortem's S22 holds this run and its withdrawal. The first paragraph now says
+  that that paper reported a causality violation; the rebuilt paper reports none.
+- **4 November 2026. The distributed variant.** The postmortem's S22.1 counts eleven attempts
+  in all, the five whose files are here among them. The paper no longer bounds the cross-host
+  channel at about 0.067 ms: the supplement's S1.1 reports that offset and claims no cross-host
+  bound, since chrony bounds its own error at more than the offset. The reason for keeping the
+  files now cites S4.5. The supplement never said that the cross-host channel was left
+  untested, and S4.5 reports that the distributed mode ran later, on the registered
+  campaign's machines.
+

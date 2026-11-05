@@ -373,7 +373,7 @@ class TestTheKernelFigure:
                      r"$t_{\mathrm{ack}}$", r"$t_{\mathrm{rx}}$", r"$t_{\mathrm{recv}}$",
                      r"$\delta_{\mathrm{ack}}$", r"$\delta_{\mathrm{recv}}$", "fetch", "$S_k$",
                      r"$D$: end-to-end latency", r"$H_{\mathrm{out}}$",
-                     r"$W$: kernel-timed latency", r"$H_{\mathrm{in}}$", "kernel timestamp",
+                     r"$W$: kernel to kernel", r"$H_{\mathrm{in}}$", "kernel timestamp",
                      "a thread's delay", r"$\delta_{\mathrm{tx}}$"):
             assert want in found["said"], want
         # 15 Oct 2026, an internal review: the key names a thread's delay, which holds any wait

@@ -406,7 +406,8 @@ def halfway_figure(runs, judged_dir=JUDGED_DIR, quality_csv=QUALITY_CSV):
     for ax, spec in zip(axes, HALFWAY_PANELS):
         found[spec["title"]] = halfway_readings(runs, spec, judged_dir, campaigns)
         plot_halfways(ax, found[spec["title"]], spec["title"])
-    axes[0].set_ylabel("Halfway point of the rate's fall (ms)", fontsize=8)
+    # 3 Nov 2026: the share of S below zero falls; "rate" is the publish rate's word.
+    axes[0].set_ylabel("Halfway point of the share's fall (ms)", fontsize=8)
     legend = halfway_legend(fig)
     top = legend.get_window_extent(fig.canvas.get_renderer()).y1 / fig.dpi
     fig.tight_layout(rect=(0, (top + HALFWAY_CLEARANCE_IN) / height, 1, 1), w_pad=1.0)

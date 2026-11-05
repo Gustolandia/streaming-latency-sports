@@ -303,7 +303,11 @@ class TestTheSmallestValues:
                      "spanAckLagFloorUs", "spanTtiMinUs", "spanKafkaNegAckPct"):
             assert "\\" + name in table, name
         # The revised draft's narrow layout, the same day: the compsoc column is narrower.
-        assert "Span & From & \\kafka{} & \\redis{} & All & Least, $\\mu$s \\\\" in table
+        # 3 Nov 2026: the first column is headed "Difference", the paper's plain word for a
+        # difference of two timestamps (the author's rule against invented terms). The claim
+        # kept: the narrow layout and the same six columns.
+        assert ("Difference & From & \\kafka{} & \\redis{} & All & Least, $\\mu$s \\\\"
+                in table)
         assert "\\setlength{\\tabcolsep}{4pt}" in table
         assert "$E$ & $t_{\\mathrm{sched}}$ & " in table
         assert table.count("\\midrule") == 3

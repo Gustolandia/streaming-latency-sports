@@ -34,6 +34,9 @@ RETIRED = (
     ("send lag", "publish delay"),
     ("handling span", "processing-time latency"),
     ("go-first", "real-time priority"),
+    # 3 Nov 2026, the author's rule against invented terms: W is said in words, the latency
+    # between the kernel's timestamps, and Fig. 5 and Fig. 6 label it "kernel to kernel".
+    ("kernel-timed", "the latency between the kernel's timestamps"),
 )
 
 #: The manuscript sources whose vocabulary the figures must match.

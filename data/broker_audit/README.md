@@ -54,7 +54,7 @@ Across 222 brokers, 418 consumer interfaces and 390 producer interfaces.
   - Azurite, Microsoft's local emulator of Azure Queue Storage, to the whole second.
 - **A stay: 79 interfaces in 53 brokers.** A stay is the message's whole time at the broker: the wait
   plus the broker's own handling. It bounds the wait from above.
-  - 36 of the 79 come only from a duration counted in whole seconds. Most of these durations are an
+  - 38 of the 79 come only from a duration counted in whole seconds. Most of these durations are an
     expiry that the broker shortens by the message's time there. MQTT 5.0 brokers do this, as the
     standard requires, for messages whose publisher set an expiry.
   - Only three brokers send a stay finer than a millisecond at both ends:
@@ -343,6 +343,16 @@ corrected in the open, never silently. Each correction is marked in its record, 
 
 So the first audit's 23 brokers now have 42 consumer interfaces: 13 deliver a stay, 22 the arrival
 only and 7 nothing. Their producers were coded under the amendment.
+
+## Corrections to this README
+
+A count in this README that does not match its records is corrected here, in the open. Each
+correction gives the date, the old and the new count, and the reason. The records themselves are
+unchanged.
+- **3 November 2026. The stays known only from a duration in whole seconds: 36 becomes 38.** The
+  count in "The answer in brief" missed gmqtt's two MQTT 5.0 interfaces. Their records code the
+  duration as a stay (Q5 "stay"), not as a derivable stay, and it is counted in whole seconds. The
+  count now takes both codes. Of the 38, 36 are MQTT 5.0 interfaces.
 
 ## Readings applied to every record
 

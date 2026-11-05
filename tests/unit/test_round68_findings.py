@@ -114,9 +114,13 @@ class TestR1TheExposureBand:
         5 Oct 2026: it is Section VI-B's sentence "At our median publish latency, A = 725 us,
         the error is ... and below 0.72 ms the median publish latency exceeds the end-to-end
         latency itself", matched across its line breaks."""
-        m = re.search(r"At\s+our\s+median\s+publish\s+latency", paper)
+        # 3 Nov 2026: moved to Supplement S2.1 by the author's decision, so that the paper fits
+        # the journal's 12 free pages (register D17, recorded as moved): "At the median publish
+        # latency, A = ...", with the crossover after it, is S2.1's now.
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        m = re.search(r"At\s+the\s+median\s+publish\s+latency", journal)
         assert m, "the sentence that names the median has gone"
-        assert chr(92) + "exposureCrossover$" in paper[m.start():m.start() + 480]
+        assert chr(92) + "exposureCrossover$" in journal[m.start():m.start() + 480]
 
     def test_the_supplements_labelling_is_unchanged(self, supplement):
         """S12 was right all along, and is the wording the main text was reconciled to."""
@@ -125,7 +129,7 @@ class TestR1TheExposureBand:
         assert "the median publish latency and $" + chr(92) + "exposureCrossoverHi$~ms at the " \
                "ninetieth percentile" in supplement
 
-    def test_the_rendered_numbers_are_the_percentile_ones(self, rendered_paper, ledger):
+    def test_the_rendered_numbers_are_the_percentile_ones(self, rendered_journal, ledger):
         """On the page, not in the source: the ledger can be right and the sentence wrong.
 
         The median's own numbers, 7% and 0.72 ms, sit in the clause *before* this one and
@@ -143,8 +147,12 @@ class TestR1TheExposureBand:
         # 16 Oct 2026: the band of publish latencies left with the figure for Supplement S2.1,
         # whose caption the source pins hold; the paper prints the band of errors that band
         # gives at 10 ms, in Section VI, from "tenth to ninetieth percentiles" to its percent.
-        flat = " ".join(rendered_paper.split())
-        i = flat.index("tenth to ninetieth percentiles")
+        # 3 Nov 2026: moved to Supplement S2.1 by the author's decision, so that the paper fits
+        # the journal's 12 free pages; the band of errors is read on the supplement's pages, in
+        # the sentence that gives it ("the tenth to ninetieth percentiles of A give ...").
+        flat = " ".join(rendered_journal.split())
+        # (The extracted text closes up the spaces around math: "percentiles ofAgive".)
+        i = re.search(r"tenth to ninetieth percentiles of ?A ?give", flat).start()
         band = flat[i:flat.index("%.", i) + 2]
         assert len(band) < 120, "the band clause no longer ends nearby: %r" % band[:200]
         assert ledger["exposureErrTenLo"] in band and ledger["exposureErrTenHi"] in band, \
@@ -303,17 +311,19 @@ class TestRecommendedItems:
         import apply_vocabulary as av
         assert av.main(["--check", "paper.tex", "supplement.tex", "postmortem.tex"]) == 0
 
-    def test_w3_table_one_prints_its_measured_zeros(self, paper, rendered_paper):
+    def test_w3_table_one_prints_its_measured_zeros(self, journal, rendered_journal):
         """5 Oct 2026: Table I, the values below zero by span, went to the journal supplement.
-        6 Oct 2026: it is the paper's Table I again (tab:spans), and is read there."""
-        i = paper.index("label{tab:spans}")
-        table = paper[i:paper.index("end{table}", i)]
+        6 Oct 2026: it is the paper's Table I again (tab:spans), and is read there.
+        3 Nov 2026: moved to Supplement S1.3 by the author's decision, so that the paper fits the
+        journal's 12 free pages; it is stab:spans, whole, and is read there."""
+        i = journal.index("label{stab:spans}")
+        table = journal[i:journal.index("end{table}", i)]
         assert "---" not in table, "an em-dash in an IEEE table reads 'not measured'"
-        assert "dashed" not in paper[:i][-900:], \
+        assert "dashed" not in journal[:i][-900:], \
             "the caption stopped needing to explain the glyph"
         # 16 Oct 2026: Table I is generated whole, each row a span's symbol, its origin
         # timestamp and then its smallest value, so a publish-timed row reads "t pub 0 0 0".
-        flat = " ".join(rendered_paper.split())
+        flat = " ".join(rendered_journal.split())
         assert len(re.findall(r"t ?pub 0 0 0 \d", flat)) == 3, \
             "all three publish-referenced chain rows print three measured zeros -- the "\
             "publish latency joined them in round 70"
@@ -400,6 +410,14 @@ class TestRecommendedItems:
         flat = " ".join(paper.split())
         # 15 Oct 2026: "A busy-polling thread, spinning on a core of its own, never waits to
         # be woken and should buy the same for the price of that core".
+        # 3 Nov 2026: moved to Supplement S3.1, word for word, by the author's decision, so that
+        # the paper fits the journal's 12 free pages: Section VI-B's paragraph went there whole.
+        # The paper names busy-polling where a reader meets it, among the designs Section VIII
+        # says we did not test, and defines it there; J. Kunkel's sentence is read where it went.
+        limits = flat[flat.index(r"\section{Limitations}"):flat.index(r"\section{Conclusion}")]
+        assert re.search(r"pin a spinning thread to its own core \(\\emph\{busy-polling\}\)",
+                         limits), "the paper must still name busy-polling, defined, as untested"
+        flat = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").split())
         assert re.search("busy-polling thread, spinning on a core of its own, never waits to "
                          "be woken and should buy the same", flat, re.I), (
             "J. Kunkel's busy-poll sentence has gone from the paper again; it was asked for in "
